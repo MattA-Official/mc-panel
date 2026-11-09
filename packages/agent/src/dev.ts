@@ -24,6 +24,62 @@ const states = new Map<string, State>()
 const TRANSITION_MS = 2000
 
 const fakeCpu = new Map<string, number>()
+
+/** How each server's last run ended and its start history, as systemd would keep them. */
+interface Run {
+  result: string
+  restarts: number
+  exitKind: 'exited' | 'killed' | null
+  exitStatus: number | null
+  starts: number[]
+}
+const runs = new Map<string, Run>()
+const RESTART_MS = 15_000
+const run = (server: string): Run => {
+  let r = runs.get(server)
+  if (!r) {
+    r = { result: 'success', restarts: 0, exitKind: null, exitStatus: null, starts: [] }
+    runs.set(server, r)
+  }
+  return r
+}
+/** An explicit start: like reset-failed then start, it clears the counters. */
+const freshStart = (server: string) =>
+  runs.set(server, {
+    result: 'success',
+    restarts: 0,
+    exitKind: null,
+    exitStatus: null,
+    starts: [Date.now()],
+  })
+
+/** Restart=on-failure, RestartSec=15, StartLimitBurst=3 in StartLimitIntervalSec=600. */
+function crashed(server: string, oom: boolean) {
+  void halt(server)
+  const r = run(server)
+  Object.assign(
+    r,
+    oom
+      ? { result: 'oom-kill', exitKind: 'killed', exitStatus: 9 }
+      : { result: 'exit-code', exitKind: 'exited', exitStatus: 1 },
+  )
+  states.set(server, 'activating')
+  setTimeout(() => {
+    if (states.get(server) !== 'activating') return
+    const now = Date.now()
+    r.starts = r.starts.filter((t) => now - t < 600_000)
+    if (r.starts.length >= 3) {
+      r.result = 'start-limit-hit'
+      states.set(server, 'failed')
+      return
+    }
+    r.starts.push(now)
+    r.restarts++
+    r.result = 'success'
+    states.set(server, 'active')
+    void boot(server)
+  }, RESTART_MS)
+}
 const running = new Map<string, Awaited<ReturnType<typeof startFakeMinecraft>>>()
 
 function move(server: string, via: State, to: State) {
@@ -33,7 +89,12 @@ function move(server: string, via: State, to: State) {
 
 async function boot(server: string) {
   await running.get(server)?.stop()
-  running.set(server, await startFakeMinecraft(join(serversDir, server)))
+  running.set(
+    server,
+    await startFakeMinecraft(join(serversDir, server), {
+      onCrash: (oom) => crashed(server, oom),
+    }),
+  )
 }
 
 async function halt(server: string) {
@@ -73,10 +134,17 @@ const handlers: Handlers = {
   }),
   'update.install': async ({ version }) => fakeUpdate(version, false),
   'update.rollback': async ({ version }) => fakeUpdate(version, true),
-  'service.status': async ({ server }) => ({
-    active: states.get(server) ?? 'inactive',
-    since: null,
-  }),
+  'service.status': async ({ server }) => {
+    const r = run(server)
+    return {
+      active: states.get(server) ?? 'inactive',
+      since: null,
+      result: r.result,
+      restarts: r.restarts,
+      exitKind: r.exitKind,
+      exitStatus: r.exitStatus,
+    }
+  },
   'service.usage': async ({ servers }) => {
     const usage: Result<'service.usage'>['usage'] = {}
     for (const server of servers) {
@@ -93,6 +161,7 @@ const handlers: Handlers = {
     return { usage }
   },
   'service.start': async ({ server }) => {
+    freshStart(server)
     move(server, 'activating', 'active')
     void boot(server)
     return {}
@@ -103,6 +172,7 @@ const handlers: Handlers = {
     return {}
   },
   'service.restart': async ({ server }) => {
+    freshStart(server)
     move(server, 'activating', 'active')
     void halt(server).then(() => boot(server))
     return {}
