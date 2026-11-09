@@ -7,7 +7,7 @@
     "node": ">=22.12"
   },
   "scripts": {
-    "lint": "eslint .",
+    "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "vitest run",
