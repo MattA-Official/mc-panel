@@ -264,6 +264,55 @@ try {
       throw new Error(`gold block missing after import: ${importedGold}`)
     step('imported the exported world as a new server, gold block intact')
     await api(view, '/api/servers/imported/stop', { body: {} })
+
+    // Specs: add a mod from Modrinth through plan and apply, then check Fabric loads it.
+    const planned = await api<{
+      ok: boolean
+      plan?: { id: string; problems: string[]; changes: { action: string; label: string }[] }
+      issues?: unknown
+    }>(view, '/api/servers/smoke/plan', {
+      body: {
+        yaml: `name: smoke\nloader:\n  type: fabric\n  minecraft: "${mc}"\ncontent:\n  - modrinth: lithium\n`,
+      },
+    })
+    if (planned.status !== 200 || !planned.body.ok || !planned.body.plan) {
+      throw new Error(`plan failed: ${JSON.stringify(planned.body)}`)
+    }
+    const plan = planned.body.plan
+    if (plan.problems.length || !plan.changes.some((c) => c.action === 'add')) {
+      throw new Error(`unexpected plan: ${JSON.stringify(plan)}`)
+    }
+    const applied = await api<{ jobId: number }>(view, '/api/servers/smoke/apply', {
+      body: { planId: plan.id },
+    })
+    if (applied.status !== 200) throw new Error(`apply failed: ${JSON.stringify(applied.body)}`)
+    await waitForJob(applied.body.jobId, 'the apply job', 10 * 60_000)
+    const again = await api<{ ok: boolean; plan: { changes: unknown[] } }>(
+      view,
+      '/api/servers/smoke/plan',
+      {
+        body: {
+          yaml: `name: smoke\nloader:\n  type: fabric\n  minecraft: "${mc}"\ncontent:\n  - modrinth: lithium\n`,
+        },
+      },
+    )
+    if (again.body.plan.changes.length) {
+      throw new Error(`a second plan should change nothing: ${JSON.stringify(again.body)}`)
+    }
+    await api(view, '/api/servers/smoke/start', { body: {} })
+    const loaded = await until(
+      'Fabric to load Lithium',
+      async () => {
+        const r = await api<{ lines: string[] }>(
+          view,
+          '/api/servers/smoke/logs/view?name=latest.log&q=lithium',
+        )
+        return r.status === 200 && r.body.lines.length ? r.body.lines[0] : null
+      },
+      5 * 60_000,
+      2000,
+    )
+    step(`added Lithium from Modrinth through plan and apply: ${loaded.slice(0, 120)}`)
   }
   console.log('smoke test passed')
 } catch (err) {
