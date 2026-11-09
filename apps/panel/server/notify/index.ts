@@ -311,6 +311,14 @@ export class NotifyService {
     } catch (err) {
       throw new NotifyError(err instanceof Error ? err.message : String(err))
     }
+    // A saved channel that works again shouldn't keep showing its old error.
+    if (id !== undefined && !input.url) {
+      this.deps.db
+        .update(schema.notifyChannels)
+        .set({ lastSentAt: this.now(), lastError: null, lastErrorAt: null })
+        .where(eq(schema.notifyChannels.id, id))
+        .run()
+    }
   }
 
   // ---------------------------------------------------------------- events
