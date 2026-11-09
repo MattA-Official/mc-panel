@@ -3,7 +3,9 @@ import tseslint from 'typescript-eslint'
 import globals from 'globals'
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/.output/**', '**/.nuxt/**', '**/node_modules/**', '**/coverage/**'] },
+  {
+    ignores: ['**/dist/**', '**/.output/**', '**/.nuxt/**', '**/node_modules/**', '**/coverage/**'],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   { languageOptions: { globals: { ...globals.node } } },

@@ -1,0 +1,16 @@
+{
+  "name": "@kiln/agent",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Privileged helper for the kiln panel. Runs as root and performs a fixed set of operations.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kiln/protocol": "workspace:*"
+  }
+}

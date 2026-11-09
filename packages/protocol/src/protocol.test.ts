@@ -35,7 +35,10 @@ describe('verb params', () => {
 describe('lineSplitter', () => {
   it('reassembles lines split across chunks', () => {
     const lines: string[] = []
-    const feed = lineSplitter((l) => lines.push(l), () => {})
+    const feed = lineSplitter(
+      (l) => lines.push(l),
+      () => {},
+    )
     const msg = encode({ a: 1 }) + encode({ b: 2 })
     feed(msg.slice(0, 4))
     feed(msg.slice(4))
