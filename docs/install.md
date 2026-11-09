@@ -54,6 +54,7 @@ The installer checks the release's signature before installing anything, and pri
 | `--version <x.y.z>`    | Install a specific release. Defaults to the newest.                        |
 | `--setup-token <text>` | Use this setup token instead of generating one.                            |
 | `--tarball <file>`     | Install from a release tarball already on the machine.                     |
+| `--pr <number>`        | Install the signed test build of that pull request. For testing only.      |
 | `--no-caddy`           | Skip Caddy if you run your own HTTPS proxy (point it at `127.0.0.1:3000`). |
 | `--no-firewall`        | Leave ufw alone.                                                           |
 
