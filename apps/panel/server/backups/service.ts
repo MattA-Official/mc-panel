@@ -52,6 +52,9 @@ export function formatBytes(n: number) {
   return `${(n / 1024 ** 3).toFixed(2)} GB`
 }
 
+const describeTime = (d: Date) =>
+  `${d.toLocaleString('en-GB', { timeZone: 'UTC', dateStyle: 'medium', timeStyle: 'short' })} UTC`
+
 /** Bytes in a folder, skipping what backups skip and never following symlinks. */
 export async function folderBytes(dir: string): Promise<number> {
   const skip = new Set(EXCLUDE.map((e) => e.slice(2)))
@@ -169,7 +172,7 @@ export class BackupService {
     this.claim(server)
     const job = this.deps.jobs.track('server.restore', server, RESTORE_STEPS)
     const done = this.runRestore(row, job)
-      .then(() => job.succeed(`Restored the backup from ${row.createdAt.toISOString()}.`))
+      .then(() => job.succeed(`Restored the backup taken ${describeTime(row.createdAt)}.`))
       .catch((err) => job.fail(err))
       .finally(() => this.busy.delete(server))
     return { jobId: job.id, done }
