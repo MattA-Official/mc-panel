@@ -38,7 +38,7 @@ You need a test server you don't mind crashing. SSH in (System, **SSH access**) 
 - [ ] A "Server crashed" notification arrives (if a channel has it ticked), then "Server is back up".
 - [ ] **Activity** lists "<name> crashed. It was killed by SIGKILL." by **Flytower**.
 - [ ] **Logs**, **Crashes** lists the crash, then "Back to normal". **The log before it** shows the last lines of the old log.
-- [ ] A real Minecraft crash report: on a test server with operator rights, the `/debug` key combination isn't available on a server, so the easiest way is a mod known to crash on your version, or ask me for a crash-test jar. The banner's cause becomes "Minecraft crashed: …" and **Open crash report** opens the file in the Files tab. (This also checks how 26.3 names its crash reports.)
+- [ ] A real Minecraft crash report, if you can cause one: for example, upload a Fabric mod built for a different Minecraft version into `mods/` with the Files tab and start the server. The banner's cause becomes "Minecraft crashed: …" and **Open crash report** opens the file in the Files tab. (This also checks how 26.3 names its crash reports. Remove the mod afterwards.)
 - [ ] Close the banner with its ✕. It stays closed after a reload, and the red dot goes.
 - [ ] **Crash loop**: kill it three times in a row, each time once it's back up. After the third, it stays stopped, the badge reads **Crash-looping**, a "Server keeps crashing" notification arrives, and the banner says to start it again once fixed. **Start** works first time, and "Server is running again" follows.
 - [ ] **Stop**, **Restart**, applying a change from the Content tab and a backup restore never count as crashes.
