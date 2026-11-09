@@ -1,0 +1,31 @@
+[
+  {
+    "id": 12,
+    "channel": "BETA",
+    "downloads": {
+      "server:default": {
+        "name": "paper-26.3-12.jar",
+        "checksums": {
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "size": 1,
+        "url": "https://fill-data.papermc.io/v1/objects/bbbb/paper-26.3-12.jar"
+      }
+    }
+  },
+  {
+    "id": 10,
+    "channel": "STABLE",
+    "downloads": {
+      "server:default": {
+        "name": "paper-26.3-10.jar",
+        "checksums": {
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "size": 1,
+        "url": "https://fill-data.papermc.io/v1/objects/aaaa/paper-26.3-10.jar"
+      }
+    }
+  },
+  { "id": 11, "channel": "STABLE", "downloads": {} }
+]

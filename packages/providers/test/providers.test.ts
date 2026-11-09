@@ -23,6 +23,11 @@ function fixtureFetch(calls: string[] = []): Fetch {
     'https://meta.fabricmc.net/v2/versions/loader/1.99': async () => '[]',
     'https://meta.fabricmc.net/v2/versions/installer': () => fixture('fabric-installer.json'),
     'https://piston-data.mojang.com/v1/objects/bbb/server.jar': async () => JAR,
+    'https://fill.papermc.io/v3/projects/paper': () => fixture('paper-project.json'),
+    'https://fill.papermc.io/v3/projects/paper/versions/26.3/builds': () =>
+      fixture('paper-builds-26.3.json'),
+    'https://fill.papermc.io/v3/projects/paper/versions/26.3': () =>
+      fixture('paper-version-26.3.json'),
   }
   return async (input) => {
     const url = String(input)
@@ -95,6 +100,44 @@ describe('fabric', () => {
     await expect(fabric.resolve('1.99')).rejects.toThrow(
       "Fabric doesn't support Minecraft 1.99 yet.",
     )
+  })
+})
+
+describe('paper', () => {
+  test('lists versions newest first, release candidates only on request', async () => {
+    const { paper } = createLoaders(fixtureFetch())
+    expect((await paper.minecraftVersions()).map((v) => v.id)).toEqual([
+      '26.3',
+      '1.21.11',
+      '1.21.4',
+      '1.21',
+    ])
+    const all = await paper.minecraftVersions({ includeSnapshots: true })
+    expect(all.slice(0, 2).map((v) => v.id)).toEqual(['26.3', '26.3-rc1'])
+  })
+
+  test('resolves the newest stable build with its sha256', async () => {
+    const { paper } = createLoaders(fixtureFetch())
+    // Build 11 is newer and stable but has no download, so it can't be picked.
+    await expect(paper.resolve('26.3', '11')).rejects.toThrow('no download for build 11')
+    const r = await paper.resolve('26.3')
+    expect(r).toEqual({
+      url: 'https://fill-data.papermc.io/v1/objects/aaaa/paper-26.3-10.jar',
+      hash: { algorithm: 'sha256', value: 'a'.repeat(64) },
+      javaMajor: 25,
+      loaderVersion: '10',
+    })
+    expect((await paper.resolve('26.3', '12')).loaderVersion).toBe('12')
+    expect((await paper.loaderVersions('26.3')).map((b) => [b.id, b.stable])).toEqual([
+      ['12', false],
+      ['11', true],
+      ['10', true],
+    ])
+  })
+
+  test('says plainly when a version has no builds', async () => {
+    const { paper } = createLoaders(fixtureFetch())
+    await expect(paper.resolve('1.99')).rejects.toThrow("Paper doesn't support Minecraft 1.99 yet.")
   })
 })
 

@@ -1,5 +1,6 @@
 import { fabricProvider } from './fabric.ts'
 import { Mojang, vanillaProvider } from './mojang.ts'
+import { paperProvider } from './paper.ts'
 import type { Fetch, LoaderId, LoaderProvider } from './types.ts'
 
 export * from './types.ts'
@@ -11,9 +12,14 @@ export function createLoaders(
   fetchImpl: Fetch = globalThis.fetch,
 ): Record<LoaderId, LoaderProvider> {
   const mojang = new Mojang(fetchImpl)
-  return { vanilla: vanillaProvider(mojang), fabric: fabricProvider(fetchImpl, mojang) }
+  return {
+    vanilla: vanillaProvider(mojang),
+    fabric: fabricProvider(fetchImpl, mojang),
+    paper: paperProvider(fetchImpl, mojang),
+  }
 }
 export * from './content.ts'
+export { paperProvider } from './paper.ts'
 export { modrinthProvider, rankVersions } from './modrinth.ts'
 export { resolveUrl, type UrlRef } from './url.ts'
 export { resolveAll, type ResolvedSet, type WantedContent } from './resolve.ts'

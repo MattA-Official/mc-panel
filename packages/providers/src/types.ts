@@ -21,7 +21,8 @@ export interface ResolvedServer {
   loaderVersion: string | null
 }
 
-export type LoaderId = 'vanilla' | 'fabric'
+export type LoaderId = 'vanilla' | 'fabric' | 'paper'
+export const LOADER_IDS = ['vanilla', 'fabric', 'paper'] as const satisfies readonly LoaderId[]
 
 export interface LoaderProvider {
   id: LoaderId

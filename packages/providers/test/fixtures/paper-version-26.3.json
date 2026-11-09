@@ -1,0 +1,1 @@
+{ "version": { "id": "26.3", "java": { "version": { "minimum": 25 } } }, "builds": [12, 11, 10] }
