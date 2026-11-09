@@ -18,16 +18,22 @@ export function fakeExec(answers: Record<string, Partial<ExecResult>> = {}) {
   return { exec, calls }
 }
 
-export function fakeContext(exec: Exec) {
+export function fakeContext(
+  exec: Exec,
+  fetchImpl: typeof fetch = async () => new Response('not stubbed', { status: 599 }),
+  paths: AgentContext['paths'] = {
+    servers: '/tmp/kiln/servers',
+    runtimes: '/tmp/kiln/runtimes',
+    archive: '/tmp/kiln/archive',
+  },
+) {
   const audit: AuditEvent[] = []
   const ctx: AgentContext = {
     exec,
+    fetch: fetchImpl,
+    arch: 'x64',
     version: '0.0.0-test',
-    paths: {
-      servers: '/tmp/kiln/servers',
-      runtimes: '/tmp/kiln/runtimes',
-      archive: '/tmp/kiln/archive',
-    },
+    paths,
     log: (e) => audit.push(e),
   }
   return { ctx, audit }

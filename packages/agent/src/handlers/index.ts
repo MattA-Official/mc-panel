@@ -1,6 +1,7 @@
 import { AgentError } from '@kiln/protocol'
 import type { Handlers } from '../dispatch.ts'
 import { protocolInfo } from '../dispatch.ts'
+import * as runtime from './runtime.ts'
 import * as service from './service.ts'
 
 const notYet = (verb: string) => async () => {
@@ -13,7 +14,7 @@ export const handlers: Handlers = {
   'service.start': service.start,
   'service.stop': service.stop,
   'service.restart': service.restart,
-  'runtime.install': notYet('runtime.install'),
+  'runtime.install': runtime.install,
   'server.create': notYet('server.create'),
   'server.delete': notYet('server.delete'),
 }

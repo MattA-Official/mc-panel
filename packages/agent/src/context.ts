@@ -3,6 +3,10 @@ import type { Exec } from './exec.ts'
 /** Everything a handler may touch. Tests swap these for fakes. */
 export interface AgentContext {
   exec: Exec
+  /** Global fetch in production; a stub in tests. */
+  fetch: typeof fetch
+  /** CPU architecture as Node reports it (x64, arm64). */
+  arch: string
   version: string
   paths: {
     servers: string // /srv/kiln/servers

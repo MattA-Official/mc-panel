@@ -6,6 +6,8 @@ const env = (name: string, fallback: string) => process.env[name] ?? fallback
 
 const ctx = {
   exec: realExec,
+  fetch: globalThis.fetch,
+  arch: process.arch,
   version: env('KILN_VERSION', '0.0.0-dev'),
   paths: {
     servers: env('KILN_SERVERS_DIR', '/srv/kiln/servers'),
