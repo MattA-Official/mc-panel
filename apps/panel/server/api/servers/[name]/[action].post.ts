@@ -11,6 +11,8 @@ export default defineEventHandler(async (event) => {
   const { user } = await requireUserSession(event)
   const { name, action } = await getValidatedRouterParams(event, Params.parse)
   findServer(name)
+  // The old RCON connection dies with the process; don't hand it to the next command.
+  if (action !== 'start') useConsole().forget(name)
   try {
     // Stopping waits for the world to save, which can take a while on a big world.
     await agent(`service.${action}`, { server: name }, { timeoutMs: 150_000 })

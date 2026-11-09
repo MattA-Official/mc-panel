@@ -96,11 +96,11 @@ async function copy(text: string) {
         :actions="[{ label: 'All servers', to: '/' }]"
       />
       <div v-else-if="server" class="grid gap-6 lg:grid-cols-[1fr_20rem]">
-        <section
-          class="flex min-h-80 items-center justify-center rounded-lg border border-dashed border-default text-sm text-muted"
-        >
-          The console arrives in the next update.
-        </section>
+        <ServerConsole
+          :server="server.name"
+          :running="status === 'active'"
+          class="h-[calc(100dvh-10rem)] min-h-80"
+        />
 
         <aside class="space-y-4">
           <div class="rounded-lg border border-default p-4">

@@ -1,7 +1,9 @@
 import type { Peer } from 'crossws'
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
+import { schema } from '../db'
 
-const Topic = z.string().regex(/^(job:\d+|servers)$/)
+const Topic = z.string().regex(/^(job:\d+|servers|console:[a-z][a-z0-9-]{1,30})$/)
 const ClientMessage = z.discriminatedUnion('type', [
   z.object({ type: z.literal('subscribe'), topic: Topic }),
   z.object({ type: z.literal('unsubscribe'), topic: z.string().max(64) }),
@@ -19,6 +21,16 @@ const send = (peer: Peer, topic: string, data: unknown) => {
  */
 function attach(topic: string, emit: (data: unknown) => void): () => void {
   if (topic === 'servers') return useStatus().watch(emit)
+  if (topic.startsWith('console:')) {
+    const name = topic.slice('console:'.length)
+    const exists = useDb()
+      .select({ name: schema.servers.name })
+      .from(schema.servers)
+      .where(eq(schema.servers.name, name))
+      .get()
+    if (!exists) return () => {}
+    return useConsole().watch(name, emit)
+  }
   const off = useJobs().bus.subscribe(topic, emit)
   emit(useJobs().get(Number(topic.slice('job:'.length))))
   return off
@@ -26,7 +38,7 @@ function attach(topic: string, emit: (data: unknown) => void): () => void {
 
 /**
  * One authenticated socket per tab. The browser subscribes to topics (`job:<id>`,
- * `servers`, console streams later) and gets `{ topic, data }` messages back.
+ * `servers`, `console:<name>`) and gets `{ topic, data }` messages back.
  */
 export default defineWebSocketHandler({
   async upgrade(request) {
