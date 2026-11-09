@@ -114,7 +114,7 @@ async function setup(
     'chunky confirm': 'Done.',
   }
   const snapshots: string[] = []
-  let locked = false
+  const locked = new Set<string>()
   const propsPath = join(dir, 'server.properties')
   const runner = new JobRunner({
     db,
@@ -129,21 +129,24 @@ async function setup(
     agent,
     jobs: runner,
     backups: {
-      lock: () => {
-        if (locked) throw new Error('busy')
-        locked = true
-        return () => void (locked = false)
+      lock: (n) => {
+        if (locked.has(n)) throw new Error('busy')
+        locked.add(n)
+        return () => void locked.delete(n)
       },
       snapshot: async (_n, note) => {
         snapshots.push(note)
         return {} as never
       },
+      withSavesPaused: async (_s, _r, fn) => fn(),
+      ensureSpace: async () => {},
     },
     rcon: async (_n, command) => {
       sent.push(command)
       return replies[command] ?? `ok: ${command}`
     },
-    readProperties: async () => toRecord(parseProperties(readFileSync(propsPath, 'utf8'))),
+    readProperties: async (n) =>
+      toRecord(parseProperties(readFileSync(join(servers, n, 'server.properties'), 'utf8'))),
     writeProperties: async (_n, changes) =>
       writeFileSync(
         propsPath,
@@ -153,6 +156,27 @@ async function setup(
       ),
     sleep: async () => {},
   })
+  // A second server whose world can be copied in.
+  const other = join(servers, 'creative')
+  mkdirSync(join(other, 'world', 'region'), { recursive: true })
+  mkdirSync(join(other, 'world', 'datapacks'), { recursive: true })
+  writeFileSync(join(other, 'world', 'region', 'r.0.0.mca'), 'creative chunks')
+  writeFileSync(join(other, 'world', 'datapacks', 'theirs.zip'), 'theirs')
+  writeFileSync(join(other, 'server.properties'), 'motd=Creative\n')
+  db.insert(schema.servers)
+    .values({
+      name: 'creative',
+      displayName: 'Creative',
+      loader: 'vanilla',
+      mcVersion: '26.3',
+      javaMajor: 25,
+      memoryMb: 2048,
+      port: 25566,
+      rconPort: 25576,
+      rconPassword: 'y',
+      eulaAcceptedAt: new Date(),
+    })
+    .run()
   return { world, dir, calls, sent, snapshots, replies, propsPath }
 }
 
@@ -233,5 +257,28 @@ describe('world reset', () => {
     const given = await setup()
     await given.world.reset('survival', { seed: 'theatre' }).done
     expect(readFileSync(given.propsPath, 'utf8')).toContain('level-seed=theatre')
+  })
+})
+
+describe('copying a world in', () => {
+  it("replaces the world, keeps this server's datapacks, and restarts it", async () => {
+    const { world, dir, calls, snapshots } = await setup()
+    expect(await world.copyWorld('survival', 'creative').done).toMatchObject({
+      state: 'succeeded',
+    })
+    expect(readFileSync(join(dir, 'world', 'region', 'r.0.0.mca'), 'utf8')).toBe('creative chunks')
+    expect(existsSync(join(dir, 'world', 'level.dat'))).toBe(false)
+    expect(readFileSync(join(dir, 'world', 'datapacks', 'graves.zip'), 'utf8')).toBe('pack')
+    expect(existsSync(join(dir, 'world', 'datapacks', 'theirs.zip'))).toBe(false)
+    expect(existsSync(join(dir, '.flytower-incoming-world'))).toBe(false)
+    expect(existsSync(join(dir, '.flytower-old-world'))).toBe(false)
+    expect(snapshots).toEqual(["Before copying in creative's world"])
+    expect(calls).toContain('service.stop')
+    expect(calls.at(-2)).toBe('service.start')
+  })
+
+  it('refuses copying a server into itself', async () => {
+    const { world } = await setup()
+    expect(() => world.copyWorld('survival', 'survival')).toThrow("can't copy its own world")
   })
 })

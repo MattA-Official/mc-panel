@@ -5,7 +5,9 @@
 import { readdir, rename, rm, mkdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { eq } from 'drizzle-orm'
-import { WORLD_RESET_STEPS, type JobEvent } from '../../shared/utils/jobs'
+import { WORLD_COPY_STEPS, WORLD_RESET_STEPS, type JobEvent } from '../../shared/utils/jobs'
+import { folderBytes } from '../backups/service'
+import { copyFolder } from '../clone'
 import { schema, type Db } from '../db'
 import { JobError, type AgentCall, type JobTracker } from '../jobs/runner'
 import type { BackupService } from '../backups/service'
@@ -29,7 +31,7 @@ export interface WorldDeps {
     track(kind: string, server: string | null, steps: readonly string[]): JobTracker
     waitActive(name: string): Promise<void>
   }
-  backups: Pick<BackupService, 'lock' | 'snapshot'>
+  backups: Pick<BackupService, 'lock' | 'snapshot' | 'withSavesPaused' | 'ensureSpace'>
   rcon: (name: string, command: string, timeoutMs?: number) => Promise<string>
   readProperties: (name: string) => Promise<Record<string, string>>
   writeProperties: (name: string, changes: Record<string, string>) => Promise<void>
@@ -179,6 +181,104 @@ export class WorldService {
 
     if (wasRunning) {
       job.step(4, 'Generating the new world')
+      await this.deps.agent('service.start', { server: name })
+      await this.deps.jobs.waitActive(name)
+    }
+  }
+
+  /**
+   * Starts a job copying `from`'s world over `name`'s. The caller has already checked a
+   * passkey. The target's datapacks stay, since they're its installed content.
+   */
+  copyWorld(name: string, from: string): { jobId: number; done: Promise<JobEvent> } {
+    if (name === from) throw new WorldError("A server can't copy its own world.")
+    this.row(name)
+    const source = this.row(from)
+    const releaseTarget = this.deps.backups.lock(name)
+    let releaseSource: () => void
+    try {
+      releaseSource = this.deps.backups.lock(from)
+    } catch (err) {
+      releaseTarget()
+      throw err
+    }
+    const job = this.deps.jobs.track('world.copy', name, WORLD_COPY_STEPS)
+    const done = this.runCopy(name, from, job)
+      .then(() => job.succeed(`Copied ${source.displayName}'s world. The old one is in Backups.`))
+      .catch((err) => job.fail(err))
+      .finally(() => {
+        releaseSource()
+        releaseTarget()
+      })
+    return { jobId: job.id, done }
+  }
+
+  private async runCopy(name: string, from: string, job: JobTracker) {
+    const dir = this.deps.serverDir(name)
+    const level = levelNameOf(await this.deps.readProperties(name))
+    const fromLevel = levelNameOf(await this.deps.readProperties(from))
+    const fromWorld = join(this.deps.serverDir(from), fromLevel)
+    if (!(await stat(fromWorld).catch(() => null))?.isDirectory()) {
+      throw new WorldError(`${from} has no world to copy yet. Start it once first.`)
+    }
+    const incoming = join(dir, '.flytower-incoming-world')
+    const old = join(dir, '.flytower-old-world')
+    await rm(incoming, { recursive: true, force: true })
+    await rm(old, { recursive: true, force: true })
+
+    job.step(0, `From ${from}`)
+    try {
+      await this.deps.backups.ensureSpace(dir, await folderBytes(fromWorld))
+      await this.deps.backups.withSavesPaused(
+        from,
+        () => {},
+        () => copyFolder(fromWorld, incoming),
+      )
+    } catch (err) {
+      await rm(incoming, { recursive: true, force: true })
+      throw err
+    }
+
+    job.step(1, 'A copy of the world as it is now')
+    await this.deps.backups.snapshot(name, `Before copying in ${from}'s world`)
+
+    const wasRunning = await this.isRunning(name)
+    if (wasRunning) {
+      job.step(2)
+      await this.stop(name)
+    }
+
+    job.step(3)
+    await this.deps.agent('server.permissions', { name }, { timeoutMs: 120_000 })
+    const world = join(dir, level)
+    const hadWorld = !!(await stat(world).catch(() => null))
+    try {
+      // The incoming world brings its own datapacks; this server keeps its own.
+      await rm(join(incoming, 'datapacks'), { recursive: true, force: true })
+      if (hadWorld) {
+        await rename(world, old)
+        if ((await readdir(join(old, 'datapacks')).catch(() => null)) !== null) {
+          await rename(join(old, 'datapacks'), join(incoming, 'datapacks'))
+        }
+      }
+      await rename(incoming, world)
+    } catch (err) {
+      // Put the old world back as it was.
+      if (hadWorld && (await stat(old).catch(() => null))) {
+        if (await stat(join(incoming, 'datapacks')).catch(() => null)) {
+          await rename(join(incoming, 'datapacks'), join(old, 'datapacks')).catch(() => {})
+        }
+        await rm(world, { recursive: true, force: true }).catch(() => {})
+        await rename(old, world).catch(() => {})
+      }
+      await rm(incoming, { recursive: true, force: true })
+      if (wasRunning) await this.deps.agent('service.start', { server: name }).catch(() => {})
+      throw err
+    }
+    await rm(old, { recursive: true, force: true })
+
+    if (wasRunning) {
+      job.step(4)
       await this.deps.agent('service.start', { server: name })
       await this.deps.jobs.waitActive(name)
     }
