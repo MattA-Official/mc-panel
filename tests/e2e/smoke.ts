@@ -131,19 +131,17 @@ try {
 
     await view.navigate(`${base}/servers/smoke/backups`)
     await waitForText(view, 'e2e', 30_000)
-    // Reka menus open on pointerdown, not click.
-    await view.evaluate(`(() => {
-      const b = document.querySelector('[aria-label^="Actions for backup"]')
-      b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerType: 'mouse' }))
-    })()`)
+    // Menus open on a real pointer press, so use native clicks here.
+    await view.click('[aria-label^="Actions for backup"]')
     await until('the Restore menu item', () =>
       view.evaluate<boolean>(`(() => {
         const i = [...document.querySelectorAll('[role=menuitem]')].find((e) => e.innerText.includes('Restore'))
         if (!i) return false
-        i.click()
+        i.setAttribute('data-e2e', 'restore')
         return true
       })()`),
     )
+    await view.click('[data-e2e=restore]')
     await waitForText(view, 'Restore this backup?')
     await clickButton(view, 'Restore')
     await waitForText(view, 'Restored the backup', 5 * 60_000)
