@@ -1,8 +1,8 @@
 import type { AgentContext } from './context.ts'
 
 /**
- * The one systemd template every server runs under. Rewritten on each server.create so a
- * panel update can change it. Per-server values come from the environment file and a
+ * The one systemd template every server runs under. Rewritten on each server.create, and
+ * when the agent starts (see refreshTemplate), so a panel update can change it. Per-server values come from the environment file and a
  * drop-in, never from string-building inside this template. `$$` is systemd's escape for a
  * literal `$`, so the shell (not systemd) expands the variables.
  */
@@ -11,6 +11,10 @@ export const templateUnit = (ctx: AgentContext) => `# Managed by Flytower. Chang
 Description=Minecraft server %i (Flytower)
 After=network-online.target
 Wants=network-online.target
+# Three failed starts in ten minutes is a crash loop: systemd leaves the server failed
+# instead of restarting it forever. Starting it from the panel clears this.
+StartLimitIntervalSec=600
+StartLimitBurst=3
 
 [Service]
 User=mc-%i
@@ -23,6 +27,9 @@ SuccessExitStatus=0 143
 TimeoutStopSec=120
 Restart=on-failure
 RestartSec=15
+# systemd 254+ waits longer after each crash, up to a minute; older versions ignore these.
+RestartSteps=3
+RestartMaxDelaySec=60
 NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes

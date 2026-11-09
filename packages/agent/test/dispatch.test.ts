@@ -62,17 +62,67 @@ describe('service verbs', () => {
   it('reports status', async () => {
     const { exec } = fakeExec({
       ...loaded,
-      'systemctl show flytower-mc@survival.service --property=ActiveState,ActiveEnterTimestamp': {
-        stdout: 'ActiveState=active\nActiveEnterTimestamp=Mon 2026-11-09 12:00:00 UTC\n',
-      },
+      'systemctl show flytower-mc@survival.service --property=ActiveState,ActiveEnterTimestamp,Result,NRestarts,ExecMainCode,ExecMainStatus':
+        {
+          stdout:
+            'ActiveState=active\nActiveEnterTimestamp=Mon 2026-11-09 12:00:00 UTC\nResult=success\nNRestarts=0\nExecMainCode=0\nExecMainStatus=0\n',
+        },
     })
     const { ctx } = fakeContext(exec)
     const res = await dispatch(req('service.status', { server: 'survival' }), handlers, ctx)
     expect(res).toEqual({
       id: 'r1',
       ok: true,
-      result: { active: 'active', since: 'Mon 2026-11-09 12:00:00 UTC' },
+      result: {
+        active: 'active',
+        since: 'Mon 2026-11-09 12:00:00 UTC',
+        result: 'success',
+        restarts: 0,
+        exitKind: null,
+        exitStatus: null,
+      },
     })
+  })
+
+  it('reports how a crashed server ended while it waits to restart', async () => {
+    const { exec } = fakeExec({
+      ...loaded,
+      'systemctl show flytower-mc@survival.service --property=ActiveState': {
+        stdout:
+          'ActiveState=activating\nActiveEnterTimestamp=\nResult=signal\nNRestarts=1\nExecMainCode=2\nExecMainStatus=9\n',
+      },
+    })
+    const { ctx } = fakeContext(exec)
+    const res = await dispatch(req('service.status', { server: 'survival' }), handlers, ctx)
+    expect(res).toMatchObject({
+      ok: true,
+      result: {
+        active: 'activating',
+        since: null,
+        result: 'signal',
+        restarts: 1,
+        exitKind: 'killed',
+        exitStatus: 9,
+      },
+    })
+  })
+
+  it('clears a crash loop before starting', async () => {
+    const { exec, calls } = fakeExec(loaded)
+    const { ctx } = fakeContext(exec)
+    await dispatch(req('service.start', { server: 'survival' }), handlers, ctx)
+    const verbs = calls.filter((c) => c.args[0] !== 'show').map((c) => c.args.join(' '))
+    expect(verbs).toEqual([
+      'reset-failed flytower-mc@survival.service',
+      'start flytower-mc@survival.service',
+    ])
+  })
+
+  it("doesn't clear a crash loop when stopping", async () => {
+    const { exec, calls } = fakeExec(loaded)
+    const { ctx } = fakeContext(exec)
+    await dispatch(req('service.stop', { server: 'survival' }), handlers, ctx)
+    expect(calls.some((c) => c.args[0] === 'reset-failed')).toBe(false)
   })
 
   it('surfaces systemctl failures as failed', async () => {

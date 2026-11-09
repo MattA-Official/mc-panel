@@ -39,6 +39,18 @@ export const verbs = {
     result: z.object({
       active: z.enum(['active', 'inactive', 'activating', 'deactivating', 'failed', 'unknown']),
       since: z.string().nullable(),
+      /**
+       * How the last run ended, as systemd's `Result`: `success`, `exit-code`, `signal`,
+       * `core-dump`, `oom-kill`, `timeout`, `watchdog` or `start-limit-hit`. Optional because
+       * agents before 1.1 don't send it, nor the fields below.
+       */
+      result: z.string().nullable().optional(),
+      /** Automatic restarts since the last explicit start (`NRestarts`). */
+      restarts: z.number().int().nullable().optional(),
+      /** How the main process last ended: by exiting, by a signal, or by a signal with a core dump. */
+      exitKind: z.enum(['exited', 'killed', 'dumped']).nullable().optional(),
+      /** The exit code, or the signal number when it was killed. */
+      exitStatus: z.number().int().nullable().optional(),
     }),
   },
   /** CPU time and memory systemd has counted for each server, for the metrics history. */
