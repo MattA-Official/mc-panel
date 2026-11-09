@@ -29,13 +29,6 @@ function onScroll() {
   if (el) pinned.value = el.scrollHeight - el.scrollTop - el.clientHeight < 24
 }
 
-function tone(line: string) {
-  if (line.startsWith('> ')) return 'text-primary'
-  if (/\/(WARN)\]/.test(line)) return 'text-warning'
-  if (/\/(ERROR|FATAL)\]/.test(line)) return 'text-error'
-  return 'text-default'
-}
-
 // Per-server command history, kept in this browser only.
 const historyKey = computed(() => `flytower:history:${props.server}`)
 const history = ref<string[]>([])
@@ -113,7 +106,7 @@ async function send() {
           v-for="(line, i) in lines"
           :key="i"
           class="break-words whitespace-pre-wrap"
-          :class="tone(line)"
+          :class="logTone(line)"
         >
           {{ line }}
         </div>
