@@ -8,6 +8,12 @@ interface BackupRow {
   kind: 'manual' | 'scheduled' | 'safety'
   note: string | null
   createdAt: string
+  local: boolean
+  offsite: {
+    state: 'pending' | 'uploading' | 'done' | 'failed'
+    error: string | null
+    at: string | null
+  } | null
 }
 
 const { server, refresh: refreshServer } = useServerContext()
@@ -19,7 +25,58 @@ const { data, refresh } = await useFetch<{
   backups: BackupRow[]
   schedule: ScheduleSettings
   busy: boolean
+  offsiteTarget: number | null
 }>(() => `/api/servers/${name.value}/backups`)
+
+// Keep an eye on uploads in progress.
+const uploading = computed(() =>
+  (data.value?.backups ?? []).some(
+    (b) => b.offsite && ['pending', 'uploading'].includes(b.offsite.state),
+  ),
+)
+let poll: ReturnType<typeof setInterval> | undefined
+watch(
+  uploading,
+  (on) => {
+    clearInterval(poll)
+    if (on && import.meta.client) poll = setInterval(() => void refresh(), 5000)
+  },
+  { immediate: true },
+)
+onBeforeUnmount(() => clearInterval(poll))
+
+function offsiteBadge(b: BackupRow) {
+  if (!b.offsite) return null
+  switch (b.offsite.state) {
+    case 'done':
+      return {
+        icon: 'i-lucide-cloud-check',
+        class: 'text-success',
+        label: b.local ? 'Copied off-site' : 'Off-site only: restoring downloads it first',
+      }
+    case 'failed':
+      return {
+        icon: 'i-lucide-cloud-alert',
+        class: 'text-error',
+        label: `Off-site copy failed: ${b.offsite.error ?? 'unknown error'}`,
+      }
+    default:
+      return {
+        icon: 'i-lucide-cloud-upload',
+        class: 'text-muted animate-pulse',
+        label: 'Copying off-site',
+      }
+  }
+}
+
+async function retryUpload(b: BackupRow) {
+  try {
+    await $fetch(`/api/servers/${name.value}/backups/${b.id}/offsite` as string, { method: 'POST' })
+    refresh()
+  } catch (err) {
+    toast.add({ title: "Couldn't retry", description: errorMessage(err), color: 'error' })
+  }
+}
 
 const job = ref<{ id: number; title: string; steps: readonly string[] } | null>(null)
 const finished = ref<JobEvent | null>(null)
@@ -104,12 +161,25 @@ const total = computed(() => (data.value?.backups ?? []).reduce((a, b) => a + b.
 function menu(b: BackupRow) {
   return [
     [
-      {
-        label: 'Download',
-        icon: 'i-lucide-download',
-        href: `/api/servers/${name.value}/backups/${b.id}/download`,
-        download: b.file,
-      },
+      ...(b.local
+        ? [
+            {
+              label: 'Download',
+              icon: 'i-lucide-download',
+              href: `/api/servers/${name.value}/backups/${b.id}/download`,
+              download: b.file,
+            },
+          ]
+        : []),
+      ...(b.offsite?.state === 'failed'
+        ? [
+            {
+              label: 'Retry off-site copy',
+              icon: 'i-lucide-cloud-upload',
+              onSelect: () => retryUpload(b),
+            },
+          ]
+        : []),
       {
         label: 'Restore',
         icon: 'i-lucide-history',
@@ -175,12 +245,23 @@ function menu(b: BackupRow) {
           <tr v-for="b in data?.backups" :key="b.id" class="hover:bg-elevated/40">
             <td class="px-3 py-2 whitespace-nowrap">{{ when(b.createdAt) }}</td>
             <td class="px-3 py-2">
-              <UBadge
-                :label="kinds[b.kind].label"
-                :color="kinds[b.kind].color"
-                variant="subtle"
-                size="sm"
-              />
+              <div class="flex items-center gap-2">
+                <UBadge
+                  :label="kinds[b.kind].label"
+                  :color="kinds[b.kind].color"
+                  variant="subtle"
+                  size="sm"
+                />
+                <UTooltip v-if="offsiteBadge(b)" :text="offsiteBadge(b)!.label">
+                  <UIcon
+                    :name="offsiteBadge(b)!.icon"
+                    :class="['size-4', offsiteBadge(b)!.class]"
+                    :aria-label="offsiteBadge(b)!.label"
+                    role="img"
+                  />
+                </UTooltip>
+                <span v-if="!b.local" class="text-xs text-muted">Off-site only</span>
+              </div>
             </td>
             <td class="hidden max-w-xs truncate px-3 py-2 text-muted md:table-cell">
               {{ b.note }}
@@ -208,6 +289,8 @@ function menu(b: BackupRow) {
     </div>
 
     <BackupSchedule v-if="data" :server="name" :schedule="data.schedule" @saved="refresh" />
+
+    <BackupOffsite v-if="data" :server="name" :target="data.offsiteTarget" @saved="refresh" />
 
     <WorldExports :server="name" :disabled="running || data?.busy" />
 

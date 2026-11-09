@@ -129,52 +129,56 @@ try {
     await rcon('setblock 0 100 0 minecraft:air')
     if (await goldIsThere()) throw new Error('the gold block should be gone before restoring')
 
-    await view.navigate(`${base}/servers/smoke/backups`)
-    await waitForText(view, 'e2e', 30_000)
-    // Menus open on a real pointer press, so use native clicks here.
-    await view.click('[aria-label^="Actions for backup"]')
-    await until('the Restore menu item', () =>
-      view.evaluate<boolean>(`(() => {
-        const i = [...document.querySelectorAll('[role=menuitem]')].find((e) => e.innerText.includes('Restore'))
-        if (!i) return false
-        i.setAttribute('data-e2e', 'restore')
-        return true
-      })()`),
-    )
-    await view.click('[data-e2e=restore]')
-    await waitForText(view, 'Restore this backup?')
-    await until('the Restore button in the dialog', () =>
-      view.evaluate<boolean>(`(() => {
-        const b = [...document.querySelectorAll('[role=dialog] button')].find((e) => e.innerText.trim() === 'Restore')
-        if (!b) return false
-        b.setAttribute('data-e2e', 'confirm-restore')
-        return true
-      })()`),
-    )
-    await view.click('[data-e2e=confirm-restore]')
-    const outcome = await until(
-      'the restore to finish',
-      () =>
-        view.evaluate<string | null>(`(() => {
-          const t = document.body.innerText
-          if (t.includes('Restored the backup')) return 'ok'
-          if (t.includes("That didn't work")) return t.slice(t.indexOf("That didn't work"), t.indexOf("That didn't work") + 300)
-          return null
+    /** Restores the newest backup through the UI, which also answers the passkey check. */
+    const restoreNewest = async (waitFor: string) => {
+      await view.navigate(`${base}/servers/smoke/backups`)
+      await waitForText(view, waitFor, 30_000)
+      // Menus open on a real pointer press, so use native clicks here.
+      await view.click('[aria-label^="Actions for backup"]')
+      await until('the Restore menu item', () =>
+        view.evaluate<boolean>(`(() => {
+          const i = [...document.querySelectorAll('[role=menuitem]')].find((e) => e.innerText.includes('Restore'))
+          if (!i) return false
+          i.setAttribute('data-e2e', 'restore')
+          return true
         })()`),
-      5 * 60_000,
-      1000,
-    ).catch(async (err) => {
-      const text = await view.evaluate<string>('document.body.innerText').catch(() => '')
-      const toasts = await view
-        .evaluate<string>(
-          `[...document.querySelectorAll('[role=region] li, [data-sonner-toast], [role=status], [role=alert]')].map((e) => e.innerText).join(' | ')`,
-        )
-        .catch(() => '')
-      throw new Error(
-        `${(err as Error).message}; toasts: ${toasts || 'none'}; the page ended: ${text.slice(-500)}`,
       )
-    })
-    if (outcome !== 'ok') throw new Error(`restore failed: ${outcome}`)
+      await view.click('[data-e2e=restore]')
+      await waitForText(view, 'Restore this backup?')
+      await until('the Restore button in the dialog', () =>
+        view.evaluate<boolean>(`(() => {
+          const b = [...document.querySelectorAll('[role=dialog] button')].find((e) => e.innerText.trim() === 'Restore')
+          if (!b) return false
+          b.setAttribute('data-e2e', 'confirm-restore')
+          return true
+        })()`),
+      )
+      await view.click('[data-e2e=confirm-restore]')
+      const outcome = await until(
+        'the restore to finish',
+        () =>
+          view.evaluate<string | null>(`(() => {
+            const t = document.body.innerText
+            if (t.includes('Restored the backup')) return 'ok'
+            if (t.includes("That didn't work")) return t.slice(t.indexOf("That didn't work"), t.indexOf("That didn't work") + 300)
+            return null
+          })()`),
+        5 * 60_000,
+        1000,
+      ).catch(async (err) => {
+        const text = await view.evaluate<string>('document.body.innerText').catch(() => '')
+        const toasts = await view
+          .evaluate<string>(
+            `[...document.querySelectorAll('[role=region] li, [data-sonner-toast], [role=status], [role=alert]')].map((e) => e.innerText).join(' | ')`,
+          )
+          .catch(() => '')
+        throw new Error(
+          `${(err as Error).message}; toasts: ${toasts || 'none'}; the page ended: ${text.slice(-500)}`,
+        )
+      })
+      if (outcome !== 'ok') throw new Error(`restore failed: ${outcome}`)
+    }
+    await restoreNewest('e2e')
     await shot('3-restored')
     await until(
       'RCON after the restore',
@@ -186,6 +190,89 @@ try {
     )
     if (!(await goldIsThere())) throw new Error('the restore did not bring the gold block back')
     step('restored the backup through the UI and the block came back')
+
+    // Off-site: add MinIO through the UI, copy a backup there, lose the local file, and
+    // restore from the copy.
+    const labelled = async (text: string) => {
+      const id = await view.evaluate<string | null>(`(() => {
+        const l = [...document.querySelectorAll('label')].find((e) => e.innerText.replace('*', '').trim() === ${JSON.stringify(text)})
+        return l?.getAttribute('for') ?? null
+      })()`)
+      if (!id) throw new Error(`no field labelled ${text}`)
+      return `[id="${id}"]`
+    }
+    await view.navigate(`${base}/system`)
+    await waitForText(view, 'Off-site backups', 30_000)
+    await clickButton(view, 'Add storage')
+    await waitForText(view, 'Secret access key')
+    for (const [label, value] of [
+      ['Name', 'MinIO'],
+      ['Endpoint', 'http://127.0.0.1:9000'],
+      ['Bucket', 'mc-backups'],
+      ['Region', 'us-east-1'],
+      ['Access key ID', 'flytower'],
+      ['Secret access key', 'flytower-e2e-secret'],
+    ] as const) {
+      await fill(view, await labelled(label), value)
+    }
+    await clickButton(view, 'Test')
+    await waitForText(view, 'Connected: wrote, read and deleted', 30_000)
+    await view.evaluate(`document.querySelector('[role=dialog] button[type=submit]').click()`)
+    await waitForText(view, 'Used by', 30_000).catch(() =>
+      waitForText(view, 'Not used by any server'),
+    )
+    const targets = await api<{ id: number; name: string }[]>(view, '/api/system/backup-targets')
+    const minio = targets.body.find((t) => t.name === 'MinIO')
+    if (!minio) throw new Error(`target not added: ${JSON.stringify(targets.body)}`)
+    await api(view, '/api/servers/smoke/backups/offsite', {
+      method: 'PUT',
+      body: { target: minio.id },
+    })
+    const offsiteBackup = await api<{ jobId: number }>(view, '/api/servers/smoke/backups', {
+      body: { note: 'offsite' },
+    })
+    await waitForJob(offsiteBackup.body.jobId, 'the off-site backup job', 5 * 60_000)
+    type Listed = {
+      backups: {
+        id: number
+        file: string
+        note: string | null
+        local: boolean
+        offsite: { state: string; error: string | null } | null
+      }[]
+    }
+    const copied = await until(
+      'the off-site copy',
+      async () => {
+        const r = await api<Listed>(view, '/api/servers/smoke/backups')
+        const b = r.body.backups.find((x) => x.note === 'offsite')
+        if (b?.offsite?.state === 'failed') throw new Error(`upload failed: ${b.offsite.error}`)
+        return b?.offsite?.state === 'done' ? b : null
+      },
+      3 * 60_000,
+      2000,
+    )
+    await rcon('setblock 0 100 0 minecraft:air')
+    const removed = Bun.spawnSync([
+      'docker',
+      'exec',
+      'vps',
+      'rm',
+      '-f',
+      `/var/lib/flytower/backups/smoke/${copied.file}`,
+    ])
+    if (removed.exitCode !== 0) throw new Error(`couldn't remove the local file: ${removed.stderr}`)
+    await restoreNewest('Off-site only')
+    await until(
+      'RCON after the off-site restore',
+      async () =>
+        (await api(view, '/api/servers/smoke/command', { body: { command: 'list' } })).status ===
+        200,
+      5 * 60_000,
+      2000,
+    )
+    if (!(await goldIsThere())) throw new Error('the off-site restore did not bring the block back')
+    step('copied a backup to S3-compatible storage and restored it after losing the local file')
 
     // World export: a zip with level.dat that unzip accepts, shared through a public link.
     const exported = await api<{ jobId: number }>(view, '/api/servers/smoke/exports', { body: {} })
