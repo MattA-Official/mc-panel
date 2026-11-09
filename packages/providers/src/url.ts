@@ -21,11 +21,10 @@ export function resolveUrl(ref: UrlRef): ResolvedContent {
     throw new ProviderError('A link needs its SHA-256 so the download can be checked.')
   }
   const filename = ref.filename ?? decodeURIComponent(url.pathname.split('/').pop() ?? '')
-  const ext = ref.kind === 'mod' ? /\.jar$/i : /\.zip$/i
+  const jar = ref.kind !== 'datapack'
+  const ext = jar ? /\.jar$/i : /\.zip$/i
   if (!/^[\w.+-]{1,160}$/.test(filename) || !ext.test(filename)) {
-    throw new ProviderError(
-      `Give this link a file name ending in ${ref.kind === 'mod' ? '.jar' : '.zip'}.`,
-    )
+    throw new ProviderError(`Give this link a file name ending in ${jar ? '.jar' : '.zip'}.`)
   }
   const sha = ref.sha256.toLowerCase()
   return {

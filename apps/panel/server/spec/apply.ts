@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path'
 import { eq } from 'drizzle-orm'
 import {
   ACCEPTS,
+  type ContentKind,
   downloadVerified,
   ProviderError,
   requestDownload,
@@ -67,13 +68,13 @@ interface StoredPlan {
 export type PublicPlan = Omit<Plan, 'work'> & { id: string }
 
 export interface ContentListing {
-  accepts: ('mod' | 'datapack')[]
+  accepts: ContentKind[]
   items: (Pick<
     LockedItem,
     'source' | 'projectId' | 'slug' | 'title' | 'versionNumber' | 'kind' | 'path' | 'requiredBy'
   > & { asked: boolean })[]
   pending: ServerSpec['content']
-  unmanaged: { path: string; kind: 'mod' | 'datapack' }[]
+  unmanaged: { path: string; kind: ContentKind }[]
 }
 
 export function publicPlan(id: string, plan: Plan): PublicPlan {

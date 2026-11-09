@@ -9,6 +9,7 @@ import type {
   ContentVersion,
   ResolvedContent,
 } from './content.ts'
+import { ACCEPTS } from './content.ts'
 import { ProviderError, type Fetch } from './types.ts'
 
 const API = 'https://api.modrinth.com/v2'
@@ -63,7 +64,10 @@ const CHANNEL_RANK = { release: 0, beta: 1, alpha: 2 } as const
 
 /** Loaders to ask Modrinth for. Datapacks are their own "loader" there. */
 const loadersFor = (kind: ContentKind, target: ContentTarget) =>
-  kind === 'datapack' ? ['datapack'] : [target.loader]
+  kind === 'datapack' ? ['datapack'] : kind === 'plugin' ? PLUGIN_LOADERS : [target.loader]
+
+/** Plugin platforms whose plugins run on Paper. */
+export const PLUGIN_LOADERS = ['paper', 'bukkit', 'spigot', 'purpur']
 
 /** Newest release first, then betas, then alphas. */
 export function rankVersions<T extends { version_type: string; date_published: string }>(
@@ -110,9 +114,16 @@ export function modrinthProvider(
     return p
   }
 
-  function kindOf(p: Project, wanted?: ContentKind): ContentKind {
+  /** What this project can be installed as, preferring what the target server runs. */
+  function kindOf(p: Project, wanted?: ContentKind, target?: ContentTarget): ContentKind {
     const can: ContentKind[] = []
-    if (p.project_type === 'mod' && p.loaders.some((l) => l !== 'datapack')) can.push('mod')
+    const modish = p.project_type === 'mod' || p.project_type === 'plugin'
+    if (
+      p.project_type === 'mod' &&
+      p.loaders.some((l) => l !== 'datapack' && !PLUGIN_LOADERS.includes(l))
+    )
+      can.push('mod')
+    if (modish && p.loaders.some((l) => PLUGIN_LOADERS.includes(l))) can.push('plugin')
     if (p.project_type === 'datapack' || p.loaders.includes('datapack')) can.push('datapack')
     if (wanted) {
       if (!can.includes(wanted)) {
@@ -125,7 +136,8 @@ export function modrinthProvider(
         `${p.title} is a ${p.project_type}, which Flytower can't install yet.`,
       )
     }
-    return can[0]!
+    const fits = target ? can.find((k) => ACCEPTS[target.loader].includes(k)) : undefined
+    return fits ?? can[0]!
   }
 
   async function compatible(p: Project, kind: ContentKind, target: ContentTarget) {
@@ -172,11 +184,13 @@ export function modrinthProvider(
 
     async search(query, { kind, target, limit = 20, offset = 0 }) {
       const facets: string[][] = [
-        [`project_type:${kind}`],
+        // Modrinth files most plugins as mods that run on plugin platforms.
+        kind === 'plugin' ? ['project_type:plugin', 'project_type:mod'] : [`project_type:${kind}`],
         [`versions:${target.minecraft}`],
         ...(kind === 'mod' ? [[`categories:${target.loader}`]] : []),
+        ...(kind === 'plugin' ? [PLUGIN_LOADERS.map((l) => `categories:${l}`)] : []),
         // Client-only mods do nothing on a server.
-        ...(kind === 'mod' ? [['server_side:required', 'server_side:optional']] : []),
+        ...(kind !== 'datapack' ? [['server_side:required', 'server_side:optional']] : []),
       ]
       const q = new URLSearchParams({
         query: query.slice(0, 100),
@@ -208,7 +222,7 @@ export function modrinthProvider(
 
     async versions(idOrSlug, { kind, target }): Promise<ContentVersion[]> {
       const p = await project(idOrSlug)
-      return (await compatible(p, kindOf(p, kind), target)).map((v) => ({
+      return (await compatible(p, kindOf(p, kind, target), target)).map((v) => ({
         versionId: v.id,
         versionNumber: v.version_number,
         channel: v.version_type,
@@ -222,7 +236,7 @@ export function modrinthProvider(
       if (p.server_side === 'unsupported') {
         throw new ProviderError(`${p.title} only runs on players' computers, not on a server.`)
       }
-      const kind = kindOf(p, ref.kind)
+      const kind = kindOf(p, ref.kind, target)
       if (ref.version) {
         // An exact version: by id, or by version number among this project's versions.
         const byId = /^[A-Za-z0-9]{8}$/.test(ref.version)
@@ -251,7 +265,7 @@ export function modrinthProvider(
       const [v] = await compatible(p, kind, target)
       if (!v) {
         throw new ProviderError(
-          `${p.title} has no version for ${kind === 'mod' ? `${target.loader} on ` : ''}Minecraft ${target.minecraft}.`,
+          `${p.title} has no version for ${kind === 'mod' ? `${target.loader} on ` : kind === 'plugin' ? 'Paper on ' : ''}Minecraft ${target.minecraft}.`,
         )
       }
       return toResolved(p, v, kind)

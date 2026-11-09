@@ -5,6 +5,7 @@
 import { chmod, readdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { z } from 'zod'
+import { CONTENT_KINDS } from '@flytower/providers'
 
 export const LOCK_FILE = 'flytower.lock.json'
 
@@ -15,7 +16,7 @@ const LockedItem = z.object({
   title: z.string(),
   versionId: z.string(),
   versionNumber: z.string(),
-  kind: z.enum(['mod', 'datapack']),
+  kind: z.enum(CONTENT_KINDS),
   /** Relative to the server folder, like "mods/lithium.jar" or "world/datapacks/x.zip". */
   path: z.string(),
   url: z.string(),
@@ -74,7 +75,7 @@ const byPath = (a: LockedItem, b: LockedItem) => a.path.localeCompare(b.path)
 
 /** Where each kind of content goes inside the server folder. */
 export function contentDir(kind: LockedItem['kind'], levelName: string) {
-  return kind === 'mod' ? 'mods' : `${levelName}/datapacks`
+  return kind === 'mod' ? 'mods' : kind === 'plugin' ? 'plugins' : `${levelName}/datapacks`
 }
 
 /**
@@ -84,13 +85,13 @@ export function contentDir(kind: LockedItem['kind'], levelName: string) {
 export async function unmanagedFiles(dir: string, lock: Lock, levelName: string) {
   const known = new Set(lock.content.map((c) => c.path))
   const out: { path: string; kind: LockedItem['kind'] }[] = []
-  for (const kind of ['mod', 'datapack'] as const) {
+  for (const kind of CONTENT_KINDS) {
     const sub = contentDir(kind, levelName)
     const names = await readdir(join(dir, sub)).catch(() => [] as string[])
     for (const name of names.sort()) {
       const path = `${sub}/${name}`
       const fits =
-        kind === 'mod' ? /\.jar$/i.test(name) : /\.zip$/i.test(name) || !name.includes('.')
+        kind === 'datapack' ? /\.zip$/i.test(name) || !name.includes('.') : /\.jar$/i.test(name)
       if (fits && !known.has(path)) out.push({ path, kind })
     }
   }

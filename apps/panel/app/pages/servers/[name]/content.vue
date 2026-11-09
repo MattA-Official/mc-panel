@@ -1,5 +1,5 @@
 <script setup lang="ts">
-type Kind = 'mod' | 'datapack'
+type Kind = 'mod' | 'plugin' | 'datapack'
 interface Item {
   source: 'modrinth' | 'url' | 'vanillatweaks'
   projectId: string
@@ -113,7 +113,7 @@ let timer: ReturnType<typeof setTimeout> | undefined
 
 const kindTabs = computed(() =>
   (data.value?.accepts ?? ['datapack']).map((k) => ({
-    label: k === 'mod' ? 'Mods' : 'Datapacks',
+    label: { mod: 'Mods', plugin: 'Plugins', datapack: 'Datapacks' }[k],
     value: k,
   })),
 )
@@ -227,11 +227,11 @@ async function reviewVt() {
     <div class="flex flex-wrap items-center justify-between gap-2">
       <p class="text-sm text-muted">
         {{
-          server.loader !== 'fabric'
-            ? 'Datapacks from Modrinth, kept in the world folder.'
-            : 'Mods and datapacks from Modrinth, matched to Fabric and Minecraft ' +
-              server.mcVersion +
-              '.'
+          server.loader === 'paper'
+            ? `Plugins and datapacks from Modrinth, matched to Paper and Minecraft ${server.mcVersion}.`
+            : server.loader !== 'fabric'
+              ? 'Datapacks from Modrinth, kept in the world folder.'
+              : `Mods and datapacks from Modrinth, matched to Fabric and Minecraft ${server.mcVersion}.`
         }}
       </p>
       <div class="flex gap-2">
@@ -332,9 +332,11 @@ async function reviewVt() {
       icon="i-lucide-package"
       title="Nothing installed yet"
       :description="
-        server.loader !== 'fabric'
-          ? 'Add a datapack to change how the world plays.'
-          : 'Add mods for performance, tools or new things to do.'
+        server.loader === 'paper'
+          ? 'Add plugins for tools, protection or new things to do.'
+          : server.loader !== 'fabric'
+            ? 'Add a datapack to change how the world plays.'
+            : 'Add mods for performance, tools or new things to do.'
       "
     />
     <p v-if="updatesStatus === 'pending'" class="text-xs text-dimmed">Checking for updates…</p>

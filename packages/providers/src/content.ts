@@ -4,7 +4,8 @@
  */
 import type { ExpectedHash, LoaderId } from './types.ts'
 
-export type ContentKind = 'mod' | 'datapack'
+export type ContentKind = 'mod' | 'plugin' | 'datapack'
+export const CONTENT_KINDS = ['mod', 'plugin', 'datapack'] as const satisfies readonly ContentKind[]
 export type ContentSourceId = 'modrinth' | 'url' | 'vanillatweaks'
 
 /** The server content is for. */
@@ -17,8 +18,7 @@ export interface ContentTarget {
 export const ACCEPTS: Record<LoaderId, readonly ContentKind[]> = {
   vanilla: ['datapack'],
   fabric: ['mod', 'datapack'],
-  // Plugins come with #49.
-  paper: ['datapack'],
+  paper: ['plugin', 'datapack'],
 }
 
 export interface ContentHit {

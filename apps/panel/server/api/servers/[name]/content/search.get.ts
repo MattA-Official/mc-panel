@@ -1,9 +1,9 @@
-import { ACCEPTS } from '@flytower/providers'
+import { ACCEPTS, CONTENT_KINDS } from '@flytower/providers'
 import { z } from 'zod'
 import { readLock } from '../../../../spec/lock'
 
 const Query = z.object({
-  kind: z.enum(['mod', 'datapack']),
+  kind: z.enum(CONTENT_KINDS),
   q: z.string().max(100).default(''),
   offset: z.coerce.number().int().min(0).max(10_000).default(0),
 })
@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
   if (!ACCEPTS[row.loader].includes(kind)) {
     throw createError({
       statusCode: 400,
-      statusMessage: `${row.loader === 'paper' ? 'Paper' : 'Vanilla'} servers don't run ${kind}s.`,
+      statusMessage: `${{ vanilla: 'Vanilla', fabric: 'Fabric', paper: 'Paper' }[row.loader]} servers don't run ${kind}s.`,
     })
   }
   const lock = await readLock(serverDir(name)).catch(() => null)

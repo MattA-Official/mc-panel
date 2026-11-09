@@ -58,6 +58,9 @@ const projects: Record<string, object> = {
   terralith: project('P_terr', 'terralith', { loaders: ['fabric', 'datapack'] }),
   P_terr: project('P_terr', 'terralith', { loaders: ['fabric', 'datapack'] }),
   sodiumish: project('P_sodi', 'sodiumish'),
+  essentials: project('P_essx', 'essentials', { loaders: ['paper', 'spigot'] }),
+  P_essx: project('P_essx', 'essentials', { loaders: ['paper', 'spigot'] }),
+  pregen: project('P_preg', 'pregen', { loaders: ['fabric', 'paper', 'bukkit'] }),
   P_sodi: project('P_sodi', 'sodiumish'),
 }
 
@@ -83,6 +86,11 @@ const versions: Record<string, object[]> = {
     }),
   ],
   P_terr: [version('TerrDp01', 'P_terr', { loaders: ['datapack'] })],
+  P_essx: [version('EssxVer1', 'P_essx', { loaders: ['spigot'] })],
+  P_preg: [
+    version('PregFab1', 'P_preg'),
+    version('PregPap1', 'P_preg', { loaders: ['bukkit', 'paper'] }),
+  ],
   P_sodi: [
     version('SodiVer1', 'P_sodi', {
       dependencies: [{ project_id: 'P_lith', version_id: null, dependency_type: 'incompatible' }],
@@ -199,6 +207,25 @@ describe('modrinth', () => {
       { loader: 'vanilla', minecraft: '26.3' },
     )
     expect(v.versionId).toBe('TerrDp01')
+  })
+
+  test('plugins: Bukkit-family builds for Paper, and the right kind for the server', async () => {
+    const m = modrinthProvider(fakeModrinth())
+    const paper = { loader: 'paper' as const, minecraft: '26.3' }
+    const ess = await m.resolve({ project: 'essentials' }, paper)
+    expect(ess).toMatchObject({ kind: 'plugin', versionId: 'EssxVer1' })
+    // One project with both a Fabric mod and a Paper plugin: each server gets its own.
+    expect(await m.resolve({ project: 'pregen' }, paper)).toMatchObject({
+      kind: 'plugin',
+      versionId: 'PregPap1',
+    })
+    expect(await m.resolve({ project: 'pregen' }, target)).toMatchObject({
+      kind: 'mod',
+      versionId: 'PregFab1',
+    })
+    await expect(m.resolve({ project: 'essentials', kind: 'mod' }, target)).rejects.toThrow(
+      "isn't available as a mod",
+    )
   })
 
   test('no compatible version is a clear error', async () => {

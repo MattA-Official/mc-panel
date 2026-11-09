@@ -107,7 +107,7 @@ const Properties = z
   })
   .describe('Values for server.properties. Anything left out keeps its current value.')
 
-const ContentKind = z.enum(['mod', 'datapack'])
+const ContentKind = z.enum(['mod', 'plugin', 'datapack'])
 
 const ModrinthItem = z
   .object({
@@ -132,7 +132,7 @@ const UrlItem = z
       .string()
       .regex(/^[a-f0-9]{64}$/i, 'sha256 is 64 hex characters.')
       .describe('The file must match this hash, or it is refused.'),
-    kind: ContentKind.describe("Where it goes: mods/ or the world's datapacks/."),
+    kind: ContentKind.describe("Where it goes: mods/, plugins/ or the world's datapacks/."),
     filename: z
       .string()
       .regex(/^[\w.+-]{1,120}\.(jar|zip)$/, 'A file name ending in .jar or .zip.')
