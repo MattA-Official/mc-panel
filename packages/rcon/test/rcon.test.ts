@@ -129,6 +129,14 @@ describe('Rcon', () => {
     await expect(rcon.command('list')).rejects.toThrow('closed')
   })
 
+  it('lets one slow command wait longer than the default', async () => {
+    const { port } = fakeServer({ reply: () => 'Saved the game' })
+    const rcon = await Rcon.connect({ host: '127.0.0.1', port, password: 'secret', timeoutMs: 1 })
+    // The default 1 ms would fail; the override gives it time.
+    expect(await rcon.command('save-all flush', { timeoutMs: 1000 })).toBe('Saved the game')
+    rcon.close()
+  })
+
   it('says when nothing is listening', async () => {
     await expect(Rcon.connect({ host: '127.0.0.1', port: 1, password: 'x' })).rejects.toThrow(
       "Couldn't connect to RCON on port 1",

@@ -32,6 +32,9 @@ const replies: Record<string, (args: string) => string> = {
     return `Kicked ${n}: Kicked by an operator`
   },
   seed: () => 'Seed: [-4172144997902289642]',
+  'save-off': () => 'Automatic saving is now disabled',
+  'save-on': () => 'Automatic saving is now enabled',
+  'save-all': () => 'Saving the game (this may take a moment!)\nSaved the game',
   say: () => '',
   help: () => '/advancement\n/ban\n/list\n/say\n/seed\n/stop\n/time\n/weather',
   time: (a) =>

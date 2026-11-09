@@ -72,11 +72,12 @@ export class Rcon {
   }
 
   /** Runs a console command (without the leading slash) and returns the full reply. */
-  command(command: string): Promise<string> {
+  /** Runs a command. `timeoutMs` overrides the connection's default for slow ones. */
+  command(command: string, opts: { timeoutMs?: number } = {}): Promise<string> {
     if (new TextEncoder().encode(command).length > MAX_COMMAND_BYTES) {
       return Promise.reject(new RconError('That command is too long for RCON.'))
     }
-    return this.request(PacketType.Command, command, true)
+    return this.request(PacketType.Command, command, true, opts.timeoutMs)
   }
 
   close() {
@@ -86,7 +87,12 @@ export class Rcon {
     this.fail(new RconError('RCON connection closed.'))
   }
 
-  private request(type: number, body: string, withSentinel: boolean): Promise<string> {
+  private request(
+    type: number,
+    body: string,
+    withSentinel: boolean,
+    timeoutMs = this.timeoutMs,
+  ): Promise<string> {
     const run = () =>
       new Promise<string>((resolve, reject) => {
         if (this.closed) return reject(new RconError('RCON connection closed.'))
@@ -95,7 +101,7 @@ export class Rcon {
         const timer = setTimeout(() => {
           this.fail(new RconError('The server took too long to answer.'))
           this.close()
-        }, this.timeoutMs)
+        }, timeoutMs)
         this.current = { id, sentinel, parts: [], resolve, reject, timer }
         this.socket.write(encodePacket(id, type, body))
         if (sentinel !== null) this.socket.write(encodePacket(sentinel, PacketType.Response, ''))
