@@ -45,6 +45,7 @@ async function restart() {
     <ServerResources @saved="saved" />
     <ServerAddress />
     <ServerVersion />
+    <ServerClone />
     <ServerDangerZone />
   </div>
 </template>
