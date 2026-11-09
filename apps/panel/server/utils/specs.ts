@@ -35,6 +35,7 @@ export function useSpecs(): SpecService {
     backups: useBackups(),
     modrinth: useModrinth(),
     vanillatweaks: useVanillaTweaks(),
+    loaders: useLoaders(),
     fetch,
     readProperties,
     writeProperties,

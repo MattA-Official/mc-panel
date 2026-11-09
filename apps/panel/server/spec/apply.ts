@@ -11,6 +11,8 @@ import {
   requestDownload,
   type ContentProvider,
   type Fetch,
+  type LoaderId,
+  type LoaderProvider,
   type VanillaTweaksProvider,
 } from '@flytower/providers'
 import { listZip, unzip } from '../unzip'
@@ -39,6 +41,8 @@ export interface SpecDeps {
   backups: Pick<BackupService, 'lock' | 'snapshot'>
   modrinth: ContentProvider
   vanillatweaks?: VanillaTweaksProvider
+  /** For Minecraft version and loader changes. */
+  loaders?: Record<LoaderId, LoaderProvider>
   fetch: Fetch
   readProperties: (name: string) => Promise<Record<string, string>>
   writeProperties: (name: string, changes: Record<string, string>) => Promise<void>
@@ -210,6 +214,7 @@ export class SpecService {
       upgrade,
       modrinth: this.deps.modrinth,
       vanillatweaks: this.deps.vanillatweaks,
+      loaders: this.deps.loaders,
       now: () => new Date(this.now()),
     })
     this.sweep()
@@ -281,6 +286,17 @@ export class SpecService {
     await mkdir(join(staging, 'old'), { recursive: true })
     const lock: Lock = structuredClone(work.lock)
     try {
+      if (work.server) {
+        const s = work.server
+        job.step(2, `Java ${s.javaMajor}`)
+        await this.deps.agent(
+          'runtime.install',
+          { vendor: 'temurin', major: s.javaMajor },
+          { timeoutMs: 10 * 60_000 },
+        )
+        job.step(2, `Minecraft ${s.minecraft}`)
+        await downloadVerified(this.deps.fetch, s.url, join(staging, 'new', 'server.jar'), s.hash)
+      }
       for (const [i, d] of work.downloads.entries()) {
         job.step(2, `${d.title} (${i + 1} of ${work.downloads.length})`)
         const dest = join(staging, 'new', String(i))
@@ -318,6 +334,10 @@ export class SpecService {
       for (const [i, d] of work.downloads.entries()) {
         await move(join(staging, 'new', String(i)), join(dir, d.path))
       }
+      if (work.server) {
+        await move(join(dir, 'server.jar'), join(staging, 'old', 'server.jar'))
+        await move(join(staging, 'new', 'server.jar'), join(dir, 'server.jar'))
+      }
       await writeLock(dir, lock)
 
       job.step(5)
@@ -341,8 +361,11 @@ export class SpecService {
   private async saveSettings(name: string, plan: Plan) {
     const { db, agent } = this.deps
     const s = plan.work.settings
-    if (s.memoryMb !== undefined || s.port !== undefined) {
-      await agent('server.configure', { name, memoryMb: s.memoryMb, port: s.port })
+    const game = plan.work.server
+    const row = this.row(name)
+    const javaMajor = game && game.javaMajor !== row.javaMajor ? game.javaMajor : undefined
+    if (s.memoryMb !== undefined || s.port !== undefined || javaMajor !== undefined) {
+      await agent('server.configure', { name, memoryMb: s.memoryMb, port: s.port, javaMajor })
     }
     const props = { ...s.properties }
     if (s.port !== undefined) props['server-port'] = String(s.port)
@@ -350,6 +373,14 @@ export class SpecService {
     db.update(schema.servers)
       .set({
         ...(s.displayName !== undefined ? { displayName: s.displayName } : {}),
+        ...(game
+          ? {
+              loader: game.loader,
+              mcVersion: game.minecraft,
+              loaderVersion: game.loaderVersion,
+              javaMajor: game.javaMajor,
+            }
+          : {}),
         ...(s.memoryMb !== undefined ? { memoryMb: s.memoryMb } : {}),
         ...(s.port !== undefined ? { port: s.port } : {}),
         ...(s.backups

@@ -5,6 +5,9 @@
 import {
   resolveAll,
   type ContentProvider,
+  type LoaderId,
+  type LoaderProvider,
+  type ResolvedServer,
   type VanillaTweaksProvider,
   type ResolvedContent,
   type WantedContent,
@@ -44,6 +47,12 @@ export interface SettingsChange {
   content: ServerSpec['content']
 }
 
+/** A new server jar (and maybe Java) to install. */
+export interface ServerChange extends ResolvedServer {
+  loader: LoaderId
+  minecraft: string
+}
+
 export interface Plan {
   server: string
   changes: Change[]
@@ -61,6 +70,8 @@ export interface Plan {
     /** The lockfile once applied; new items get their SHA-256 when downloaded. */
     lock: Lock
     settings: SettingsChange
+    /** Set when the Minecraft version or loader changes. */
+    server?: ServerChange
   }
 }
 
@@ -79,6 +90,8 @@ export interface PlanInput {
   upgrade?: true | string[]
   modrinth: ContentProvider
   vanillatweaks?: VanillaTweaksProvider
+  /** Needed to change the Minecraft version or loader. */
+  loaders?: Record<LoaderId, LoaderProvider>
   now?: () => Date
 }
 
@@ -98,18 +111,9 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
   if (spec.name !== row.name) {
     problems.push(`This spec is for "${spec.name}", not "${row.name}". Names can't change.`)
   }
-  if (spec.loader.type !== row.loader || spec.loader.minecraft !== row.mcVersion) {
-    problems.push(
-      'Changing the loader or Minecraft version is coming in a later release. Put loader back to ' +
-        `${row.loader} ${row.mcVersion} for now.`,
-    )
-  } else if (
-    spec.loader.version &&
-    row.loaderVersion &&
-    spec.loader.version !== row.loaderVersion
-  ) {
-    problems.push('Changing the Fabric loader version is coming in a later release.')
-  }
+  const server = await planServer(input, changes, problems)
+  const target = { loader: spec.loader.type, minecraft: spec.loader.minecraft }
+  const newGame = target.loader !== row.loader || target.minecraft !== row.mcVersion
 
   // Settings.
   const settings: SettingsChange = { properties: {}, content: spec.content }
@@ -189,31 +193,32 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
   }
 
   // Content.
-  const accepts = row.loader === 'vanilla' ? ['datapack'] : ['mod', 'datapack']
+  const accepts = target.loader === 'vanilla' ? ['datapack'] : ['mod', 'datapack']
   for (const item of spec.content) {
     const kind = item.kind
     if (kind && !accepts.includes(kind)) {
-      problems.push(`A ${row.loader} server can't run ${kind}s.`)
+      problems.push(`A ${target.loader} server can't run ${kind}s.`)
     }
   }
+  // A new Minecraft version or loader needs every item's build for it, not the locked one.
   const upgrading = (l: LockedItem) =>
-    input.upgrade === true || (input.upgrade ?? []).some((u) => u === l.projectId || u === l.slug)
+    newGame ||
+    input.upgrade === true ||
+    (input.upgrade ?? []).some((u) => u === l.projectId || u === l.slug)
   const pinnedBy = new Map<string, string>()
   for (const l of lock.content) {
     if (l.source === 'url' || upgrading(l)) continue
     pinnedBy.set(l.projectId, l.versionId)
     pinnedBy.set(l.slug, l.versionId)
   }
-  const resolved = await resolveAll(
-    spec.content.map(toWanted),
-    { loader: row.loader, minecraft: row.mcVersion },
-    input.modrinth,
-    { pinned: (p) => pinnedBy.get(p), vanillatweaks: input.vanillatweaks },
-  )
+  const resolved = await resolveAll(spec.content.map(toWanted), target, input.modrinth, {
+    pinned: (p) => pinnedBy.get(p),
+    vanillatweaks: input.vanillatweaks,
+  })
   problems.push(...resolved.problems)
   for (const item of resolved.items) {
     if (!accepts.includes(item.kind)) {
-      problems.push(`${item.title} is a ${item.kind}, which a ${row.loader} server can't run.`)
+      problems.push(`${item.title} is a ${item.kind}, which a ${target.loader} server can't run.`)
     }
   }
 
@@ -288,6 +293,7 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
   const contentChanged = downloads.length > 0 || removals.length > 0
   const restart =
     contentChanged ||
+    server !== undefined ||
     settings.memoryMb !== undefined ||
     settings.port !== undefined ||
     Object.keys(settings.properties).length > 0
@@ -296,7 +302,7 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
     changes,
     problems: [...new Set(problems)],
     restart,
-    backup: contentChanged,
+    backup: contentChanged || server !== undefined,
     downloadBytes: downloads.reduce((n, d) => n + (d.size ?? 0), 0),
     unmanaged: input.unmanaged,
     work: {
@@ -308,8 +314,100 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
         content: nextLock,
       },
       settings,
+      ...(server ? { server } : {}),
     },
   }
+}
+
+const LOADER_NAMES: Record<LoaderId, string> = { vanilla: 'Vanilla', fabric: 'Fabric' }
+
+/**
+ * Works out a Minecraft version or loader change: the jar to install, the Java it needs,
+ * and whether it's allowed (worlds only go forwards).
+ */
+async function planServer(
+  input: PlanInput,
+  changes: Change[],
+  problems: string[],
+): Promise<ServerChange | undefined> {
+  const { row, spec } = input
+  const want = spec.loader
+  const mcChanged = want.minecraft !== row.mcVersion
+  const loaderChanged = want.type !== row.loader
+  // Left as it was while Minecraft moves on, the loader version follows to the newest.
+  const keptLoaderVersion = !want.version || want.version === row.loaderVersion
+  const loaderVersionChanged = want.type === 'fabric' && !keptLoaderVersion
+  if (!mcChanged && !loaderChanged && !loaderVersionChanged) return undefined
+
+  const provider = input.loaders?.[want.type]
+  if (!provider) {
+    problems.push("Changing the Minecraft version or loader isn't available here.")
+    return undefined
+  }
+  const name = LOADER_NAMES[want.type]
+
+  if (mcChanged) {
+    const versions = (await provider.minecraftVersions({ includeSnapshots: true })).map((v) => v.id)
+    const to = versions.indexOf(want.minecraft)
+    const from = versions.indexOf(row.mcVersion)
+    if (to < 0) {
+      problems.push(`${name} doesn't have Minecraft ${want.minecraft}.`)
+      return undefined
+    }
+    // Newest first, so a bigger index is older.
+    if (from >= 0 && to > from) {
+      problems.push(
+        `Minecraft ${want.minecraft} is older than ${row.mcVersion}, and worlds can't safely go back. ` +
+          'To go back, restore a backup made before the upgrade.',
+      )
+      return undefined
+    }
+  }
+
+  const askVersion = want.type === 'fabric' && !keptLoaderVersion ? want.version : undefined
+  const resolved = await provider.resolve(want.minecraft, askVersion)
+
+  if (mcChanged) {
+    changes.push({
+      area: 'settings',
+      action: 'set',
+      label: 'Minecraft',
+      from: row.mcVersion,
+      to: want.minecraft,
+      note: 'The world is upgraded when the server starts',
+    })
+  }
+  if (loaderChanged) {
+    changes.push({
+      area: 'settings',
+      action: 'set',
+      label: 'Loader',
+      from: LOADER_NAMES[row.loader as LoaderId] ?? row.loader,
+      to: name,
+    })
+  }
+  if (resolved.loaderVersion && resolved.loaderVersion !== row.loaderVersion) {
+    changes.push({
+      area: 'settings',
+      action: row.loaderVersion ? 'set' : 'add',
+      label: 'Fabric loader',
+      from: row.loaderVersion ?? undefined,
+      to: resolved.loaderVersion,
+    })
+  }
+  if (resolved.javaMajor !== row.javaMajor) {
+    changes.push({
+      area: 'settings',
+      action: 'set',
+      label: 'Java',
+      from: String(row.javaMajor),
+      to: String(resolved.javaMajor),
+    })
+  }
+  if (!mcChanged && !loaderChanged && resolved.loaderVersion === row.loaderVersion) {
+    return undefined
+  }
+  return { ...resolved, loader: want.type, minecraft: want.minecraft }
 }
 
 function describeBackups(schedule: string | null, tz: string, keep: number[]) {

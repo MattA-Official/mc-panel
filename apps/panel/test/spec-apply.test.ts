@@ -8,6 +8,8 @@ import {
   ProviderError,
   type ContentProvider,
   type ContentRef,
+  type ContentTarget,
+  type LoaderProvider,
   type ResolvedContent,
 } from '@flytower/providers'
 import { eq } from 'drizzle-orm'
@@ -24,9 +26,20 @@ const sha512 = (s: string) => new Bun.CryptoHasher('sha512').update(s).digest('h
 /** A tiny catalogue: project → versions (newest first), each with a body. */
 const CATALOGUE: Record<
   string,
-  { title: string; versions: string[]; deps?: string[]; kind?: 'mod' | 'datapack' }
+  {
+    title: string
+    versions: string[]
+    deps?: string[]
+    kind?: 'mod' | 'datapack'
+    /** Versions for Minecraft other than 26.3. */
+    other?: Record<string, string[]>
+  }
 > = {
-  lithium: { title: 'Lithium', versions: ['0.19', '0.18'] },
+  lithium: {
+    title: 'Lithium',
+    versions: ['0.19', '0.18'],
+    other: { '26.4': ['0.20'], '26.3.1': ['0.19'] },
+  },
   chunky: { title: 'Chunky', versions: ['1.4'], deps: ['fabric-api'] },
   'fabric-api': { title: 'Fabric API', versions: ['0.100'] },
   terralith: { title: 'Terralith', versions: ['2.5'], kind: 'datapack' },
@@ -60,12 +73,17 @@ function fakeModrinth(opts: { badHash?: string } = {}): ContentProvider {
     name: 'Fake',
     search: async () => ({ hits: [], total: 0 }),
     versions: async () => [],
-    resolve: async (ref: ContentRef) => {
+    resolve: async (ref: ContentRef, target: ContentTarget) => {
       const slug = ref.project.replace(/^id-/, '')
       const p = CATALOGUE[slug]
       if (!p) throw new ProviderError(`No project ${ref.project}`)
-      const version = ref.version ? ref.version.replace(/^.*@/, '') : p.versions[0]!
-      if (!p.versions.includes(version))
+      const versions =
+        target.minecraft === '26.3' ? p.versions : (p.other?.[target.minecraft] ?? [])
+      if (!versions.length) {
+        throw new ProviderError(`${p.title} has no version for Minecraft ${target.minecraft}.`)
+      }
+      const version = ref.version ? ref.version.replace(/^.*@/, '') : versions[0]!
+      if (!versions.includes(version))
         throw new ProviderError(`${p.title} has no version "${version}".`)
       return make(slug, version)
     },
@@ -108,6 +126,28 @@ const fetchFiles = (async (input: string | URL | Request) => {
   if (url.endsWith('/download/VanillaTweaks_d1_UNZIP_ME.zip')) return new Response(WRAPPED)
   return new Response('', { status: 404 })
 }) as never
+
+const sha1 = (s: string) => new Bun.CryptoHasher('sha1').update(s).digest('hex')
+
+/** Minecraft 26.2 to 26.4; 26.4 needs Java 26. */
+function fakeLoader(id: 'vanilla' | 'fabric'): LoaderProvider {
+  return {
+    id,
+    name: id,
+    minecraftVersions: async () =>
+      ['26.4', '26.3.1', '26.3', '26.2'].map((v) => ({ id: v, stable: true })),
+    loaderVersions: async () => [],
+    resolve: async (mc, loader) => ({
+      url: `https://cdn.test/${id}-server/${mc}`,
+      hash: {
+        algorithm: 'sha1',
+        value: mc === '26.3.1' ? '0'.repeat(40) : sha1(`${id}-server@${mc}`),
+      },
+      javaMajor: mc === '26.4' ? 26 : 25,
+      loaderVersion: id === 'fabric' ? (loader ?? '0.21.0') : null,
+    }),
+  }
+}
 
 function setup(opts: { running?: boolean; loader?: 'vanilla' | 'fabric'; badHash?: string } = {}) {
   const db = openDb(':memory:')
@@ -183,6 +223,7 @@ function setup(opts: { running?: boolean; loader?: 'vanilla' | 'fabric'; badHash
     },
     modrinth: fakeModrinth(opts),
     vanillatweaks: vanillaTweaksProvider(fetchFiles, 'https://vt.test'),
+    loaders: { vanilla: fakeLoader('vanilla'), fabric: fakeLoader('fabric') },
     fetch: fetchFiles,
     readProperties: async () => toRecord(parseProperties(readFileSync(propsPath, 'utf8'))),
     writeProperties: async (_n, changes) =>
@@ -259,7 +300,7 @@ describe('plan', () => {
     expect(plan.backup).toBe(false)
   })
 
-  it('refuses a port clash, a new name, a loader change and mods on vanilla', async () => {
+  it('refuses a port clash, a new name and mods on vanilla', async () => {
     const { service, spec } = setup({ loader: 'vanilla' })
     expect((await service.plan('survival', spec({ port: 25566 }))).problems).toEqual([
       'Port 25566 is already used by creative.',
@@ -267,11 +308,6 @@ describe('plan', () => {
     expect((await service.plan('survival', spec({ name: 'other' }))).problems[0]).toContain(
       "Names can't change",
     )
-    const loader = await service.plan(
-      'survival',
-      ServerSpec.parse({ name: 'survival', loader: { type: 'fabric', minecraft: '26.3' } }),
-    )
-    expect(loader.problems[0]).toContain('later release')
     const mods = await service.plan('survival', spec({ content: [{ modrinth: 'lithium' }] }))
     expect(mods.problems).toContain("Lithium is a mod, which a vanilla server can't run.")
     const datapack = await service.plan('survival', spec({ content: [{ modrinth: 'terralith' }] }))
@@ -402,6 +438,103 @@ describe('apply', () => {
     await expect(service.apply('survival', 'nope')).rejects.toThrow('expired')
     const blocked = await service.plan('survival', spec({ port: 25566 }))
     await expect(service.apply('survival', blocked.id)).rejects.toThrow('already used')
+  })
+})
+
+describe('version and loader changes', () => {
+  const on = (minecraft: string, type: 'vanilla' | 'fabric' = 'fabric', version?: string) =>
+    ServerSpec.parse({
+      name: 'survival',
+      loader: { type, minecraft, ...(version ? { version } : {}) },
+      content: [{ modrinth: 'lithium' }],
+    })
+
+  it('upgrades Minecraft, moving content, the loader and Java along', async () => {
+    const { service, dir, calls, db, snapshots } = setup({ running: true })
+    writeFileSync(join(dir, 'server.jar'), 'old jar')
+    const first = await service.plan('survival', on('26.3', 'fabric', '0.20.1'))
+    await (
+      await service.apply('survival', first.id)
+    ).done
+    calls.length = 0
+
+    const plan = await service.plan('survival', on('26.4', 'fabric', '0.20.1'))
+    expect(plan.problems).toEqual([])
+    expect(plan.changes.map((c) => `${c.action} ${c.label} ${c.from} → ${c.to}`)).toEqual([
+      'set Minecraft 26.3 → 26.4',
+      'set Fabric loader 0.20.1 → 0.21.0',
+      'set Java 25 → 26',
+      'update Lithium 0.19 → 0.20',
+    ])
+    expect(plan).toMatchObject({ backup: true, restart: true })
+
+    expect(await (await service.apply('survival', plan.id)).done).toMatchObject({
+      state: 'succeeded',
+    })
+    expect(readFileSync(join(dir, 'server.jar'), 'utf8')).toBe('fabric-server@26.4')
+    expect(existsSync(join(dir, 'mods', 'lithium-0.20.jar'))).toBe(true)
+    expect(calls).toContain('runtime.install')
+    expect(calls).toContain('server.configure {"name":"survival","javaMajor":26}')
+    expect(snapshots.at(-1)).toBe('Before applying spec changes')
+    const row = db.select().from(schema.servers).where(eq(schema.servers.name, 'survival')).get()!
+    expect(row).toMatchObject({ mcVersion: '26.4', loaderVersion: '0.21.0', javaMajor: 26 })
+    // Nothing left to do once applied.
+    expect((await service.plan('survival', await service.currentSpec('survival'))).changes).toEqual(
+      [],
+    )
+  })
+
+  it('refuses going back, unknown versions, and content with no build for the new version', async () => {
+    const { service } = setup()
+    expect((await service.plan('survival', on('26.2'))).problems[0]).toContain('restore a backup')
+    expect((await service.plan('survival', on('27.1'))).problems).toContain(
+      "Fabric doesn't have Minecraft 27.1.",
+    )
+    const stuck = await service.plan(
+      'survival',
+      ServerSpec.parse({
+        name: 'survival',
+        loader: { type: 'fabric', minecraft: '26.4' },
+        content: [{ modrinth: 'chunky' }],
+      }),
+    )
+    expect(stuck.problems).toContain('Chunky has no version for Minecraft 26.4.')
+  })
+
+  it('switches vanilla to Fabric, and bumps only the Fabric loader', async () => {
+    const { service, dir, db } = setup({ loader: 'vanilla' })
+    writeFileSync(join(dir, 'server.jar'), 'old jar')
+    db.update(schema.servers).set({ loaderVersion: null }).run()
+    const plan = await service.plan('survival', on('26.3'))
+    expect(plan.changes.map((c) => `${c.action} ${c.label}`)).toEqual([
+      'set Loader',
+      'add Fabric loader',
+      'add Lithium',
+    ])
+    await (
+      await service.apply('survival', plan.id)
+    ).done
+    expect(readFileSync(join(dir, 'server.jar'), 'utf8')).toBe('fabric-server@26.3')
+
+    const bump = await service.plan('survival', on('26.3', 'fabric', '0.22.0'))
+    expect(bump.changes.map((c) => `${c.label} ${c.from} → ${c.to}`)).toEqual([
+      'Fabric loader 0.21.0 → 0.22.0',
+    ])
+    expect(bump.restart).toBe(true)
+  })
+
+  it('a bad jar download changes nothing', async () => {
+    const { service, dir, db, calls } = setup({ running: true })
+    writeFileSync(join(dir, 'server.jar'), 'old jar')
+    // The fake publishes a wrong checksum for 26.3.1.
+    const plan = await service.plan('survival', on('26.3.1'))
+    const final = await (await service.apply('survival', plan.id)).done
+    expect(final).toMatchObject({ state: 'failed' })
+    expect(final.message).toContain('checksum')
+    expect(readFileSync(join(dir, 'server.jar'), 'utf8')).toBe('old jar')
+    expect(calls).not.toContain('service.stop')
+    const row = db.select().from(schema.servers).where(eq(schema.servers.name, 'survival')).get()!
+    expect(row.mcVersion).toBe('26.3')
   })
 })
 
