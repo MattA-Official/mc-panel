@@ -57,12 +57,8 @@
           "name": "audit_user_id_users_id_fk",
           "tableFrom": "audit",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -147,12 +143,8 @@
           "name": "credentials_user_id_users_id_fk",
           "tableFrom": "credentials",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -275,12 +267,8 @@
           "name": "recovery_codes_user_id_users_id_fk",
           "tableFrom": "recovery_codes",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -381,16 +369,12 @@
       "indexes": {
         "servers_port": {
           "name": "servers_port",
-          "columns": [
-            "port"
-          ],
+          "columns": ["port"],
           "isUnique": true
         },
         "servers_rcon_port": {
           "name": "servers_rcon_port",
-          "columns": [
-            "rcon_port"
-          ],
+          "columns": ["rcon_port"],
           "isUnique": true
         }
       },

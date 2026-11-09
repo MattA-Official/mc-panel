@@ -1,13 +1,13 @@
 import { existsSync, readFileSync, unlinkSync } from 'node:fs'
 import { eq } from 'drizzle-orm'
-import type { Db } from '../db'
+import type { Db, DbOrTx } from '../db'
 import { credentials, setupToken } from '../db/schema'
 
 export const MAX_ATTEMPTS = 5
 export const TOKEN_TTL_MS = 24 * 60 * 60 * 1000
 
 /** Setup is needed until the first passkey exists. */
-export function needsSetup(db: Db): boolean {
+export function needsSetup(db: DbOrTx): boolean {
   return db.select({ id: credentials.id }).from(credentials).limit(1).all().length === 0
 }
 
@@ -59,7 +59,7 @@ export async function verifyToken(db: Db, token: string, now = Date.now()): Prom
   return row.attempts + 1 >= MAX_ATTEMPTS ? 'locked' : 'wrong'
 }
 
-export function markTokenUsed(db: Db, now = Date.now()) {
+export function markTokenUsed(db: DbOrTx, now = Date.now()) {
   db.update(setupToken)
     .set({ usedAt: new Date(now) })
     .where(eq(setupToken.id, 1))

@@ -63,10 +63,12 @@ export async function checkCode(db: Db, userId: number, code: string): Promise<b
 export async function redeemCode(db: Db, code: string): Promise<number | null> {
   const row = await findMatch(db, code)
   if (!row) return null
-  const res = db
+  // The usedAt guard makes this race-safe: only one request can flip a code to used.
+  const updated = db
     .update(recoveryCodes)
     .set({ usedAt: new Date() })
     .where(and(eq(recoveryCodes.id, row.id), isNull(recoveryCodes.usedAt)))
-    .run()
-  return res.changes === 1 ? row.userId : null
+    .returning({ id: recoveryCodes.id })
+    .all()
+  return updated.length === 1 ? row.userId : null
 }

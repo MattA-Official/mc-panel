@@ -8,7 +8,7 @@ import {
   type RegistrationResponseJSON,
 } from '@simplewebauthn/server'
 import { eq } from 'drizzle-orm'
-import type { Db } from '../db'
+import type { Db, DbOrTx } from '../db'
 import { credentials, users } from '../db/schema'
 import { challenges } from './challenges'
 
@@ -76,7 +76,7 @@ export async function verifyRegistration(
 }
 
 export function saveCredential(
-  db: Db,
+  db: DbOrTx,
   userId: number,
   cred: Awaited<ReturnType<typeof verifyRegistration>>,
   nickname: string,

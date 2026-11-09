@@ -2,7 +2,7 @@
 export default defineNuxtConfig({
   compatibilityDate: '2026-11-01',
   ssr: false,
-  modules: ['@nuxt/ui'],
+  modules: ['@nuxt/ui', 'nuxt-auth-utils'],
   css: ['~/assets/css/main.css'],
   colorMode: { preference: 'dark', fallback: 'dark' },
   app: {
@@ -27,13 +27,26 @@ export default defineNuxtConfig({
     version: '0.0.0-dev',
     agentSocket: '/run/flytower/agent.sock',
     dbPath: '/var/lib/flytower/flytower.db',
+    setupTokenFile: '/var/lib/flytower/setup-token.hash',
+    devSetupToken: '',
+    /** Pins the passkey domain; empty means the request's host. */
+    rpId: '',
+    session: {
+      name: 'flytower-session',
+      maxAge: 12 * 60 * 60,
+      cookie: { sameSite: 'strict' },
+    },
   },
   nitro: {
     preset: 'bun',
     experimental: { websocket: true },
   },
   $development: {
-    runtimeConfig: { dbPath: '.data/flytower.db' },
+    runtimeConfig: {
+      dbPath: '.data/flytower.db',
+      setupTokenFile: '.data/setup-token.hash',
+      devSetupToken: 'dev-setup-token',
+    },
   },
   typescript: { strict: true },
 })

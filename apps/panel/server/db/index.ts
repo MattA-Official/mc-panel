@@ -7,6 +7,9 @@ import * as schema from './schema'
 
 export type Db = BunSQLiteDatabase<typeof schema> & { $client: Database }
 
+/** The database or a transaction on it; helpers that may run inside a transaction take this. */
+export type DbOrTx = Db | Parameters<Parameters<Db['transaction']>[0]>[0]
+
 export interface Migration {
   tag: string
   sql: string

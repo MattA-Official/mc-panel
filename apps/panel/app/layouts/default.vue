@@ -2,6 +2,13 @@
 import type { NavigationMenuItem } from '@nuxt/ui'
 
 const { productName } = useAppConfig()
+const { state, refresh } = useAuthState()
+
+async function signOut() {
+  await $fetch('/api/auth/logout', { method: 'POST' })
+  await refresh()
+  await navigateTo('/login')
+}
 
 const items: NavigationMenuItem[] = [
   { label: 'Servers', icon: 'i-lucide-server', to: '/' },
@@ -27,7 +34,17 @@ const items: NavigationMenuItem[] = [
         <UNavigationMenu :collapsed="collapsed" :items="items" orientation="vertical" />
       </template>
       <template #footer="{ collapsed }">
-        <UColorModeButton v-if="!collapsed" />
+        <div class="flex w-full items-center gap-2">
+          <span v-if="!collapsed" class="truncate text-sm text-muted">{{ state?.user?.name }}</span>
+          <UColorModeButton v-if="!collapsed" class="ms-auto" />
+          <UButton
+            icon="i-lucide-log-out"
+            color="neutral"
+            variant="ghost"
+            aria-label="Sign out"
+            @click="signOut"
+          />
+        </div>
       </template>
     </UDashboardSidebar>
     <slot />
