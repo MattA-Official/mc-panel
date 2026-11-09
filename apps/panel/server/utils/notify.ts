@@ -5,7 +5,8 @@ import { schema } from '../db'
 import { NotifyError, NotifyService } from '../notify'
 import { PlayerWatcher, RunningTracker } from '../notify/watchers'
 import type { MachineReading } from '../metrics/sampler'
-import { compareVersions, newestRelease } from '../updates'
+import { compareVersions, defaultChannel, newestRelease } from '../updates'
+import { getSetting } from '../settings'
 
 let service: NotifyService | undefined
 
@@ -95,12 +96,16 @@ export async function checkUpdatesForNotify() {
     try {
       const status = await agent('update.status', {}).catch(() => null)
       const current = status?.current ?? useRuntimeConfig().version
-      const newest = await newestRelease(true)
+      // Only what the System page would offer: betas only on the Beta channel.
+      const channel = getSetting(useDb(), 'update.channel') ?? defaultChannel(current)
+      const newest = await newestRelease(channel, true)
       const newer = newest && compareVersions(newest.version, current) > 0 ? newest : null
       notify.offer(
         {
           kind: 'update.flytower',
-          title: newer ? `Flytower ${newer.version} is out` : 'Flytower is up to date',
+          title: newer
+            ? `Flytower ${newer.version}${newer.prerelease ? ' (beta)' : ''} is out`
+            : 'Flytower is up to date',
           detail: newer
             ? `You're on ${current}. Update from System, Flytower, which takes a minute and keeps your servers running.`
             : undefined,

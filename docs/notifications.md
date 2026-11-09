@@ -11,7 +11,7 @@ Set them up on **System**, **Notifications**. Each place Flytower sends to is a 
 | Problems | A backup failed                                  | A manual or scheduled backup fails. A "working again" message follows the next good backup.                 |
 | Problems | Copying a backup off-site failed                 | An off-site copy fails twice in a row (one blip that the retry fixes stays quiet), and when it works again. |
 | Problems | The disk is nearly full                          | Once at 85%, once more at 95%, and "back to normal" when it drops below 80%.                                |
-| Updates  | A new version of Flytower is out                 | Once per new version. Flytower checks every six hours.                                                      |
+| Updates  | A new version of Flytower is out                 | Once per new version on your update channel (betas only on Beta). Flytower checks every six hours.          |
 | Updates  | Updates for installed mods, plugins or datapacks | Once per server per new set of updates, from the same check as the Content tab.                             |
 | Activity | A server started or stopped                      | Within a minute of it happening, however it happened.                                                       |
 | Activity | A player joined or left                          | From the server's log, within a couple of seconds.                                                          |
