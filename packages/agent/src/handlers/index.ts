@@ -9,6 +9,7 @@ import * as update from './update.ts'
 export const handlers: Handlers = {
   ping: async (_p, ctx) => protocolInfo(ctx.version),
   'service.status': service.status,
+  'service.usage': service.usage,
   'service.start': service.start,
   'service.stop': service.stop,
   'service.restart': service.restart,

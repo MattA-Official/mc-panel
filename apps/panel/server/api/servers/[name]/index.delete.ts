@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { schema } from '../../../db'
+import { forgetMetrics } from '../../../metrics/sampler'
 
 const Params = z.object({ name: z.string().max(40) })
 const Body = z.object({ confirm: z.string() })
@@ -37,6 +38,7 @@ export default defineEventHandler(async (event) => {
   }
   const db = useDb()
   db.delete(schema.servers).where(eq(schema.servers.name, name)).run()
+  forgetMetrics(db, name)
   syncBackupSchedules()
   await useExports().removeAll(name)
   db.insert(schema.audit)

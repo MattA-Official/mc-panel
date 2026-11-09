@@ -54,3 +54,48 @@ const action =
 export const start = action('start')
 export const stop = action('stop')
 export const restart = action('restart')
+
+/** systemd prints this, or "[not set]", when it has no figure. */
+const UNSET = '18446744073709551615'
+
+/** Splits `systemctl show a b c` output into one property map per unit. */
+export function parseShow(stdout: string): Record<string, string>[] {
+  return stdout
+    .split(/\n\s*\n/)
+    .map((block) =>
+      Object.fromEntries(
+        block
+          .split('\n')
+          .filter((l) => l.includes('='))
+          .map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1)]),
+      ),
+    )
+    .filter((m) => Object.keys(m).length > 0)
+}
+
+const figure = (v: string | undefined) => (v && v !== UNSET && /^\d+$/.test(v) ? Number(v) : null)
+
+export async function usage(
+  p: Params<'service.usage'>,
+  ctx: AgentContext,
+): Promise<Result<'service.usage'>> {
+  if (p.servers.length === 0) return { usage: {} }
+  const units = new Map(p.servers.map((s) => [unitName(s), s]))
+  const r = await ctx.exec('systemctl', [
+    'show',
+    ...units.keys(),
+    '--property=Id,ActiveState,CPUUsageNSec,MemoryCurrent',
+  ])
+  const out: Result<'service.usage'>['usage'] = {}
+  for (const props of parseShow(r.stdout)) {
+    const server = units.get(props.Id ?? '')
+    if (!server) continue
+    const active = props.ActiveState === 'active'
+    out[server] = {
+      active,
+      cpuNs: active ? figure(props.CPUUsageNSec) : null,
+      memoryBytes: active ? figure(props.MemoryCurrent) : null,
+    }
+  }
+  return { usage: out }
+}

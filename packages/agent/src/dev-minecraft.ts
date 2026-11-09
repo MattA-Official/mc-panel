@@ -31,6 +31,10 @@ const replies: Record<string, (args: string) => string> = {
     online.splice(i, 1)
     return `Kicked ${n}: Kicked by an operator`
   },
+  tick: (a) =>
+    a.startsWith('query')
+      ? `The game is running normally\nTarget tick rate: 20.0 per second.\nAverage time per tick: ${(4 + Math.random() * 20).toFixed(1)}ms (Target: 50.0ms)\nPercentiles: P50: 8.1ms P95: 14.0ms P99: 19.3ms, sample: 100`
+      : 'Unknown or incomplete command',
   seed: () => 'Seed: [-4172144997902289642]',
   'save-off': () => 'Automatic saving is now disabled',
   'save-on': () => 'Automatic saving is now enabled',

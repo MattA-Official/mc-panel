@@ -457,6 +457,34 @@ try {
       throw new Error(`an over-budget clone should be refused: ${JSON.stringify(tooBig.body)}`)
     }
     await api(view, '/api/servers/smoke-copy/stop', { body: {} })
+
+    // The metrics history has been sampling the running server once a minute.
+    type Sample = {
+      cpu: number | null
+      memMb: number | null
+      players: number | null
+      mspt: number | null
+    }
+    const sample = await until(
+      'a full metrics sample',
+      async () => {
+        const r = await api<{ points: Sample[] }>(view, '/api/servers/smoke/metrics?range=hour')
+        return r.status === 200
+          ? r.body.points.findLast(
+              (p) => p.cpu !== null && p.memMb !== null && p.players !== null && p.mspt !== null,
+            )
+          : null
+      },
+      3 * 60_000,
+      5000,
+    )
+    const machine = await api<{ points: Sample[] }>(view, '/api/system/metrics?range=hour')
+    if (!machine.body.points.some((p) => p.memMb !== null)) {
+      throw new Error('no machine metrics recorded')
+    }
+    step(
+      `metrics: ${sample.cpu}% CPU, ${sample.memMb} MB, ${sample.players} online, ${sample.mspt} ms a tick`,
+    )
   }
   console.log('smoke test passed')
 } catch (err) {

@@ -32,6 +32,10 @@ const { data: health, refresh } = await useFetch('/api/health')
             />
           </template>
         </UCard>
+        <UCard>
+          <template #header><h2 class="font-medium">This machine</h2></template>
+          <MetricsHistory />
+        </UCard>
         <FlytowerUpdates />
         <UCard class="max-w-xl">
           <MemoryBudget detailed />

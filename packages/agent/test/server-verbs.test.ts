@@ -214,3 +214,41 @@ describe('server.configure', () => {
     })
   })
 })
+
+describe('service.usage', () => {
+  it('reads CPU and memory for running servers and nothing for stopped ones', async () => {
+    const show = [
+      'Id=flytower-mc@survival.service',
+      'ActiveState=active',
+      'CPUUsageNSec=123456789000',
+      'MemoryCurrent=2147483648',
+      '',
+      'Id=flytower-mc@creative.service',
+      'ActiveState=inactive',
+      'CPUUsageNSec=[not set]',
+      'MemoryCurrent=18446744073709551615',
+      '',
+    ].join('\n')
+    const { exec, calls } = fakeExec({ 'systemctl show': { stdout: show } })
+    const { ctx } = fakeContext(exec)
+    const res = await dispatch(
+      JSON.stringify({
+        id: 'u',
+        verb: 'service.usage',
+        params: { servers: ['survival', 'creative'] },
+      }),
+      handlers,
+      ctx,
+    )
+    expect(res).toMatchObject({
+      ok: true,
+      result: {
+        usage: {
+          survival: { active: true, cpuNs: 123456789000, memoryBytes: 2147483648 },
+          creative: { active: false, cpuNs: null, memoryBytes: null },
+        },
+      },
+    })
+    expect(calls[0]!.args).toContain('flytower-mc@survival.service')
+  })
+})

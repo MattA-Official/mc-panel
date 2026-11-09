@@ -1,6 +1,14 @@
 import type { ContentItem } from '../../shared/spec'
 import { sql } from 'drizzle-orm'
-import { blob, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import {
+  blob,
+  integer,
+  primaryKey,
+  real,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core'
 
 const now = sql`(unixepoch() * 1000)`
 const createdAt = () => integer('created_at', { mode: 'timestamp_ms' }).notNull().default(now)
@@ -143,3 +151,21 @@ export const audit = sqliteTable('audit', {
   target: text('target'),
   detail: text('detail', { mode: 'json' }).$type<Record<string, unknown>>(),
 })
+
+/**
+ * One sample a minute per running server, and for the machine as a whole (server "*").
+ * A server with no row for a minute was stopped then, so the charts show a gap.
+ */
+export const metrics = sqliteTable(
+  'metrics',
+  {
+    server: text('server').notNull(),
+    at: integer('at').notNull(), // unix seconds, on the minute
+    cpu: real('cpu'), // percent of the whole machine
+    memMb: integer('mem_mb'),
+    players: integer('players'),
+    mspt: real('mspt'), // milliseconds per tick
+    diskMb: integer('disk_mb'), // machine only: used on the servers' disk
+  },
+  (t) => [primaryKey({ columns: [t.server, t.at] })],
+)

@@ -35,6 +35,7 @@ const tabs = computed(() => [
   { label: 'Console', icon: 'i-lucide-terminal', to: `/servers/${name.value}`, exact: true },
   { label: 'Logs', icon: 'i-lucide-scroll-text', to: `/servers/${name.value}/logs` },
   { label: 'Players', icon: 'i-lucide-users', to: `/servers/${name.value}/players` },
+  { label: 'Performance', icon: 'i-lucide-activity', to: `/servers/${name.value}/performance` },
   { label: 'Backups', icon: 'i-lucide-archive', to: `/servers/${name.value}/backups` },
   { label: 'Content', icon: 'i-lucide-package', to: `/servers/${name.value}/content` },
   { label: 'World', icon: 'i-lucide-globe', to: `/servers/${name.value}/world` },

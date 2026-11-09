@@ -23,6 +23,7 @@ const serversDir = join(root, 'servers')
 const states = new Map<string, State>()
 const TRANSITION_MS = 2000
 
+const fakeCpu = new Map<string, number>()
 const running = new Map<string, Awaited<ReturnType<typeof startFakeMinecraft>>>()
 
 function move(server: string, via: State, to: State) {
@@ -76,6 +77,21 @@ const handlers: Handlers = {
     active: states.get(server) ?? 'inactive',
     since: null,
   }),
+  'service.usage': async ({ servers }) => {
+    const usage: Result<'service.usage'>['usage'] = {}
+    for (const server of servers) {
+      const active = states.get(server) === 'active'
+      // Somewhere between a tenth of a core and a core and a half, and 1.5 to 3 GB.
+      const cpu = (fakeCpu.get(server) ?? 0) + (0.1 + Math.random() * 1.4) * 60e9
+      if (active) fakeCpu.set(server, cpu)
+      usage[server] = {
+        active,
+        cpuNs: active ? cpu : null,
+        memoryBytes: active ? Math.round((1.5 + Math.random() * 1.5) * 2 ** 30) : null,
+      }
+    }
+    return { usage }
+  },
   'service.start': async ({ server }) => {
     move(server, 'activating', 'active')
     void boot(server)

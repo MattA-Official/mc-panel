@@ -41,6 +41,21 @@ export const verbs = {
       since: z.string().nullable(),
     }),
   },
+  /** CPU time and memory systemd has counted for each server, for the metrics history. */
+  'service.usage': {
+    params: z.object({ servers: z.array(ServerName).max(100) }).strict(),
+    result: z.object({
+      usage: z.record(
+        z.string(),
+        z.object({
+          active: z.boolean(),
+          /** Total CPU time used since the server started, in nanoseconds. */
+          cpuNs: z.number().nullable(),
+          memoryBytes: z.number().nullable(),
+        }),
+      ),
+    }),
+  },
   'service.start': { params: z.object({ server: ServerName }).strict(), result: z.object({}) },
   'service.stop': { params: z.object({ server: ServerName }).strict(), result: z.object({}) },
   'service.restart': { params: z.object({ server: ServerName }).strict(), result: z.object({}) },
