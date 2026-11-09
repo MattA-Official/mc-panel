@@ -173,4 +173,6 @@ describe('Rcon', () => {
 
 it('strips § formatting codes', () => {
   expect(stripFormatting('§6There are §c2§r players')).toBe('There are 2 players')
+  // Paper's hex colours: §x then six §-prefixed digits.
+  expect(stripFormatting('§x§f§f§0§0§0§0Chunky')).toBe('Chunky')
 })
