@@ -516,6 +516,55 @@ try {
       3000,
     )
     step(`Paper ${paperMc}: ${paperJob.message} ${paperReply.split('\n')[0]!.slice(0, 100)}`)
+
+    // Plugins: Chunky from Modrinth, plus Hangar's most downloaded plugin if Hangar has one
+    // for this version (Hangar trouble is reported, not fatal).
+    let hangarSlug: string | null = null
+    const found = await api<{ hits: { slug: string; title: string }[] }>(
+      view,
+      '/api/servers/smoke-paper/content/search?kind=plugin&source=hangar',
+    )
+    if (found.status === 200 && found.body.hits[0]) hangarSlug = found.body.hits[0].slug
+    else step(`⚠ Hangar search: ${found.status} ${JSON.stringify(found.body).slice(0, 160)}`)
+    const pluginYaml = (withHangar: boolean) =>
+      `name: smoke-paper\nloader:\n  type: paper\n  minecraft: "${paperMc}"\ncontent:\n  - modrinth: chunky\n` +
+      (withHangar && hangarSlug ? `  - hangar: ${hangarSlug}\n` : '')
+    let pluginPlan = await api<{ plan: { id: string; problems: string[] } }>(
+      view,
+      '/api/servers/smoke-paper/plan',
+      { body: { yaml: pluginYaml(true) } },
+    )
+    if (pluginPlan.body.plan?.problems.length && hangarSlug) {
+      step(`⚠ Hangar plugin ${hangarSlug} not usable: ${pluginPlan.body.plan.problems.join('; ')}`)
+      hangarSlug = null
+      pluginPlan = await api(view, '/api/servers/smoke-paper/plan', {
+        body: { yaml: pluginYaml(false) },
+      })
+    }
+    if (!pluginPlan.body.plan || pluginPlan.body.plan.problems.length) {
+      throw new Error(`plugin plan: ${JSON.stringify(pluginPlan.body)}`)
+    }
+    const pluginApply = await api<{ jobId: number }>(view, '/api/servers/smoke-paper/apply', {
+      body: { planId: pluginPlan.body.plan.id },
+    })
+    if (pluginApply.status !== 200)
+      throw new Error(`plugin apply: ${JSON.stringify(pluginApply.body)}`)
+    await waitForJob(pluginApply.body.jobId, 'the plugin apply job', 10 * 60_000)
+    await api(view, '/api/servers/smoke-paper/start', { body: {} })
+    const plugins = await until(
+      'Paper to load Chunky',
+      async () => {
+        const r = await api<{ reply: string }>(view, '/api/servers/smoke-paper/command', {
+          body: { command: 'plugins' },
+        })
+        return r.status === 200 && /chunky/i.test(r.body.reply) ? r.body.reply : null
+      },
+      6 * 60_000,
+      3000,
+    )
+    step(
+      `plugins on Paper${hangarSlug ? ` (with ${hangarSlug} from Hangar)` : ''}: ${plugins.replace(/\s+/g, ' ').slice(0, 160)}`,
+    )
     await api(view, '/api/servers/smoke-paper/stop', { body: {} })
   }
   console.log('smoke test passed')

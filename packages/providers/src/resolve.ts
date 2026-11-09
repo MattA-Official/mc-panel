@@ -5,7 +5,10 @@ import { resolveUrl, type UrlRef } from './url.ts'
 import type { TweakType, VanillaTweaksProvider } from './vanillatweaks.ts'
 
 export type WantedContent = (
-  { modrinth: string; version?: string } | UrlRef | { vanillatweaks: string; tweak?: TweakType }
+  | { modrinth: string; version?: string }
+  | { hangar: string; version?: string }
+  | UrlRef
+  | { vanillatweaks: string; tweak?: TweakType }
 ) & {
   kind?: ContentRef['kind']
 }
@@ -26,6 +29,7 @@ export interface ResolveOptions {
    */
   pinned?: (project: string) => string | undefined
   vanillatweaks?: VanillaTweaksProvider
+  hangar?: ContentProvider
 }
 
 export async function resolveAll(
@@ -38,7 +42,7 @@ export async function resolveAll(
     version ?? opts.pinned?.(project) ?? undefined
   const byProject = new Map<string, ResolvedContent & { requiredBy: string[] }>()
   const problems: string[] = []
-  const queue: { ref: ContentRef; by: string | null }[] = []
+  const queue: { ref: ContentRef; by: string | null; from: ContentProvider }[] = []
 
   for (const w of wanted) {
     if ('vanillatweaks' in w) {
@@ -67,19 +71,32 @@ export async function resolveAll(
       byProject.set(r.projectId, { ...r, requiredBy: [] })
       continue
     }
+    if ('hangar' in w) {
+      if (!opts.hangar) {
+        problems.push('Hangar is turned off.')
+        continue
+      }
+      queue.push({
+        ref: { project: w.hangar, version: pin(w.hangar, w.version), kind: w.kind },
+        by: null,
+        from: opts.hangar,
+      })
+      continue
+    }
     queue.push({
       ref: { project: w.modrinth, version: pin(w.modrinth, w.version), kind: w.kind },
       by: null,
+      from: modrinth,
     })
   }
 
   // Asked-for items first, so their pinned versions win over what a dependency would pick.
   const asked = new Set<string>()
   while (queue.length) {
-    const { ref, by } = queue.shift()!
+    const { ref, by, from } = queue.shift()!
     let r: ResolvedContent
     try {
-      r = await modrinth.resolve(ref, target)
+      r = await from.resolve(ref, target)
     } catch (err) {
       if (!(err instanceof ProviderError)) throw err
       problems.push(by ? `${by} needs ${ref.project}, but: ${err.message}` : err.message)
@@ -105,6 +122,7 @@ export async function resolveAll(
       queue.push({
         ref: { project: d.projectId, version: pin(d.projectId, d.versionId) },
         by: r.title,
+        from,
       })
     }
   }

@@ -30,7 +30,7 @@ const CATALOGUE: Record<
     title: string
     versions: string[]
     deps?: string[]
-    kind?: 'mod' | 'datapack'
+    kind?: 'mod' | 'plugin' | 'datapack'
     /** Versions for Minecraft other than 26.3. */
     other?: Record<string, string[]>
   }
@@ -43,6 +43,7 @@ const CATALOGUE: Record<
   chunky: { title: 'Chunky', versions: ['1.4'], deps: ['fabric-api'] },
   'fabric-api': { title: 'Fabric API', versions: ['0.100'] },
   terralith: { title: 'Terralith', versions: ['2.5'], kind: 'datapack' },
+  essentials: { title: 'EssentialsX', versions: ['2.21'], kind: 'plugin' },
 }
 
 function fakeModrinth(opts: { badHash?: string } = {}): ContentProvider {
@@ -57,7 +58,7 @@ function fakeModrinth(opts: { badHash?: string } = {}): ContentProvider {
       versionId: `${slug}@${version}`,
       versionNumber: version,
       kind,
-      filename: `${slug}-${version}.${kind === 'mod' ? 'jar' : 'zip'}`,
+      filename: `${slug}-${version}.${kind === 'datapack' ? 'zip' : 'jar'}`,
       url: `https://cdn.test/${slug}/${version}`,
       hash: {
         algorithm: 'sha512',
@@ -150,7 +151,9 @@ function fakeLoader(id: 'vanilla' | 'fabric' | 'paper'): LoaderProvider {
   }
 }
 
-function setup(opts: { running?: boolean; loader?: 'vanilla' | 'fabric'; badHash?: string } = {}) {
+function setup(
+  opts: { running?: boolean; loader?: 'vanilla' | 'fabric' | 'paper'; badHash?: string } = {},
+) {
   const db = openDb(':memory:')
   const base = mkdtempSync(join(tmpdir(), 'ft-spec-'))
   const servers = join(base, 'servers')
@@ -609,6 +612,31 @@ describe('version and loader changes', () => {
     expect(calls).not.toContain('service.stop')
     const row = db.select().from(schema.servers).where(eq(schema.servers.name, 'survival')).get()!
     expect(row.mcVersion).toBe('26.3')
+  })
+})
+
+describe('plugins', () => {
+  it('installs a plugin into plugins/ on Paper, and refuses it on Fabric', async () => {
+    const { service, spec, dir } = setup({ loader: 'paper' })
+    const plan = await service.plan('survival', spec({ content: [{ modrinth: 'essentials' }] }))
+    expect(plan.problems).toEqual([])
+    expect(await (await service.apply('survival', plan.id)).done).toMatchObject({
+      state: 'succeeded',
+    })
+    expect(readFileSync(join(dir, 'plugins', 'essentials-2.21.jar'), 'utf8')).toBe(
+      'essentials@2.21',
+    )
+    writeFileSync(join(dir, 'plugins', 'handmade.jar'), 'x')
+    const list = await service.content('survival')
+    expect(list.accepts).toEqual(['plugin', 'datapack'])
+    expect(list.unmanaged).toEqual([{ path: 'plugins/handmade.jar', kind: 'plugin' }])
+
+    const fabric = setup()
+    const refused = await fabric.service.plan(
+      'survival',
+      fabric.spec({ content: [{ modrinth: 'essentials' }] }),
+    )
+    expect(refused.problems.join(' ')).toContain('plugin')
   })
 })
 

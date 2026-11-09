@@ -36,6 +36,7 @@ export default defineNuxtConfig({
     archiveDir: '/var/lib/flytower/archive',
     /** Modrinth's API; overridable for a mirror or for tests. */
     modrinthApi: 'https://api.modrinth.com/v2',
+    hangarApi: 'https://hangar.papermc.io/api/v1',
     vanillaTweaksSite: 'https://vanillatweaks.net',
     setupTokenFile: '/var/lib/flytower/setup-token.hash',
     /** The machine's public addresses, if its interfaces don't show them (behind NAT). */

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 type Kind = 'mod' | 'plugin' | 'datapack'
 interface Item {
-  source: 'modrinth' | 'url' | 'vanillatweaks'
+  source: 'modrinth' | 'hangar' | 'url' | 'vanillatweaks'
   projectId: string
   slug: string
   title: string
@@ -13,6 +13,7 @@ interface Item {
 }
 type Wanted =
   | { modrinth: string; version?: string; kind?: Kind }
+  | { hangar: string; version?: string; kind?: 'plugin' }
   | { url: string; kind: Kind }
   | { vanillatweaks: string; tweak?: 'datapack' | 'crafting' }
 interface Listing {
@@ -22,6 +23,7 @@ interface Listing {
   unmanaged: { path: string; kind: Kind }[]
 }
 interface Hit {
+  source: 'modrinth' | 'hangar'
   projectId: string
   slug: string
   title: string
@@ -70,7 +72,10 @@ async function currentSpec() {
 
 async function add(hit: Hit) {
   const spec = await currentSpec()
-  spec.content = [...spec.content, { modrinth: hit.slug, kind: hit.kind }]
+  spec.content = [
+    ...spec.content,
+    hit.source === 'hangar' ? { hangar: hit.slug } : { modrinth: hit.slug, kind: hit.kind },
+  ]
   addOpen.value = false
   await change.value?.propose(spec, { title: `Add ${hit.title}` })
 }
@@ -79,6 +84,10 @@ async function remove(item: Item) {
   const spec = await currentSpec()
   spec.content = spec.content.filter((c) => {
     if ('modrinth' in c) return c.modrinth !== item.slug && c.modrinth !== item.projectId
+    if ('hangar' in c) {
+      const slug = c.hangar.slice(c.hangar.lastIndexOf('/') + 1).toLowerCase()
+      return item.source !== 'hangar' || slug !== item.slug.toLowerCase()
+    }
     if ('vanillatweaks' in c) {
       return (
         `${c.tweak ?? 'datapack'}:${c.vanillatweaks}`.toLowerCase() !== item.projectId.toLowerCase()
@@ -111,6 +120,15 @@ const searching = ref(false)
 const searchError = ref('')
 let timer: ReturnType<typeof setTimeout> | undefined
 
+const source = ref<'modrinth' | 'hangar'>('modrinth')
+const sourceItems = [
+  { label: 'Modrinth', value: 'modrinth' },
+  { label: 'Hangar', value: 'hangar' },
+]
+const sourceName = computed(() =>
+  kind.value === 'plugin' && source.value === 'hangar' ? 'Hangar' : 'Modrinth',
+)
+
 const kindTabs = computed(() =>
   (data.value?.accepts ?? ['datapack']).map((k) => ({
     label: { mod: 'Mods', plugin: 'Plugins', datapack: 'Datapacks' }[k],
@@ -124,7 +142,13 @@ async function search() {
   try {
     const r = await $fetch<{ hits: Hit[]; total: number }>(
       `/api/servers/${name.value}/content/search` as string,
-      { query: { kind: kind.value, q: query.value } },
+      {
+        query: {
+          kind: kind.value,
+          q: query.value,
+          source: kind.value === 'plugin' ? source.value : 'modrinth',
+        },
+      },
     )
     hits.value = r.hits
     total.value = r.total
@@ -135,7 +159,7 @@ async function search() {
     searching.value = false
   }
 }
-watch([query, kind], () => {
+watch([query, kind, source], () => {
   clearTimeout(timer)
   timer = setTimeout(search, 350)
 })
@@ -150,7 +174,13 @@ function count(n: number) {
   return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}k` : String(n)
 }
 const pendingLabel = (w: Wanted) =>
-  'modrinth' in w ? w.modrinth : 'vanillatweaks' in w ? w.vanillatweaks : w.url
+  'modrinth' in w
+    ? w.modrinth
+    : 'hangar' in w
+      ? w.hangar
+      : 'vanillatweaks' in w
+        ? w.vanillatweaks
+        : w.url
 
 // Vanilla Tweaks: tick packs by category, then review.
 interface VtPack {
@@ -362,11 +392,19 @@ async function reviewVt() {
             :content="false"
             class="w-full"
           />
+          <URadioGroup
+            v-if="kind === 'plugin'"
+            v-model="source"
+            :items="sourceItems"
+            orientation="horizontal"
+            legend="Source"
+            size="sm"
+          />
           <UInput
             v-model="query"
             icon="i-lucide-search"
-            placeholder="Search Modrinth"
-            aria-label="Search Modrinth"
+            :placeholder="`Search ${sourceName}`"
+            :aria-label="`Search ${sourceName}`"
             class="w-full"
             :loading="searching"
             autofocus

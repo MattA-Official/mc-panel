@@ -46,6 +46,7 @@ export interface SpecDeps {
   backups: Pick<BackupService, 'lock' | 'snapshot'>
   modrinth: ContentProvider
   vanillatweaks?: VanillaTweaksProvider
+  hangar?: ContentProvider
   /** For Minecraft version and loader changes. */
   loaders?: Record<LoaderId, LoaderProvider>
   fetch: Fetch
@@ -96,6 +97,10 @@ export function levelNameOf(props: Record<string, string>) {
 export function askedFor(a: ServerSpec['content'][number], l: LockedItem) {
   if ('modrinth' in a) {
     return l.source === 'modrinth' && (a.modrinth === l.slug || a.modrinth === l.projectId)
+  }
+  if ('hangar' in a) {
+    const slug = a.hangar.slice(a.hangar.lastIndexOf('/') + 1).toLowerCase()
+    return l.source === 'hangar' && l.slug.toLowerCase() === slug
   }
   if ('vanillatweaks' in a) {
     return (
@@ -220,6 +225,7 @@ export class SpecService {
       upgrade,
       modrinth: this.deps.modrinth,
       vanillatweaks: this.deps.vanillatweaks,
+      hangar: this.deps.hangar,
       loaders: this.deps.loaders,
       memoryProblem: (memoryMb) => {
         const { jobs } = this.deps

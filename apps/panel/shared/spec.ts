@@ -140,6 +140,24 @@ const UrlItem = z
   })
   .strict()
 
+const HangarItem = z
+  .object({
+    hangar: z
+      .string()
+      .trim()
+      .regex(/^([\w.-]{1,64}\/)?[\w.-]{1,64}$/, 'A Hangar project, as "slug" or "owner/slug".')
+      .describe('A plugin from Hangar (hangar.papermc.io), for Paper servers.'),
+    version: z
+      .string()
+      .trim()
+      .min(1)
+      .max(80)
+      .optional()
+      .describe('A version name. Leave it out for the newest compatible one.'),
+    kind: z.literal('plugin').optional(),
+  })
+  .strict()
+
 const VanillaTweaksItem = z
   .object({
     vanillatweaks: z
@@ -157,9 +175,9 @@ const VanillaTweaksItem = z
   })
   .strict()
 
-const ContentItem = z.union([ModrinthItem, UrlItem, VanillaTweaksItem], {
+const ContentItem = z.union([ModrinthItem, HangarItem, UrlItem, VanillaTweaksItem], {
   error:
-    'Each content item needs "modrinth" (a project), "vanillatweaks" (a pack), or "url" with "sha256" and "kind".',
+    'Each content item needs "modrinth" or "hangar" (a project), "vanillatweaks" (a pack), or "url" with "sha256" and "kind".',
 })
 
 const Keep = z

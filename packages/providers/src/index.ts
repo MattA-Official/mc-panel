@@ -20,6 +20,7 @@ export function createLoaders(
 }
 export * from './content.ts'
 export { paperProvider } from './paper.ts'
+export { hangarProvider } from './hangar.ts'
 export { modrinthProvider, rankVersions } from './modrinth.ts'
 export { resolveUrl, type UrlRef } from './url.ts'
 export { resolveAll, type ResolvedSet, type WantedContent } from './resolve.ts'

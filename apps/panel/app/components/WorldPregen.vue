@@ -105,12 +105,8 @@ async function addChunky() {
       color="neutral"
       variant="subtle"
       icon="i-lucide-info"
-      title="Needs Fabric"
-      :description="
-        server.loader === 'paper'
-          ? 'Chunky as a Paper plugin comes with plugin support. For now, switch to Fabric in Settings to use it.'
-          : 'Chunky is a Fabric mod. Change the loader to Fabric in Settings to use it.'
-      "
+      title="Needs Fabric or Paper"
+      description="Chunky runs on Fabric or Paper. Change the loader in Settings to use it."
       :actions="[
         {
           label: 'Settings',
@@ -127,7 +123,11 @@ async function addChunky() {
       variant="subtle"
       icon="i-lucide-package-plus"
       title="Chunky isn't installed"
-      description="Add it (and Fabric API, which it needs) to pre-generate the world."
+      :description="
+        server.loader === 'paper'
+          ? 'Add the Chunky plugin to pre-generate the world.'
+          : 'Add it (and Fabric API, which it needs) to pre-generate the world.'
+      "
       :actions="[{ label: 'Add Chunky', icon: 'i-lucide-plus', onClick: addChunky }]"
     />
     <UAlert

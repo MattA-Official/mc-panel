@@ -6,7 +6,7 @@ import type { ExpectedHash, LoaderId } from './types.ts'
 
 export type ContentKind = 'mod' | 'plugin' | 'datapack'
 export const CONTENT_KINDS = ['mod', 'plugin', 'datapack'] as const satisfies readonly ContentKind[]
-export type ContentSourceId = 'modrinth' | 'url' | 'vanillatweaks'
+export type ContentSourceId = 'modrinth' | 'hangar' | 'url' | 'vanillatweaks'
 
 /** The server content is for. */
 export interface ContentTarget {

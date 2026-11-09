@@ -1,4 +1,5 @@
 import {
+  hangarProvider,
   modrinthProvider,
   vanillaTweaksProvider,
   type ContentProvider,
@@ -10,6 +11,7 @@ import { SpecError, SpecService } from '../spec/apply'
 import { LockError } from '../spec/lock'
 
 let modrinth: ContentProvider | undefined
+let hangar: ContentProvider | undefined
 let service: SpecService | undefined
 let vanillaTweaks: VanillaTweaksProvider | undefined
 
@@ -25,6 +27,12 @@ export function useModrinth(): ContentProvider {
   return modrinth
 }
 
+/** The Hangar provider, shared so its cache is too. */
+export function useHangar(): ContentProvider {
+  hangar ??= hangarProvider(fetch, useRuntimeConfig().hangarApi)
+  return hangar
+}
+
 /** The one spec service for this process. */
 export function useSpecs(): SpecService {
   service ??= new SpecService({
@@ -35,6 +43,7 @@ export function useSpecs(): SpecService {
     backups: useBackups(),
     modrinth: useModrinth(),
     vanillatweaks: useVanillaTweaks(),
+    hangar: useHangar(),
     loaders: useLoaders(),
     fetch,
     readProperties,
