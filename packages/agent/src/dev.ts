@@ -14,6 +14,7 @@ import type { AgentContext } from './context.ts'
 import { protocolInfo, type Handlers } from './dispatch.ts'
 import { startFakeMinecraft } from './dev-minecraft.ts'
 import { listen } from './server.ts'
+import { UnitEvents } from './events.ts'
 
 type State = 'active' | 'inactive' | 'activating' | 'deactivating' | 'failed'
 
@@ -22,6 +23,18 @@ const socketPath = process.env.FLYTOWER_AGENT_SOCKET ?? join(root, 'agent.sock')
 const serversDir = join(root, 'servers')
 const states = new Map<string, State>()
 const TRANSITION_MS = 2000
+
+// What journalctl would say: a line per change, so service.wait works as it does for real.
+let journal: (line: string) => void = () => {}
+const unitEvents = new UnitEvents((onLine) => {
+  journal = onLine
+  return { stop: () => {}, exited: new Promise(() => {}) }
+})
+unitEvents.start()
+function setState(server: string, state: State) {
+  states.set(server, state)
+  journal(JSON.stringify({ UNIT: `flytower-mc@${server}.service` }))
+}
 
 const fakeCpu = new Map<string, number>()
 
@@ -63,28 +76,28 @@ function crashed(server: string, oom: boolean) {
       ? { result: 'oom-kill', exitKind: 'killed', exitStatus: 9 }
       : { result: 'exit-code', exitKind: 'exited', exitStatus: 1 },
   )
-  states.set(server, 'activating')
+  setState(server, 'activating')
   setTimeout(() => {
     if (states.get(server) !== 'activating') return
     const now = Date.now()
     r.starts = r.starts.filter((t) => now - t < 600_000)
     if (r.starts.length >= 3) {
       r.result = 'start-limit-hit'
-      states.set(server, 'failed')
+      setState(server, 'failed')
       return
     }
     r.starts.push(now)
     r.restarts++
     r.result = 'success'
-    states.set(server, 'active')
+    setState(server, 'active')
     void boot(server)
   }, RESTART_MS)
 }
 const running = new Map<string, Awaited<ReturnType<typeof startFakeMinecraft>>>()
 
 function move(server: string, via: State, to: State) {
-  states.set(server, via)
-  setTimeout(() => states.set(server, to), TRANSITION_MS)
+  setState(server, via)
+  setTimeout(() => setState(server, to), TRANSITION_MS)
 }
 
 async function boot(server: string) {
@@ -145,6 +158,8 @@ const handlers: Handlers = {
       exitStatus: r.exitStatus,
     }
   },
+  'service.wait': async ({ servers, after, timeoutMs }) =>
+    unitEvents.wait(servers, after, timeoutMs),
   'service.usage': async ({ servers }) => {
     const usage: Result<'service.usage'>['usage'] = {}
     for (const server of servers) {
@@ -185,7 +200,7 @@ const handlers: Handlers = {
   'server.create': async ({ name }) => {
     const directory = join(serversDir, name)
     await mkdir(directory, { recursive: true })
-    states.set(name, 'inactive')
+    setState(name, 'inactive')
     return { directory, user: userName(name), unit: unitName(name) }
   },
   'server.configure': async () => ({}),
@@ -208,6 +223,7 @@ const handlers: Handlers = {
 }
 
 const ctx = {
+  unitEvents,
   version: '0.0.0-dev-fake',
   log: (e: unknown) => console.log(JSON.stringify(e)),
 } as unknown as AgentContext

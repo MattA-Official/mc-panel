@@ -20,7 +20,7 @@ const description = computed(() => {
     c.kind === 'crash-loop'
       ? status.value === 'active'
         ? ' It has been started again.'
-        : ' Start it again once the cause is fixed.'
+        : ''
       : status.value === 'activating'
         ? ' It will be restarted in a moment.'
         : status.value === 'active'

@@ -55,6 +55,14 @@ export async function status(
   }
 }
 
+export async function wait(
+  p: Params<'service.wait'>,
+  ctx: AgentContext,
+): Promise<Result<'service.wait'>> {
+  if (!ctx.unitEvents) return { cursor: '', changed: p.servers, following: false }
+  return ctx.unitEvents.wait(p.servers, p.after, p.timeoutMs)
+}
+
 const action =
   (verb: 'start' | 'stop' | 'restart') =>
   async (p: { server: string }, ctx: AgentContext): Promise<Record<string, never>> => {

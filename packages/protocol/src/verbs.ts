@@ -68,6 +68,26 @@ export const verbs = {
       ),
     }),
   },
+  /**
+   * Waits until a server changes state (systemd's journal says so), or `timeoutMs` passes, so
+   * the panel hears about crashes without polling. Pass back `cursor` as `after`. `servers`
+   * is what comes back as changed when the agent can't tell, such as on the first call.
+   * `following` is false when the agent can't follow the journal; then poll instead.
+   */
+  'service.wait': {
+    params: z
+      .object({
+        servers: z.array(ServerName).max(100),
+        after: z.string().max(64).nullable(),
+        timeoutMs: z.number().int().min(1000).max(300_000),
+      })
+      .strict(),
+    result: z.object({
+      cursor: z.string(),
+      changed: z.array(z.string()),
+      following: z.boolean(),
+    }),
+  },
   'service.start': { params: z.object({ server: ServerName }).strict(), result: z.object({}) },
   'service.stop': { params: z.object({ server: ServerName }).strict(), result: z.object({}) },
   'service.restart': { params: z.object({ server: ServerName }).strict(), result: z.object({}) },

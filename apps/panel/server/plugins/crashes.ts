@@ -1,7 +1,7 @@
-// Crash detection: polls every server's state in the background, every ten seconds, so a
-// crash is noticed (inside systemd's 15-second restart delay) with no browser open.
+// Crash detection: follows systemd's journal through the agent, so a crash is noticed as it
+// happens with no browser open and nothing polled. See StatusWatcher.follow.
 export default defineNitroPlugin((nitro) => {
   const status = useStatus()
-  status.background(10_000)
-  nitro.hooks.hook('close', () => status.stopBackground())
+  status.follow()
+  nitro.hooks.hook('close', () => status.unfollow())
 })

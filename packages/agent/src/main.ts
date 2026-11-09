@@ -1,3 +1,4 @@
+import { UnitEvents } from './events.ts'
 import { realExec } from './exec.ts'
 import { handlers } from './handlers/index.ts'
 import { refreshTemplate } from './handlers/server.ts'
@@ -28,7 +29,9 @@ const ctx = {
   panelGroup: env('FLYTOWER_PANEL_GROUP', 'flytower'),
   // stdout goes to the journal; one JSON line per request.
   log: (e: unknown) => console.log(JSON.stringify({ audit: e })),
+  unitEvents: new UnitEvents(),
 }
+ctx.unitEvents.start()
 
 if (process.getuid?.() !== 0) {
   console.error('flytower-agent must run as root')

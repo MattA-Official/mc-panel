@@ -33,7 +33,7 @@ You need a Discord server where you can make a webhook, and optionally the [ntfy
 
 You need a test server you don't mind crashing. SSH in (System, **SSH access**) for the first few checks, or use the console tricks below. See [Crashes](crashes.md).
 
-- [ ] Kill the server's Java process: `sudo pkill -KILL -u mc-<name>`. Within about ten seconds the badge reads **Restarting after a crash**, and the Console tab shows a banner: "Crashed at …", "It was killed by SIGKILL. It will be restarted in a moment."
+- [ ] Kill the server's Java process: `sudo pkill -KILL -u mc-<name>`. Within a couple of seconds the badge reads **Restarting after a crash**, and the Console tab shows a banner: "Crashed at …", "It was killed by SIGKILL. It will be restarted in a moment."
 - [ ] About 15 seconds later it starts again by itself. The badge goes back to **Running**, the banner stays (now saying it was restarted), and a red dot marks it on the servers list.
 - [ ] A "Server crashed" notification arrives (if a channel has it ticked), then "Server is back up".
 - [ ] **Activity** lists "<name> crashed. It was killed by SIGKILL." by **Flytower**.

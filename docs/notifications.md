@@ -8,7 +8,7 @@ Set them up on **System**, **Notifications**. Each place Flytower sends to is a 
 
 | Group    | Event                                            | When                                                                                                        |
 | -------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| Problems | A server crashed                                 | When Flytower notices (within about ten seconds), with the cause. "Back up" follows once it's running.      |
+| Problems | A server crashed                                 | As it happens (Flytower follows systemd), with the cause. "Back up" follows once it's running.              |
 | Problems | A server kept crashing and was left stopped      | After three crashes in ten minutes. See [Crashes](crashes.md#crash-loops).                                  |
 | Problems | A server stopped responding                      | Its console hasn't answered for five minutes. "Responding again" follows when it does.                      |
 | Problems | A backup failed                                  | A manual or scheduled backup fails. A "working again" message follows the next good backup.                 |

@@ -9,16 +9,18 @@ type Listener = (statuses: StatusMap) => void
 type PollHook = (statuses: Record<string, ServiceStatus | null>) => void | Promise<void>
 
 /**
- * Keeps an eye on every server's systemd state: every few seconds while a browser is
- * watching, and more slowly in the background (see `background`) so crashes are noticed
- * with nobody looking. Listeners get the full map on subscribe and again on any change.
+ * Keeps an eye on every server's systemd state. With `follow`, it waits on the agent, which
+ * answers when systemd's journal shows a server changing (and every five minutes regardless,
+ * as a safety net), so nothing is polled. If the agent can't follow the journal, it falls
+ * back to asking every ten seconds. Without `follow` (in tests), it polls every few seconds
+ * while someone is watching. Listeners get the full map on subscribe and on any change.
  */
 export class StatusWatcher {
   private listeners = new Set<Listener>()
   private timer: ReturnType<typeof setInterval> | null = null
   private last: StatusMap = {}
   private polling: Promise<void> | null = null
-  private slow: ReturnType<typeof setInterval> | null = null
+  private following = false
 
   constructor(
     private agent: AgentCall,
@@ -27,28 +29,51 @@ export class StatusWatcher {
     private onPoll?: PollHook,
   ) {}
 
-  /** Polls every `ms` even with nobody watching. */
-  background(ms: number) {
-    if (this.slow) return
-    this.slow = setInterval(() => {
-      if (!this.timer) void this.poke()
-    }, ms)
+  /** Follows systemd through the agent until `unfollow`. */
+  follow(opts: { waitMs?: number; fallbackMs?: number } = {}) {
+    if (this.following) return
+    this.following = true
+    if (this.timer) clearInterval(this.timer)
+    this.timer = null
+    void this.followLoop(opts.waitMs ?? 300_000, opts.fallbackMs ?? 10_000)
   }
 
-  stopBackground() {
-    if (this.slow) clearInterval(this.slow)
-    this.slow = null
+  unfollow() {
+    this.following = false
+  }
+
+  private async followLoop(waitMs: number, fallbackMs: number) {
+    let cursor: string | null = null
+    while (this.following) {
+      try {
+        const r: Result<'service.wait'> = await this.agent(
+          'service.wait',
+          { servers: this.names(), after: cursor, timeoutMs: waitMs },
+          { timeoutMs: waitMs + 15_000 },
+        )
+        cursor = r.cursor
+        await this.poke()
+        if (!r.following) await Bun.sleep(fallbackMs)
+      } catch {
+        // The agent is down or restarting (an older one doesn't know service.wait).
+        cursor = null
+        await Bun.sleep(fallbackMs)
+        await this.poke()
+      }
+    }
   }
 
   /** The latest known states, or a fresh poll if nothing is watching yet. */
   async current(): Promise<StatusMap> {
-    if (!this.timer) await this.poke()
+    if (!this.timer && !(this.following && Object.keys(this.last).length)) await this.poke()
     return this.last
   }
 
   watch(listener: Listener): () => void {
     this.listeners.add(listener)
-    if (!this.timer) {
+    if (this.following) {
+      void this.poke().then(() => listener(this.last))
+    } else if (!this.timer) {
       this.timer = setInterval(() => void this.poke(), this.intervalMs)
       void this.poke().then(() => listener(this.last))
     } else {
