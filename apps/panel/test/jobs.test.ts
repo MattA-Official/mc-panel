@@ -140,6 +140,27 @@ describe('create-server job', () => {
     })
   })
 
+  it('clones: copies first, moves the copy in, and throws the copy away', async () => {
+    const { root, runner } = setup()
+    const staging = mkdtempSync(join(tmpdir(), 'ft-clone-'))
+    let discarded = false
+    const final = await runner.createServer(input, {
+      prepare: async () => {
+        mkdirSync(join(staging, 'copy', 'mods'), { recursive: true })
+        writeFileSync(join(staging, 'copy', 'mods', 'lithium.jar'), 'mod')
+        writeFileSync(join(staging, 'copy', 'server.properties'), 'motd=Original\nserver-port=1\n')
+        return { root: join(staging, 'copy'), kind: 'server' }
+      },
+      discard: async () => void (discarded = true),
+    }).done
+    expect(final).toMatchObject({ state: 'succeeded' })
+    expect(await readFile(join(root, 'mods', 'lithium.jar'), 'utf8')).toBe('mod')
+    const props = await readFile(join(root, 'server.properties'), 'utf8')
+    expect(props).toContain('motd=Original')
+    expect(props).toContain('server-port=25565')
+    expect(discarded).toBe(true)
+  })
+
   it('picks the next free ports for a second server', async () => {
     const { runner, calls } = setup()
     await runner.createServer(input).done

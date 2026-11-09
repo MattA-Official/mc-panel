@@ -13,7 +13,12 @@ import {
 } from '@flytower/providers'
 import { schema, type Db } from '../db'
 import { budgetProblem, machineMemoryMb, type MemoryUser } from '../memory'
-import { CREATE_SERVER_STEPS, IMPORT_STEPS, type JobEvent } from '../../shared/utils/jobs'
+import {
+  CLONE_STEPS,
+  CREATE_SERVER_STEPS,
+  IMPORT_STEPS,
+  type JobEvent,
+} from '../../shared/utils/jobs'
 import { moveBack, moveIn, type ImportSource } from '../imports/move'
 import { parseProperties, setProperties, stringifyProperties } from '../properties'
 import { Bus } from './bus'
@@ -38,6 +43,12 @@ export const CreateServerInput = z.object({
 export type CreateServerInput = z.input<typeof CreateServerInput>
 
 /** The parts of a spec the create form doesn't cover, for servers made from YAML. */
+/** A source made while the job runs (a clone's copy), and thrown away after. */
+export interface PreparedSource {
+  prepare: () => Promise<ImportSource>
+  discard: () => Promise<void>
+}
+
 export interface SpecExtras {
   properties?: Record<string, string>
   backups?: ServerSpec['backups']
@@ -123,7 +134,7 @@ export class JobRunner {
    */
   createServer(
     raw: CreateServerInput,
-    source?: ImportSource,
+    source?: ImportSource | PreparedSource,
     extras: SpecExtras = {},
   ): { jobId: number; done: Promise<JobEvent> } {
     const input = CreateServerInput.parse(raw)
@@ -142,7 +153,7 @@ export class JobRunner {
     const job = this.deps.db
       .insert(schema.jobs)
       .values({
-        kind: source ? 'server.import' : 'server.create',
+        kind: !source ? 'server.create' : 'prepare' in source ? 'server.clone' : 'server.import',
         server: input.name,
         state: 'queued',
       })
@@ -226,7 +237,10 @@ export class JobRunner {
   }
 
   private stepper(id: number, steps: readonly string[]) {
-    return (label: (typeof IMPORT_STEPS)[number], message: string | null = null) => {
+    return (
+      label: (typeof IMPORT_STEPS)[number] | (typeof CLONE_STEPS)[number],
+      message: string | null = null,
+    ) => {
       const index = steps.indexOf(label)
       this.update(id, {
         state: 'running',
@@ -242,17 +256,24 @@ export class JobRunner {
     input: z.output<typeof CreateServerInput>,
     port: number,
     rconPort: number,
-    source?: ImportSource,
+    given?: ImportSource | PreparedSource,
     extras: SpecExtras = {},
   ): Promise<JobEvent> {
     const { agent, loaders, db } = this.deps
-    const step = this.stepper(id, source ? IMPORT_STEPS : STEPS)
+    const prepared = given && 'prepare' in given ? given : undefined
+    let source = prepared ? undefined : (given as ImportSource | undefined)
+    const step = this.stepper(id, prepared ? CLONE_STEPS : source ? IMPORT_STEPS : STEPS)
     let created = false
     let moved: string[] = []
     let dir = ''
     try {
       step('Checking the details')
       const loader = loaders[input.loader]
+
+      if (prepared) {
+        step('Copying the server')
+        source = await prepared.prepare()
+      }
 
       step('Finding the download', `${loader.name} ${input.mcVersion}`)
       const resolved = await loader.resolve(input.mcVersion, input.loaderVersion)
@@ -363,6 +384,12 @@ export class JobRunner {
       }
       if (created) await this.rollback(input.name, message)
       return this.update(id, { state: 'failed', message })
+    } finally {
+      if (prepared) {
+        await prepared
+          .discard()
+          .catch((e) => console.error('[flytower] removing the clone copy failed', e))
+      }
     }
   }
 

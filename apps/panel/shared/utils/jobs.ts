@@ -20,6 +20,26 @@ export const IMPORT_STEPS = [
   'Starting the server',
 ] as const
 
+export const CLONE_STEPS = [
+  'Checking the details',
+  'Copying the server',
+  'Finding the download',
+  'Installing Java',
+  'Creating the server',
+  'Downloading Minecraft',
+  'Moving files in',
+  'Writing the config',
+  'Starting the server',
+] as const
+
+export const WORLD_COPY_STEPS = [
+  'Copying the world',
+  'Backing up',
+  'Stopping the server',
+  'Replacing the world',
+  'Starting the server',
+] as const
+
 export const UNPACK_STEPS = ['Getting the files', 'Unpacking', 'Looking inside'] as const
 
 export const BACKUP_STEPS = [
