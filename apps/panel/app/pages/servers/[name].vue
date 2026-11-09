@@ -53,6 +53,11 @@ const tabs = computed(() => [
         </template>
         <template #trailing>
           <StatusBadge v-if="server" :status="status" />
+          <CopyAddress
+            v-if="server"
+            :server="server"
+            class="hidden text-sm text-muted md:inline-flex"
+          />
         </template>
         <template v-if="server" #right>
           <UButton

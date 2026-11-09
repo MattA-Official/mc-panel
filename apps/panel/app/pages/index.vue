@@ -45,7 +45,7 @@ const statusOf = (s: Server) => live.value[s.name] ?? s.status
                 <h2 class="truncate font-display text-xl tracking-wide uppercase">
                   {{ s.displayName }}
                 </h2>
-                <p class="font-mono text-xs text-muted">{{ s.name }}</p>
+                <p class="text-xs text-muted"><CopyAddress :server="s" /></p>
               </div>
               <StatusBadge :status="statusOf(s)" />
             </div>
