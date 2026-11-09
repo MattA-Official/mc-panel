@@ -13,5 +13,8 @@
   },
   "dependencies": {
     "@flytower/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@flytower/rcon": "workspace:*"
   }
 }

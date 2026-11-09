@@ -1,7 +1,8 @@
 /**
  * A stand-in agent for working on the panel without root or systemd. It answers every verb
  * from memory: services take two seconds to start or stop, Java "installs" instantly, and
- * server folders are made under the dev data directory. Never shipped.
+ * server folders are made under the dev data directory. Started servers write a log and
+ * answer RCON (see dev-minecraft.ts). Never shipped.
  *
  *   bun run --filter @flytower/agent dev
  */
@@ -10,6 +11,7 @@ import { join, resolve } from 'node:path'
 import { unitName, userName } from '@flytower/protocol'
 import type { AgentContext } from './context.ts'
 import { protocolInfo, type Handlers } from './dispatch.ts'
+import { startFakeMinecraft } from './dev-minecraft.ts'
 import { listen } from './server.ts'
 
 type State = 'active' | 'inactive' | 'activating' | 'deactivating' | 'failed'
@@ -20,9 +22,21 @@ const serversDir = join(root, 'servers')
 const states = new Map<string, State>()
 const TRANSITION_MS = 2000
 
+const running = new Map<string, Awaited<ReturnType<typeof startFakeMinecraft>>>()
+
 function move(server: string, via: State, to: State) {
   states.set(server, via)
   setTimeout(() => states.set(server, to), TRANSITION_MS)
+}
+
+async function boot(server: string) {
+  await running.get(server)?.stop()
+  running.set(server, await startFakeMinecraft(join(serversDir, server)))
+}
+
+async function halt(server: string) {
+  await running.get(server)?.stop()
+  running.delete(server)
 }
 
 const handlers: Handlers = {
@@ -33,14 +47,17 @@ const handlers: Handlers = {
   }),
   'service.start': async ({ server }) => {
     move(server, 'activating', 'active')
+    void boot(server)
     return {}
   },
   'service.stop': async ({ server }) => {
     move(server, 'deactivating', 'inactive')
+    void halt(server)
     return {}
   },
   'service.restart': async ({ server }) => {
     move(server, 'activating', 'active')
+    void halt(server).then(() => boot(server))
     return {}
   },
   'runtime.install': async ({ major }) => ({

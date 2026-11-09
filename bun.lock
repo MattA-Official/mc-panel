@@ -45,6 +45,9 @@
       "dependencies": {
         "@flytower/protocol": "workspace:*",
       },
+      "devDependencies": {
+        "@flytower/rcon": "workspace:*",
+      },
     },
     "packages/protocol": {
       "name": "@flytower/protocol",
