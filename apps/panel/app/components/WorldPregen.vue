@@ -96,7 +96,7 @@ async function addChunky() {
     <h2 class="font-display text-lg tracking-wide uppercase">Pre-generate</h2>
     <p class="mt-1 text-sm text-muted">
       Generates the world ahead of time with Chunky, so exploring doesn't lag. It runs in the
-      background and carries on after a restart.
+      background; after a restart, Continue paused picks it up again.
     </p>
 
     <UAlert
