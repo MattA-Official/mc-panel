@@ -233,26 +233,23 @@ export class BackupService {
   }
 
   private async checkSpace(server: string) {
-    const dir = this.folder(server)
-    await mkdir(dir, { recursive: true, mode: 0o750 })
     const need = await folderBytes(this.deps.serverDir(server))
-    const free = await (this.deps.freeBytes ?? diskFree)(dir)
-    // zstd usually shrinks a world 2-4x; ask for the uncompressed size to be safe.
-    if (free < need * 1.1) {
-      throw new BackupError(
-        `Not enough disk space: the server is ${formatBytes(need)} and only ${formatBytes(free)} is free.`,
-      )
-    }
+    await this.ensureSpace(this.folder(server), need)
     return need
   }
 
-  private async runBackup(server: string, kind: BackupKind, note: string | null, job: JobTracker) {
+  /**
+   * Runs `fn` with the world flushed to disk and autosave paused, if the server is running,
+   * and always turns autosave back on. `onRunning` hears whether it was running.
+   */
+  async withSavesPaused<T>(
+    server: string,
+    onRunning: (running: boolean) => void,
+    fn: () => Promise<T>,
+  ): Promise<T> {
     const { rcon } = this.deps
-    job.step(0)
-    const size = await this.checkSpace(server)
-
     const running = await this.isRunning(server)
-    job.step(1, running ? 'Pausing autosave and flushing to disk' : 'The server is stopped')
+    onRunning(running)
     let paused = false
     try {
       if (running) {
@@ -263,14 +260,48 @@ export class BackupService {
           throw new BackupError(`The server didn't confirm the save: ${reply || 'no reply'}`)
         }
       }
-      job.step(2, `About ${formatBytes(size)} before compression`)
-      return await this.archive(server, kind, note)
+      return await fn()
     } finally {
       if (paused) {
         await rcon(server, 'save-on').catch((err) =>
           console.error(`[flytower] couldn't turn saving back on for ${server}`, err),
         )
       }
+    }
+  }
+
+  /** Takes the per-server lock for an outside operation; call `release` when done. */
+  lock(server: string) {
+    this.claim(server)
+    return () => void this.busy.delete(server)
+  }
+
+  /** Throws unless there is room for `bytes` more on the disk holding `dir`. */
+  async ensureSpace(dir: string, bytes: number) {
+    await mkdir(dir, { recursive: true, mode: 0o750 })
+    const free = await (this.deps.freeBytes ?? diskFree)(dir)
+    // zstd and deflate usually shrink a world 2-4x; ask for the full size to be safe.
+    if (free < bytes * 1.1) {
+      throw new BackupError(
+        `Not enough disk space: this needs up to ${formatBytes(bytes)} and only ${formatBytes(free)} is free.`,
+      )
+    }
+  }
+
+  private async runBackup(server: string, kind: BackupKind, note: string | null, job: JobTracker) {
+    job.step(0)
+    const size = await this.checkSpace(server)
+    try {
+      return await this.withSavesPaused(
+        server,
+        (running) =>
+          job.step(1, running ? 'Pausing autosave and flushing to disk' : 'The server is stopped'),
+        async () => {
+          job.step(2, `About ${formatBytes(size)} before compression`)
+          return this.archive(server, kind, note)
+        },
+      )
+    } finally {
       job.step(3)
       await this.prune(server).catch((err) =>
         console.error(`[flytower] pruning backups for ${server} failed`, err),
