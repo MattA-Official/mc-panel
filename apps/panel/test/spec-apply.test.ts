@@ -369,3 +369,27 @@ describe('apply', () => {
     await expect(service.apply('survival', blocked.id)).rejects.toThrow('already used')
   })
 })
+
+describe('content listing', () => {
+  it('tells asked-for items from dependencies, and lists pending and hand-added files', async () => {
+    const { service, spec, dir, db } = setup()
+    const plan = await service.plan('survival', spec({ content: [{ modrinth: 'chunky' }] }))
+    await (
+      await service.apply('survival', plan.id)
+    ).done
+    writeFileSync(join(dir, 'mods', 'handmade.jar'), 'x')
+    db.update(schema.servers)
+      .set({ content: [{ modrinth: 'chunky' }, { modrinth: 'lithium' }] })
+      .where(eq(schema.servers.name, 'survival'))
+      .run()
+    const list = await service.content('survival')
+    expect(list.accepts).toEqual(['mod', 'datapack'])
+    expect(list.items.map((i) => [i.slug, i.asked, i.requiredBy])).toEqual([
+      ['chunky', true, []],
+      ['fabric-api', false, ['Chunky']],
+    ])
+    expect(list.pending).toEqual([{ modrinth: 'lithium' }])
+    expect(list.unmanaged).toEqual([{ path: 'mods/handmade.jar', kind: 'mod' }])
+    expect((await service.currentSpec('survival')).content).toHaveLength(2)
+  })
+})

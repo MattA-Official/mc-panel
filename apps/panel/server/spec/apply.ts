@@ -11,7 +11,8 @@ import type { ServerSpec } from '../../shared/spec'
 import { schema, type Db } from '../db'
 import { JobError, type AgentCall, type JobTracker } from '../jobs/runner'
 import type { BackupService } from '../backups/service'
-import { readLock, unmanagedFiles, writeLock, type Lock } from './lock'
+import { specFromServer } from './from-server'
+import { readLock, unmanagedFiles, writeLock, type Lock, type LockedItem } from './lock'
 import { makePlan, type Plan } from './plan'
 
 export const PLAN_TTL_MS = 15 * 60_000
@@ -47,6 +48,16 @@ interface StoredPlan {
 }
 
 export type PublicPlan = Omit<Plan, 'work'> & { id: string }
+
+export interface ContentListing {
+  accepts: ('mod' | 'datapack')[]
+  items: (Pick<
+    LockedItem,
+    'source' | 'projectId' | 'slug' | 'title' | 'versionNumber' | 'kind' | 'path' | 'requiredBy'
+  > & { asked: boolean })[]
+  pending: ServerSpec['content']
+  unmanaged: { path: string; kind: 'mod' | 'datapack' }[]
+}
 
 export function publicPlan(id: string, plan: Plan): PublicPlan {
   const out: Partial<Plan> = { ...plan }
@@ -91,6 +102,48 @@ export class SpecService {
     return new Bun.CryptoHasher('sha256')
       .update(JSON.stringify({ row: { ...row, createdAt: null }, props, lock: lock.content }))
       .digest('hex')
+  }
+
+  /** The server's spec as it stands now. */
+  async currentSpec(name: string): Promise<ServerSpec> {
+    return specFromServer(this.row(name), await this.deps.readProperties(name))
+  }
+
+  /** What's installed, what was asked for, and what was added by hand. */
+  async content(name: string): Promise<ContentListing> {
+    const row = this.row(name)
+    const dir = this.deps.serverDir(name)
+    const props = await this.deps.readProperties(name)
+    const lock = await readLock(dir)
+    const asked = row.content ?? []
+    const isAsked = (l: LockedItem) =>
+      asked.some((a) =>
+        'modrinth' in a
+          ? l.source === 'modrinth' && (a.modrinth === l.slug || a.modrinth === l.projectId)
+          : l.source === 'url' && a.url === l.url,
+      )
+    return {
+      accepts: row.loader === 'vanilla' ? ['datapack'] : ['mod', 'datapack'],
+      items: lock.content.map((l) => ({
+        source: l.source,
+        projectId: l.projectId,
+        slug: l.slug,
+        title: l.title,
+        versionNumber: l.versionNumber,
+        kind: l.kind,
+        path: l.path,
+        asked: isAsked(l),
+        requiredBy: l.requiredBy,
+      })),
+      // Asked for, but not installed yet (say, a spec pasted in that hasn't been applied).
+      pending: asked.filter(
+        (a) =>
+          !lock.content.some((l) =>
+            'modrinth' in a ? a.modrinth === l.slug || a.modrinth === l.projectId : a.url === l.url,
+          ),
+      ),
+      unmanaged: await unmanagedFiles(dir, lock, levelNameOf(props)),
+    }
   }
 
   async plan(name: string, spec: ServerSpec, upgrade?: true | string[]): Promise<PublicPlan> {
