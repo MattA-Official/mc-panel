@@ -3,9 +3,7 @@ const emit = defineEmits<{ saved: [] }>()
 const { server, refresh } = useServerContext()
 const toast = useToast()
 
-const { data: defaults } = await useFetch<{ maxMemoryMb: number; totalMemoryMb: number }>(
-  '/api/servers/defaults',
-)
+const { data: defaults } = await useFetch<{ budget: { freeMb: number } }>('/api/servers/defaults')
 const memoryMb = ref(server.value?.memoryMb ?? 2048)
 const port = ref(server.value?.port ?? 25565)
 watch(server, (s) => {
@@ -18,10 +16,13 @@ const dirty = computed(
     !!server.value &&
     (memoryMb.value !== server.value.memoryMb || port.value !== server.value.port),
 )
-// The slider can always reach the current value, even if this machine is smaller now.
-const maxMemory = computed(() =>
-  Math.max(server.value?.memoryMb ?? 0, defaults.value?.maxMemoryMb ?? 4096, 1024),
-)
+// Up to what's free plus this server's own share, and always the current value (even on a
+// machine that is over budget, say after moving to a smaller one).
+const maxMemory = computed(() => {
+  const current = server.value?.memoryMb ?? 0
+  const room = Math.floor((current + (defaults.value?.budget.freeMb ?? 0)) / 512) * 512
+  return Math.max(current, room, 1024)
+})
 
 const saving = ref(false)
 async function save() {

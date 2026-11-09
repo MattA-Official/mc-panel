@@ -32,6 +32,9 @@ const { data: health, refresh } = await useFetch('/api/health')
             />
           </template>
         </UCard>
+        <UCard class="max-w-xl">
+          <MemoryBudget detailed />
+        </UCard>
         <SshAccess />
       </div>
     </template>
