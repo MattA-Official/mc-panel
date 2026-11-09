@@ -1,4 +1,4 @@
-import { mkdtempSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs'
 import { readFile, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -176,5 +176,63 @@ describe('helpers', () => {
   it('escapes the motd', () => {
     const p = defaultProperties({ port: 1, rconPort: 2, rconPassword: 'x', motd: 'Café\nTwo' })
     expect(p).toContain('motd=Caf\\u00e9 Two')
+  })
+})
+
+describe('import', () => {
+  function staged() {
+    const src = mkdtempSync(join(tmpdir(), 'ft-import-'))
+    mkdirSync(join(src, 'mods'))
+    mkdirSync(join(src, 'smp'))
+    mkdirSync(join(src, 'libraries'))
+    writeFileSync(join(src, 'mods', 'lithium.jar'), 'mod')
+    writeFileSync(join(src, 'smp', 'level.dat'), 'world')
+    writeFileSync(
+      join(src, 'server.properties'),
+      '#mine\nlevel-name=smp\nmotd=Old motd\nrcon.password=leaked\n',
+    )
+    writeFileSync(join(src, 'fabric-server-launch.jar'), 'old launcher')
+    writeFileSync(join(src, 'whitelist.json'), '[]')
+    return src
+  }
+
+  it('moves the files in, keeps their properties and sets the managed keys', async () => {
+    const { root, runner, calls } = setup()
+    const src = staged()
+    const final = await runner.createServer(input, { root: src, kind: 'server' }).done
+    expect(final.state).toBe('succeeded')
+    expect(calls.map((c) => c[0])).toContain('server.permissions')
+    expect(readdirSync(root).sort()).toEqual(
+      ['eula.txt', 'mods', 'server.jar', 'server.properties', 'smp', 'whitelist.json'].sort(),
+    )
+    const props = await readFile(join(root, 'server.properties'), 'utf8')
+    expect(props).toContain('#mine\nlevel-name=smp\nmotd=Old motd\n')
+    expect(props).toContain('server-port=25565')
+    expect(props).not.toContain('leaked')
+    expect(await readFile(join(root, 'server.jar'), 'utf8')).toBe(JAR)
+    // Left behind in staging: the old jar and caches.
+    expect(readdirSync(src).sort()).toEqual(['fabric-server-launch.jar', 'libraries'])
+  })
+
+  it('makes a bare world the server world', async () => {
+    const { root, runner } = setup()
+    const src = mkdtempSync(join(tmpdir(), 'ft-import-'))
+    const world = join(src, 'My World')
+    mkdirSync(world)
+    writeFileSync(join(world, 'level.dat'), 'w')
+    expect((await runner.createServer(input, { root: world, kind: 'world' }).done).state).toBe(
+      'succeeded',
+    )
+    expect(await readFile(join(root, 'world', 'level.dat'), 'utf8')).toBe('w')
+    expect(await readFile(join(root, 'server.properties'), 'utf8')).toContain('motd=Survival')
+  })
+
+  it('puts the files back if the server fails to start', async () => {
+    const { runner } = setup({ status: ['failed'] })
+    const src = staged()
+    const final = await runner.createServer(input, { root: src, kind: 'server' }).done
+    expect(final.state).toBe('failed')
+    expect(readdirSync(src)).toContain('mods')
+    expect(readdirSync(src)).toContain('smp')
   })
 })

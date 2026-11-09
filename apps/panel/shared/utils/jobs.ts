@@ -9,6 +9,17 @@ export const CREATE_SERVER_STEPS = [
   'Starting the server',
 ] as const
 
+export const IMPORT_STEPS = [
+  'Checking the details',
+  'Finding the download',
+  'Installing Java',
+  'Creating the server',
+  'Downloading Minecraft',
+  'Moving files in',
+  'Writing the config',
+  'Starting the server',
+] as const
+
 export const BACKUP_STEPS = [
   'Checking free space',
   'Saving the world',

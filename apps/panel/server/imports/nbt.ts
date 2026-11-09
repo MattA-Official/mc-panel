@@ -15,7 +15,7 @@ export class NbtError extends Error {
 export function readNbt(input: Uint8Array): { [k: string]: Nbt } {
   let bytes = input
   if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
-    bytes = Bun.gunzipSync(bytes)
+    bytes = Bun.gunzipSync(bytes as Uint8Array<ArrayBuffer>)
   }
   if (bytes.length > MAX_BYTES) throw new NbtError('level.dat is far too big.')
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)

@@ -1,4 +1,4 @@
-import { chmod, rename, writeFile } from 'node:fs/promises'
+import { chmod, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
@@ -11,7 +11,9 @@ import {
   type LoaderProvider,
 } from '@flytower/providers'
 import { schema, type Db } from '../db'
-import { CREATE_SERVER_STEPS, type JobEvent } from '../../shared/utils/jobs'
+import { CREATE_SERVER_STEPS, IMPORT_STEPS, type JobEvent } from '../../shared/utils/jobs'
+import { moveBack, moveIn, type ImportSource } from '../imports/move'
+import { parseProperties, setProperties, stringifyProperties } from '../properties'
 import { Bus } from './bus'
 import { defaultProperties, EULA, randomPassword } from './properties'
 
@@ -105,16 +107,23 @@ export class JobRunner {
    * Validates synchronously enough to refuse obvious mistakes with a 400, then returns the
    * job id while the work carries on in the background. `done` resolves when it finishes.
    */
-  createServer(raw: CreateServerInput): { jobId: number; done: Promise<JobEvent> } {
+  createServer(
+    raw: CreateServerInput,
+    source?: ImportSource,
+  ): { jobId: number; done: Promise<JobEvent> } {
     const input = CreateServerInput.parse(raw)
     const { port, rconPort } = this.claim(input.name, input.port)
     const job = this.deps.db
       .insert(schema.jobs)
-      .values({ kind: 'server.create', server: input.name, state: 'queued' })
+      .values({
+        kind: source ? 'server.import' : 'server.create',
+        server: input.name,
+        state: 'queued',
+      })
       .returning()
       .get()
 
-    const done = this.execute(job.id, input, port, rconPort).finally(() => {
+    const done = this.execute(job.id, input, port, rconPort, source).finally(() => {
       this.reservedNames.delete(input.name)
       this.reservedPorts.delete(port)
       this.reservedPorts.delete(rconPort)
@@ -159,13 +168,16 @@ export class JobRunner {
     return event
   }
 
-  private step(id: number, index: number, message: string | null = null) {
-    this.update(id, {
-      state: 'running',
-      step: STEPS[index]!,
-      progress: Math.round((index / STEPS.length) * 100),
-      message,
-    })
+  private stepper(id: number, steps: readonly string[]) {
+    return (label: (typeof IMPORT_STEPS)[number], message: string | null = null) => {
+      const index = steps.indexOf(label)
+      this.update(id, {
+        state: 'running',
+        step: label,
+        progress: Math.round((index / steps.length) * 100),
+        message,
+      })
+    }
   }
 
   private async execute(
@@ -173,24 +185,28 @@ export class JobRunner {
     input: z.output<typeof CreateServerInput>,
     port: number,
     rconPort: number,
+    source?: ImportSource,
   ): Promise<JobEvent> {
     const { agent, loaders, db } = this.deps
+    const step = this.stepper(id, source ? IMPORT_STEPS : STEPS)
     let created = false
+    let moved: string[] = []
+    let dir = ''
     try {
-      this.step(id, 0)
+      step('Checking the details')
       const loader = loaders[input.loader]
 
-      this.step(id, 1, `${loader.name} ${input.mcVersion}`)
+      step('Finding the download', `${loader.name} ${input.mcVersion}`)
       const resolved = await loader.resolve(input.mcVersion, input.loaderVersion)
 
-      this.step(id, 2, `Java ${resolved.javaMajor}`)
+      step('Installing Java', `Java ${resolved.javaMajor}`)
       await agent(
         'runtime.install',
         { vendor: 'temurin', major: resolved.javaMajor },
         { timeoutMs: 10 * 60_000 },
       )
 
-      this.step(id, 3)
+      step('Creating the server')
       const made = await agent('server.create', {
         name: input.name,
         port,
@@ -198,26 +214,44 @@ export class JobRunner {
         javaMajor: resolved.javaMajor,
       })
       created = true
+      dir = made.directory
 
-      this.step(id, 4, resolved.url)
-      const part = join(made.directory, 'server.jar.part')
+      // The jar is always fresh from the trusted source; an uploaded jar is never run.
+      step('Downloading Minecraft', resolved.url)
+      const part = join(dir, 'server.jar.part')
       await downloadVerified(this.deps.fetch, resolved.url, part, resolved.hash)
-      await rename(part, join(made.directory, 'server.jar'))
+      await rename(part, join(dir, 'server.jar'))
 
-      this.step(id, 5)
+      if (source) {
+        step('Moving files in')
+        moved = await moveIn(source, dir)
+        await agent('server.permissions', { name: input.name }, { timeoutMs: 120_000 })
+      }
+
+      step('Writing the config')
       const acceptedAt = this.now()
       const rconPassword = randomPassword()
+      const managed = {
+        'server-port': String(port),
+        'enable-rcon': 'true',
+        'rcon.port': String(rconPort),
+        'rcon.password': rconPassword,
+      }
+      const existing = source
+        ? await readFile(join(dir, 'server.properties'), 'utf8').catch(() => null)
+        : null
+      const properties =
+        existing !== null
+          ? stringifyProperties(setProperties(parseProperties(existing), managed))
+          : defaultProperties({ port, rconPort, rconPassword, motd: input.displayName })
       // Group-writable, whatever the panel's umask, so the server (same group) can edit them.
       const files: [string, string][] = [
         ['eula.txt', EULA(acceptedAt)],
-        [
-          'server.properties',
-          defaultProperties({ port, rconPort, rconPassword, motd: input.displayName }),
-        ],
+        ['server.properties', properties],
       ]
       for (const [file, body] of files) {
-        await writeFile(join(made.directory, file), body)
-        await chmod(join(made.directory, file), 0o660)
+        await writeFile(join(dir, file), body)
+        await chmod(join(dir, file), 0o660)
       }
       db.insert(schema.servers)
         .values({
@@ -235,7 +269,7 @@ export class JobRunner {
         })
         .run()
 
-      this.step(id, 6)
+      step('Starting the server')
       await agent('service.start', { server: input.name })
       await this.waitActive(input.name)
 
@@ -247,6 +281,12 @@ export class JobRunner {
       })
     } catch (err) {
       const message = friendly(err)
+      if (source && moved.length) {
+        // Give the files back to the staging folder so the import can be tried again.
+        await moveBack(source, dir, moved).catch((e) =>
+          console.error('[flytower] moving imported files back failed', e),
+        )
+      }
       if (created) await this.rollback(input.name, message)
       return this.update(id, { state: 'failed', message })
     }
