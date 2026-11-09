@@ -8,6 +8,10 @@ const live = useLiveStatuses()
 const status = computed<ServiceState>(
   () => live.value[name.value] ?? server.value?.status ?? 'unknown',
 )
+const liveHealth = useLiveHealth()
+const health = computed<Health>(
+  () => liveHealth.value[name.value] ?? server.value?.health ?? { condition: null, crash: null },
+)
 const running = computed(() => status.value === 'active' || status.value === 'activating')
 const busy = ref<null | 'start' | 'stop' | 'restart'>(null)
 const confirming = ref<null | 'stop' | 'restart'>(null)
@@ -29,7 +33,7 @@ async function act(action: 'start' | 'stop' | 'restart') {
   }
 }
 
-provideServerContext({ server, status, refresh })
+provideServerContext({ server, status, health, refresh })
 
 const tabs = computed(() => [
   { label: 'Console', icon: 'i-lucide-terminal', to: `/servers/${name.value}`, exact: true },
@@ -53,7 +57,7 @@ const tabs = computed(() => [
           <UButton icon="i-lucide-arrow-left" variant="ghost" color="neutral" to="/" />
         </template>
         <template #trailing>
-          <StatusBadge v-if="server" :status="status" />
+          <StatusBadge v-if="server" :status="status" :condition="health.condition" />
           <CopyAddress
             v-if="server"
             :server="server"

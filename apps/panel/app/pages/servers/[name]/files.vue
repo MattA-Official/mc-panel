@@ -82,7 +82,9 @@ const loadingFile = ref<string | null>(null)
 async function open(e: Entry) {
   if (e.type === 'dir') return go(join(path.value, e.name))
   if (e.type !== 'file') return
-  const p = join(path.value, e.name)
+  await openPath(join(path.value, e.name))
+}
+async function openPath(p: string) {
   loadingFile.value = p
   try {
     const { content } = await $fetch<{ content: string }>(`${base.value}/read` as string, {
@@ -95,6 +97,12 @@ async function open(e: Entry) {
     loadingFile.value = null
   }
 }
+// Links such as a crash banner's open a file straight away: ?path=/crash-reports&open=crash-….txt
+onMounted(() => {
+  const name = route.query.open
+  if (typeof name === 'string' && /^[^/]+$/.test(name)) void openPath(join(path.value, name))
+})
+
 const dirty = computed(() => !!editing.value && editing.value.content !== editing.value.original)
 function closeEditor() {
   if (dirty.value && !confirm('Discard your unsaved changes?')) return

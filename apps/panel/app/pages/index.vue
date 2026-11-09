@@ -4,6 +4,10 @@ const { data: health } = await useFetch('/api/health')
 const { data: servers } = await useFetch<Server[]>('/api/servers', { default: () => [] })
 const live = useLiveStatuses()
 const statusOf = (s: Server) => live.value[s.name] ?? s.status
+const liveHealth = useLiveHealth()
+const healthOf = (s: Server) => liveHealth.value[s.name] ?? s.health
+const when = (iso: string) =>
+  new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 </script>
 
 <template>
@@ -47,7 +51,17 @@ const statusOf = (s: Server) => live.value[s.name] ?? s.status
                 </h2>
                 <p class="text-xs text-muted"><CopyAddress :server="s" /></p>
               </div>
-              <StatusBadge :status="statusOf(s)" />
+              <div class="flex shrink-0 items-center gap-2">
+                <UTooltip v-if="healthOf(s).crash" :text="`Crashed ${when(healthOf(s).crash!.at)}`">
+                  <span
+                    class="size-2 rounded-full bg-error"
+                    role="img"
+                    :aria-label="`Crashed ${when(healthOf(s).crash!.at)}`"
+                    data-e2e="crash-dot"
+                  />
+                </UTooltip>
+                <StatusBadge :status="statusOf(s)" :condition="healthOf(s).condition" />
+              </div>
             </div>
             <dl class="mt-4 grid grid-cols-3 gap-2 text-sm">
               <div>

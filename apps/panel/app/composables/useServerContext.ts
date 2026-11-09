@@ -3,6 +3,7 @@ import type { InjectionKey, Ref } from 'vue'
 export interface ServerContext {
   server: Ref<Server | null | undefined>
   status: Ref<ServiceState>
+  health: Ref<Health>
   refresh: () => Promise<void>
 }
 
