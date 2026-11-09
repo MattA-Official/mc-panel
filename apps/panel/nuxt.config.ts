@@ -26,10 +26,14 @@ export default defineNuxtConfig({
   runtimeConfig: {
     version: '0.0.0-dev',
     agentSocket: '/run/flytower/agent.sock',
+    dbPath: '/var/lib/flytower/flytower.db',
   },
   nitro: {
     preset: 'bun',
     experimental: { websocket: true },
+  },
+  $development: {
+    runtimeConfig: { dbPath: '.data/flytower.db' },
   },
   typescript: { strict: true },
 })

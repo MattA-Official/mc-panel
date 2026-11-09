@@ -3,3 +3,5 @@ bun.lock
 **/.nuxt
 **/.output
 **/public/*.svg
+**/migrations/meta
+**/migrations.gen.ts
