@@ -1,0 +1,27 @@
+# Flytower documentation
+
+Flytower is a web panel for running Minecraft servers on your own VPS. You install it once, then create and look after servers from the browser. You sign in with a passkey.
+
+## Getting started
+
+- [Installing Flytower](install.md): what you need, the installer, and its options.
+- [Your first server](first-server.md): creating, starting and joining a server.
+- [Passkeys and recovery codes](account.md): signing in, extra devices, and what to do if you lose them.
+
+## Running servers
+
+- [Mods, plugins and datapacks](content.md): Modrinth, Hangar, Vanilla Tweaks, and your own files.
+- [Backups](backups.md): schedules, retention, restoring, and off-site copies.
+- [Addresses and DNS](addresses.md): giving each server its own hostname.
+- [Server YAML reference](spec.md): every field of a server spec.
+
+## Looking after the machine
+
+- [Updating Flytower](updating.md): self-update, going back, and upgrading old installs.
+- [Troubleshooting](troubleshooting.md): logs, SSH, and getting the panel itself back.
+
+## How it fits together
+
+- The **panel** (`flytower-panel`) is the web app. It runs as the unprivileged `flytower` user and listens only on `127.0.0.1:3000`. Caddy puts it on HTTPS.
+- The **agent** (`flytower-agent`) is a small root helper. It does a fixed list of jobs over a Unix socket: creating server users and folders, managing systemd units, installing Java, opening ports, and updating Flytower.
+- Each **server** runs as its own user (`mc-<name>`) from `/srv/flytower/servers/<name>`, under systemd (`flytower-mc@<name>`), with a fixed memory limit. Its folder is an ordinary Minecraft server folder that still runs without Flytower.

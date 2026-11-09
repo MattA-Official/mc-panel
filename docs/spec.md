@@ -1,0 +1,100 @@
+# Server YAML reference
+
+Every server can be written as one YAML document, its **spec**. The **YAML** tab shows a server's spec and lets you edit it. **New server**, **From YAML** makes a server from one. Changes go through a [plan](first-server.md#plans) like any other.
+
+The first line points editors at the schema (`/schema/server-v1.json` on your panel). In VS Code with the YAML extension, that gives you autocomplete and checking.
+
+## Example
+
+```yaml
+# yaml-language-server: $schema=https://panel.example.com/schema/server-v1.json
+name: survival
+displayName: Weekend Survival
+loader:
+  type: fabric
+  minecraft: '26.3'
+memory: 6G
+port: 25566
+hostname: survival.example.com
+properties:
+  motd: Welcome back
+  difficulty: normal
+  max-players: 30
+  view-distance: 12
+content:
+  - modrinth: lithium
+  - modrinth: chunky
+  - vanillatweaks: Survival/multiplayer sleep
+  - url: https://example.com/my-datapack.zip
+    sha256: 0f343b0931126a20f133d67c2b018a3b5f0c6d0e7c5c1f2a2b1e5c8d9f7a6b5c
+    kind: datapack
+backups:
+  schedule: '0 4 * * *'
+  timezone: Europe/London
+  keep: { last: 6, daily: 7, weekly: 4 }
+  offsite: B2
+```
+
+## Fields
+
+### `name` (required)
+
+The short name, used for the server's folder, user and unit. Lowercase letters, digits and hyphens, 2 to 31 characters, starting with a letter. It can't change once the server exists.
+
+### `displayName`
+
+What players and you see. Defaults to the name.
+
+### `loader` (required)
+
+| Field       | Meaning                                                                                                     |
+| ----------- | ----------------------------------------------------------------------------------------------------------- |
+| `type`      | `vanilla`, `fabric` or `paper`.                                                                             |
+| `minecraft` | The Minecraft version, **in quotes** (unquoted, YAML reads `1.20` as the number 1.2).                       |
+| `version`   | The Fabric loader version or Paper build number. Leave it out for the newest stable one when the plan runs. |
+
+Changing the version or loader goes through a plan that takes a backup first. Going back to an older Minecraft version is refused, because worlds can't be downgraded. Restore a backup instead.
+
+### `memory`
+
+Memory for Java, like `4G` or `3584M`, between 1G and 64G. It must fit the machine's [memory budget](first-server.md#memory-budget).
+
+### `port`
+
+The game port, 1024 to 65535. Leave it out to use the next free one. Clashes with other servers are refused.
+
+### `hostname`
+
+The address players use, such as `survival.example.com`. `null` clears it; left out, it stays as it is. See [Addresses and DNS](addresses.md).
+
+### `properties`
+
+Values for `server.properties`: strings, numbers or booleans. Anything left out keeps its current value. Values equal to Minecraft's defaults are left out when Flytower writes a spec. `server-port`, `enable-rcon`, `rcon.port` and `rcon.password` are managed by Flytower and can't be set here.
+
+### `content`
+
+The full list of what the server runs. Anything installed through Flytower that isn't listed is removed. Dependencies don't need listing. Each item is one of:
+
+| Item           | Fields                                                                                                                                                   |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Modrinth       | `modrinth`: project slug or id. `version`: a version number or id (newest compatible if left out). `kind`: `mod`, `plugin` or `datapack`, rarely needed. |
+| Hangar         | `hangar`: `slug` or `owner/slug` (Paper only). `version`: a version name (newest compatible if left out).                                                |
+| Vanilla Tweaks | `vanillatweaks`: `"Category/pack name"`, as on their site. `tweak`: `crafting` for a crafting tweak; datapack otherwise.                                 |
+| A link         | `url`: an `https` link. `sha256`: the file's hash; it's refused if it doesn't match. `kind`: `mod`, `plugin` or `datapack`. `filename`: optional.        |
+
+See [Mods, plugins and datapacks](content.md).
+
+### `backups`
+
+Left out entirely, a server's backup settings stay as they are. When present:
+
+| Field      | Meaning                                                                                                                            |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `schedule` | A cron expression (minute hour day month weekday), such as `'0 4 * * *'` for 4am daily, or `null` for no schedule.                 |
+| `timezone` | The time zone the schedule runs in, such as `Europe/London`. Defaults to UTC.                                                      |
+| `keep`     | `last` (default 6), `daily` (7) and `weekly` (4): how many scheduled backups to keep. See [Backups](backups.md#how-many-are-kept). |
+| `offsite`  | The name of [off-site storage](backups.md#off-site-copies) from the System page, or `null` for none. Left out, it stays.           |
+
+## Errors
+
+Mistakes are marked on their line with a message saying what's wrong, and you can't apply until they're fixed. Problems the plan finds (a port in use, a mod with no build for your version, not enough memory) are listed in the plan, and stop it from applying.
