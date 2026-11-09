@@ -19,6 +19,8 @@ export class StatusWatcher {
     private agent: AgentCall,
     private names: () => string[],
     private intervalMs = 3000,
+    /** Called with every poll's states, changed or not (notifications use it). */
+    private onPoll?: (statuses: StatusMap) => void,
   ) {}
 
   /** The latest known states, or a fresh poll if nothing is watching yet. */
@@ -66,6 +68,11 @@ export class StatusWatcher {
       Object.keys(next).length !== Object.keys(this.last).length ||
       names.some((n) => next[n] !== this.last[n])
     this.last = next
+    try {
+      this.onPoll?.(next)
+    } catch (err) {
+      console.error('[flytower] status hook failed', err)
+    }
     if (changed) for (const l of this.listeners) l(next)
   }
 }

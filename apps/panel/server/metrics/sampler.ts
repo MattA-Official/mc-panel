@@ -145,7 +145,10 @@ export class MetricsSampler {
         ? this.deps
             .agent('service.usage', { servers: names }, { timeoutMs: 10_000 })
             .then((r) => r.usage)
-            .catch((): Result<'service.usage'>['usage'] => ({}))
+            .catch((err): Result<'service.usage'>['usage'] => {
+              console.error('[flytower] reading server usage for metrics failed', err)
+              return {}
+            })
         : Promise.resolve<Result<'service.usage'>['usage']>({}),
       this.deps.machine().catch(() => null),
     ])

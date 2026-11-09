@@ -24,6 +24,7 @@ export class RunningTracker {
       const was = this.last.get(server)
       this.last.set(server, running)
       if (was === undefined || was === running) continue
+      console.log(`[flytower] notifications: ${server} ${running ? 'started' : 'stopped'}`)
       this.n.notify(
         running
           ? {

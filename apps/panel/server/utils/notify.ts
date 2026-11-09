@@ -56,6 +56,25 @@ function serverNames() {
     .map((r) => r.name)
 }
 
+/** Spots servers starting and stopping, from the metrics sampler and the status poller. */
+function useRunningTracker(): RunningTracker {
+  running ??= new RunningTracker(useNotify())
+  return running
+}
+
+/**
+ * Feeds the status poller's states (every few seconds while someone has the panel open, and
+ * after every start, stop or restart) to the start and stop tracker. Only settled states count.
+ */
+export function notifyStatuses(statuses: Record<string, string>) {
+  const settled: Record<string, boolean> = {}
+  for (const [server, state] of Object.entries(statuses)) {
+    if (state === 'active') settled[server] = true
+    else if (state === 'inactive' || state === 'failed') settled[server] = false
+  }
+  useRunningTracker().update(settled)
+}
+
 /** Follows server logs for joins and leaves while a channel wants them. */
 export function usePlayerWatcher(): PlayerWatcher {
   players ??= new PlayerWatcher(useNotify(), useRuntimeConfig().serversDir)
@@ -73,8 +92,7 @@ export function afterSample(sample: {
   machine: MachineReading | null
 }) {
   const notify = useNotify()
-  running ??= new RunningTracker(notify)
-  running.update(sample.active)
+  useRunningTracker().update(sample.active)
   const m = sample.machine
   if (m?.diskUsedMb != null && m.diskTotalMb && notify.wants('disk.full')) {
     notify.disk(m.diskUsedMb, m.diskTotalMb)
