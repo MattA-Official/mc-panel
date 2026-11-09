@@ -20,6 +20,7 @@
       "dependencies": {
         "@flytower/protocol": "workspace:*",
         "@flytower/providers": "workspace:*",
+        "@flytower/rcon": "workspace:*",
         "@fontsource-variable/big-shoulders-display": "^5.3.0",
         "@fontsource-variable/ibm-plex-sans": "^5.3.0",
         "@fontsource/ibm-plex-mono": "^5.3.0",
