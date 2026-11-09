@@ -114,6 +114,7 @@ if [[ -z "$tarball" ]]; then
     die "this release's signature doesn't match Flytower's key; refusing to install it"
   (cd "$work" && grep " $name\$" SHA256SUMS | sha256sum -c --quiet -) ||
     die "the download didn't match its checksum; try again"
+  echo "Release signature checked: this is a genuine Flytower release."
   tarball="$work/$name"
 fi
 
