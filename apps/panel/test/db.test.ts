@@ -1,3 +1,4 @@
+import { Database } from 'bun:sqlite'
 import { describe, expect, it } from 'bun:test'
 import { eq } from 'drizzle-orm'
 import { migrate, openDb, schema } from '../server/db'
@@ -67,5 +68,31 @@ describe('database', () => {
         .values({ ...base, name: 'b', port: 25565, rconPort: 25576 })
         .run(),
     ).toThrow()
+  })
+
+  it('ticks crash alerts on channels that already take problem alerts', () => {
+    const sqlite = new Database(':memory:')
+    const before = migrations.filter((m) => m.tag < '0009')
+    migrate(sqlite, before)
+    const add = sqlite.prepare(
+      "INSERT INTO notify_channels (name, kind, url_sealed, target, events) VALUES (?, 'ntfy', 'x', 't', ?)",
+    )
+    add.run('problems', JSON.stringify(['backup.failed', 'update.flytower']))
+    add.run('chatter', JSON.stringify(['player.joined']))
+    migrate(sqlite)
+    const events = Object.fromEntries(
+      sqlite
+        .query<{ name: string; events: string }, []>('SELECT name, events FROM notify_channels')
+        .all()
+        .map((r) => [r.name, (JSON.parse(r.events) as string[]).sort()]),
+    )
+    expect(events.problems).toEqual([
+      'backup.failed',
+      'server.crash_loop',
+      'server.crashed',
+      'server.unresponsive',
+      'update.flytower',
+    ])
+    expect(events.chatter).toEqual(['player.joined'])
   })
 })
