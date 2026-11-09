@@ -30,6 +30,7 @@ export default defineNuxtConfig({
     /** Where the agent puts server folders; the panel reads logs from here. */
     serversDir: '/srv/flytower/servers',
     backupsDir: '/var/lib/flytower/backups',
+    exportsDir: '/var/lib/flytower/exports',
     setupTokenFile: '/var/lib/flytower/setup-token.hash',
     devSetupToken: '',
     /** Pins the passkey domain; empty means the request's host. */
@@ -49,6 +50,7 @@ export default defineNuxtConfig({
       dbPath: '.data/flytower.db',
       serversDir: '.data/servers',
       backupsDir: '.data/backups',
+      exportsDir: '.data/exports',
       agentSocket: '.data/agent.sock',
       setupTokenFile: '.data/setup-token.hash',
       devSetupToken: 'dev-setup-token',

@@ -1,10 +1,12 @@
 import type { H3Event } from 'h3'
 import { z } from 'zod'
+import { ExportService } from '../backups/exports'
 import { BackupScheduler } from '../backups/scheduler'
 import { BackupError, BackupService } from '../backups/service'
 import { schema } from '../db'
 
 let service: BackupService | undefined
+let exportService: ExportService | undefined
 let scheduler: BackupScheduler | undefined
 
 /** The one backup service for this process. */
@@ -20,6 +22,18 @@ export function useBackups(): BackupService {
     stopped: (name) => useConsole().forget(name),
   })
   return service
+}
+
+/** The one export service for this process. */
+export function useExports(): ExportService {
+  exportService ??= new ExportService({
+    db: useDb(),
+    exportsDir: useRuntimeConfig().exportsDir,
+    serverDir,
+    backups: useBackups(),
+    jobs: useJobs(),
+  })
+  return exportService
 }
 
 /** Re-reads every server's schedule and updates the cron jobs. */
@@ -47,7 +61,7 @@ export async function backupContext(event: H3Event) {
 
 function toHttp(err: unknown): never {
   if (err instanceof BackupError) {
-    const missing = err.message === 'No such backup.'
+    const missing = err.message.startsWith('No such')
     throw createError({ statusCode: missing ? 404 : 409, statusMessage: err.message })
   }
   throw err
@@ -71,3 +85,18 @@ export function audit(userId: number, action: string, target: string, detail?: o
 }
 
 const BackupParams = z.object({ name: z.string().max(40), id: z.coerce.number().int().optional() })
+
+/** Streams a zip as a download with a readable, safe file name. */
+export function zipResponse(path: string, filename: string) {
+  const file = Bun.file(path)
+  const ascii = filename.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '')
+  return new Response(file, {
+    headers: {
+      'content-type': 'application/zip',
+      'content-length': String(file.size),
+      'content-disposition': `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+      'cache-control': 'private, no-store',
+      'referrer-policy': 'no-referrer',
+    },
+  })
+}

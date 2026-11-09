@@ -38,6 +38,7 @@ export default defineEventHandler(async (event) => {
   const db = useDb()
   db.delete(schema.servers).where(eq(schema.servers.name, name)).run()
   syncBackupSchedules()
+  await useExports().removeAll(name)
   db.insert(schema.audit)
     .values({ userId: user.id, action: 'server.delete', target: name, detail: { archivedTo } })
     .run()
