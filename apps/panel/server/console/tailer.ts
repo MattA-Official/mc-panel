@@ -1,6 +1,7 @@
 import { open, stat } from 'node:fs/promises'
 
 export interface TailerOptions {
+  /** How often to check the file; 0 never does, and the caller calls tick() when it changes. */
   pollMs?: number
   /** How much of the end of the file to replay on start. */
   seedBytes?: number
@@ -26,6 +27,7 @@ export class LogTailer {
 
   async start() {
     await this.seed()
+    if (this.opts.pollMs === 0) return
     this.timer = setInterval(() => void this.tick(), this.opts.pollMs ?? 500)
   }
 

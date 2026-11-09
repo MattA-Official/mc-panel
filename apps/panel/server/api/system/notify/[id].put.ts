@@ -17,6 +17,5 @@ export default defineEventHandler(async (event) => {
     enabled: changed.enabled,
     newAddress: !!body.url,
   })
-  syncPlayerWatcher()
   return changed
 })
