@@ -8,7 +8,7 @@ const { data: health } = await useFetch('/api/health')
     <template #header>
       <UDashboardNavbar title="Servers">
         <template #right>
-          <UButton icon="i-lucide-plus" label="New server" disabled />
+          <UButton icon="i-lucide-plus" label="New server" to="/servers/new" />
         </template>
       </UDashboardNavbar>
     </template>
