@@ -53,7 +53,7 @@ const {
 })
 const updateFor = (title: string) => updates.value?.updates.find((u) => u.label === title)
 
-const KIND_LABEL: Record<Kind, string> = { mod: 'Mod', datapack: 'Datapack' }
+const KIND_LABEL: Record<Kind, string> = { mod: 'Mod', plugin: 'Plugin', datapack: 'Datapack' }
 
 // Changes go through a plan the person reviews.
 const change = ref<{
