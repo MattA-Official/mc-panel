@@ -136,8 +136,26 @@ const UrlItem = z
   })
   .strict()
 
-const ContentItem = z.union([ModrinthItem, UrlItem], {
-  error: 'Each content item needs "modrinth" (a project) or "url" with "sha256" and "kind".',
+const VanillaTweaksItem = z
+  .object({
+    vanillatweaks: z
+      .string()
+      .trim()
+      .regex(/^[^/]{1,60}(\/[^/]{1,60})*\/[^/]{1,80}$/, 'Write it as "Category/pack name".')
+      .describe(
+        'A Vanilla Tweaks pack as "Category/pack name", e.g. "Survival/multiplayer sleep".',
+      ),
+    tweak: z
+      .enum(['datapack', 'crafting'])
+      .optional()
+      .describe('"crafting" for a crafting tweak; datapacks are the default.'),
+    kind: z.literal('datapack').optional(),
+  })
+  .strict()
+
+const ContentItem = z.union([ModrinthItem, UrlItem, VanillaTweaksItem], {
+  error:
+    'Each content item needs "modrinth" (a project), "vanillatweaks" (a pack), or "url" with "sha256" and "kind".',
 })
 
 const Keep = z

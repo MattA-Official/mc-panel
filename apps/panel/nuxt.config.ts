@@ -36,6 +36,7 @@ export default defineNuxtConfig({
     archiveDir: '/var/lib/flytower/archive',
     /** Modrinth's API; overridable for a mirror or for tests. */
     modrinthApi: 'https://api.modrinth.com/v2',
+    vanillaTweaksSite: 'https://vanillatweaks.net',
     setupTokenFile: '/var/lib/flytower/setup-token.hash',
     devSetupToken: '',
     /** Pins the passkey domain; empty means the request's host. */

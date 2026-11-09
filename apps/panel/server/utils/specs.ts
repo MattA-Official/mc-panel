@@ -1,4 +1,9 @@
-import { modrinthProvider, type ContentProvider } from '@flytower/providers'
+import {
+  modrinthProvider,
+  vanillaTweaksProvider,
+  type ContentProvider,
+  type VanillaTweaksProvider,
+} from '@flytower/providers'
 import type { H3Event } from 'h3'
 import { z } from 'zod'
 import { SpecError, SpecService } from '../spec/apply'
@@ -6,6 +11,13 @@ import { LockError } from '../spec/lock'
 
 let modrinth: ContentProvider | undefined
 let service: SpecService | undefined
+let vanillaTweaks: VanillaTweaksProvider | undefined
+
+/** The Vanilla Tweaks source, shared so its catalogue cache is too. */
+export function useVanillaTweaks(): VanillaTweaksProvider {
+  vanillaTweaks ??= vanillaTweaksProvider(fetch, useRuntimeConfig().vanillaTweaksSite)
+  return vanillaTweaks
+}
 
 /** The Modrinth provider, shared so its cache is too. */
 export function useModrinth(): ContentProvider {
@@ -22,6 +34,7 @@ export function useSpecs(): SpecService {
     jobs: useJobs(),
     backups: useBackups(),
     modrinth: useModrinth(),
+    vanillatweaks: useVanillaTweaks(),
     fetch,
     readProperties,
     writeProperties,

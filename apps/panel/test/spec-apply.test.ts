@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'bun:test'
 import type { Verb } from '@flytower/protocol'
 import {
+  vanillaTweaksProvider,
   ProviderError,
   type ContentProvider,
   type ContentRef,
@@ -14,6 +15,7 @@ import { ServerSpec, type ServerSpecInput } from '../shared/spec'
 import { openDb, schema } from '../server/db'
 import { JobRunner, type AgentCall } from '../server/jobs/runner'
 import { SpecService } from '../server/spec/apply'
+import { writeZip } from '../server/zip'
 import { LOCK_FILE, readLock } from '../server/spec/lock'
 import { parseProperties, stringifyProperties, setProperties, toRecord } from '../server/properties'
 
@@ -70,9 +72,41 @@ function fakeModrinth(opts: { badHash?: string } = {}): ContentProvider {
   }
 }
 
+// A Vanilla Tweaks download: a zip holding one datapack zip, both with names at the root.
+const vtDir = mkdtempSync(join(tmpdir(), 'ft-vt-'))
+writeFileSync(join(vtDir, 'pack.mcmeta'), '{"pack":{"pack_format":80}}')
+const entry = (name: string, source: string) => ({
+  name,
+  source,
+  size: Bun.file(source).size,
+  mtime: new Date(),
+  mode: 0o644,
+})
+await writeZip([entry('pack.mcmeta', join(vtDir, 'pack.mcmeta'))], join(vtDir, 'inner.zip'))
+await writeZip(
+  [entry('graves v3.0.0 (MC 26.3).zip', join(vtDir, 'inner.zip'))],
+  join(vtDir, 'wrapped.zip'),
+)
+const INNER = readFileSync(join(vtDir, 'inner.zip'))
+const WRAPPED = readFileSync(join(vtDir, 'wrapped.zip'))
+
 const fetchFiles = (async (input: string | URL | Request) => {
-  const m = /cdn\.test\/([^/]+)\/(.+)$/.exec(String(input))
-  return m ? new Response(`${m[1]}@${m[2]}`) : new Response('', { status: 404 })
+  const url = String(input)
+  const m = /cdn\.test\/([^/]+)\/(.+)$/.exec(url)
+  if (m) return new Response(`${m[1]}@${m[2]}`)
+  if (url.endsWith('/26.3/dpcategories.json')) {
+    return Response.json({
+      categories: [
+        { category: 'Survival', packs: [{ name: 'graves', display: 'Graves', version: '3.0.0' }] },
+      ],
+    })
+  }
+  if (url.endsWith('/26.3/ctcategories.json')) return Response.json({ categories: [] })
+  if (url.endsWith('/zipdatapacks.php')) {
+    return Response.json({ status: 'success', link: '/download/VanillaTweaks_d1_UNZIP_ME.zip' })
+  }
+  if (url.endsWith('/download/VanillaTweaks_d1_UNZIP_ME.zip')) return new Response(WRAPPED)
+  return new Response('', { status: 404 })
 }) as never
 
 function setup(opts: { running?: boolean; loader?: 'vanilla' | 'fabric'; badHash?: string } = {}) {
@@ -148,6 +182,7 @@ function setup(opts: { running?: boolean; loader?: 'vanilla' | 'fabric'; badHash
       },
     },
     modrinth: fakeModrinth(opts),
+    vanillatweaks: vanillaTweaksProvider(fetchFiles, 'https://vt.test'),
     fetch: fetchFiles,
     readProperties: async () => toRecord(parseProperties(readFileSync(propsPath, 'utf8'))),
     writeProperties: async (_n, changes) =>
@@ -391,5 +426,36 @@ describe('content listing', () => {
     expect(list.pending).toEqual([{ modrinth: 'lithium' }])
     expect(list.unmanaged).toEqual([{ path: 'mods/handmade.jar', kind: 'mod' }])
     expect((await service.currentSpec('survival')).content).toHaveLength(2)
+  })
+})
+
+describe('vanilla tweaks', () => {
+  it('installs the datapack from inside the wrapper zip, on a vanilla server', async () => {
+    const { service, spec, dir } = setup({ loader: 'vanilla' })
+    const plan = await service.plan(
+      'survival',
+      spec({ content: [{ vanillatweaks: 'Survival/graves' }] }),
+    )
+    expect(plan.problems).toEqual([])
+    expect(plan.changes).toMatchObject([{ action: 'add', label: 'Graves', to: '3.0.0' }])
+    expect(await (await service.apply('survival', plan.id)).done).toMatchObject({
+      state: 'succeeded',
+    })
+    const installed = readFileSync(join(dir, 'world', 'datapacks', 'vt-graves.zip'))
+    expect(Buffer.compare(installed, INNER)).toBe(0)
+    const lock = await readLock(dir)
+    expect(lock.content[0]).toMatchObject({
+      source: 'vanillatweaks',
+      projectId: 'datapack:Survival/graves',
+      sha256: new Bun.CryptoHasher('sha256').update(INNER).digest('hex'),
+    })
+    const listing = await service.content('survival')
+    expect(listing.items[0]!.asked).toBe(true)
+    expect(listing.pending).toEqual([])
+    const again = await service.plan(
+      'survival',
+      spec({ content: [{ vanillatweaks: 'Survival/graves' }] }),
+    )
+    expect(again.changes).toEqual([])
   })
 })

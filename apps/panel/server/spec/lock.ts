@@ -9,7 +9,7 @@ import { z } from 'zod'
 export const LOCK_FILE = 'flytower.lock.json'
 
 const LockedItem = z.object({
-  source: z.enum(['modrinth', 'url']),
+  source: z.enum(['modrinth', 'url', 'vanillatweaks']),
   projectId: z.string(),
   slug: z.string(),
   title: z.string(),

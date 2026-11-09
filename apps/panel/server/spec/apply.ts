@@ -2,10 +2,18 @@
  * Plans and applies specs. A plan is kept for a while under an id with a fingerprint of
  * what it was based on, so apply does exactly what was shown or refuses.
  */
-import { mkdir, rename, rm, stat } from 'node:fs/promises'
+import { mkdir, readdir, rename, rm, stat } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { eq } from 'drizzle-orm'
-import { downloadVerified, type ContentProvider, type Fetch } from '@flytower/providers'
+import {
+  downloadVerified,
+  ProviderError,
+  requestDownload,
+  type ContentProvider,
+  type Fetch,
+  type VanillaTweaksProvider,
+} from '@flytower/providers'
+import { listZip, unzip } from '../unzip'
 import { SPEC_STEPS, type JobEvent } from '../../shared/utils/jobs'
 import type { ServerSpec } from '../../shared/spec'
 import { schema, type Db } from '../db'
@@ -30,6 +38,7 @@ export interface SpecDeps {
   }
   backups: Pick<BackupService, 'lock' | 'snapshot'>
   modrinth: ContentProvider
+  vanillatweaks?: VanillaTweaksProvider
   fetch: Fetch
   readProperties: (name: string) => Promise<Record<string, string>>
   writeProperties: (name: string, changes: Record<string, string>) => Promise<void>
@@ -74,6 +83,45 @@ export function levelNameOf(props: Record<string, string>) {
   return level
 }
 
+/** Whether a lockfile entry is the one a spec item asked for. */
+export function askedFor(a: ServerSpec['content'][number], l: LockedItem) {
+  if ('modrinth' in a) {
+    return l.source === 'modrinth' && (a.modrinth === l.slug || a.modrinth === l.projectId)
+  }
+  if ('vanillatweaks' in a) {
+    return (
+      l.source === 'vanillatweaks' &&
+      l.projectId.toLowerCase() === `${a.tweak ?? 'datapack'}:${a.vanillatweaks}`.toLowerCase()
+    )
+  }
+  return l.source === 'url' && a.url === l.url
+}
+
+/**
+ * Replaces a zip that holds one zip (as Vanilla Tweaks sends datapacks) with the zip inside.
+ * Returns the SHA-256 of what is kept.
+ */
+async function unwrap(file: string, work: string): Promise<string> {
+  const inner = (await listZip(file)).filter((i) => !i.dir && /\.zip$/i.test(i.name))
+  if (inner.length !== 1) {
+    throw new ProviderError(
+      `Expected one datapack inside the download, found ${inner.length}. Upload the pack in Files instead.`,
+    )
+  }
+  await rm(work, { recursive: true, force: true })
+  await mkdir(work, { recursive: true })
+  await unzip(file, work, { maxBytes: 512 * 1024 * 1024 })
+  const files = (await readdir(work, { recursive: true, withFileTypes: true })).filter(
+    (e) => e.isFile() && /\.zip$/i.test(e.name),
+  )
+  if (files.length !== 1)
+    throw new ProviderError('The Vanilla Tweaks download was not as expected.')
+  const found = join(files[0]!.parentPath, files[0]!.name)
+  await rename(found, file)
+  await rm(work, { recursive: true, force: true })
+  return new Bun.CryptoHasher('sha256').update(await Bun.file(file).arrayBuffer()).digest('hex')
+}
+
 export class SpecService {
   private plans = new Map<string, StoredPlan>()
   private now: () => number
@@ -116,12 +164,7 @@ export class SpecService {
     const props = await this.deps.readProperties(name)
     const lock = await readLock(dir)
     const asked = row.content ?? []
-    const isAsked = (l: LockedItem) =>
-      asked.some((a) =>
-        'modrinth' in a
-          ? l.source === 'modrinth' && (a.modrinth === l.slug || a.modrinth === l.projectId)
-          : l.source === 'url' && a.url === l.url,
-      )
+    const isAsked = (l: LockedItem) => asked.some((a) => askedFor(a, l))
     return {
       accepts: row.loader === 'vanilla' ? ['datapack'] : ['mod', 'datapack'],
       items: lock.content.map((l) => ({
@@ -136,12 +179,7 @@ export class SpecService {
         requiredBy: l.requiredBy,
       })),
       // Asked for, but not installed yet (say, a spec pasted in that hasn't been applied).
-      pending: asked.filter(
-        (a) =>
-          !lock.content.some((l) =>
-            'modrinth' in a ? a.modrinth === l.slug || a.modrinth === l.projectId : a.url === l.url,
-          ),
-      ),
+      pending: asked.filter((a) => !lock.content.some((l) => askedFor(a, l))),
       unmanaged: await unmanagedFiles(dir, lock, levelNameOf(props)),
     }
   }
@@ -171,6 +209,7 @@ export class SpecService {
         .all(),
       upgrade,
       modrinth: this.deps.modrinth,
+      vanillatweaks: this.deps.vanillatweaks,
       now: () => new Date(this.now()),
     })
     this.sweep()
@@ -244,12 +283,10 @@ export class SpecService {
     try {
       for (const [i, d] of work.downloads.entries()) {
         job.step(2, `${d.title} (${i + 1} of ${work.downloads.length})`)
-        const { sha256 } = await downloadVerified(
-          this.deps.fetch,
-          d.url,
-          join(staging, 'new', String(i)),
-          d.hash,
-        )
+        const dest = join(staging, 'new', String(i))
+        const url = d.request ? await requestDownload(this.deps.fetch, d.request) : d.url
+        let { sha256 } = await downloadVerified(this.deps.fetch, url, dest, d.hash)
+        if (d.wrapped) sha256 = await unwrap(dest, join(staging, 'unwrap', String(i)))
         const entry = lock.content.find((l) => l.path === d.path)
         if (entry) entry.sha256 = sha256
       }

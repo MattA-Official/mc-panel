@@ -5,6 +5,7 @@
 import {
   resolveAll,
   type ContentProvider,
+  type VanillaTweaksProvider,
   type ResolvedContent,
   type WantedContent,
 } from '@flytower/providers'
@@ -77,15 +78,16 @@ export interface PlanInput {
   /** Projects (ids or slugs) allowed to move to a newer version, or true for all. */
   upgrade?: true | string[]
   modrinth: ContentProvider
+  vanillatweaks?: VanillaTweaksProvider
   now?: () => Date
 }
 
 const lockedKey = (l: Pick<LockedItem, 'source' | 'projectId'>) => `${l.source}:${l.projectId}`
 
 function toWanted(item: ServerSpec['content'][number]): WantedContent {
-  return 'modrinth' in item
-    ? { modrinth: item.modrinth, version: item.version, kind: item.kind }
-    : { url: item.url, sha256: item.sha256, kind: item.kind, filename: item.filename }
+  if ('modrinth' in item) return { modrinth: item.modrinth, version: item.version, kind: item.kind }
+  if ('vanillatweaks' in item) return { vanillatweaks: item.vanillatweaks, tweak: item.tweak }
+  return { url: item.url, sha256: item.sha256, kind: item.kind, filename: item.filename }
 }
 
 export async function makePlan(input: PlanInput): Promise<Plan> {
@@ -198,7 +200,7 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
     input.upgrade === true || (input.upgrade ?? []).some((u) => u === l.projectId || u === l.slug)
   const pinnedBy = new Map<string, string>()
   for (const l of lock.content) {
-    if (l.source !== 'modrinth' || upgrading(l)) continue
+    if (l.source === 'url' || upgrading(l)) continue
     pinnedBy.set(l.projectId, l.versionId)
     pinnedBy.set(l.slug, l.versionId)
   }
@@ -206,7 +208,7 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
     spec.content.map(toWanted),
     { loader: row.loader, minecraft: row.mcVersion },
     input.modrinth,
-    { pinned: (p) => pinnedBy.get(p) },
+    { pinned: (p) => pinnedBy.get(p), vanillatweaks: input.vanillatweaks },
   )
   problems.push(...resolved.problems)
   for (const item of resolved.items) {
@@ -234,8 +236,8 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
       kind: item.kind,
       path,
       url: item.url,
-      sha256: item.hash.algorithm === 'sha256' ? item.hash.value : '',
-      ...(item.hash.algorithm === 'sha512' ? { sha512: item.hash.value } : {}),
+      sha256: item.hash?.algorithm === 'sha256' ? item.hash.value : '',
+      ...(item.hash?.algorithm === 'sha512' ? { sha512: item.hash.value } : {}),
       size: item.size,
       requiredBy: item.requiredBy,
     }
