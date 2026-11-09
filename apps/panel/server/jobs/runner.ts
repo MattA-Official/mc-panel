@@ -252,7 +252,33 @@ export class JobRunner {
     }
   }
 
-  private async waitActive(name: string) {
+  /**
+   * A job run by something else (a backup, a restore): same table, same bus, so the same
+   * progress UI and reload-and-catch-up work for it.
+   */
+  track(kind: string, server: string | null, steps: readonly string[]): JobTracker {
+    const job = this.deps.db
+      .insert(schema.jobs)
+      .values({ kind, server, state: 'queued' })
+      .returning()
+      .get()
+    return {
+      id: job.id,
+      step: (index, message = null) =>
+        this.update(job.id, {
+          state: 'running',
+          step: steps[index]!,
+          progress: Math.round((index / steps.length) * 100),
+          message,
+        }),
+      succeed: (message) =>
+        this.update(job.id, { state: 'succeeded', step: 'Done', progress: 100, message }),
+      fail: (err) => this.update(job.id, { state: 'failed', message: friendly(err) }),
+    }
+  }
+
+  /** Waits for a server's unit to be active, failing if it crashes or takes too long. */
+  async waitActive(name: string) {
     const deadline = Date.now() + (this.deps.startTimeoutMs ?? 60_000)
     for (;;) {
       const { active } = await this.deps.agent('service.status', { server: name })
@@ -274,7 +300,14 @@ export class JobRunner {
   }
 }
 
-function friendly(err: unknown): string {
+export interface JobTracker {
+  id: number
+  step(index: number, message?: string | null): JobEvent
+  succeed(message: string | null): JobEvent
+  fail(err: unknown): JobEvent
+}
+
+export function friendly(err: unknown): string {
   if (err instanceof ProviderError || err instanceof JobError) return err.message
   if (err instanceof Error && err.name === 'AgentError')
     return `The system helper said: ${err.message}`

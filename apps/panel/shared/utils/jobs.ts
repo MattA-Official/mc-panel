@@ -9,6 +9,20 @@ export const CREATE_SERVER_STEPS = [
   'Starting the server',
 ] as const
 
+export const BACKUP_STEPS = [
+  'Checking free space',
+  'Saving the world',
+  'Archiving',
+  'Tidying old backups',
+] as const
+
+export const RESTORE_STEPS = [
+  'Stopping the server',
+  'Taking a safety copy',
+  'Unpacking the backup',
+  'Starting the server',
+] as const
+
 export interface JobEvent {
   id: number
   state: 'queued' | 'running' | 'succeeded' | 'failed'

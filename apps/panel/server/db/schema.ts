@@ -58,9 +58,31 @@ export const servers = sqliteTable(
     rconPort: integer('rcon_port').notNull(),
     rconPassword: text('rcon_password').notNull(),
     eulaAcceptedAt: integer('eula_accepted_at', { mode: 'timestamp_ms' }).notNull(),
+    /** 5-field cron expression for scheduled backups; null means off. */
+    backupSchedule: text('backup_schedule'),
+    /** IANA time zone the schedule is read in, e.g. Europe/London. */
+    backupTz: text('backup_tz').notNull().default('UTC'),
+    keepLast: integer('keep_last').notNull().default(6),
+    keepDaily: integer('keep_daily').notNull().default(7),
+    keepWeekly: integer('keep_weekly').notNull().default(4),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex('servers_port').on(t.port), uniqueIndex('servers_rcon_port').on(t.rconPort)],
+)
+
+export const backups = sqliteTable(
+  'backups',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    server: text('server').notNull(),
+    /** File name inside the server's backup folder. */
+    file: text('file').notNull(),
+    bytes: integer('bytes').notNull(),
+    kind: text('kind', { enum: ['manual', 'scheduled', 'safety'] }).notNull(),
+    note: text('note'),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('backups_file').on(t.server, t.file)],
 )
 
 export const jobs = sqliteTable('jobs', {
