@@ -143,7 +143,15 @@ try {
     )
     await view.click('[data-e2e=restore]')
     await waitForText(view, 'Restore this backup?')
-    await clickButton(view, 'Restore')
+    await until('the Restore button in the dialog', () =>
+      view.evaluate<boolean>(`(() => {
+        const b = [...document.querySelectorAll('[role=dialog] button')].find((e) => e.innerText.trim() === 'Restore')
+        if (!b) return false
+        b.setAttribute('data-e2e', 'confirm-restore')
+        return true
+      })()`),
+    )
+    await view.click('[data-e2e=confirm-restore]')
     const outcome = await until(
       'the restore to finish',
       () =>
@@ -157,7 +165,14 @@ try {
       1000,
     ).catch(async (err) => {
       const text = await view.evaluate<string>('document.body.innerText').catch(() => '')
-      throw new Error(`${(err as Error).message}; the page said: ${text.slice(0, 600)}`)
+      const toasts = await view
+        .evaluate<string>(
+          `[...document.querySelectorAll('[role=region] li, [data-sonner-toast], [role=status], [role=alert]')].map((e) => e.innerText).join(' | ')`,
+        )
+        .catch(() => '')
+      throw new Error(
+        `${(err as Error).message}; toasts: ${toasts || 'none'}; the page ended: ${text.slice(-500)}`,
+      )
     })
     if (outcome !== 'ok') throw new Error(`restore failed: ${outcome}`)
     await shot('3-restored')
