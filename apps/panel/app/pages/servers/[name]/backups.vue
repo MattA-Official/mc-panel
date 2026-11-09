@@ -129,7 +129,9 @@ async function remove() {
   const b = deleting.value
   if (!b) return
   try {
-    await $fetch(`/api/servers/${name.value}/backups/${b.id}` as string, { method: 'DELETE' })
+    await withElevation(() =>
+      $fetch<unknown>(`/api/servers/${name.value}/backups/${b.id}` as string, { method: 'DELETE' }),
+    )
     toast.add({ title: 'Backup deleted', color: 'success' })
     deleting.value = null
     refresh()
