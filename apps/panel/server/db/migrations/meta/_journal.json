@@ -50,6 +50,13 @@
       "when": 1794247040972,
       "tag": "0006_silky_bedlam",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1794260844447,
+      "tag": "0007_shallow_karma",
+      "breakpoints": true
     }
   ]
 }
