@@ -59,3 +59,11 @@ export const SPEC_STEPS = [
   'Saving settings',
   'Starting the server',
 ] as const
+
+export const WORLD_RESET_STEPS = [
+  'Backing up',
+  'Stopping the server',
+  'Clearing the world',
+  'Setting the seed',
+  'Starting the server',
+] as const
