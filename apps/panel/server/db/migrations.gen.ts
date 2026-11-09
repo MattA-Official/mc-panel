@@ -11,5 +11,9 @@ export const migrations: { tag: string; sql: string }[] = [
   {
     "tag": "0002_hot_warbound",
     "sql": "CREATE TABLE `exports` (\n\t`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,\n\t`server` text NOT NULL,\n\t`file` text NOT NULL,\n\t`bytes` integer NOT NULL,\n\t`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,\n\t`expires_at` integer NOT NULL\n);\n--> statement-breakpoint\nCREATE TABLE `shares` (\n\t`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,\n\t`export_id` integer NOT NULL,\n\t`token_hash` text NOT NULL,\n\t`created_by` integer,\n\t`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,\n\t`expires_at` integer NOT NULL,\n\t`revoked_at` integer,\n\t`downloads` integer DEFAULT 0 NOT NULL,\n\tFOREIGN KEY (`export_id`) REFERENCES `exports`(`id`) ON UPDATE no action ON DELETE cascade,\n\tFOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null\n);\n--> statement-breakpoint\nCREATE UNIQUE INDEX `shares_token` ON `shares` (`token_hash`);"
+  },
+  {
+    "tag": "0003_futuristic_the_anarchist",
+    "sql": "ALTER TABLE `servers` ADD `content` text DEFAULT '[]' NOT NULL;"
   }
 ]

@@ -115,14 +115,16 @@ export function parseSpec(text: string): ParsedSpec {
   }
   const spec = parsed.data
   const issues: SpecIssue[] = []
-  const tzPath = spec.backups.schedule ? ['backups', 'schedule'] : ['backups', 'timezone']
-  try {
-    if (spec.backups.schedule) nextRun(spec.backups.schedule, spec.backups.timezone)
-    else new Intl.DateTimeFormat('en', { timeZone: spec.backups.timezone })
-  } catch (err) {
-    const msg = (err as Error).message
-    const path = msg.startsWith('Unknown time zone') ? ['backups', 'timezone'] : tzPath
-    issues.push({ path: issuePath(path), message: msg, line: lineOf(text, path) })
+  const b = spec.backups
+  if (b) {
+    try {
+      if (b.schedule) nextRun(b.schedule, b.timezone)
+      else new Intl.DateTimeFormat('en', { timeZone: b.timezone })
+    } catch (err) {
+      const msg = (err as Error).message
+      const path = ['backups', msg.startsWith('Unknown time zone') ? 'timezone' : 'schedule']
+      issues.push({ path: issuePath(path), message: msg, line: lineOf(text, path) })
+    }
   }
   return issues.length ? { ok: false, issues } : { ok: true, spec }
 }

@@ -1,3 +1,4 @@
+import type { ContentItem } from '../../shared/spec'
 import { sql } from 'drizzle-orm'
 import { blob, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
@@ -65,6 +66,8 @@ export const servers = sqliteTable(
     keepLast: integer('keep_last').notNull().default(6),
     keepDaily: integer('keep_daily').notNull().default(7),
     keepWeekly: integer('keep_weekly').notNull().default(4),
+    /** The spec's content list as written; the lockfile in the server folder pins it. */
+    content: text('content', { mode: 'json' }).$type<ContentItem[]>().notNull().default([]),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex('servers_port').on(t.port), uniqueIndex('servers_rcon_port').on(t.rconPort)],

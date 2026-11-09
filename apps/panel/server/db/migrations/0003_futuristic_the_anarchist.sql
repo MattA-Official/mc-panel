@@ -1,0 +1,1 @@
+ALTER TABLE `servers` ADD `content` text DEFAULT '[]' NOT NULL;

@@ -178,11 +178,9 @@ export const ServerSpec = z
       .describe('The game port. Leave it out to use the next free one.'),
     properties: Properties.default({}),
     content: z.array(ContentItem).max(500).default([]),
-    backups: Backups.default({
-      schedule: null,
-      timezone: 'UTC',
-      keep: { last: 6, daily: 7, weekly: 4 },
-    }),
+    backups: Backups.optional().describe(
+      'Backup schedule and how many to keep. Left out, the current settings stay.',
+    ),
   })
   .strict()
   .describe('A Flytower server.')
@@ -213,6 +211,7 @@ export function compactSpec(spec: ServerSpec): ServerSpecInput {
   if (Object.keys(spec.properties).length) out.properties = spec.properties
   if (spec.content.length) out.content = spec.content
   const b = spec.backups
+  if (!b) return out as ServerSpecInput
   const keepDefault = b.keep.last === 6 && b.keep.daily === 7 && b.keep.weekly === 4
   if (b.schedule || b.timezone !== 'UTC' || !keepDefault) {
     out.backups = {

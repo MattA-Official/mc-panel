@@ -22,6 +22,7 @@ const row = {
   keepLast: 6,
   keepDaily: 7,
   keepWeekly: 4,
+  content: [{ modrinth: 'lithium' }],
 }
 
 const props = {
@@ -44,11 +45,7 @@ describe('spec', () => {
     if (!r.ok) return
     expect(r.spec.properties).toEqual({})
     expect(r.spec.content).toEqual([])
-    expect(r.spec.backups).toEqual({
-      schedule: null,
-      timezone: 'UTC',
-      keep: { last: 6, daily: 7, weekly: 4 },
-    })
+    expect(r.spec.backups).toBeUndefined()
   })
 
   test('a server becomes a spec that reads back the same', () => {

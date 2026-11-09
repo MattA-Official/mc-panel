@@ -96,7 +96,7 @@ export function specFromServer(row: ServerRow, props: Record<string, string>): S
     memory: row.memoryMb,
     port: row.port,
     properties,
-    content: [],
+    content: row.content ?? [],
     backups: {
       schedule: row.backupSchedule,
       timezone: row.backupTz,
