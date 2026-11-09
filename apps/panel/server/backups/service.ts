@@ -260,6 +260,8 @@ export class BackupService {
           throw new BackupError(`The server didn't confirm the save: ${reply || 'no reply'}`)
         }
       }
+      // Minecraft writes level.dat and others as 0600; let the panel's group read them.
+      await this.deps.agent('server.permissions', { name: server }, { timeoutMs: 120_000 })
       return await fn()
     } finally {
       if (paused) {
@@ -338,6 +340,7 @@ export class BackupService {
     this.deps.stopped?.(server)
 
     job.step(1)
+    await agent('server.permissions', { name: server }, { timeoutMs: 120_000 })
     await this.checkSpace(server)
     const safety = await this.archive(server, 'safety', `Before restoring ${row.file}`)
 

@@ -21,7 +21,12 @@ export async function fileAction<T>(
   fn: () => Promise<T>,
 ): Promise<T> {
   try {
-    const out = await fn()
+    const out = await fn().catch(async (err) => {
+      // Minecraft writes some files as 0600. Ask the agent to restore group access, once.
+      if ((err as NodeJS.ErrnoException).code !== 'EACCES') throw err
+      await agent('server.permissions', { name: ctx.name }, { timeoutMs: 120_000 })
+      return fn()
+    })
     if (action) {
       useDb()
         .insert(schema.audit)
