@@ -17,6 +17,8 @@ interface FakeOptions {
   trickle?: boolean
   /** Never answer commands. */
   silent?: boolean
+  /** Handle only the first packet of each read, as Minecraft does. */
+  onePacketPerRead?: boolean
 }
 
 let server: TCPSocketListener<PacketParser> | null = null
@@ -43,7 +45,8 @@ function fakeServer(opts: FakeOptions = {}) {
     socket: {
       open: (s) => void (s.data = new PacketParser()),
       data: async (s, chunk) => {
-        for (const p of s.data.push(chunk)) {
+        const packets = s.data.push(chunk)
+        for (const p of opts.onePacketPerRead ? packets.slice(0, 1) : packets) {
           received.push(p)
           if (p.type === PacketType.Auth) {
             await send(s, p.body === password ? p.id : -1, PacketType.Command, '')
@@ -103,6 +106,23 @@ describe('Rcon', () => {
     rcon.close()
   })
 
+  it('finishes a reply that is an exact multiple of 4096 characters', async () => {
+    const exact = 'q'.repeat(8192)
+    const { port } = fakeServer({ reply: () => exact })
+    const rcon = await Rcon.connect({ host: '127.0.0.1', port, password: 'secret' })
+    expect(await rcon.command('help')).toBe(exact)
+    rcon.close()
+  })
+
+  it('never sends a second packet before the first reply is complete', async () => {
+    // Like Minecraft: anything after the first packet in one read is lost.
+    const { port, received } = fakeServer({ onePacketPerRead: true })
+    const rcon = await Rcon.connect({ host: '127.0.0.1', port, password: 'secret' })
+    expect(await Promise.all(['a', 'b'].map((c) => rcon.command(c)))).toEqual(['ran a', 'ran b'])
+    expect(received.map((p) => p.type)).toEqual([3, 2, 2])
+    rcon.close()
+  })
+
   it('copes with replies arriving a byte at a time', async () => {
     const { port } = fakeServer({ trickle: true })
     const rcon = await Rcon.connect({ host: '127.0.0.1', port, password: 'secret' })
@@ -115,8 +135,8 @@ describe('Rcon', () => {
     const rcon = await Rcon.connect({ host: '127.0.0.1', port, password: 'secret' })
     const replies = await Promise.all(['a', 'b', 'c'].map((c) => rcon.command(c)))
     expect(replies).toEqual(['a', 'b', 'c'].map((c) => `${c}:`.repeat(3000)))
-    // Each command is followed by its end marker before the next command goes out.
-    expect(received.slice(1).map((p) => p.type)).toEqual([2, 0, 2, 0, 2, 0])
+    // One packet per command, never more than one in flight.
+    expect(received.slice(1).map((p) => p.type)).toEqual([2, 2, 2])
     rcon.close()
   })
 
