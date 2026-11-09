@@ -2,6 +2,7 @@
 /** Updating Flytower itself, and going back. Minecraft servers keep running throughout. */
 interface Status {
   current: string
+  channel: 'stable' | 'beta'
   installed: string[]
   last: {
     state: 'running' | 'succeeded' | 'rolled-back' | 'failed'
@@ -11,7 +12,13 @@ interface Status {
     at: string
     manual: boolean
   } | null
-  latest: { version: string; notes: string; url: string; publishedAt: string } | null
+  latest: {
+    version: string
+    notes: string
+    url: string
+    publishedAt: string
+    prerelease: boolean
+  } | null
   checkError: string | null
 }
 
@@ -29,6 +36,38 @@ async function check() {
     checking.value = false
   }
 }
+
+const channels = [
+  { value: 'stable', label: 'Stable', description: 'Only finished releases.' },
+  {
+    value: 'beta',
+    label: 'Beta',
+    description: 'Also betas, to try new features early. They may have rough edges.',
+  },
+]
+const savingChannel = ref(false)
+
+async function setChannel(channel: Status['channel']) {
+  if (!data.value || channel === data.value.channel) return
+  savingChannel.value = true
+  try {
+    await $fetch('/api/system/updates/channel', { method: 'PUT', body: { channel } })
+    data.value = await $fetch<Status>('/api/system/updates', { query: { check: true } })
+  } catch (err) {
+    toast.add({
+      title: "Couldn't change the channel",
+      description: errorMessage(err),
+      color: 'error',
+    })
+  } finally {
+    savingChannel.value = false
+  }
+}
+
+/** Running a beta with Stable chosen: nothing is offered until a newer stable release. */
+const onBetaStable = computed(
+  () => data.value?.channel === 'stable' && data.value.current.includes('-'),
+)
 
 const previous = computed(() =>
   (data.value?.installed ?? []).filter((v) => v !== data.value?.current).at(-1),
@@ -101,11 +140,29 @@ const when = (at: string) =>
       </div>
       <p v-if="data.checkError" class="text-warning">{{ data.checkError }}</p>
 
+      <URadioGroup
+        :model-value="data.channel"
+        :items="channels"
+        legend="Update channel"
+        orientation="horizontal"
+        variant="card"
+        :disabled="savingChannel || !!working"
+        data-e2e="update-channel"
+        @update:model-value="(v) => setChannel(v as Status['channel'])"
+      />
+      <p v-if="onBetaStable" class="text-xs text-muted">
+        You're running a beta. Flytower will offer the next stable release that's newer than it; to
+        leave the beta sooner, go back to the version you had before.
+      </p>
+
       <div v-if="data.latest" class="space-y-3 rounded-md border border-default p-3">
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <ULink :to="data.latest.url" target="_blank" class="font-medium text-primary">
-            What's new in {{ data.latest.version }}
-          </ULink>
+          <div class="flex items-center gap-2">
+            <ULink :to="data.latest.url" target="_blank" class="font-medium text-primary">
+              What's new in {{ data.latest.version }}
+            </ULink>
+            <UBadge v-if="data.latest.prerelease" label="Beta" color="warning" variant="subtle" />
+          </div>
           <UButton
             :label="`Update to ${data.latest.version}`"
             icon="i-lucide-arrow-up-circle"
@@ -117,6 +174,10 @@ const when = (at: string) =>
         <pre class="max-h-48 overflow-auto whitespace-pre-wrap text-xs text-muted">{{
           data.latest.notes
         }}</pre>
+        <p v-if="data.latest.prerelease" class="text-xs text-warning">
+          This is a beta, for trying new features before they're released. Take a backup of anything
+          you care about first; you can go back afterwards.
+        </p>
         <p class="text-xs text-muted">
           Minecraft servers keep running. The panel restarts and comes back in under a minute; if
           the new version doesn't start properly, Flytower goes back by itself.

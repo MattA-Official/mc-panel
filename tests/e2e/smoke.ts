@@ -591,6 +591,36 @@ try {
       `metrics: ${sample.cpu}% CPU, ${sample.memMb} MB, ${sample.players} online, ${sample.mspt} ms a tick`,
     )
 
+    // Update channel: choose Beta on the System page, and it sticks after a reload.
+    await view.navigate(`${base}/system`)
+    await waitForText(view, 'Update channel', 30_000)
+    await view.evaluate(`(() => {
+      const group = document.querySelector('[data-e2e=update-channel]')
+      const beta = [...group.querySelectorAll('label')].find((l) => l.innerText.trim().startsWith('Beta'))
+      beta.click()
+    })()`)
+    await until(
+      'the Beta channel saved',
+      async () =>
+        (await api<{ channel: string }>(view, '/api/system/updates')).body?.channel === 'beta',
+      30_000,
+      500,
+    )
+    await view.navigate(`${base}/system`)
+    await waitForText(view, 'Update channel', 30_000)
+    const checked = await view.evaluate<string | null>(`(() => {
+      const r = document.querySelector('[data-e2e=update-channel] [role=radio][aria-checked=true]')
+      return r?.closest('[data-slot=item]')?.innerText?.trim() ?? null
+    })()`)
+    if (!checked?.startsWith('Beta'))
+      throw new Error(`after a reload, the channel shows ${checked}`)
+    const back = await api<{ channel: string }>(view, '/api/system/updates/channel', {
+      method: 'PUT',
+      body: { channel: 'stable' },
+    })
+    if (back.body.channel !== 'stable') throw new Error(`channel not changed back: ${back.status}`)
+    step('update channel set to Beta through the UI, and kept after a reload')
+
     // Paper: newest stable build, checked by sha256, starts and answers RCON.
     const paperVersions = await api<{ id: string }[]>(view, '/api/loaders/paper/minecraft')
     const paperMc = paperVersions.body[0]?.id

@@ -164,9 +164,10 @@ jobs:
       - id: list
         env:
           GH_TOKEN: ${{ github.token }}
+        # Releases only (v-tags, betas included); pull request test builds (pr-*) aren't upgrade sources.
         run: |
           versions="$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
-            --jq '[.[] | select(.draft | not) | .tag_name | ltrimstr("v")]' | jq -sc 'add')"
+            --jq '[.[] | select(.draft | not) | .tag_name | select(startswith("v")) | ltrimstr("v")]' | jq -sc 'add')"
           echo "versions=$versions" >> "$GITHUB_OUTPUT"
           echo "$versions"
 
