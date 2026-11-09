@@ -222,7 +222,12 @@ export class BackupService {
   private async archive(server: string, kind: BackupKind, note: string | null) {
     const dir = this.folder(server)
     await mkdir(dir, { recursive: true, mode: 0o750 })
-    const createdAt = this.now()
+    // Names have one-second resolution; two backups in the same second take the next free one.
+    let createdAt = this.now()
+    const taken = new Set(await readdir(dir).catch(() => [] as string[]))
+    while (taken.has(`${server}-${stampOf(createdAt)}-${kind}.tar.zst`)) {
+      createdAt = new Date(createdAt.getTime() + 1000)
+    }
     const file = `${server}-${stampOf(createdAt)}-${kind}.tar.zst`
     const { bytes } = await createArchive(this.deps.serverDir(server), join(dir, file))
     return this.deps.db

@@ -167,3 +167,15 @@ describe('backups', () => {
     ).toHaveLength(1)
   })
 })
+
+describe('backup names', () => {
+  it('two backups in the same second get different files', async () => {
+    const { service, db } = setup()
+    const fixed = new Date(Date.UTC(2026, 10, 9, 12))
+    ;(service as unknown as { now: () => Date }).now = () => fixed
+    await service.snapshot('survival', 'one')
+    await service.snapshot('survival', 'two')
+    const rows = db.select().from(schema.backups).all()
+    expect(new Set(rows.map((r) => r.file)).size).toBe(2)
+  })
+})
