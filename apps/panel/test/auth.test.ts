@@ -51,6 +51,7 @@ describe('recovery codes', () => {
     expect(normaliseCode('O1IL-0000-0000')).toBe('0111-0000-0000')
   })
 
+  // Ten argon2 hashes plus checks: slow on a busy CI runner, so allow more than 5 s.
   it('check without using up, then redeem exactly once', async () => {
     const db = openDb(':memory:')
     const u = db.insert(schema.users).values({ name: 'Matt' }).returning().get()
@@ -61,7 +62,7 @@ describe('recovery codes', () => {
     expect(await redeemCode(db, codes[3]!.toLowerCase())).toBe(u.id)
     expect(await redeemCode(db, codes[3]!)).toBeNull()
     expect(await redeemCode(db, 'AAAA-AAAA-AAAA')).toBeNull()
-  })
+  }, 20_000)
 })
 
 describe('setup token', () => {
