@@ -29,10 +29,11 @@ Allow about 45 minutes. For section 3 you'll need a bucket somewhere: Backblaze 
 - [ ] The real test: delete a backup's local file over SSH (`rm /var/lib/flytower/backups/<server>/<file>`). The backup now shows **Off-site only**. Restore it, and Flytower downloads it first.
 - [ ] Turn your bucket's keys off (or remove the bucket) and take a backup. The upload is marked failed with the reason, and retries later. **Retry off-site copy** in its menu tries again straight away.
 - [ ] Your secret key never shows again after you save it, even on the System page.
+- [ ] In a server's **YAML**, `backups:` now shows `offsite: <name>`. Change it to another storage's name (or `null`) and apply. The plan shows **Off-site copies** changing. A name that doesn't exist is refused, with the names you can use.
 
 ## Not in 0.6.0 yet
 
-Setting off-site storage in a server's YAML, and limits on how many off-site copies to keep (they follow the server's local retention for now).
+Limits on how many off-site copies to keep (they follow the server's local retention for now).
 
 ## Reporting feedback
 

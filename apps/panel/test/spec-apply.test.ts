@@ -242,6 +242,11 @@ function setup(
           setProperties(parseProperties(readFileSync(propsPath, 'utf8')), changes),
         ),
       ),
+    offsiteTargets: () => [
+      { id: 1, name: 'B2' },
+      { id: 2, name: 'R2' },
+    ],
+    offsiteChanged: (n) => calls.push(`offsite ${n}`),
     sleep: async () => {},
   })
   const spec = (extra: Partial<ServerSpecInput> = {}) =>
@@ -307,6 +312,31 @@ describe('plan', () => {
     ])
     expect(plan.restart).toBe(true)
     expect(plan.backup).toBe(false)
+  })
+
+  it('sets off-site storage by name, and refuses one that does not exist', async () => {
+    const { service, spec, db, calls } = setup()
+    const set = await service.plan('survival', spec({ backups: { offsite: 'b2' } }))
+    expect(set.problems).toEqual([])
+    expect(set.changes).toEqual([
+      { area: 'backups', action: 'set', label: 'Off-site copies', from: 'None', to: 'B2' },
+    ])
+    expect(set.restart).toBe(false)
+    await (
+      await service.apply('survival', set.id)
+    ).done
+    expect(
+      db.select().from(schema.servers).where(eq(schema.servers.name, 'survival')).get(),
+    ).toMatchObject({ offsiteTarget: 1 })
+    expect(calls).toContain('offsite survival')
+    expect((await service.currentSpec('survival')).backups?.offsite).toBe('B2')
+    expect((await service.plan('survival', spec({ backups: {} }))).changes).toEqual([])
+    expect((await service.plan('survival', spec({ backups: { offsite: null } }))).changes).toEqual([
+      { area: 'backups', action: 'set', label: 'Off-site copies', from: 'B2', to: 'None' },
+    ])
+    expect((await service.plan('survival', spec({ backups: { offsite: 'S3' } }))).problems).toEqual(
+      ['There\'s no off-site storage called "S3". Use one of: B2, R2.'],
+    )
   })
 
   it('refuses a port clash, a new name and mods on vanilla', async () => {

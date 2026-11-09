@@ -76,7 +76,12 @@ export function typedValue(value: string): string | number | boolean {
   return value
 }
 
-export function specFromServer(row: ServerRow, props: Record<string, string>): ServerSpec {
+export function specFromServer(
+  row: ServerRow,
+  props: Record<string, string>,
+  /** Off-site storage names by id, to name the server's choice. */
+  targets: { id: number; name: string }[] = [],
+): ServerSpec {
   const properties: ServerSpec['properties'] = {}
   for (const [key, value] of Object.entries(props).sort(([a], [b]) => a.localeCompare(b))) {
     if (MANAGED_PROPERTIES.includes(key)) continue
@@ -102,6 +107,9 @@ export function specFromServer(row: ServerRow, props: Record<string, string>): S
       schedule: row.backupSchedule,
       timezone: row.backupTz,
       keep: { last: row.keepLast, daily: row.keepDaily, weekly: row.keepWeekly },
+      ...(row.offsiteTarget && targets.some((t) => t.id === row.offsiteTarget)
+        ? { offsite: targets.find((t) => t.id === row.offsiteTarget)!.name }
+        : {}),
     },
   }
 }

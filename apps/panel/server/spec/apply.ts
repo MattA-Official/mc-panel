@@ -54,6 +54,10 @@ export interface SpecDeps {
   writeProperties: (name: string, changes: Record<string, string>) => Promise<void>
   /** Called after backup settings change. */
   schedulesChanged?: () => void
+  /** Off-site storage, for specs that name it. */
+  offsiteTargets?: () => { id: number; name: string }[]
+  /** Called after a server's off-site storage changes, to copy its existing backups. */
+  offsiteChanged?: (name: string) => void
   /** Called once a server has stopped, to drop cached connections. */
   stopped?: (name: string) => void
   now?: () => number
@@ -168,7 +172,11 @@ export class SpecService {
 
   /** The server's spec as it stands now. */
   async currentSpec(name: string): Promise<ServerSpec> {
-    return specFromServer(this.row(name), await this.deps.readProperties(name))
+    return specFromServer(
+      this.row(name),
+      await this.deps.readProperties(name),
+      this.deps.offsiteTargets?.(),
+    )
   }
 
   /** What's installed, what was asked for, and what was added by hand. */
@@ -227,6 +235,7 @@ export class SpecService {
       vanillatweaks: this.deps.vanillatweaks,
       hangar: this.deps.hangar,
       loaders: this.deps.loaders,
+      offsiteTargets: this.deps.offsiteTargets?.(),
       memoryProblem: (memoryMb) => {
         const { jobs } = this.deps
         if (!jobs.memoryUsers || !jobs.totalMemoryMb) return null
@@ -410,10 +419,12 @@ export class SpecService {
               keepWeekly: s.backups.keep.weekly,
             }
           : {}),
+        ...(s.offsiteTarget !== undefined ? { offsiteTarget: s.offsiteTarget } : {}),
         content: s.content,
       })
       .where(eq(schema.servers.name, name))
       .run()
     if (s.backups) this.deps.schedulesChanged?.()
+    if (s.offsiteTarget) this.deps.offsiteChanged?.(name)
   }
 }

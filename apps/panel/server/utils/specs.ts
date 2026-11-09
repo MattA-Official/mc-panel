@@ -49,6 +49,8 @@ export function useSpecs(): SpecService {
     readProperties,
     writeProperties,
     schedulesChanged: syncBackupSchedules,
+    offsiteTargets: () => useOffsite().targets(),
+    offsiteChanged: (name) => useOffsite().queueServer(name),
     stopped: (name) => useConsole().forget(name),
   })
   return service

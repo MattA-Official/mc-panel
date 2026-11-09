@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { schema } from '../../../../db'
 import { offsiteHttp } from '../../../../backups/offsite-http'
@@ -16,14 +16,7 @@ export default defineEventHandler(async (event) => {
     .set({ offsiteTarget: target })
     .where(eq(schema.servers.name, name))
     .run()
-  if (target !== null) {
-    const waiting = db
-      .select()
-      .from(schema.backups)
-      .where(and(eq(schema.backups.server, name), isNull(schema.backups.offsiteState)))
-      .all()
-    for (const row of waiting) offsite.queue(row)
-  }
+  if (target !== null) offsite.queueServer(name)
   audit(user.id, 'backup.offsite', name, { target: t?.name ?? null })
   return { backups: (await service.list(name)).length }
 })

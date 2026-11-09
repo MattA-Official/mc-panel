@@ -200,6 +200,16 @@ const Backups = z
       .describe('A cron expression such as "0 4 * * *", or null for none.'),
     timezone: z.string().trim().min(1).max(60).default('UTC'),
     keep: Keep.default({ last: 6, daily: 7, weekly: 4 }),
+    offsite: z
+      .string()
+      .trim()
+      .min(1)
+      .max(60)
+      .nullable()
+      .optional()
+      .describe(
+        'Off-site storage (by its name on the System page) to copy backups to, or null for none. Left out, it stays.',
+      ),
   })
   .strict()
 
@@ -270,11 +280,12 @@ export function compactSpec(spec: ServerSpec): ServerSpecInput {
   const b = spec.backups
   if (!b) return out as ServerSpecInput
   const keepDefault = b.keep.last === 6 && b.keep.daily === 7 && b.keep.weekly === 4
-  if (b.schedule || b.timezone !== 'UTC' || !keepDefault) {
+  if (b.schedule || b.timezone !== 'UTC' || !keepDefault || b.offsite) {
     out.backups = {
       schedule: b.schedule,
       ...(b.timezone !== 'UTC' ? { timezone: b.timezone } : {}),
       ...(keepDefault ? {} : { keep: b.keep }),
+      ...(b.offsite ? { offsite: b.offsite } : {}),
     }
   }
   return out as ServerSpecInput

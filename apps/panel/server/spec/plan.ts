@@ -47,6 +47,8 @@ export interface SettingsChange {
     timezone: string
     keep: { last: number; daily: number; weekly: number }
   }
+  /** Off-site storage to copy backups to; null for none. */
+  offsiteTarget?: number | null
   content: ServerSpec['content']
 }
 
@@ -94,6 +96,8 @@ export interface PlanInput {
   modrinth: ContentProvider
   vanillatweaks?: VanillaTweaksProvider
   hangar?: ContentProvider
+  /** Off-site storage that backups can be copied to. */
+  offsiteTargets?: { id: number; name: string }[]
   /** Why this server can't have that much memory, if it can't. */
   memoryProblem?: (memoryMb: number) => string | null
   /** Needed to change the Minecraft version or loader. */
@@ -215,6 +219,31 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
         ]),
         to: describeBackups(b.schedule, b.timezone, [b.keep.last, b.keep.daily, b.keep.weekly]),
       })
+    }
+    if (b.offsite !== undefined) {
+      const targets = input.offsiteTargets ?? []
+      const nameOf = (id: number | null) => targets.find((t) => t.id === id)?.name ?? 'None'
+      const wanted =
+        b.offsite === null
+          ? null
+          : (targets.find((t) => t.name.toLowerCase() === b.offsite!.toLowerCase())?.id ??
+            undefined)
+      if (wanted === undefined) {
+        problems.push(
+          targets.length
+            ? `There's no off-site storage called "${b.offsite}". Use one of: ${targets.map((t) => t.name).join(', ')}.`
+            : `There's no off-site storage called "${b.offsite}". Add it on the System page first.`,
+        )
+      } else if (wanted !== row.offsiteTarget) {
+        settings.offsiteTarget = wanted
+        changes.push({
+          area: 'backups',
+          action: 'set',
+          label: 'Off-site copies',
+          from: nameOf(row.offsiteTarget),
+          to: nameOf(wanted),
+        })
+      }
     }
   }
 

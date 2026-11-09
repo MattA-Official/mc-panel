@@ -5,7 +5,7 @@
  * be restored from its copy.
  */
 import { stat } from 'node:fs/promises'
-import { and, eq, inArray, lt } from 'drizzle-orm'
+import { and, eq, inArray, isNull, lt } from 'drizzle-orm'
 import { schema, type Db } from '../db'
 
 export type Target = typeof schema.backupTargets.$inferSelect
@@ -212,6 +212,16 @@ export class OffsiteService {
       .where(eq(schema.backups.id, row.id))
       .run()
     void this.kick()
+  }
+
+  /** Queues a server's backups that have never been copied (after it gains a target). */
+  queueServer(server: string) {
+    const waiting = this.deps.db
+      .select()
+      .from(schema.backups)
+      .where(and(eq(schema.backups.server, server), isNull(schema.backups.offsiteState)))
+      .all()
+    for (const row of waiting) this.queue(row)
   }
 
   /** Tries a failed upload again now. */
