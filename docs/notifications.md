@@ -13,10 +13,13 @@ Set them up on **System**, **Notifications**. Each place Flytower sends to is a 
 | Problems | The disk is nearly full                          | Once at 85%, once more at 95%, and "back to normal" when it drops below 80%.                                |
 | Updates  | A new version of Flytower is out                 | Once per new version on your update channel (betas only on Beta). Flytower checks every six hours.          |
 | Updates  | Updates for installed mods, plugins or datapacks | Once per server per new set of updates, from the same check as the Content tab.                             |
-| Activity | A server started or stopped                      | Within a minute of it happening, however it happened.                                                       |
-| Activity | A player joined or left                          | From the server's log, within a couple of seconds.                                                          |
+| Activity | A server started or stopped                      | The moment players can join, and the moment it starts shutting down, however it happened.                   |
+| Activity | A server restarted from the panel                | "Restarting" when you press **Restart**, then "Restarted" once players can join again.                      |
+| Activity | A player joined or left                          | The moment it happens.                                                                                      |
 
 New channels start with the problems and updates ticked, and the activity left off. Crash alerts come with crash detection in a later release.
+
+**How activity is noticed.** Flytower reads each server's own log (`logs/latest.log`) and Linux tells it the moment a line is written, so nothing is checked on a timer and no mod or plugin is needed. "Server started" means the log said `Done (…)! For help, type "help"`, which is when players can actually join. "Server stopping" means it said `Stopping the server`. A restart from the panel sends "Restarting" and "Restarted" instead of a stop and a start. Chat can't fake any of these: a player typing "Steve joined the game" doesn't count.
 
 **Quiet periods.** The same problem on the same server is sent at most once every 30 minutes, so a backup that fails every hour doesn't flood the channel. Updates are sent once per version. Activity isn't held back.
 
@@ -58,7 +61,7 @@ For anything else (Slack through a workflow, Home Assistant, your own script), F
 }
 ```
 
-`kind` is one of `backup.failed`, `offsite.failed`, `disk.full`, `update.flytower`, `update.content`, `server.started`, `server.stopped`, `player.joined`, `player.left` or `test`. `severity` is `critical`, `warning`, `info` or `ok` ("back to normal"). `server` is `null` for machine-wide events.
+`kind` is one of `backup.failed`, `offsite.failed`, `disk.full`, `update.flytower`, `update.content`, `server.started`, `server.stopped`, `server.restarted`, `player.joined`, `player.left` or `test`. `severity` is `critical`, `warning`, `info` or `ok` ("back to normal"). `server` is `null` for machine-wide events.
 
 Headers: `X-Flytower-Event` (the kind), `X-Flytower-Delivery` (the id, the same across retries) and, if you set a signing secret, `X-Flytower-Signature`.
 
