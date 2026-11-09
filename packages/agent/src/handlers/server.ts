@@ -75,8 +75,9 @@ export async function create(
 }
 
 /**
- * Changes a server's memory and/or port. Memory rewrites the env file and the MemoryMax
- * drop-in; port swaps the firewall rule. Both take effect on the next restart.
+ * Changes a server's memory, Java and/or port. Memory and Java rewrite the env file (memory
+ * also the MemoryMax drop-in); port swaps the firewall rule. All take effect on the next
+ * restart.
  */
 export async function configure(
   p: Params<'server.configure'>,
@@ -85,14 +86,29 @@ export async function configure(
   const f = paths(ctx, p.name)
   if (!existsSync(f.env)) throw new AgentError('not_found', `no server called ${p.name}`)
 
-  if (p.memoryMb !== undefined) {
+  if (p.memoryMb !== undefined || p.javaMajor !== undefined) {
     const env = await readFile(f.env, 'utf8')
-    const javaHome = env.match(/^JAVA_HOME=(.+)$/m)?.[1]
+    let javaHome = env.match(/^JAVA_HOME=(.+)$/m)?.[1]
+    const heapMb = p.memoryMb ?? Number(env.match(/^HEAP_MB=(\d+)$/m)?.[1])
+    if (p.javaMajor !== undefined) {
+      javaHome = join(ctx.paths.runtimes, `temurin-${p.javaMajor}`)
+      if (!existsSync(join(javaHome, 'bin', 'java'))) {
+        throw new AgentError(
+          'failed',
+          `Java ${p.javaMajor} is not installed; run runtime.install first`,
+        )
+      }
+    }
     if (!javaHome) throw new AgentError('failed', `${f.env} has no JAVA_HOME`)
-    await writeFile(f.env, envFile(javaHome, p.memoryMb), { mode: 0o644 })
-    await mkdir(f.dropInDir, { recursive: true, mode: 0o755 })
-    await writeFile(join(f.dropInDir, 'limits.conf'), limitsDropIn(p.memoryMb), { mode: 0o644 })
-    await run(ctx, 'systemctl', ['daemon-reload'])
+    if (!heapMb) throw new AgentError('failed', `${f.env} has no HEAP_MB`)
+    await writeFile(f.env, envFile(javaHome, heapMb), { mode: 0o644 })
+    if (p.memoryMb !== undefined) {
+      await mkdir(f.dropInDir, { recursive: true, mode: 0o755 })
+      await writeFile(join(f.dropInDir, 'limits.conf'), limitsDropIn(p.memoryMb), {
+        mode: 0o644,
+      })
+      await run(ctx, 'systemctl', ['daemon-reload'])
+    }
   }
 
   if (p.port !== undefined) {

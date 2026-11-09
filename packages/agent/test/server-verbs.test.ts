@@ -163,6 +163,22 @@ describe('server.configure', () => {
     expect(limits).toContain('MemoryMax=3072M')
   })
 
+  it('switches Java, keeping the heap, and refuses a Java that is not installed', async () => {
+    const { exec } = fakeExec({ 'id -u mc-survival': { code: 1 } })
+    const { ctx } = fakeContext(exec, undefined, paths)
+    await dispatch(create(), handlers, ctx)
+    expect(await dispatch(configure({ javaMajor: 21 }), handlers, ctx)).toMatchObject({
+      ok: false,
+      error: { message: expect.stringContaining('Java 21 is not installed') },
+    })
+    mkdirSync(join(paths.runtimes, 'temurin-21', 'bin'), { recursive: true })
+    writeFileSync(join(paths.runtimes, 'temurin-21', 'bin', 'java'), '')
+    expect(await dispatch(configure({ javaMajor: 21 }), handlers, ctx)).toMatchObject({ ok: true })
+    const env = readFileSync(join(paths.config, 'servers', 'survival.env'), 'utf8')
+    expect(env).toContain(`JAVA_HOME=${paths.runtimes}/temurin-21`)
+    expect(env).toMatch(/^HEAP_MB=\d+$/m)
+  })
+
   it('swaps the firewall rule for a new port', async () => {
     const status = [
       'Status: active',

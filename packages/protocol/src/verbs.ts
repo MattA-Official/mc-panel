@@ -55,9 +55,14 @@ export const verbs = {
         name: ServerName,
         memoryMb: z.number().int().min(512).max(262144).optional(),
         port: Port.optional(),
+        /** Switches the server to another installed Java (runtime.install first). */
+        javaMajor: z.number().int().min(8).max(99).optional(),
       })
       .strict()
-      .refine((p) => p.memoryMb !== undefined || p.port !== undefined, 'nothing to change'),
+      .refine(
+        (p) => p.memoryMb !== undefined || p.port !== undefined || p.javaMajor !== undefined,
+        'nothing to change',
+      ),
     result: z.object({}),
   },
   /**
