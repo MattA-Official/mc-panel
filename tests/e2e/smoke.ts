@@ -413,6 +413,50 @@ try {
       await api(view, '/api/servers/smoke/world/pregen', { body: { action: 'cancel' } })
       step(`pre-generated with Chunky: ${progress.slice(0, 160)}`)
     }
+
+    // Clone the running server with its world: the gold block comes along.
+    const cloned = await api<{ jobId: number }>(view, '/api/servers/smoke/clone', {
+      body: {
+        name: 'smoke-copy',
+        displayName: 'Smoke copy',
+        memoryMb: 1024,
+        withWorld: true,
+        acceptEula: true,
+      },
+    })
+    if (cloned.status !== 202) throw new Error(`clone failed: ${JSON.stringify(cloned.body)}`)
+    await waitForJob(cloned.body.jobId, 'the clone job', 10 * 60_000)
+    const clonedGold = await until(
+      'the gold block in the clone',
+      async () => {
+        const r = await api<{ reply: string }>(view, '/api/servers/smoke-copy/command', {
+          body: { command: 'execute if block 0 100 0 minecraft:gold_block' },
+        })
+        return r.status === 200 ? r.body.reply : null
+      },
+      5 * 60_000,
+      2000,
+    )
+    if (!/passed/i.test(clonedGold)) throw new Error(`gold block missing in clone: ${clonedGold}`)
+    const budget = await api<{ budget: { servers: unknown[] } }>(view, '/api/servers/defaults')
+    step(
+      `cloned a running server with its world (${budget.body.budget.servers.length} servers in the memory budget)`,
+    )
+
+    // An over-budget clone is refused before anything is copied.
+    const tooBig = await api<{ statusMessage?: string }>(view, '/api/servers/smoke/clone', {
+      body: {
+        name: 'too-big',
+        displayName: 'Too big',
+        memoryMb: 65536,
+        withWorld: false,
+        acceptEula: true,
+      },
+    })
+    if (tooBig.status !== 409) {
+      throw new Error(`an over-budget clone should be refused: ${JSON.stringify(tooBig.body)}`)
+    }
+    await api(view, '/api/servers/smoke-copy/stop', { body: {} })
   }
   console.log('smoke test passed')
 } catch (err) {
