@@ -11,7 +11,7 @@ PREFIX="/opt/flytower"
 # Releases are signed with this key (installer/release-key.pem; a test keeps them equal).
 RELEASE_KEY="$(cat <<'KEY'
 -----BEGIN PUBLIC KEY-----
-PENDING
+MCowBQYDK2VwAyEAvYI8I2s8fiJ85JYPWsQCU56IZCNqHv+jJB3CqjERe+U=
 -----END PUBLIC KEY-----
 KEY
 )"
