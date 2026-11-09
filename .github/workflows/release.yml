@@ -3,6 +3,12 @@ name: Release
 on:
   push:
     tags: ['v*']
+  # Releasing from the Actions tab creates the tag too.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release, e.g. 0.1.0
+        required: true
 
 permissions:
   contents: read
@@ -19,6 +25,21 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: package.json
+
+      - name: Work out the tag
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            tag="v${INPUT_VERSION#v}"
+            [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "bad version $tag"; exit 1; }
+            if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then echo "$tag already exists"; exit 1; fi
+            git tag "$tag" "$GITHUB_SHA"
+          else
+            tag="$GITHUB_REF_NAME"
+          fi
+          echo "TAG=$tag" >> "$GITHUB_ENV"
+
       - run: bun install --frozen-lockfile
       - run: bun run lint
       - run: bun run typecheck
@@ -30,24 +51,24 @@ jobs:
 
       - name: Package
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          version="${TAG#v}"
           bun scripts/package.ts --version "$version" --arch amd64 --out dist
           bun scripts/package.ts --version "$version" --arch arm64 --out dist
           cp installer/install.sh dist/install.sh
           cd dist && sha256sum flytower-*.tar.gz install.sh > SHA256SUMS && cat SHA256SUMS
 
       - name: Release notes
-        run: bun scripts/release-notes.ts "$GITHUB_REF_NAME" > dist/NOTES.md
+        run: bun scripts/release-notes.ts "$TAG" > dist/NOTES.md
 
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          version="${TAG#v}"
           flags=()
           # Everything before 1.0 is a pre-release.
           if [[ "$version" == 0.* || "$version" == *-* ]]; then flags+=(--prerelease); fi
-          gh release create "$GITHUB_REF_NAME" "${flags[@]}" \
+          gh release create "$TAG" "${flags[@]}" --target "$GITHUB_SHA" \
             --title "Flytower $version" \
             --notes-file dist/NOTES.md \
             dist/flytower-*.tar.gz dist/install.sh dist/SHA256SUMS
