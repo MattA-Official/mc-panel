@@ -145,10 +145,15 @@ export async function remove(
 
   let archivedTo: string | null = null
   if (existsSync(f.dir)) {
-    await mkdir(ctx.paths.archive, { recursive: true, mode: 0o700 })
+    // Readable by the panel's group, so a deleted server can be imported again.
+    await mkdir(ctx.paths.archive, { recursive: true })
+    await run(ctx, 'chgrp', [ctx.panelGroup, ctx.paths.archive])
+    await run(ctx, 'chmod', ['0750', ctx.paths.archive])
     const stamp = new Date().toISOString().replace(/[:.]/g, '-')
     archivedTo = join(ctx.paths.archive, `${p.name}-${stamp}.tar.gz`)
     await run(ctx, 'tar', ['-czf', archivedTo, '-C', ctx.paths.servers, p.name])
+    await run(ctx, 'chgrp', [ctx.panelGroup, archivedTo])
+    await run(ctx, 'chmod', ['0640', archivedTo])
     await rm(f.dir, { recursive: true, force: true })
   }
 
