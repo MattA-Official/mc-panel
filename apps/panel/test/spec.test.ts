@@ -73,6 +73,22 @@ describe('spec', () => {
     })
   })
 
+  test('hostnames are full DNS names, stored lower case', () => {
+    const base = { name: 'ab', loader: { type: 'vanilla', minecraft: '26.3' } }
+    expect(ServerSpec.parse({ ...base, hostname: 'Survival.Example.com' }).hostname).toBe(
+      'survival.example.com',
+    )
+    expect(ServerSpec.parse({ ...base, hostname: null }).hostname).toBeNull()
+    for (const bad of [
+      'survival',
+      'bad_name.example.com',
+      '-x.example.com',
+      'x.example.com:25565',
+    ]) {
+      expect(ServerSpec.safeParse({ ...base, hostname: bad }).success).toBe(false)
+    }
+  })
+
   test('memory', () => {
     expect(memoryToMb('4G')).toBe(4096)
     expect(memoryToMb('3584M')).toBe(3584)

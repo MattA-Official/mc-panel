@@ -318,6 +318,27 @@ describe('plan', () => {
     expect(datapack.problems).toEqual([])
   })
 
+  it('sets, keeps, clears and refuses a taken hostname', async () => {
+    const { service, spec, db } = setup()
+    db.update(schema.servers)
+      .set({ hostname: 'creative.example.com' })
+      .where(eq(schema.servers.name, 'creative'))
+      .run()
+    const set = await service.plan('survival', spec({ hostname: 'survival.example.com' }))
+    expect(set.changes).toMatchObject([{ action: 'add', label: 'Address' }])
+    expect(set.restart).toBe(false)
+    await (
+      await service.apply('survival', set.id)
+    ).done
+    expect((await service.plan('survival', spec())).changes).toEqual([])
+    expect((await service.plan('survival', spec({ hostname: null }))).changes).toMatchObject([
+      { action: 'remove', label: 'Address', from: 'survival.example.com' },
+    ])
+    expect(
+      (await service.plan('survival', spec({ hostname: 'creative.example.com' }))).problems,
+    ).toEqual(["creative.example.com is already creative's address."])
+  })
+
   it('flags hand-added files that are in the way, and lists unmanaged ones', async () => {
     const { service, spec, dir } = setup()
     mkdirSync(join(dir, 'mods'))

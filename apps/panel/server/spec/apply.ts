@@ -211,6 +211,7 @@ export class SpecService {
           name: schema.servers.name,
           port: schema.servers.port,
           rconPort: schema.servers.rconPort,
+          hostname: schema.servers.hostname,
         })
         .from(schema.servers)
         .all(),
@@ -381,6 +382,7 @@ export class SpecService {
     db.update(schema.servers)
       .set({
         ...(s.displayName !== undefined ? { displayName: s.displayName } : {}),
+        ...(s.hostname !== undefined ? { hostname: s.hostname } : {}),
         ...(game
           ? {
               loader: game.loader,

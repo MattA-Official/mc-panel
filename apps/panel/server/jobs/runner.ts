@@ -42,6 +42,7 @@ export interface SpecExtras {
   properties?: Record<string, string>
   backups?: ServerSpec['backups']
   content?: ServerSpec['content']
+  hostname?: string | null
 }
 
 export interface RunnerDeps {
@@ -127,6 +128,17 @@ export class JobRunner {
   ): { jobId: number; done: Promise<JobEvent> } {
     const input = CreateServerInput.parse(raw)
     const { port, rconPort } = this.claim(input.name, input.port, input.memoryMb)
+    if (extras.hostname) {
+      const taken = this.deps.db
+        .select({ name: schema.servers.name })
+        .from(schema.servers)
+        .where(eq(schema.servers.hostname, extras.hostname))
+        .get()
+      if (taken) {
+        this.release(input.name, port, rconPort)
+        throw new JobError(`${extras.hostname} is already ${taken.name}'s address.`)
+      }
+    }
     const job = this.deps.db
       .insert(schema.jobs)
       .values({
@@ -137,13 +149,17 @@ export class JobRunner {
       .returning()
       .get()
 
-    const done = this.execute(job.id, input, port, rconPort, source, extras).finally(() => {
-      this.reservedNames.delete(input.name)
-      this.reservedMemory.delete(input.name)
-      this.reservedPorts.delete(port)
-      this.reservedPorts.delete(rconPort)
-    })
+    const done = this.execute(job.id, input, port, rconPort, source, extras).finally(() =>
+      this.release(input.name, port, rconPort),
+    )
     return { jobId: job.id, done }
+  }
+
+  private release(name: string, port: number, rconPort: number) {
+    this.reservedNames.delete(name)
+    this.reservedMemory.delete(name)
+    this.reservedPorts.delete(port)
+    this.reservedPorts.delete(rconPort)
   }
 
   /** Every server's memory, counting creates still running. */
@@ -323,6 +339,7 @@ export class JobRunner {
               }
             : {}),
           content: extras.content ?? [],
+          hostname: extras.hostname ?? null,
         })
         .run()
 

@@ -36,6 +36,8 @@ export interface Download extends ResolvedContent {
 
 export interface SettingsChange {
   displayName?: string
+  /** null clears it. */
+  hostname?: string | null
   memoryMb?: number
   port?: number
   properties: Record<string, string>
@@ -85,7 +87,7 @@ export interface PlanInput {
   exists: (path: string) => Promise<boolean>
   unmanaged: string[]
   /** Ports other servers use, for the clash check. */
-  otherPorts: { name: string; port: number; rconPort: number }[]
+  otherPorts: { name: string; port: number; rconPort: number; hostname?: string | null }[]
   /** Projects (ids or slugs) allowed to move to a newer version, or true for all. */
   upgrade?: true | string[]
   modrinth: ContentProvider
@@ -157,6 +159,23 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
         label: 'Port',
         from: String(row.port),
         to: String(spec.port),
+      })
+    }
+  }
+  if (spec.hostname !== undefined && spec.hostname !== row.hostname) {
+    const clash = spec.hostname
+      ? input.otherPorts.find((o) => o.name !== row.name && o.hostname === spec.hostname)
+      : undefined
+    if (clash) {
+      problems.push(`${spec.hostname} is already ${clash.name}'s address.`)
+    } else {
+      settings.hostname = spec.hostname
+      changes.push({
+        area: 'settings',
+        action: row.hostname ? (spec.hostname ? 'set' : 'remove') : 'add',
+        label: 'Address',
+        from: row.hostname ?? undefined,
+        to: spec.hostname ?? undefined,
       })
     }
   }

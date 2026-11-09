@@ -16,4 +16,8 @@ export const migrations: { tag: string; sql: string }[] = [
     tag: '0003_futuristic_the_anarchist',
     sql: "ALTER TABLE `servers` ADD `content` text DEFAULT '[]' NOT NULL;",
   },
+  {
+    tag: '0004_lowly_mandrill',
+    sql: 'ALTER TABLE `servers` ADD `hostname` text;--> statement-breakpoint\nCREATE UNIQUE INDEX `servers_hostname` ON `servers` (`hostname`);',
+  },
 ]

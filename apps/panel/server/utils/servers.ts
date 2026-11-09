@@ -15,6 +15,7 @@ export function publicServer(row: Row, status: ServiceState) {
     javaMajor: row.javaMajor,
     memoryMb: row.memoryMb,
     port: row.port,
+    hostname: row.hostname,
     createdAt: row.createdAt,
     status,
   }

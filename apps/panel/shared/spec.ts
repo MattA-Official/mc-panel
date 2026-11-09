@@ -181,6 +181,17 @@ const Backups = z
   })
   .strict()
 
+/** A DNS name players connect with, stored lower case. */
+export const Hostname = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .max(253)
+  .regex(
+    /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$/,
+    'Use a full address like survival.example.com: letters, numbers, hyphens and dots.',
+  )
+
 export const ServerSpec = z
   .object({
     name: Name,
@@ -194,6 +205,11 @@ export const ServerSpec = z
       .max(65535)
       .optional()
       .describe('The game port. Leave it out to use the next free one.'),
+    hostname: Hostname.nullable()
+      .optional()
+      .describe(
+        'The address players use, like survival.example.com. null for none; left out, it stays.',
+      ),
     properties: Properties.default({}),
     content: z.array(ContentItem).max(500).default([]),
     backups: Backups.optional().describe(
@@ -226,6 +242,7 @@ export function compactSpec(spec: ServerSpec): ServerSpecInput {
   out.loader = { ...spec.loader }
   if (spec.memory !== undefined) out.memory = mbToMemory(spec.memory)
   if (spec.port !== undefined) out.port = spec.port
+  if (spec.hostname) out.hostname = spec.hostname
   if (Object.keys(spec.properties).length) out.properties = spec.properties
   if (spec.content.length) out.content = spec.content
   const b = spec.backups

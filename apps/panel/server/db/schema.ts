@@ -58,6 +58,8 @@ export const servers = sqliteTable(
     port: integer('port').notNull(),
     rconPort: integer('rcon_port').notNull(),
     rconPassword: text('rcon_password').notNull(),
+    /** The address players use, like survival.example.com; lower case. */
+    hostname: text('hostname'),
     eulaAcceptedAt: integer('eula_accepted_at', { mode: 'timestamp_ms' }).notNull(),
     /** 5-field cron expression for scheduled backups; null means off. */
     backupSchedule: text('backup_schedule'),
@@ -70,7 +72,11 @@ export const servers = sqliteTable(
     content: text('content', { mode: 'json' }).$type<ContentItem[]>().notNull().default([]),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex('servers_port').on(t.port), uniqueIndex('servers_rcon_port').on(t.rconPort)],
+  (t) => [
+    uniqueIndex('servers_port').on(t.port),
+    uniqueIndex('servers_rcon_port').on(t.rconPort),
+    uniqueIndex('servers_hostname').on(t.hostname),
+  ],
 )
 
 export const backups = sqliteTable(
