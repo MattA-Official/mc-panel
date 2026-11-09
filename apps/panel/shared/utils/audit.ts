@@ -66,6 +66,10 @@ export function describeAudit(
       return `Updated Flytower to ${str(d.version)}`
     case 'update.rollback':
       return `Went back to Flytower ${str(d.version)}`
+    case 'update.channel':
+      return d.channel === 'beta'
+        ? 'Chose to be offered beta releases'
+        : 'Chose stable releases only'
     case 'server.create':
       return `Created ${t}${d.from === 'spec' ? ' from YAML' : ''}`
     case 'server.import':
