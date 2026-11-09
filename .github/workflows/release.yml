@@ -69,6 +69,15 @@ jobs:
           key="$(mktemp)"
           trap 'rm -f "$key"' EXIT
           printf '%s\n' "$FLYTOWER_SIGNING_KEY" > "$key"
+          if ! openssl pkey -in "$key" -noout 2>/dev/null; then
+            first="$(head -c 40 "$key" | head -1 | grep -o -- '-----BEGIN [A-Z ]*-----' || echo 'no PEM header')"
+            echo "::error::FLYTOWER_SIGNING_KEY isn't a private key openssl can read (it starts with: $first). It should be the whole file from 'openssl genpkey -algorithm ed25519', from -----BEGIN PRIVATE KEY----- to -----END PRIVATE KEY-----."
+            exit 1
+          fi
+          if [[ "$(openssl pkey -in "$key" -pubout)" != "$(cat installer/release-key.pem)" ]]; then
+            echo "::error::FLYTOWER_SIGNING_KEY doesn't match installer/release-key.pem"
+            exit 1
+          fi
           openssl pkeyutl -sign -inkey "$key" -rawin -in dist/SHA256SUMS | base64 -w0 > dist/SHA256SUMS.sig
           # Check against the committed key, as the installer will.
           base64 -d dist/SHA256SUMS.sig > sig.bin
