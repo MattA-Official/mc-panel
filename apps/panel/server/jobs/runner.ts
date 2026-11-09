@@ -11,6 +11,7 @@ import {
   type LoaderProvider,
 } from '@flytower/providers'
 import { schema, type Db } from '../db'
+import { CREATE_SERVER_STEPS, type JobEvent } from '../../shared/utils/jobs'
 import { Bus } from './bus'
 import { defaultProperties, EULA, randomPassword } from './properties'
 
@@ -32,14 +33,6 @@ export const CreateServerInput = z.object({
 })
 export type CreateServerInput = z.input<typeof CreateServerInput>
 
-export interface JobEvent {
-  id: number
-  state: 'queued' | 'running' | 'succeeded' | 'failed'
-  step: string | null
-  progress: number
-  message: string | null
-}
-
 export interface RunnerDeps {
   db: Db
   agent: AgentCall
@@ -52,15 +45,8 @@ export interface RunnerDeps {
   startTimeoutMs?: number
 }
 
-export const STEPS = [
-  'Checking the details',
-  'Finding the download',
-  'Installing Java',
-  'Creating the server',
-  'Downloading Minecraft',
-  'Writing the config',
-  'Starting the server',
-] as const
+export const STEPS = CREATE_SERVER_STEPS
+export type { JobEvent }
 
 const GAME_PORT_BASE = 25565
 const RCON_PORT_BASE = 25575
