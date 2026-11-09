@@ -39,6 +39,7 @@ function setup() {
   const dir = mkdtempSync(join(tmpdir(), 'ft-offsite-'))
   const bucket = fakeBucket()
   const secrets: string[] = []
+  const notes: { kind: string; severity: string }[] = []
   const offsite = new OffsiteService({
     db,
     store: (t) => {
@@ -49,6 +50,7 @@ function setup() {
     unseal: seal.unseal,
     localPath: (row) => join(dir, row.server, row.file),
     backoffMs: [5, 5, 5],
+    notifier: { notify: (e) => notes.push(e), resolve: (e) => notes.push(e) },
   })
   db.insert(schema.servers)
     .values({
@@ -75,7 +77,7 @@ function setup() {
   }
   const row = (id: number) =>
     db.select().from(schema.backups).where(eq(schema.backups.id, id)).get()!
-  return { db, dir, bucket, offsite, secrets, backup, row }
+  return { db, dir, bucket, offsite, secrets, backup, row, notes }
 }
 
 const input = {
@@ -140,6 +142,26 @@ describe('OffsiteService', () => {
 
     await offsite.removeCopy(row(b.id))
     expect(bucket.objects.size).toBe(0)
+    offsite.stop()
+  })
+
+  it('tells people when copies keep failing, not after one blip', async () => {
+    const { offsite, db, bucket, backup, row, notes } = setup()
+    const { id: target } = await offsite.addTarget(input)
+    db.update(schema.servers).set({ offsiteTarget: target }).run()
+    bucket.failNext(2)
+    const b = backup('survival-1.tar.zst')
+    offsite.queue(b)
+    await offsite.kick()
+    expect(row(b.id)).toMatchObject({ offsiteState: 'failed', offsiteAttempts: 1 })
+    expect(notes).toEqual([])
+    // The retries run on their own timers.
+    for (let i = 0; i < 20 && row(b.id).offsiteState !== 'done'; i++) await Bun.sleep(10)
+    expect(row(b.id)).toMatchObject({ offsiteState: 'done', offsiteAttempts: 2 })
+    expect(notes).toEqual([
+      expect.objectContaining({ kind: 'offsite.failed', severity: 'warning' }),
+      expect.objectContaining({ kind: 'offsite.failed', severity: 'ok' }),
+    ])
     offsite.stop()
   })
 

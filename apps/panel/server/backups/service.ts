@@ -12,6 +12,7 @@ import { schema, type Db } from '../db'
 import { JobError, type AgentCall, type JobTracker } from '../jobs/runner'
 import { createArchive, EXCLUDE, extractArchive } from './archive'
 import { toPrune } from './retention'
+import type { Notifier } from '../notify/types'
 
 export type Backup = typeof schema.backups.$inferSelect
 export type BackupKind = Backup['kind']
@@ -44,6 +45,8 @@ export interface BackupDeps {
     removeCopy(row: Backup): Promise<void>
     fetch(row: Backup): Promise<void>
   }
+  /** Tells people when a backup fails, and when backups work again. */
+  notifier?: Notifier
 }
 
 const stampOf = (d: Date) =>
@@ -169,9 +172,31 @@ export class BackupService {
   ): { jobId: number; done: Promise<JobEvent> } {
     this.claim(server)
     const job = this.deps.jobs.track('server.backup', server, BACKUP_STEPS)
+    const what = kind === 'scheduled' ? 'scheduled backup' : 'backup'
     const done = this.runBackup(server, kind, note, job)
-      .then((row) => job.succeed(`Backed up ${formatBytes(row.bytes)}.`))
-      .catch((err) => job.fail(err))
+      .then((row) => {
+        this.deps.notifier?.resolve({
+          kind: 'backup.failed',
+          server,
+          title: 'Backups are working again',
+          detail: `A ${what} just finished (${formatBytes(row.bytes)}).`,
+          severity: 'ok',
+          link: `/servers/${server}/backups`,
+        })
+        return job.succeed(`Backed up ${formatBytes(row.bytes)}.`)
+      })
+      .catch((err) => {
+        const failed = job.fail(err)
+        this.deps.notifier?.notify({
+          kind: 'backup.failed',
+          server,
+          title: `A ${what} failed`,
+          detail: failed.message ?? undefined,
+          severity: 'critical',
+          link: `/servers/${server}/backups`,
+        })
+        return failed
+      })
       .finally(() => this.busy.delete(server))
     return { jobId: job.id, done }
   }

@@ -8,7 +8,7 @@ export const AUDIT_KINDS = {
   players: 'Players',
   files: 'Files',
   access: 'Sign-ins and access',
-  system: 'Flytower updates',
+  system: 'Flytower and notifications',
 } as const
 export type AuditKind = keyof typeof AUDIT_KINDS
 
@@ -19,7 +19,7 @@ export function auditKind(action: string): AuditKind {
   if (action.startsWith('files.')) return 'files'
   if (action === 'server.apply' || action === 'server.properties') return 'content'
   if (/^(auth|passkey|recovery|setup|ssh)\./.test(action)) return 'access'
-  if (action.startsWith('update.')) return 'system'
+  if (action.startsWith('update.') || action.startsWith('notify.')) return 'system'
   return 'servers'
 }
 
@@ -120,6 +120,12 @@ export function describeAudit(
       return `Added the off-site backup target ${str(d.name)}`
     case 'backup.target.remove':
       return `Removed the off-site backup target ${str(d.name)}`
+    case 'notify.channel.add':
+      return `Added the notification channel ${str(d.name)}`
+    case 'notify.channel.edit':
+      return `Changed the notification channel ${str(d.name)}`
+    case 'notify.channel.remove':
+      return `Removed the notification channel ${str(d.name)}`
     case 'world.export':
       return `Exported ${t}'s world`
     case 'world.export.delete':

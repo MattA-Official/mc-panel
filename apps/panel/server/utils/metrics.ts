@@ -17,6 +17,7 @@ export function useMetrics(): MetricsSampler {
         .map((r) => r.name),
     rcon: (name, command) => useConsole().command(name, command, { echo: false, timeoutMs: 5000 }),
     machine: () => readMachine(useRuntimeConfig().serversDir),
+    onSample: afterSample,
   })
   return sampler
 }

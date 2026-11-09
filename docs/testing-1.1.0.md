@@ -1,0 +1,34 @@
+# Testing 1.1.0
+
+1.1 is about hearing when something needs attention, and fixing more of it without you. Each feature is tested on its own pull request build first; this page collects the checks.
+
+## Installing a pull request's test build
+
+Every pull request is built and signed like a release, under the tag `pr-<number>`. Install it on a **spare VPS** (or upgrade one you're testing on) with:
+
+```sh
+curl -fsSL https://github.com/MattA-Official/mc-panel/releases/download/pr-<number>/install.sh \
+  | sudo bash -s -- --pr <number> --domain panel.example.com
+```
+
+It installs over what's there and keeps your data and sign-in, like any re-run of the installer. **System** then shows a version like `1.1.0-pr.70.3`. Test builds are never offered as updates, and **Go back to** on the System page returns to the release you had before. A test build is deleted when its pull request closes.
+
+## 1. Notifications
+
+You need a Discord server where you can make a webhook, and optionally the [ntfy](https://ntfy.sh) app on your phone. See [Notifications](notifications.md) for the setup steps.
+
+- [ ] **System**, **Notifications**, **Add channel**: Discord, paste a webhook URL. **Send test** posts an embed in the channel that links back to the panel.
+- [ ] A made-up Discord address (or a deleted webhook) gives a clear error on **Send test**.
+- [ ] **Add** asks for your passkey (unless you confirmed one in the last five minutes). The channel is listed with a masked address, and **Activity** shows it was added.
+- [ ] Tick **A server started** and **A server stopped**, then stop and start a server. Each shows up in Discord within a minute or so, named after the server.
+- [ ] Tick **A player joined** and **A player left**, then join and leave the server. The messages arrive within a few seconds. A player name with underscores shows correctly, and nobody gets pinged.
+- [ ] Break a backup on purpose, if you can (for example, a server whose folder you've made unreadable, or a nearly full disk), and check the "backup failed" message, then "Backups are working again" after a good one. A second failure within 30 minutes isn't sent again.
+- [ ] Optional: an ntfy channel (`https://ntfy.sh/<a long random topic>`). **Send test** arrives on your phone, and tapping it opens the panel.
+- [ ] Optional: a JSON webhook to something like [webhook.site](https://webhook.site), with a generated signing secret. The body matches [the docs](notifications.md#json-webhook) and has an `X-Flytower-Signature` header.
+- [ ] **Edit** a channel: change its events or servers without retyping the address. The send button on the list still works.
+- [ ] **Remove** asks for your passkey and the channel stops getting messages.
+- [ ] Point a channel at a broken address (edit it with a deleted webhook URL), stop a server, and see the error shown under the channel on System. Fix it and **Send test** clears the error.
+
+## Reporting feedback
+
+Open an issue with the **[Feedback](https://github.com/MattA-Official/mc-panel/issues/new?template=feedback.yml)** template, or comment on the pull request you're testing.

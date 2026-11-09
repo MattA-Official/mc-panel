@@ -20,6 +20,7 @@ export function useOffsite(): OffsiteService {
     seal: seal.seal,
     unseal: seal.unseal,
     localPath: (row) => join(useRuntimeConfig().backupsDir, row.server, row.file),
+    notifier: useNotify(),
   })
   return offsite
 }
@@ -38,6 +39,7 @@ export function useBackups(): BackupService {
       useConsole().command(name, command, { echo: false, timeoutMs }),
     stopped: (name) => useConsole().forget(name),
     offsite: useOffsite(),
+    notifier: useNotify(),
   })
   return service
 }

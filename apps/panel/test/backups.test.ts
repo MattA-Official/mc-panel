@@ -8,10 +8,12 @@ import { eq } from 'drizzle-orm'
 import { BackupService } from '../server/backups/service'
 import { openDb, schema } from '../server/db'
 import { JobRunner, type AgentCall } from '../server/jobs/runner'
+import type { NotifyEvent } from '../server/notify/types'
 
 function setup(
   opts: { running?: boolean; free?: number; saveReply?: string; rconDownFor?: number } = {},
 ) {
+  const notes: NotifyEvent[] = []
   const db = openDb(':memory:')
   const base = mkdtempSync(join(tmpdir(), 'ft-bk-'))
   const servers = join(base, 'servers')
@@ -73,8 +75,12 @@ function setup(
     now: () => new Date((clock += 60_000)),
     freeBytes: async () => opts.free ?? 1e12,
     sleep: async () => {},
+    notifier: {
+      notify: (e) => notes.push(e),
+      resolve: (e) => notes.push(e),
+    },
   })
-  return { db, dir, base, service, calls, runner }
+  return { db, dir, base, service, calls, runner, notes }
 }
 
 describe('backups', () => {
@@ -109,6 +115,21 @@ describe('backups', () => {
     expect(final.message).toContain("didn't confirm the save")
     expect(calls.at(-1)).toBe('rcon save-on')
     expect(await service.list('survival')).toEqual([])
+  })
+
+  it('tells people when a backup fails, and when backups work again', async () => {
+    const { service, notes } = setup({ running: true, saveReply: 'Saving failed' })
+    await service.backup('survival', 'scheduled').done
+    expect(notes).toEqual([
+      expect.objectContaining({
+        kind: 'backup.failed',
+        server: 'survival',
+        severity: 'critical',
+        title: 'A scheduled backup failed',
+        detail: expect.stringContaining("didn't confirm the save"),
+        link: '/servers/survival/backups',
+      }),
+    ])
   })
 
   it('skips RCON for a stopped server and refuses when the disk is full', async () => {

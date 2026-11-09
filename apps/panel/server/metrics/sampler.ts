@@ -33,6 +33,11 @@ export interface MetricsDeps {
   machine: () => Promise<MachineReading>
   cores?: number
   now?: () => Date
+  /**
+   * Called after each sample with which servers are running (servers the agent didn't answer
+   * for are left out) and the machine's reading, for notifications.
+   */
+  onSample?: (sample: { active: Record<string, boolean>; machine: MachineReading | null }) => void
 }
 
 /** "Average time per tick: 3.2ms" from `tick query`, in milliseconds. */
@@ -195,6 +200,14 @@ export class MetricsSampler {
 
     if (rows.length) {
       this.deps.db.insert(schema.metrics).values(rows).onConflictDoNothing().run()
+    }
+    try {
+      this.deps.onSample?.({
+        active: Object.fromEntries(Object.entries(usage).map(([s, u]) => [s, u.active])),
+        machine,
+      })
+    } catch (err) {
+      console.error('[flytower] after-sample hook failed', err)
     }
     if (nowMs - this.lastPrune > 3600_000) {
       this.lastPrune = nowMs

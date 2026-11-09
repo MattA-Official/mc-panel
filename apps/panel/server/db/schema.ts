@@ -202,3 +202,43 @@ export const settings = sqliteTable('settings', {
   value: text('value', { mode: 'json' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull().default(now),
 })
+
+/**
+ * Where notifications go: a Discord webhook, an ntfy topic or a JSON webhook. The URL (which
+ * holds the Discord token) and the ntfy token or webhook signing secret are sealed at rest.
+ */
+export const notifyChannels = sqliteTable(
+  'notify_channels',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    name: text('name').notNull(),
+    kind: text('kind', { enum: ['discord', 'ntfy', 'webhook'] }).notNull(),
+    urlSealed: text('url_sealed').notNull(),
+    /** ntfy access token, or the webhook's signing secret. */
+    secretSealed: text('secret_sealed'),
+    /** The URL with its secret parts masked, for telling channels apart. */
+    target: text('target').notNull(),
+    events: text('events', { mode: 'json' }).$type<string[]>().notNull().default([]),
+    /** Server names; empty means every server. */
+    servers: text('servers', { mode: 'json' }).$type<string[]>().notNull().default([]),
+    enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+    lastSentAt: integer('last_sent_at', { mode: 'timestamp_ms' }),
+    lastError: text('last_error'),
+    lastErrorAt: integer('last_error_at', { mode: 'timestamp_ms' }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('notify_channels_name').on(t.name)],
+)
+
+/**
+ * What has been sent, so the same alert isn't repeated within its quiet period and a "back to
+ * normal" message follows a problem. Keyed by kind and server, e.g. `backup.failed:survival`.
+ */
+export const notifyState = sqliteTable('notify_state', {
+  key: text('key').primaryKey(),
+  sentAt: integer('sent_at', { mode: 'timestamp_ms' }).notNull(),
+  /** A problem that hasn't cleared yet. */
+  open: integer('open', { mode: 'boolean' }).notNull().default(false),
+  /** Kind-specific memory, like the disk level last warned about or the versions offered. */
+  value: text('value'),
+})
