@@ -49,3 +49,13 @@ export interface JobEvent {
   progress: number
   message: string | null
 }
+
+export const SPEC_STEPS = [
+  'Checking the plan',
+  'Backing up',
+  'Downloading',
+  'Stopping the server',
+  'Installing',
+  'Saving settings',
+  'Starting the server',
+] as const

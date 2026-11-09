@@ -272,6 +272,23 @@ export class BackupService {
     }
   }
 
+  /**
+   * A safety backup taken inside another job that already holds the server's lock, e.g.
+   * before applying a spec. Saving is paused around it as usual.
+   */
+  async snapshot(server: string, note: string): Promise<Backup> {
+    await this.checkSpace(server)
+    const row = await this.withSavesPaused(
+      server,
+      () => {},
+      () => this.archive(server, 'safety', note),
+    )
+    await this.prune(server).catch((err) =>
+      console.error(`[flytower] pruning backups for ${server} failed`, err),
+    )
+    return row
+  }
+
   /** Takes the per-server lock for an outside operation; call `release` when done. */
   lock(server: string) {
     this.claim(server)
