@@ -24,8 +24,36 @@ jobs:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
       - run: bun run build
+      - name: Throwaway signing key (never the real one)
+        run: |
+          openssl genpkey -algorithm ed25519 -out "$RUNNER_TEMP/e2e-key.pem"
+          openssl pkey -in "$RUNNER_TEMP/e2e-key.pem" -pubout -out installer/release-key.pem
+          bun -e "
+            const key = (await Bun.file('installer/release-key.pem').text()).trim()
+            const s = await Bun.file('installer/install.sh').text()
+            await Bun.write('installer/install.sh', s.replace(/(<<'KEY'\\n)[\\s\\S]*?(\\nKEY\\n)/, (_, a, b) => a + key + b))
+          "
+          grep -A3 "<<'KEY'" installer/install.sh
+
       - name: Package
-        run: bun scripts/package.ts --version 0.0.0-e2e --arch amd64 --out dist
+        run: |
+          bun scripts/package.ts --version 0.0.0-e2e --arch amd64 --out dist
+          # Two more releases to update to: a good one, and one whose panel won't start.
+          for v in 0.0.1-e2e 0.0.2-e2e; do
+            bun scripts/package.ts --version "$v" --arch amd64 --out dist
+          done
+          mkdir -p "$RUNNER_TEMP/broken"
+          tar -xzf dist/flytower-0.0.2-e2e-linux-amd64.tar.gz -C "$RUNNER_TEMP/broken"
+          rm "$RUNNER_TEMP/broken/flytower-0.0.2-e2e/panel/server/index.mjs"
+          tar -czf dist/flytower-0.0.2-e2e-linux-amd64.tar.gz -C "$RUNNER_TEMP/broken" flytower-0.0.2-e2e
+          for v in 0.0.1-e2e 0.0.2-e2e; do
+            d="releases/v$v"
+            mkdir -p "$d"
+            cp "dist/flytower-$v-linux-amd64.tar.gz" "$d/"
+            (cd "$d" && sha256sum flytower-*.tar.gz > SHA256SUMS)
+            openssl pkeyutl -sign -inkey "$RUNNER_TEMP/e2e-key.pem" -rawin -in "$d/SHA256SUMS" |
+              base64 -w0 > "$d/SHA256SUMS.sig"
+          done
 
       - name: Boot a systemd container
         run: |
@@ -82,10 +110,36 @@ jobs:
           call ssh.set '{"open":true}'
           docker exec vps ufw --force disable
 
+      - name: Self-update, and roll back an update that won't start
+        run: |
+          call() { docker exec vps /opt/flytower/current/bin/bun /src/tests/e2e/agent-call.ts "$@"; }
+          health() { docker exec vps curl -fsS http://127.0.0.1:3000/api/health || true; }
+          last_state() { call update.status | sed -n 's/.*"state":"\([a-z-]*\)".*/\1/p'; }
+          # Serve the signed test releases; the container shares the runner's network.
+          (cd releases && python3 -m http.server 8765 >/dev/null 2>&1 &)
+          docker exec vps sh -c 'mkdir -p /etc/systemd/system/flytower-agent.service.d &&
+            printf "[Service]\nEnvironment=FLYTOWER_RELEASES_URL=http://127.0.0.1:8765\n" \
+              > /etc/systemd/system/flytower-agent.service.d/e2e.conf &&
+            systemctl daemon-reload && systemctl restart flytower-agent'
+          sleep 3
+
+          call update.install '{"version":"0.0.1-e2e"}'
+          for _ in $(seq 1 60); do [ "$(last_state)" = succeeded ] && break; sleep 3; done
+          health | grep -q '"version":"0.0.1-e2e"' || { echo "not updated: $(health)"; call update.status; exit 1; }
+          echo "✓ updated to 0.0.1-e2e"
+
+          call update.install '{"version":"0.0.2-e2e"}'
+          for _ in $(seq 1 80); do [ "$(last_state)" = rolled-back ] && break; sleep 3; done
+          call update.status
+          [ "$(last_state)" = rolled-back ] || { echo "the broken update didn't roll back"; exit 1; }
+          for _ in $(seq 1 30); do health | grep -q '"version":"0.0.1-e2e"' && break; sleep 2; done
+          health | grep -q '"version":"0.0.1-e2e"' || { echo "not back on 0.0.1-e2e: $(health)"; exit 1; }
+          echo "✓ a broken update rolled back to 0.0.1-e2e"
+
       - name: Logs
         if: always()
         run: |
-          docker exec vps journalctl -u flytower-agent -u flytower-panel -u 'flytower-mc@*' --no-pager -n 300 || true
+          docker exec vps journalctl -u flytower-agent -u flytower-panel -u 'flytower-mc@*' -u 'flytower-update-*' --no-pager -n 300 || true
           docker exec vps sh -c 'tail -n 80 /srv/flytower/servers/*/logs/latest.log' || true
 
       - uses: actions/upload-artifact@v4
