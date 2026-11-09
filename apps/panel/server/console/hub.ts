@@ -64,8 +64,11 @@ export class ConsoleHub {
     }
   }
 
-  /** Runs a command and echoes it, with the reply, to every console on that server. */
-  async command(name: string, command: string): Promise<string> {
+  /**
+   * Runs a command and echoes it, with the reply, to every console on that server. Background
+   * reads (the Players tab polling `list`) pass `echo: false` so the console stays readable.
+   */
+  async command(name: string, command: string, opts: { echo?: boolean } = {}): Promise<string> {
     const target = this.deps.rconTarget(name)
     if (!target) throw new RconError(`No server called ${name}.`)
     const rcon = await this.rcon(name, target)
@@ -77,7 +80,7 @@ export class ConsoleHub {
       rcon.close()
       throw err
     }
-    this.push(name, [`> ${command}`, ...(reply ? reply.split('\n') : [])])
+    if (opts.echo !== false) this.push(name, [`> ${command}`, ...(reply ? reply.split('\n') : [])])
     return reply
   }
 

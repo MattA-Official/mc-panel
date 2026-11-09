@@ -33,6 +33,7 @@ provideServerContext({ server, status, refresh })
 
 const tabs = computed(() => [
   { label: 'Console', icon: 'i-lucide-terminal', to: `/servers/${name.value}`, exact: true },
+  { label: 'Players', icon: 'i-lucide-users', to: `/servers/${name.value}/players` },
   { label: 'Settings', icon: 'i-lucide-sliders-horizontal', to: `/servers/${name.value}/settings` },
 ])
 </script>
