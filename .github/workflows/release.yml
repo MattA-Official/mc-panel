@@ -57,6 +57,25 @@ jobs:
           cp installer/install.sh dist/install.sh
           cd dist && sha256sum flytower-*.tar.gz install.sh > SHA256SUMS && cat SHA256SUMS
 
+      - name: Sign
+        env:
+          FLYTOWER_SIGNING_KEY: ${{ secrets.FLYTOWER_SIGNING_KEY }}
+        run: |
+          if [[ -z "$FLYTOWER_SIGNING_KEY" ]] || grep -q PENDING installer/release-key.pem; then
+            echo "::error::FLYTOWER_SIGNING_KEY and installer/release-key.pem are both needed to release"
+            exit 1
+          fi
+          umask 077
+          key="$(mktemp)"
+          trap 'rm -f "$key"' EXIT
+          printf '%s\n' "$FLYTOWER_SIGNING_KEY" > "$key"
+          openssl pkeyutl -sign -inkey "$key" -rawin -in dist/SHA256SUMS | base64 -w0 > dist/SHA256SUMS.sig
+          # Check against the committed key, as the installer will.
+          base64 -d dist/SHA256SUMS.sig > sig.bin
+          openssl pkeyutl -verify -pubin -inkey installer/release-key.pem -rawin \
+            -in dist/SHA256SUMS -sigfile sig.bin
+          rm sig.bin
+
       - name: Release notes
         run: bun scripts/release-notes.ts "$TAG" > dist/NOTES.md
 
@@ -71,4 +90,4 @@ jobs:
           gh release create "$TAG" "${flags[@]}" --target "$GITHUB_SHA" \
             --title "Flytower $version" \
             --notes-file dist/NOTES.md \
-            dist/flytower-*.tar.gz dist/install.sh dist/SHA256SUMS
+            dist/flytower-*.tar.gz dist/install.sh dist/SHA256SUMS dist/SHA256SUMS.sig

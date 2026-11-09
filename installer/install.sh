@@ -8,6 +8,13 @@ set -euo pipefail
 
 REPO="MattA-Official/mc-panel"
 PREFIX="/opt/flytower"
+# Releases are signed with this key (installer/release-key.pem; a test keeps them equal).
+RELEASE_KEY="$(cat <<'KEY'
+-----BEGIN PUBLIC KEY-----
+PENDING
+-----END PUBLIC KEY-----
+KEY
+)"
 STATE_DIR="/var/lib/flytower"
 CONFIG_DIR="/etc/flytower"
 SERVERS_DIR="/srv/flytower/servers"
@@ -96,6 +103,15 @@ if [[ -z "$tarball" ]]; then
   say "Downloading Flytower $version ($arch)"
   curl -fsSL -o "$work/$name" "$base/$name"
   curl -fsSL -o "$work/SHA256SUMS" "$base/SHA256SUMS"
+  command -v openssl >/dev/null || die "openssl is missing (needed to check the release's signature)"
+  curl -fsSL -o "$work/SHA256SUMS.sig" "$base/SHA256SUMS.sig" ||
+    die "this release isn't signed; refusing to install it"
+  printf '%s\n' "$RELEASE_KEY" >"$work/release-key.pem"
+  base64 -d "$work/SHA256SUMS.sig" >"$work/SHA256SUMS.sig.bin" 2>/dev/null ||
+    die "this release's signature is unreadable; refusing to install it"
+  openssl pkeyutl -verify -pubin -inkey "$work/release-key.pem" -rawin \
+    -in "$work/SHA256SUMS" -sigfile "$work/SHA256SUMS.sig.bin" >/dev/null 2>&1 ||
+    die "this release's signature doesn't match Flytower's key; refusing to install it"
   (cd "$work" && grep " $name\$" SHA256SUMS | sha256sum -c --quiet -) ||
     die "the download didn't match its checksum; try again"
   tarball="$work/$name"
