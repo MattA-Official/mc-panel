@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+      - run: bun run typecheck
+      - run: bun test
+      - run: shellcheck installer/*.sh
+
+      - name: Build panel
+        run: bun run build
+
+      - name: Package
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          bun scripts/package.ts --version "$version" --arch amd64 --out dist
+          bun scripts/package.ts --version "$version" --arch arm64 --out dist
+          cp installer/install.sh dist/install.sh
+          cd dist && sha256sum flytower-*.tar.gz install.sh > SHA256SUMS && cat SHA256SUMS
+
+      - name: Release notes
+        run: bun scripts/release-notes.ts "$GITHUB_REF_NAME" > dist/NOTES.md
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          flags=()
+          # Everything before 1.0 is a pre-release.
+          if [[ "$version" == 0.* || "$version" == *-* ]]; then flags+=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" "${flags[@]}" \
+            --title "Flytower $version" \
+            --notes-file dist/NOTES.md \
+            dist/flytower-*.tar.gz dist/install.sh dist/SHA256SUMS

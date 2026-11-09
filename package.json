@@ -11,7 +11,9 @@
     "format": "prettier --write .",
     "typecheck": "bun run --filter '*' typecheck",
     "test": "bun test",
-    "build": "bun run --filter '*' build"
+    "build": "bun run --filter '*' build",
+    "package": "bun scripts/package.ts",
+    "release-notes": "bun scripts/release-notes.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
