@@ -14,7 +14,13 @@ const JAR = 'pretend jar'
 const sha1 = (s: string) => new Bun.CryptoHasher('sha1').update(s).digest('hex')
 
 function setup(
-  opts: { hash?: string; status?: string[]; failVerb?: Verb; resolveError?: Error } = {},
+  opts: {
+    hash?: string
+    status?: string[]
+    failVerb?: Verb
+    resolveError?: Error
+    totalMemoryMb?: number
+  } = {},
 ) {
   const db = openDb(':memory:')
   const root = mkdtempSync(join(tmpdir(), 'ft-jobs-'))
@@ -63,6 +69,7 @@ function setup(
     fetch,
     bus,
     sleep: async () => {},
+    totalMemoryMb: () => opts.totalMemoryMb ?? 32768,
   })
   return { db, root, calls, runner, bus }
 }
@@ -147,6 +154,16 @@ describe('create-server job', () => {
     expect(() => runner.createServer(input)).toThrow("There's already a server called survival.")
     expect(() => runner.createServer({ ...input, name: 'other', port: 25575 })).toThrow(
       'Port 25575 is already used',
+    )
+  })
+
+  it('refuses more memory than the machine has room for, counting creates in flight', () => {
+    // 8 GB: room for 6.5 GB of heap in all.
+    const { runner } = setup({ totalMemoryMb: 8192 })
+    expect(() => runner.createServer({ ...input, memoryMb: 8192 })).toThrow('at most 6.5 GB')
+    runner.createServer({ ...input, memoryMb: 4096 })
+    expect(() => runner.createServer({ ...input, name: 'other', memoryMb: 4096 })).toThrow(
+      'more than this machine has room for',
     )
   })
 

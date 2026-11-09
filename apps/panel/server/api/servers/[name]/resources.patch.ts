@@ -1,6 +1,7 @@
 import { and, eq, ne, or } from 'drizzle-orm'
 import { z } from 'zod'
 import { schema } from '../../../db'
+import { budgetProblem } from '../../../memory'
 
 const Params = z.object({ name: z.string().max(40) })
 const Body = z
@@ -40,6 +41,12 @@ export default defineEventHandler(async (event) => {
         statusMessage: `Port ${port} is already used${clash ? ` by ${clash.name}` : ' for RCON'}.`,
       })
     }
+  }
+
+  if (memoryMb !== undefined) {
+    const jobs = useJobs()
+    const tooBig = budgetProblem(jobs.totalMemoryMb(), jobs.memoryUsers(), { name, memoryMb })
+    if (tooBig) throw createError({ statusCode: 409, statusMessage: tooBig })
   }
 
   try {

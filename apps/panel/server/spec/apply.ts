@@ -24,6 +24,7 @@ import type { BackupService } from '../backups/service'
 import { specFromServer } from './from-server'
 import { readLock, unmanagedFiles, writeLock, type Lock, type LockedItem } from './lock'
 import { makePlan, type Plan } from './plan'
+import { budgetProblem, type MemoryUser } from '../memory'
 
 export const PLAN_TTL_MS = 15 * 60_000
 const STAGING = '.flytower-staging'
@@ -37,6 +38,8 @@ export interface SpecDeps {
   jobs: {
     track(kind: string, server: string | null, steps: readonly string[]): JobTracker
     waitActive(name: string): Promise<void>
+    memoryUsers?(): MemoryUser[]
+    totalMemoryMb?(): number
   }
   backups: Pick<BackupService, 'lock' | 'snapshot'>
   modrinth: ContentProvider
@@ -215,6 +218,11 @@ export class SpecService {
       modrinth: this.deps.modrinth,
       vanillatweaks: this.deps.vanillatweaks,
       loaders: this.deps.loaders,
+      memoryProblem: (memoryMb) => {
+        const { jobs } = this.deps
+        if (!jobs.memoryUsers || !jobs.totalMemoryMb) return null
+        return budgetProblem(jobs.totalMemoryMb(), jobs.memoryUsers(), { name, memoryMb })
+      },
       now: () => new Date(this.now()),
     })
     this.sweep()

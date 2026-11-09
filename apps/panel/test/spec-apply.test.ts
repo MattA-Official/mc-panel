@@ -201,6 +201,7 @@ function setup(opts: { running?: boolean; loader?: 'vanilla' | 'fabric'; badHash
     loaders: {} as never,
     fetch: fetchFiles,
     sleep: async () => {},
+    totalMemoryMb: () => 16384,
   })
   let locked = false
   const snapshots: string[] = []
@@ -310,6 +311,9 @@ describe('plan', () => {
     )
     const mods = await service.plan('survival', spec({ content: [{ modrinth: 'lithium' }] }))
     expect(mods.problems).toContain("Lithium is a mod, which a vanilla server can't run.")
+    expect((await service.plan('survival', spec({ memory: '16G' }))).problems[0]).toContain(
+      'more than this machine has room for',
+    )
     const datapack = await service.plan('survival', spec({ content: [{ modrinth: 'terralith' }] }))
     expect(datapack.problems).toEqual([])
   })

@@ -12,6 +12,7 @@ import {
   type LoaderProvider,
 } from '@flytower/providers'
 import { schema, type Db } from '../db'
+import { budgetProblem, machineMemoryMb, type MemoryUser } from '../memory'
 import { CREATE_SERVER_STEPS, IMPORT_STEPS, type JobEvent } from '../../shared/utils/jobs'
 import { moveBack, moveIn, type ImportSource } from '../imports/move'
 import { parseProperties, setProperties, stringifyProperties } from '../properties'
@@ -53,6 +54,8 @@ export interface RunnerDeps {
   sleep?: (ms: number) => Promise<void>
   /** How long to wait for systemd to report the server active. */
   startTimeoutMs?: number
+  /** The machine's memory, for the budget. */
+  totalMemoryMb?: () => number
 }
 
 export const STEPS = CREATE_SERVER_STEPS
@@ -84,6 +87,8 @@ export class JobRunner {
   /** Names and ports held by jobs still running, so two wizards can't race for them. */
   private reservedNames = new Set<string>()
   private reservedPorts = new Set<number>()
+  /** Heap promised to creates still running, by name. */
+  private reservedMemory = new Map<string, number>()
 
   constructor(private deps: RunnerDeps) {
     this.bus = deps.bus ?? new Bus()
@@ -121,7 +126,7 @@ export class JobRunner {
     extras: SpecExtras = {},
   ): { jobId: number; done: Promise<JobEvent> } {
     const input = CreateServerInput.parse(raw)
-    const { port, rconPort } = this.claim(input.name, input.port)
+    const { port, rconPort } = this.claim(input.name, input.port, input.memoryMb)
     const job = this.deps.db
       .insert(schema.jobs)
       .values({
@@ -134,13 +139,37 @@ export class JobRunner {
 
     const done = this.execute(job.id, input, port, rconPort, source, extras).finally(() => {
       this.reservedNames.delete(input.name)
+      this.reservedMemory.delete(input.name)
       this.reservedPorts.delete(port)
       this.reservedPorts.delete(rconPort)
     })
     return { jobId: job.id, done }
   }
 
-  private claim(name: string, requested?: number) {
+  /** Every server's memory, counting creates still running. */
+  memoryUsers(): MemoryUser[] {
+    const rows = this.deps.db
+      .select({
+        name: schema.servers.name,
+        displayName: schema.servers.displayName,
+        memoryMb: schema.servers.memoryMb,
+      })
+      .from(schema.servers)
+      .all()
+    const pending = [...this.reservedMemory].map(([name, memoryMb]) => ({
+      name,
+      displayName: name,
+      memoryMb,
+    }))
+    return [...rows, ...pending]
+  }
+
+  /** The machine's memory in MB. */
+  totalMemoryMb(): number {
+    return (this.deps.totalMemoryMb ?? machineMemoryMb)()
+  }
+
+  private claim(name: string, requested: number | undefined, memoryMb: number) {
     const rows = this.deps.db
       .select({
         name: schema.servers.name,
@@ -152,6 +181,8 @@ export class JobRunner {
     if (rows.some((r) => r.name === name) || this.reservedNames.has(name)) {
       throw new JobError(`There's already a server called ${name}.`)
     }
+    const tooBig = budgetProblem(this.totalMemoryMb(), this.memoryUsers(), { name, memoryMb })
+    if (tooBig) throw new JobError(tooBig)
     const used = new Set([...this.reservedPorts, ...rows.flatMap((r) => [r.port, r.rcon])])
     if (requested !== undefined && used.has(requested)) {
       throw new JobError(`Port ${requested} is already used by another server.`)
@@ -160,6 +191,7 @@ export class JobRunner {
     used.add(port)
     const rconPort = lowestFree(RCON_PORT_BASE, used)
     this.reservedNames.add(name)
+    this.reservedMemory.set(name, memoryMb)
     this.reservedPorts.add(port).add(rconPort)
     return { port, rconPort }
   }

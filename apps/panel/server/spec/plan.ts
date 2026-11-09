@@ -90,6 +90,8 @@ export interface PlanInput {
   upgrade?: true | string[]
   modrinth: ContentProvider
   vanillatweaks?: VanillaTweaksProvider
+  /** Why this server can't have that much memory, if it can't. */
+  memoryProblem?: (memoryMb: number) => string | null
   /** Needed to change the Minecraft version or loader. */
   loaders?: Record<LoaderId, LoaderProvider>
   now?: () => Date
@@ -128,6 +130,8 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
     })
   }
   if (spec.memory !== undefined && spec.memory !== row.memoryMb) {
+    const tooBig = input.memoryProblem?.(spec.memory)
+    if (tooBig) problems.push(tooBig)
     settings.memoryMb = spec.memory
     changes.push({
       area: 'settings',
