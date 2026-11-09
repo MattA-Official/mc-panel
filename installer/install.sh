@@ -23,6 +23,7 @@ PANEL_PORT=3000
 
 domain=""
 version="latest"
+pr=""
 tarball=""
 setup_token=""
 with_caddy=1
@@ -41,6 +42,8 @@ Usage: install.sh --domain <host> [options]
   --domain <host>       The panel's address, e.g. panel.example.com. Its DNS must point here.
   --version <x.y.z>     Install this release instead of the latest.
   --tarball <file>      Install from a release tarball already on this machine.
+  --pr <number>         Install the test build of that pull request (for testing, not for
+                        real servers). It's signed like a release.
   --setup-token <text>  Use this setup token instead of generating one.
   --no-caddy            Don't install or configure Caddy (bring your own HTTPS proxy).
   --no-firewall         Don't touch ufw.
@@ -52,6 +55,7 @@ while [[ $# -gt 0 ]]; do
     --domain) domain="${2:-}"; shift 2 ;;
     --version) version="${2#v}"; shift 2 ;;
     --tarball) tarball="${2:-}"; shift 2 ;;
+    --pr) pr="${2:-}"; shift 2 ;;
     --setup-token) setup_token="${2:-}"; shift 2 ;;
     --no-caddy) with_caddy=0; shift ;;
     --no-firewall) with_firewall=0; shift ;;
@@ -62,6 +66,7 @@ done
 
 [[ -n "$domain" ]] || { usage >&2; die "--domain is required (passkeys need HTTPS on a real name)"; }
 [[ "$domain" =~ ^[A-Za-z0-9.-]+$ ]] || die "--domain should be a host name like panel.example.com"
+[[ -z "$pr" || "$pr" =~ ^[0-9]+$ ]] || die "--pr should be a pull request number, like 70"
 
 # ---------------------------------------------------------------- checks
 
@@ -92,17 +97,27 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
 if [[ -z "$tarball" ]]; then
-  if [[ "$version" == latest ]]; then
-    # Includes pre-releases, which is every release until 1.0.
-    version="$(curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=1" |
-      sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p' | head -n1)"
-    [[ -n "$version" ]] || die "couldn't find the latest release"
+  if [[ -n "$pr" ]]; then
+    # Pull request builds live under a pr-<number> tag, which the updater never offers.
+    base="https://github.com/$REPO/releases/download/pr-$pr"
+    curl -fsSL -o "$work/SHA256SUMS" "$base/SHA256SUMS" ||
+      die "there's no test build for pull request $pr"
+    name="$(grep -o "flytower-[^ ]*-linux-$arch\.tar\.gz" "$work/SHA256SUMS" | head -n1)"
+    [[ -n "$name" ]] || die "pull request $pr's build has nothing for $arch"
+    say "Downloading the test build of pull request $pr ($arch)"
+  else
+    if [[ "$version" == latest ]]; then
+      # The newest v-tagged release, pre-releases included; test builds (pr-*) are skipped.
+      version="$(curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=30" |
+        sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p' | head -n1)"
+      [[ -n "$version" ]] || die "couldn't find the latest release"
+    fi
+    base="https://github.com/$REPO/releases/download/v$version"
+    name="flytower-$version-linux-$arch.tar.gz"
+    say "Downloading Flytower $version ($arch)"
+    curl -fsSL -o "$work/SHA256SUMS" "$base/SHA256SUMS"
   fi
-  base="https://github.com/$REPO/releases/download/v$version"
-  name="flytower-$version-linux-$arch.tar.gz"
-  say "Downloading Flytower $version ($arch)"
   curl -fsSL -o "$work/$name" "$base/$name"
-  curl -fsSL -o "$work/SHA256SUMS" "$base/SHA256SUMS"
   command -v openssl >/dev/null || die "openssl is missing (needed to check the release's signature)"
   curl -fsSL -o "$work/SHA256SUMS.sig" "$base/SHA256SUMS.sig" ||
     die "this release isn't signed; refusing to install it"
@@ -114,7 +129,11 @@ if [[ -z "$tarball" ]]; then
     die "this release's signature doesn't match Flytower's key; refusing to install it"
   (cd "$work" && grep " $name\$" SHA256SUMS | sha256sum -c --quiet -) ||
     die "the download didn't match its checksum; try again"
-  echo "Release signature checked: this is a genuine Flytower release."
+  if [[ -n "$pr" ]]; then
+    echo "Signature checked: this is a genuine Flytower test build."
+  else
+    echo "Release signature checked: this is a genuine Flytower release."
+  fi
   tarball="$work/$name"
 fi
 
