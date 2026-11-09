@@ -71,6 +71,48 @@ try {
     step('security headers set')
   }
 
+  {
+    // Notifications: a JSON webhook channel added through the form gets one signed test POST.
+    const got: { signature: string | null; body: string }[] = []
+    using receiver = Bun.serve({
+      port: 0,
+      hostname: '127.0.0.1',
+      async fetch(req) {
+        got.push({ signature: req.headers.get('x-flytower-signature'), body: await req.text() })
+        return new Response('ok')
+      },
+    })
+    await view.navigate(`${base}/system`)
+    await waitForText(view, 'Notifications')
+    await clickButton(view, 'Add channel')
+    await waitForText(view, 'Add a notification channel')
+    await fill(view, 'input[placeholder="Admins"]', 'E2E hook')
+    await view.click('[data-e2e=notify-kind]')
+    await until('the kinds of channel', () =>
+      view.evaluate<boolean>(`document.querySelectorAll('[role=option]').length === 3`),
+    )
+    await view.click('[role=option]:last-child')
+    await waitForText(view, 'Signing secret')
+    await fill(
+      view,
+      'input[placeholder="https://example.com/flytower-hook"]',
+      `http://127.0.0.1:${receiver.port}/hook`,
+    )
+    await clickButton(view, 'Generate')
+    const secret = await view.evaluate<string>(
+      `[...document.querySelectorAll('input')].find((i) => /^[0-9a-f]{48}$/.test(i.value)).value`,
+    )
+    await view.evaluate(`document.querySelector('[data-e2e=notify-save]').click()`)
+    await waitForText(view, 'Added E2E hook')
+    await shot('1b-notifications')
+    await view.evaluate(`document.querySelector('[aria-label="Send a test to E2E hook"]').click()`)
+    const hit = await until('the test notification', async () => got[0])
+    const expected = `sha256=${new Bun.CryptoHasher('sha256', secret).update(hit.body).digest('hex')}`
+    if (hit.signature !== expected) throw new Error(`bad signature ${hit.signature}`)
+    if (JSON.parse(hit.body).kind !== 'test') throw new Error(`unexpected body ${hit.body}`)
+    step('notification channel added; its test arrived signed')
+  }
+
   if (!process.env.E2E_SKIP_SERVER) {
     const versions = await api<{ id: string }[]>(view, '/api/loaders/fabric/minecraft')
     const mc = process.env.E2E_MC_VERSION ?? versions.body[0]?.id
