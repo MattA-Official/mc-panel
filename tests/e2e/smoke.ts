@@ -191,7 +191,7 @@ try {
     if (!(await goldIsThere())) throw new Error('the restore did not bring the gold block back')
     step('restored the backup through the UI and the block came back')
 
-    // Off-site: add MinIO through the UI, copy a backup there, lose the local file, and
+    // Off-site: add S3Mock through the UI, copy a backup there, lose the local file, and
     // restore from the copy.
     const labelled = async (text: string) => {
       const id = await view.evaluate<string | null>(`(() => {
@@ -206,8 +206,8 @@ try {
     await clickButton(view, 'Add storage')
     await waitForText(view, 'Secret access key')
     for (const [label, value] of [
-      ['Name', 'MinIO'],
-      ['Endpoint', 'http://127.0.0.1:9000'],
+      ['Name', 'S3Mock'],
+      ['Endpoint', 'http://127.0.0.1:9090'],
       ['Bucket', 'mc-backups'],
       ['Region', 'us-east-1'],
       ['Access key ID', 'flytower'],
@@ -222,7 +222,7 @@ try {
       waitForText(view, 'Not used by any server'),
     )
     const targets = await api<{ id: number; name: string }[]>(view, '/api/system/backup-targets')
-    const minio = targets.body.find((t) => t.name === 'MinIO')
+    const minio = targets.body.find((t) => t.name === 'S3Mock')
     if (!minio) throw new Error(`target not added: ${JSON.stringify(targets.body)}`)
     await api(view, '/api/servers/smoke/backups/offsite', {
       method: 'PUT',
