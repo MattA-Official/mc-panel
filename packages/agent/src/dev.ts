@@ -6,6 +6,7 @@
  *
  *   bun run --filter @flytower/agent dev
  */
+import type { Result } from '@flytower/protocol'
 import { mkdir, rm } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { unitName, userName } from '@flytower/protocol'
@@ -51,8 +52,26 @@ const sshState = () => ({
   firewall: true,
 })
 
+// Pretend releases: installing "succeeds" after a moment without changing anything.
+let lastUpdate: Result<'update.status'>['last'] = null
+const fakeUpdate = (to: string, manual: boolean) => {
+  const at = new Date().toISOString()
+  lastUpdate = { state: 'running', from: '0.0.0-dev', to, reason: null, at, manual }
+  setTimeout(() => {
+    lastUpdate = { ...lastUpdate!, state: 'rolled-back', reason: 'the dev agent only pretends' }
+  }, 3000)
+  return { started: true as const }
+}
+
 const handlers: Handlers = {
   ping: async (_p, ctx) => protocolInfo(ctx.version),
+  'update.status': async () => ({
+    current: '0.0.0-dev',
+    releases: ['0.0.0-dev'],
+    last: lastUpdate,
+  }),
+  'update.install': async ({ version }) => fakeUpdate(version, false),
+  'update.rollback': async ({ version }) => fakeUpdate(version, true),
   'service.status': async ({ server }) => ({
     active: states.get(server) ?? 'inactive',
     since: null,

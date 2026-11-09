@@ -17,7 +17,13 @@ const ctx = {
     config: env('FLYTOWER_CONFIG_DIR', '/etc/flytower'),
     systemd: env('FLYTOWER_SYSTEMD_DIR', '/etc/systemd/system'),
     state: env('FLYTOWER_AGENT_STATE_DIR', '/var/lib/flytower/agent'),
+    prefix: env('FLYTOWER_PREFIX', '/opt/flytower'),
+    panelData: env('FLYTOWER_PANEL_DATA', '/var/lib/flytower'),
   },
+  releasesUrl: env(
+    'FLYTOWER_RELEASES_URL',
+    'https://github.com/MattA-Official/mc-panel/releases/download',
+  ),
   panelGroup: env('FLYTOWER_PANEL_GROUP', 'flytower'),
   // stdout goes to the journal; one JSON line per request.
   log: (e: unknown) => console.log(JSON.stringify({ audit: e })),

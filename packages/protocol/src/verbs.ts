@@ -17,6 +17,18 @@ const SshState = z.object({
   firewall: z.boolean(),
 })
 
+const Version = z.string().regex(/^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/, 'not a release version')
+
+export const UpdateRecord = z.object({
+  state: z.enum(['running', 'succeeded', 'rolled-back', 'failed']),
+  from: z.string(),
+  to: z.string(),
+  /** Why it rolled back or failed. */
+  reason: z.string().nullable(),
+  at: z.string(),
+  manual: z.boolean(),
+})
+
 export const verbs = {
   ping: {
     params: z.object({}).strict(),
@@ -85,6 +97,29 @@ export const verbs = {
       .strict()
       .refine((p) => p.open || p.minutes === undefined, 'minutes only applies when opening'),
     result: SshState,
+  },
+  /** Installed Flytower releases and the last update. */
+  'update.status': {
+    params: z.object({}).strict(),
+    result: z.object({
+      current: z.string(),
+      releases: z.array(z.string()),
+      last: UpdateRecord.nullable(),
+    }),
+  },
+  /**
+   * Downloads a release from Flytower's own GitHub releases (never another address), checks
+   * its signature and hash, and hands over to the updater, which restarts the panel and
+   * agent and rolls back by itself if the new version isn't healthy.
+   */
+  'update.install': {
+    params: z.object({ version: Version }).strict(),
+    result: z.object({ started: z.literal(true) }),
+  },
+  /** Switches back to another release already installed, through the same updater. */
+  'update.rollback': {
+    params: z.object({ version: Version }).strict(),
+    result: z.object({ started: z.literal(true) }),
   },
   'server.delete': {
     params: z.object({ name: ServerName }).strict(),

@@ -18,7 +18,15 @@ export interface AgentContext {
     config: string // /etc/flytower
     systemd: string // /etc/systemd/system
     state: string // /var/lib/flytower/agent, root only
+    /** Where releases live, with `current` pointing at one. */
+    prefix?: string // /opt/flytower
+    /** The panel's data folder, holding its database. */
+    panelData?: string // /var/lib/flytower
   }
+  /** Where releases are downloaded from: Flytower's GitHub releases, or a test server. */
+  releasesUrl?: string
+  /** Only tests set this; otherwise releases must be signed with the key built in. */
+  releaseKey?: string
   /** The panel's group. Server folders are group-owned by it so the panel can manage files. */
   panelGroup: string
   log: (event: AuditEvent) => void

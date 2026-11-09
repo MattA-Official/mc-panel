@@ -53,6 +53,15 @@ const agent = await Bun.build({
   minify: false,
 })
 if (!agent.success) throw new AggregateError(agent.logs, 'agent bundle failed')
+// The updater runs from the release it installs, as its own process.
+const updater = await Bun.build({
+  entrypoints: [join(repo, 'packages/agent/src/updater-main.ts')],
+  target: 'bun',
+  outdir: join(stage, 'agent'),
+  naming: 'updater.js',
+  minify: false,
+})
+if (!updater.success) throw new AggregateError(updater.logs, 'updater bundle failed')
 
 // Bun itself.
 const bunTarget = join(stage, 'bin/bun')
