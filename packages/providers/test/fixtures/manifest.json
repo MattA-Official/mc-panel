@@ -1,0 +1,20 @@
+{
+  "latest": { "release": "26.3", "snapshot": "26w45a" },
+  "versions": [
+    {
+      "id": "26w45a",
+      "type": "snapshot",
+      "url": "https://piston-meta.mojang.com/v1/packages/aaa/26w45a.json"
+    },
+    {
+      "id": "26.3",
+      "type": "release",
+      "url": "https://piston-meta.mojang.com/v1/packages/bbb/26.3.json"
+    },
+    {
+      "id": "1.16.5",
+      "type": "release",
+      "url": "https://piston-meta.mojang.com/v1/packages/ccc/1.16.5.json"
+    }
+  ]
+}

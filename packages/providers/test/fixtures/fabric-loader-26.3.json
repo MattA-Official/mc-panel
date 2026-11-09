@@ -1,0 +1,29 @@
+[
+  {
+    "loader": {
+      "separator": ".",
+      "build": 20,
+      "maven": "net.fabricmc:fabric-loader:0.19.0-beta.1",
+      "version": "0.19.0-beta.1",
+      "stable": false
+    }
+  },
+  {
+    "loader": {
+      "separator": ".",
+      "build": 19,
+      "maven": "net.fabricmc:fabric-loader:0.18.4",
+      "version": "0.18.4",
+      "stable": true
+    }
+  },
+  {
+    "loader": {
+      "separator": ".",
+      "build": 18,
+      "maven": "net.fabricmc:fabric-loader:0.18.3",
+      "version": "0.18.3",
+      "stable": true
+    }
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "name": "@flytower/providers",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Where Flytower gets Minecraft servers, loaders and content from",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}
