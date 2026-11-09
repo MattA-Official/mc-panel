@@ -1,0 +1,13 @@
+{
+  "name": "@flytower/rcon",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A small Minecraft RCON client for Bun",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

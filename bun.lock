@@ -56,6 +56,10 @@
       "name": "@flytower/providers",
       "version": "0.0.0",
     },
+    "packages/rcon": {
+      "name": "@flytower/rcon",
+      "version": "0.0.0",
+    },
   },
   "packages": {
     "@adonisjs/hash": ["@adonisjs/hash@9.1.1", "", { "dependencies": { "@phc/format": "^1.0.0", "@poppinss/utils": "^6.9.3" }, "peerDependencies": { "argon2": "^0.31.2 || ^0.41.0 || ^0.43.0", "bcrypt": "^5.1.1 || ^6.0.0" }, "optionalPeers": ["argon2", "bcrypt"] }, "sha512-ZkRguwjAp4skKvKDdRAfdJ2oqQ0N7p9l3sioyXO1E8o0WcsyDgEpsTQtuVNoIdMiw4sn4gJlmL3nyF4BcK1ZDQ=="],
@@ -225,6 +229,8 @@
     "@flytower/protocol": ["@flytower/protocol@workspace:packages/protocol"],
 
     "@flytower/providers": ["@flytower/providers@workspace:packages/providers"],
+
+    "@flytower/rcon": ["@flytower/rcon@workspace:packages/rcon"],
 
     "@fontsource-variable/big-shoulders-display": ["@fontsource-variable/big-shoulders-display@5.3.0", "", {}, "sha512-7k1REXMZFEa7gSWOURbmCJW5Gv9D0EbEFQgosZidM8Ob/qpPlK96vqyIzCTnNZ/C0XFZWxeKU53D3QdeHctYCA=="],
 
