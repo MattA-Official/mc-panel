@@ -6,8 +6,18 @@ type Row = typeof schema.servers.$inferSelect
 
 /** A server as the browser sees it. The RCON password stays on the server. */
 export function publicServer(row: Row, status: ServiceState) {
-  const { rconPassword: _secret, ...rest } = row
-  return { ...rest, status }
+  return {
+    name: row.name,
+    displayName: row.displayName,
+    loader: row.loader,
+    mcVersion: row.mcVersion,
+    loaderVersion: row.loaderVersion,
+    javaMajor: row.javaMajor,
+    memoryMb: row.memoryMb,
+    port: row.port,
+    createdAt: row.createdAt,
+    status,
+  }
 }
 
 export type PublicServer = ReturnType<typeof publicServer>
