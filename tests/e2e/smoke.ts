@@ -610,7 +610,7 @@ try {
     await waitForText(view, 'Update channel', 30_000)
     const checked = await view.evaluate<string | null>(`(() => {
       const r = document.querySelector('[data-e2e=update-channel] [role=radio][aria-checked=true]')
-      return r ? document.querySelector('label[for="' + r.id + '"]')?.innerText ?? null : null
+      return r?.closest('[data-slot=item]')?.innerText?.trim() ?? null
     })()`)
     if (!checked?.startsWith('Beta'))
       throw new Error(`after a reload, the channel shows ${checked}`)
