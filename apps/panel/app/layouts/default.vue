@@ -12,6 +12,7 @@ async function signOut() {
 
 const items: NavigationMenuItem[] = [
   { label: 'Servers', icon: 'i-lucide-server', to: '/' },
+  { label: 'Activity', icon: 'i-lucide-history', to: '/activity' },
   { label: 'System', icon: 'i-lucide-settings', to: '/system' },
 ]
 </script>
