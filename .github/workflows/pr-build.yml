@@ -1,0 +1,117 @@
+name: PR build
+
+# Builds each pull request as a signed test build, published under the tag pr-<number> so it
+# can be installed on a test VPS with `install.sh --pr <number>`. The panel's updater only
+# offers v-tagged releases, so these never reach anyone by accident. Closing the pull request
+# deletes its build.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-build-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # Only branches in this repository: forks don't get the signing key.
+    if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      PR: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Work out the version
+        run: |
+          # The next minor after the newest release, marked as this PR's build: 1.1.0-pr.70.3
+          latest="$(git tag -l 'v[0-9]*' --sort=-v:refname | grep -v -- - | head -n1)"
+          IFS=. read -r major minor _ <<<"${latest#v}"
+          version="${major:-0}.$(( ${minor:-0} + 1 )).0-pr.$PR.$GITHUB_RUN_NUMBER"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "Building $version"
+
+      - run: bun install --frozen-lockfile
+      - run: bun test
+      - name: Build panel
+        run: bun run build
+
+      - name: Package
+        run: |
+          bun scripts/package.ts --version "$VERSION" --arch amd64 --out dist
+          bun scripts/package.ts --version "$VERSION" --arch arm64 --out dist
+          cp installer/install.sh dist/install.sh
+          cd dist && sha256sum flytower-*.tar.gz install.sh > SHA256SUMS && cat SHA256SUMS
+
+      - name: Sign
+        env:
+          FLYTOWER_SIGNING_KEY: ${{ secrets.FLYTOWER_SIGNING_KEY }}
+        run: |
+          if [[ -z "$FLYTOWER_SIGNING_KEY" ]]; then
+            echo "::error::FLYTOWER_SIGNING_KEY is needed to sign test builds"
+            exit 1
+          fi
+          umask 077
+          key="$(mktemp)"
+          trap 'rm -f "$key"' EXIT
+          bun scripts/signing-key.ts "$key"
+          if [[ "$(openssl pkey -in "$key" -pubout)" != "$(cat installer/release-key.pem)" ]]; then
+            echo "::error::FLYTOWER_SIGNING_KEY doesn't match installer/release-key.pem"
+            exit 1
+          fi
+          openssl pkeyutl -sign -inkey "$key" -rawin -in dist/SHA256SUMS | base64 -w0 > dist/SHA256SUMS.sig
+          base64 -d dist/SHA256SUMS.sig > sig.bin
+          openssl pkeyutl -verify -pubin -inkey installer/release-key.pem -rawin \
+            -in dist/SHA256SUMS -sigfile sig.bin
+          rm sig.bin
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="pr-$PR"
+          gh release delete "$tag" --cleanup-tag --yes 2>/dev/null || true
+          # The tag points at the first commit, on purpose: GitHub lists releases newest commit
+          # first, and older installers take the first one listed as "latest".
+          root="$(git rev-list --max-parents=0 HEAD | tail -n1)"
+          cat > notes.md <<EOF
+          Test build of #$PR at $HEAD_SHA, version \`$VERSION\`. **Not a release**: for testing on a spare VPS.
+
+          Install or upgrade to it with:
+
+          \`\`\`sh
+          curl -fsSL https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/install.sh \\
+            | sudo bash -s -- --pr $PR --domain panel.example.com
+          \`\`\`
+
+          It's deleted when the pull request closes.
+          EOF
+          gh release create "$tag" --prerelease --target "$root" \
+            --title "Test build: pull request #$PR" \
+            --notes-file notes.md \
+            dist/flytower-*.tar.gz dist/install.sh dist/SHA256SUMS dist/SHA256SUMS.sig
+          echo "::notice::Published $VERSION as $tag"
+
+  clean-up:
+    if: github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Delete the test build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release delete "pr-${{ github.event.pull_request.number }}" --cleanup-tag --yes || true
