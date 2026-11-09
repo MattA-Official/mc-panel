@@ -13,3 +13,7 @@ export function createLoaders(
   const mojang = new Mojang(fetchImpl)
   return { vanilla: vanillaProvider(mojang), fabric: fabricProvider(fetchImpl, mojang) }
 }
+export * from './content.ts'
+export { modrinthProvider, rankVersions } from './modrinth.ts'
+export { resolveUrl, type UrlRef } from './url.ts'
+export { resolveAll, type ResolvedSet, type WantedContent } from './resolve.ts'
