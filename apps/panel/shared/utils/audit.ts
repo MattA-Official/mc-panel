@@ -18,7 +18,7 @@ export function auditKind(action: string): AuditKind {
   if (action.startsWith('players.')) return 'players'
   if (action.startsWith('files.')) return 'files'
   if (action === 'server.apply' || action === 'server.properties') return 'content'
-  if (/^(auth|passkey|setup|ssh)\./.test(action)) return 'access'
+  if (/^(auth|passkey|recovery|setup|ssh)\./.test(action)) return 'access'
   if (action.startsWith('update.')) return 'system'
   return 'servers'
 }
@@ -53,7 +53,11 @@ export function describeAudit(
     case 'setup.completed':
       return 'Set up Flytower'
     case 'passkey.added':
-      return 'Added a passkey'
+      return `Added a passkey${d.nickname ? ` (${str(d.nickname)})` : ''}`
+    case 'passkey.removed':
+      return `Removed a passkey${d.nickname ? ` (${str(d.nickname)})` : ''}`
+    case 'recovery.reissued':
+      return 'Made new recovery codes'
     case 'ssh.open':
       return `Opened SSH${d.minutes ? ` for ${str(d.minutes)} minutes` : ''}`
     case 'ssh.close':
