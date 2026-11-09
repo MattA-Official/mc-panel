@@ -85,6 +85,33 @@ export const backups = sqliteTable(
   (t) => [uniqueIndex('backups_file').on(t.server, t.file)],
 )
 
+export const exports = sqliteTable('exports', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  server: text('server').notNull(),
+  file: text('file').notNull(),
+  bytes: integer('bytes').notNull(),
+  createdAt: createdAt(),
+  expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+})
+
+export const shares = sqliteTable(
+  'shares',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    exportId: integer('export_id')
+      .notNull()
+      .references(() => exports.id, { onDelete: 'cascade' }),
+    /** SHA-256 of the token, hex. The token itself is only ever shown once. */
+    tokenHash: text('token_hash').notNull(),
+    createdBy: integer('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+    expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+    revokedAt: integer('revoked_at', { mode: 'timestamp_ms' }),
+    downloads: integer('downloads').notNull().default(0),
+  },
+  (t) => [uniqueIndex('shares_token').on(t.tokenHash)],
+)
+
 export const jobs = sqliteTable('jobs', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   kind: text('kind').notNull(),

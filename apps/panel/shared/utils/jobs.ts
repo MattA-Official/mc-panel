@@ -23,6 +23,12 @@ export const RESTORE_STEPS = [
   'Starting the server',
 ] as const
 
+export const EXPORT_STEPS = [
+  'Checking free space',
+  'Saving the world',
+  'Zipping the world',
+] as const
+
 export interface JobEvent {
   id: number
   state: 'queued' | 'running' | 'succeeded' | 'failed'

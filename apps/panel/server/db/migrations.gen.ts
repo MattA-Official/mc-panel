@@ -7,5 +7,9 @@ export const migrations: { tag: string; sql: string }[] = [
   {
     "tag": "0001_burly_kinsey_walden",
     "sql": "CREATE TABLE `backups` (\n\t`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,\n\t`server` text NOT NULL,\n\t`file` text NOT NULL,\n\t`bytes` integer NOT NULL,\n\t`kind` text NOT NULL,\n\t`note` text,\n\t`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL\n);\n--> statement-breakpoint\nCREATE UNIQUE INDEX `backups_file` ON `backups` (`server`,`file`);--> statement-breakpoint\nALTER TABLE `servers` ADD `backup_schedule` text;--> statement-breakpoint\nALTER TABLE `servers` ADD `backup_tz` text DEFAULT 'UTC' NOT NULL;--> statement-breakpoint\nALTER TABLE `servers` ADD `keep_last` integer DEFAULT 6 NOT NULL;--> statement-breakpoint\nALTER TABLE `servers` ADD `keep_daily` integer DEFAULT 7 NOT NULL;--> statement-breakpoint\nALTER TABLE `servers` ADD `keep_weekly` integer DEFAULT 4 NOT NULL;"
+  },
+  {
+    "tag": "0002_hot_warbound",
+    "sql": "CREATE TABLE `exports` (\n\t`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,\n\t`server` text NOT NULL,\n\t`file` text NOT NULL,\n\t`bytes` integer NOT NULL,\n\t`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,\n\t`expires_at` integer NOT NULL\n);\n--> statement-breakpoint\nCREATE TABLE `shares` (\n\t`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,\n\t`export_id` integer NOT NULL,\n\t`token_hash` text NOT NULL,\n\t`created_by` integer,\n\t`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,\n\t`expires_at` integer NOT NULL,\n\t`revoked_at` integer,\n\t`downloads` integer DEFAULT 0 NOT NULL,\n\tFOREIGN KEY (`export_id`) REFERENCES `exports`(`id`) ON UPDATE no action ON DELETE cascade,\n\tFOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null\n);\n--> statement-breakpoint\nCREATE UNIQUE INDEX `shares_token` ON `shares` (`token_hash`);"
   }
 ]
