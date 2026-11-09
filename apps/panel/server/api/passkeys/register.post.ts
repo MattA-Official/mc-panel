@@ -23,6 +23,7 @@ export default defineEventHandler(async (event) => {
   }
   if (!firstRun && !session.user)
     throw createError({ statusCode: 401, statusMessage: 'Sign in first.' })
+  if (!firstRun && !session.mustEnrolPasskey) await requireElevated(event)
 
   let cred
   try {

@@ -15,5 +15,8 @@ export default defineEventHandler(async (event) => {
     return registrationOptions(db, relyingParty(event), { id: null, name: name ?? 'Owner' })
   }
   if (!session.user) throw createError({ statusCode: 401, statusMessage: 'Sign in first.' })
+  // A stolen session mustn't be able to plant its own passkey. After a recovery-code sign-in
+  // the code itself was the check.
+  if (!session.mustEnrolPasskey) await requireElevated(event)
   return registrationOptions(db, relyingParty(event), session.user)
 })
