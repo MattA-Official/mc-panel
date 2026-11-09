@@ -77,13 +77,6 @@ export function backupHttp<T>(fn: () => T): T {
   }
 }
 
-export function audit(userId: number, action: string, target: string, detail?: object) {
-  useDb()
-    .insert(schema.audit)
-    .values({ userId, action, target, detail: detail as Record<string, unknown> })
-    .run()
-}
-
 const BackupParams = z.object({ name: z.string().max(40), id: z.coerce.number().int().optional() })
 
 /** Streams a zip as a download with a readable, safe file name. */

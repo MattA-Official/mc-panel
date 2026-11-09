@@ -31,6 +31,9 @@ export default defineNuxtConfig({
     serversDir: '/srv/flytower/servers',
     backupsDir: '/var/lib/flytower/backups',
     exportsDir: '/var/lib/flytower/exports',
+    importsDir: '/var/lib/flytower/imports',
+    /** Where the agent archives deleted servers. */
+    archiveDir: '/var/lib/flytower/archive',
     setupTokenFile: '/var/lib/flytower/setup-token.hash',
     devSetupToken: '',
     /** Pins the passkey domain; empty means the request's host. */
@@ -51,6 +54,8 @@ export default defineNuxtConfig({
       serversDir: '.data/servers',
       backupsDir: '.data/backups',
       exportsDir: '.data/exports',
+      importsDir: '.data/imports',
+      archiveDir: '.data/archive',
       agentSocket: '.data/agent.sock',
       setupTokenFile: '.data/setup-token.hash',
       devSetupToken: 'dev-setup-token',

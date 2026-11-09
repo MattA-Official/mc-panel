@@ -6,6 +6,14 @@ export default defineNitroPlugin(() => {
     void useExports()
       .sweep()
       .catch((err) => console.error('[flytower] sweeping exports failed', err))
+  const sweepImports = () =>
+    void useImports()
+      .sweep()
+      .catch((err) => console.error('[flytower] sweeping imports failed', err))
   sweep()
-  Bun.cron('7 * * * *', sweep).unref()
+  sweepImports()
+  Bun.cron('7 * * * *', () => {
+    sweep()
+    sweepImports()
+  }).unref()
 })
