@@ -13,7 +13,10 @@ const ctx = {
     servers: env('KILN_SERVERS_DIR', '/srv/kiln/servers'),
     runtimes: env('KILN_RUNTIMES_DIR', '/opt/kiln/runtimes'),
     archive: env('KILN_ARCHIVE_DIR', '/var/lib/kiln/archive'),
+    config: env('KILN_CONFIG_DIR', '/etc/kiln'),
+    systemd: env('KILN_SYSTEMD_DIR', '/etc/systemd/system'),
   },
+  panelGroup: env('KILN_PANEL_GROUP', 'kiln'),
   // stdout goes to the journal; one JSON line per request.
   log: (e: unknown) => console.log(JSON.stringify({ audit: e })),
 }
@@ -26,7 +29,7 @@ if (process.getuid?.() !== 0) {
 const server = await listen(
   {
     socketPath: env('KILN_AGENT_SOCKET', '/run/kiln/agent.sock'),
-    group: env('KILN_PANEL_GROUP', 'kiln'),
+    group: ctx.panelGroup,
   },
   handlers,
   ctx,

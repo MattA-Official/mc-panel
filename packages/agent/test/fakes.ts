@@ -25,6 +25,8 @@ export function fakeContext(
     servers: '/tmp/kiln/servers',
     runtimes: '/tmp/kiln/runtimes',
     archive: '/tmp/kiln/archive',
+    config: '/tmp/kiln/etc',
+    systemd: '/tmp/kiln/systemd',
   },
 ) {
   const audit: AuditEvent[] = []
@@ -32,6 +34,7 @@ export function fakeContext(
     exec,
     fetch: fetchImpl,
     arch: 'x64',
+    panelGroup: 'kiln',
     version: '0.0.0-test',
     paths,
     log: (e) => audit.push(e),
