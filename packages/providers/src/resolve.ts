@@ -2,8 +2,11 @@
 import type { ContentProvider, ContentRef, ContentTarget, ResolvedContent } from './content.ts'
 import { ProviderError } from './types.ts'
 import { resolveUrl, type UrlRef } from './url.ts'
+import type { TweakType, VanillaTweaksProvider } from './vanillatweaks.ts'
 
-export type WantedContent = ({ modrinth: string; version?: string } | UrlRef) & {
+export type WantedContent = (
+  { modrinth: string; version?: string } | UrlRef | { vanillatweaks: string; tweak?: TweakType }
+) & {
   kind?: ContentRef['kind']
 }
 
@@ -22,6 +25,7 @@ export interface ResolveOptions {
    * the lockfile, so an apply doesn't quietly upgrade things.
    */
   pinned?: (project: string) => string | undefined
+  vanillatweaks?: VanillaTweaksProvider
 }
 
 export async function resolveAll(
@@ -37,6 +41,26 @@ export async function resolveAll(
   const queue: { ref: ContentRef; by: string | null }[] = []
 
   for (const w of wanted) {
+    if ('vanillatweaks' in w) {
+      if (!opts.vanillatweaks) {
+        problems.push('Vanilla Tweaks is turned off.')
+        continue
+      }
+      try {
+        const r = await opts.vanillatweaks.resolve(
+          { pack: w.vanillatweaks, tweak: w.tweak },
+          target.minecraft,
+        )
+        const kept = opts.pinned?.(r.projectId)
+        const item = kept ? { ...r, versionId: kept, versionNumber: kept } : r
+        if (byProject.has(r.projectId)) problems.push(`${r.title} is listed twice.`)
+        byProject.set(r.projectId, { ...item, requiredBy: [] })
+      } catch (err) {
+        if (!(err instanceof ProviderError)) throw err
+        problems.push(err.message)
+      }
+      continue
+    }
     if ('url' in w) {
       const r = resolveUrl(w)
       if (byProject.has(r.projectId)) problems.push(`${r.filename} is listed twice.`)

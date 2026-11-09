@@ -17,3 +17,14 @@ export * from './content.ts'
 export { modrinthProvider, rankVersions } from './modrinth.ts'
 export { resolveUrl, type UrlRef } from './url.ts'
 export { resolveAll, type ResolvedSet, type WantedContent } from './resolve.ts'
+export {
+  parseCategories,
+  requestDownload,
+  vanillaTweaksProvider,
+  vtVersions,
+  type TweakType,
+  type VanillaTweaksProvider,
+  type VtCatalogue,
+  type VtCategory,
+  type VtPack,
+} from './vanillatweaks.ts'

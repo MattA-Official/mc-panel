@@ -5,7 +5,7 @@
 import type { ExpectedHash, LoaderId } from './types.ts'
 
 export type ContentKind = 'mod' | 'datapack'
-export type ContentSourceId = 'modrinth' | 'url'
+export type ContentSourceId = 'modrinth' | 'url' | 'vanillatweaks'
 
 /** The server content is for. */
 export interface ContentTarget {
@@ -51,12 +51,20 @@ export interface ResolvedContent {
   kind: ContentKind
   filename: string
   url: string
-  hash: ExpectedHash
+  /** Null when the source publishes none; the lockfile then pins what was downloaded. */
+  hash: ExpectedHash | null
   size: number | null
   /** Required dependencies, as project ids with an exact version when the author pinned one. */
   dependencies: { projectId: string; versionId: string | null }[]
   /** Projects this one says it can't run with. */
   incompatible: string[]
+  /**
+   * For sources that build files on request: POST this form, and download the link the
+   * JSON answer gives. `url` is then only for showing.
+   */
+  request?: { url: string; form: Record<string, string> }
+  /** The download is a zip holding the real file, as Vanilla Tweaks sends datapacks. */
+  wrapped?: boolean
 }
 
 export interface ContentRef {
