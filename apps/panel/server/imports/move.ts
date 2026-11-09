@@ -29,7 +29,9 @@ async function move(from: string, to: string) {
     if ((err as NodeJS.ErrnoException).code !== 'EXDEV') throw err
     const cp = Bun.spawn(['cp', '-a', '--', from, to], { stderr: 'pipe' })
     if ((await cp.exited) !== 0) {
-      throw new Error(`Copying ${from} failed: ${(await new Response(cp.stderr).text()).trim()}`)
+      throw new Error(`Copying ${from} failed: ${(await new Response(cp.stderr).text()).trim()}`, {
+        cause: err,
+      })
     }
     await rm(from, { recursive: true, force: true })
   }
