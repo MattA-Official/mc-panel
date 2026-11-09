@@ -33,6 +33,7 @@ provideServerContext({ server, status, refresh })
 
 const tabs = computed(() => [
   { label: 'Console', icon: 'i-lucide-terminal', to: `/servers/${name.value}`, exact: true },
+  { label: 'Logs', icon: 'i-lucide-scroll-text', to: `/servers/${name.value}/logs` },
   { label: 'Players', icon: 'i-lucide-users', to: `/servers/${name.value}/players` },
   { label: 'Files', icon: 'i-lucide-folder-open', to: `/servers/${name.value}/files` },
   { label: 'Settings', icon: 'i-lucide-sliders-horizontal', to: `/servers/${name.value}/settings` },
@@ -53,6 +54,7 @@ const tabs = computed(() => [
           <UButton
             v-if="!running"
             label="Start"
+            :ui="{ label: 'sr-only sm:not-sr-only' }"
             icon="i-lucide-play"
             :loading="busy === 'start'"
             :disabled="!!busy"
@@ -61,6 +63,7 @@ const tabs = computed(() => [
           <template v-else>
             <UButton
               label="Restart"
+              :ui="{ label: 'sr-only sm:not-sr-only' }"
               icon="i-lucide-rotate-cw"
               color="neutral"
               variant="outline"
@@ -70,6 +73,7 @@ const tabs = computed(() => [
             />
             <UButton
               label="Stop"
+              :ui="{ label: 'sr-only sm:not-sr-only' }"
               icon="i-lucide-square"
               color="error"
               variant="soft"
