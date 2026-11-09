@@ -187,6 +187,21 @@ function startOver() {
         </div>
 
         <form v-else class="space-y-6" @submit.prevent="submit">
+          <UAlert
+            color="neutral"
+            variant="subtle"
+            icon="i-lucide-folder-input"
+            title="Moving a server from somewhere else?"
+            description="Import its files or a singleplayer world instead of starting fresh."
+            :actions="[
+              {
+                label: 'Import a server',
+                to: '/servers/import',
+                color: 'neutral',
+                variant: 'outline',
+              },
+            ]"
+          />
           <UFormField label="Name" description="What players and you will call it." required>
             <UInput
               v-model="form.displayName"

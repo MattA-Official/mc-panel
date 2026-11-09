@@ -144,7 +144,22 @@ try {
     await view.click('[data-e2e=restore]')
     await waitForText(view, 'Restore this backup?')
     await clickButton(view, 'Restore')
-    await waitForText(view, 'Restored the backup', 5 * 60_000)
+    const outcome = await until(
+      'the restore to finish',
+      () =>
+        view.evaluate<string | null>(`(() => {
+          const t = document.body.innerText
+          if (t.includes('Restored the backup')) return 'ok'
+          if (t.includes("That didn't work")) return t.slice(t.indexOf("That didn't work"), t.indexOf("That didn't work") + 300)
+          return null
+        })()`),
+      5 * 60_000,
+      1000,
+    ).catch(async (err) => {
+      const text = await view.evaluate<string>('document.body.innerText').catch(() => '')
+      throw new Error(`${(err as Error).message}; the page said: ${text.slice(0, 600)}`)
+    })
+    if (outcome !== 'ok') throw new Error(`restore failed: ${outcome}`)
     await shot('3-restored')
     await until(
       'RCON after the restore',
@@ -185,6 +200,55 @@ try {
     const stopped = await api(view, '/api/servers/smoke/stop', { body: {} })
     if (stopped.status !== 200) throw new Error(`stop failed: ${JSON.stringify(stopped.body)}`)
     step('server stopped')
+
+    // Import: the exported world becomes a second server, gold block and all.
+    const shareUrl = new URL(link.body.url).pathname
+    const imp = await view.evaluate<{ id: string; error?: string }>(`(async () => {
+      const blob = await (await fetch(${JSON.stringify(shareUrl)})).blob()
+      const meta = await (await fetch('/api/imports', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ label: 'smoke-world.zip', size: blob.size }),
+      })).json()
+      const put = await fetch('/api/imports/' + meta.id + '/chunk?offset=0', { method: 'PUT', body: blob })
+      if (!put.ok) return { id: meta.id, error: await put.text() }
+      return { id: meta.id }
+    })()`)
+    if (imp.error) throw new Error(`upload failed: ${imp.error}`)
+    const unpackJob = await api<{ jobId: number }>(view, `/api/imports/${imp.id}/unpack`, {
+      body: {},
+    })
+    await waitForJob(unpackJob.body.jobId, 'unpacking the import', 60_000)
+    const created2 = await api<{ jobId: number }>(view, `/api/imports/${imp.id}/create`, {
+      body: {
+        name: 'imported',
+        displayName: 'Imported',
+        loader: 'fabric',
+        mcVersion: mc,
+        memoryMb: 1024,
+        port: 25570,
+        acceptEula: true,
+      },
+    })
+    if (created2.status !== 202) throw new Error(`import failed: ${JSON.stringify(created2.body)}`)
+    await waitForJob(created2.body.jobId, 'the import job', 10 * 60_000)
+    const importedGold = await until(
+      'the imported server to answer',
+      async () => {
+        // Forced chunks are saved with the world, but make sure 0,0 is loaded.
+        await api(view, '/api/servers/imported/command', { body: { command: 'forceload add 0 0' } })
+        const r = await api<{ reply: string }>(view, '/api/servers/imported/command', {
+          body: { command: 'execute if block 0 100 0 minecraft:gold_block' },
+        })
+        return r.status === 200 ? r.body.reply : null
+      },
+      5 * 60_000,
+      2000,
+    )
+    if (!/passed/i.test(importedGold))
+      throw new Error(`gold block missing after import: ${importedGold}`)
+    step('imported the exported world as a new server, gold block intact')
+    await api(view, '/api/servers/imported/stop', { body: {} })
   }
   console.log('smoke test passed')
 } catch (err) {

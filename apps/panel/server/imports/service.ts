@@ -8,7 +8,7 @@ import { mkdir, readdir, readFile, rm, stat, statfs, truncate, writeFile } from 
 import { basename, join } from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
-import type { JobEvent } from '../../shared/utils/jobs'
+import { UNPACK_STEPS, type JobEvent } from '../../shared/utils/jobs'
 import { JobError, type JobTracker } from '../jobs/runner'
 import { extractArchive } from '../backups/archive'
 import { unzip } from '../unzip'
@@ -17,7 +17,6 @@ import { detect, type Detected } from './detect'
 export const STAGE_TTL_MS = 24 * 3_600_000
 export const MAX_CHUNK = 32 * 1024 * 1024
 export const MAX_IMPORT = 64 * 1024 ** 3
-export const UNPACK_STEPS = ['Getting the files', 'Unpacking', 'Looking inside'] as const
 
 export interface ImportMeta {
   id: string

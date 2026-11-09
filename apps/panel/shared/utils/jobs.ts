@@ -20,6 +20,8 @@ export const IMPORT_STEPS = [
   'Starting the server',
 ] as const
 
+export const UNPACK_STEPS = ['Getting the files', 'Unpacking', 'Looking inside'] as const
+
 export const BACKUP_STEPS = [
   'Checking free space',
   'Saving the world',
