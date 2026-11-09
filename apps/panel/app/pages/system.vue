@@ -9,28 +9,31 @@ const { data: health, refresh } = await useFetch('/api/health')
       <UDashboardNavbar title="System" />
     </template>
     <template #body>
-      <UCard v-if="health" class="max-w-xl">
-        <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
-          <dt class="text-muted">Panel version</dt>
-          <dd class="font-mono">{{ health.version }}</dd>
-          <dt class="text-muted">System helper</dt>
-          <dd>
-            <UBadge
-              :color="health.agent.ok ? 'success' : 'error'"
-              variant="subtle"
-              :label="health.agent.ok ? `Running, ${health.agent.version}` : 'Not reachable'"
+      <div class="space-y-6">
+        <UCard v-if="health" class="max-w-xl">
+          <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
+            <dt class="text-muted">Panel version</dt>
+            <dd class="font-mono">{{ health.version }}</dd>
+            <dt class="text-muted">System helper</dt>
+            <dd>
+              <UBadge
+                :color="health.agent.ok ? 'success' : 'error'"
+                variant="subtle"
+                :label="health.agent.ok ? `Running, ${health.agent.version}` : 'Not reachable'"
+              />
+            </dd>
+          </dl>
+          <template #footer>
+            <UButton
+              variant="outline"
+              icon="i-lucide-refresh-cw"
+              label="Check again"
+              @click="refresh()"
             />
-          </dd>
-        </dl>
-        <template #footer>
-          <UButton
-            variant="outline"
-            icon="i-lucide-refresh-cw"
-            label="Check again"
-            @click="refresh()"
-          />
-        </template>
-      </UCard>
+          </template>
+        </UCard>
+        <SshAccess />
+      </div>
     </template>
   </UDashboardPanel>
 </template>
