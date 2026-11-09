@@ -33,6 +33,11 @@ export const EVENT_KINDS = {
   },
   'server.started': { group: 'activity', label: 'A server started', perServer: true },
   'server.stopped': { group: 'activity', label: 'A server stopped', perServer: true },
+  'server.restarted': {
+    group: 'activity',
+    label: 'A server restarted from the panel',
+    perServer: true,
+  },
   'player.joined': { group: 'activity', label: 'A player joined', perServer: true },
   'player.left': { group: 'activity', label: 'A player left', perServer: true },
 } as const satisfies Record<string, { group: EventGroup; label: string; perServer?: boolean }>

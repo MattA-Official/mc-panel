@@ -13,10 +13,14 @@ export default defineEventHandler(async (event) => {
   findServer(name)
   // The old RCON connection dies with the process; don't hand it to the next command.
   if (action !== 'start') useConsole().forget(name)
+  // A server created moments ago may not be followed yet; its first start should still be heard.
+  syncLogWatcher()
+  if (action === 'restart') useLogWatcher().restartPressed(name)
   try {
     // Stopping waits for the world to save, which can take a while on a big world.
     await agent(`service.${action}`, { server: name }, { timeoutMs: 150_000 })
   } catch (err) {
+    if (action === 'restart') useLogWatcher().restartFailed(name)
     throw createError({
       statusCode: 502,
       statusMessage: `Couldn't ${action} ${name}: ${(err as Error).message}`,

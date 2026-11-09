@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { sealer } from '../backups/offsite'
 import { schema } from '../db'
 import { NotifyError, NotifyService } from '../notify'
-import { PlayerWatcher, RunningTracker } from '../notify/watchers'
+import { LogWatcher } from '../notify/watchers'
 import type { MachineReading } from '../metrics/sampler'
 import { compareVersions, defaultChannel, newestRelease } from '../updates'
 import { getSetting } from '../settings'
@@ -45,8 +45,7 @@ export async function notifyHttp<T>(fn: () => T | Promise<T>): Promise<T> {
   }
 }
 
-let running: RunningTracker | undefined
-let players: PlayerWatcher | undefined
+let logs: LogWatcher | undefined
 
 function serverNames() {
   return useDb()
@@ -56,55 +55,31 @@ function serverNames() {
     .map((r) => r.name)
 }
 
-/** Spots servers starting and stopping, from the metrics sampler and the status poller. */
-function useRunningTracker(): RunningTracker {
-  running ??= new RunningTracker(useNotify())
-  return running
+/** Follows every server's log for starts, stops, restarts, joins and leaves. */
+export function useLogWatcher(): LogWatcher {
+  logs ??= new LogWatcher(useNotify(), useRuntimeConfig().serversDir)
+  return logs
 }
 
-/**
- * Feeds the status poller's states (every few seconds while someone has the panel open, and
- * after every start, stop or restart) to the start and stop tracker. Only settled states count.
- */
-export function notifyStatuses(statuses: Record<string, string>) {
-  const settled: Record<string, boolean> = {}
-  for (const [server, state] of Object.entries(statuses)) {
-    if (state === 'active') settled[server] = true
-    else if (state === 'inactive' || state === 'failed') settled[server] = false
-  }
-  useRunningTracker().update(settled)
+/** Follows new servers' logs and lets go of deleted ones. */
+export function syncLogWatcher() {
+  useLogWatcher().sync(serverNames())
 }
 
-/** Follows server logs for joins and leaves while a channel wants them. */
-export function usePlayerWatcher(): PlayerWatcher {
-  players ??= new PlayerWatcher(useNotify(), useRuntimeConfig().serversDir)
-  return players
-}
-
-/** Re-checks which logs to follow, after channels change. */
-export function syncPlayerWatcher() {
-  usePlayerWatcher().sync(serverNames())
-}
-
-/** Runs after each metrics sample: servers starting and stopping, and the disk. */
-export function afterSample(sample: {
-  active: Record<string, boolean>
-  machine: MachineReading | null
-}) {
+/** Runs after each metrics sample: the disk filling up, and following any new server's log. */
+export function afterSample(sample: { machine: MachineReading | null }) {
   const notify = useNotify()
-  useRunningTracker().update(sample.active)
   const m = sample.machine
   if (m?.diskUsedMb != null && m.diskTotalMb && notify.wants('disk.full')) {
     notify.disk(m.diskUsedMb, m.diskTotalMb)
   }
-  syncPlayerWatcher()
+  syncLogWatcher()
 }
 
 /** Forgets a deleted server everywhere notifications remember it. */
 export function forgetNotifyServer(name: string) {
   useNotify().forgetServer(name)
-  running?.forget(name)
-  syncPlayerWatcher()
+  syncLogWatcher()
 }
 
 /** Looks for a newer Flytower and for content updates, telling people once per new version. */
