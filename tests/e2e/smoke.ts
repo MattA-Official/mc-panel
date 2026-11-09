@@ -241,17 +241,23 @@ try {
         offsite: { state: string; error: string | null } | null
       }[]
     }
+    let lastSeen: unknown = null
     const copied = await until(
       'the off-site copy',
       async () => {
         const r = await api<Listed>(view, '/api/servers/smoke/backups')
+        lastSeen = r.body.backups.map((x) => ({ note: x.note, local: x.local, offsite: x.offsite }))
         const b = r.body.backups.find((x) => x.note === 'offsite')
-        if (b?.offsite?.state === 'failed') throw new Error(`upload failed: ${b.offsite.error}`)
+        if (b?.offsite?.state === 'failed') {
+          throw Object.assign(new Error(`upload failed: ${b.offsite.error}`), { fatal: true })
+        }
         return b?.offsite?.state === 'done' ? b : null
       },
       3 * 60_000,
       2000,
-    )
+    ).catch((err) => {
+      throw new Error(`${(err as Error).message}; backups: ${JSON.stringify(lastSeen)}`)
+    })
     await rcon('setblock 0 100 0 minecraft:air')
     const removed = Bun.spawnSync([
       'docker',

@@ -266,6 +266,7 @@ export class OffsiteService {
       }
       set({ offsiteState: 'done', offsiteError: null, offsiteAt: this.now() })
     } catch (err) {
+      console.error(`[flytower] off-site copy of ${row.server}/${row.file} failed`, err)
       const attempts = row.offsiteAttempts + 1
       // A deleted backup or target has nothing left to retry.
       const gone = !db.select().from(schema.backups).where(eq(schema.backups.id, row.id)).get()
