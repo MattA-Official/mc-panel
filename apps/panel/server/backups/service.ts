@@ -351,7 +351,12 @@ export class BackupService {
     } catch (err) {
       // Put things back as they were.
       await this.emptyFolder(dir)
-      await extractArchive(this.path(safety), dir)
+      await extractArchive(this.path(safety), dir).catch((again) => {
+        throw new BackupError(
+          `${(err as Error).message} Putting the old files back failed too (${(again as Error).message}); they are safe in the backup "${safety.file}".`,
+          { cause: err },
+        )
+      })
       throw err
     }
     await this.prune(server)

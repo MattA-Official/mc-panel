@@ -46,7 +46,7 @@ export async function createArchive(dir: string, dest: string): Promise<{ bytes:
 
 /** Unpacks an archive made by createArchive into `dir`, which should be empty. */
 export async function extractArchive(file: string, dir: string): Promise<void> {
-  const proc = Bun.spawn(['tar', '-xf', '-', '--no-same-owner', '-C', dir], {
+  const proc = Bun.spawn(['tar', '-xf', '-', '--no-same-owner', '--no-overwrite-dir', '-C', dir], {
     stdin: 'pipe',
     stdout: 'ignore',
     stderr: 'pipe',
