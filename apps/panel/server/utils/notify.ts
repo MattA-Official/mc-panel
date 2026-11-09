@@ -71,8 +71,22 @@ export function syncPlayerWatcher() {
 export function afterSample(sample: {
   active: Record<string, boolean>
   machine: MachineReading | null
+  answered: Record<string, boolean>
 }) {
   const notify = useNotify()
+  if (Object.keys(sample.answered).length) {
+    const restartWhenUnresponsive = new Map(
+      useDb()
+        .select({ name: schema.servers.name, on: schema.servers.restartWhenUnresponsive })
+        .from(schema.servers)
+        .all()
+        .map((r) => [r.name, r.on]),
+    )
+    const crashes = useCrashes()
+    for (const [server, ok] of Object.entries(sample.answered)) {
+      void crashes.answered(server, ok, restartWhenUnresponsive.get(server) ?? false)
+    }
+  }
   running ??= new RunningTracker(notify)
   running.update(sample.active)
   const m = sample.machine
@@ -85,6 +99,7 @@ export function afterSample(sample: {
 /** Forgets a deleted server everywhere notifications remember it. */
 export function forgetNotifyServer(name: string) {
   useNotify().forgetServer(name)
+  useCrashes().forget(name)
   running?.forget(name)
   syncPlayerWatcher()
 }

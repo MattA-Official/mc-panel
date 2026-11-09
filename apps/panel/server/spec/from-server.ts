@@ -111,5 +111,6 @@ export function specFromServer(
         ? { offsite: targets.find((t) => t.id === row.offsiteTarget)!.name }
         : {}),
     },
+    ...(row.restartWhenUnresponsive ? { recovery: { restartWhenUnresponsive: true } } : {}),
   }
 }

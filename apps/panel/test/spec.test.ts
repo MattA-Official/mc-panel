@@ -65,6 +65,15 @@ describe('spec', () => {
     if (back.ok) expect(back.spec).toEqual(spec)
   })
 
+  test('restarting when not responding reads back, and is left out when off', () => {
+    const on = specFromServer({ ...row, restartWhenUnresponsive: true } as never, props)
+    const yaml = toYaml(on, 'https://panel.example/schema/server-v1.json')
+    expect(yaml).toContain('restartWhenUnresponsive: true')
+    const back = parseSpec(yaml)
+    expect(back.ok && back.spec.recovery).toEqual({ restartWhenUnresponsive: true })
+    expect(specFromServer(row as never, props).recovery).toBeUndefined()
+  })
+
   test('compact specs leave defaults out', () => {
     const spec = ServerSpec.parse({ name: 'ab', loader: { type: 'vanilla', minecraft: '26.3' } })
     expect(compactSpec(spec)).toEqual({

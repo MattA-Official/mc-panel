@@ -48,7 +48,7 @@ export default defineEventHandler(async (event) => {
     items: page.map((r) => ({
       id: r.id,
       at: r.at,
-      user: r.user,
+      user: auditActor(r.action, r.user),
       action: r.action,
       kind: auditKind(r.action),
       target: r.target,

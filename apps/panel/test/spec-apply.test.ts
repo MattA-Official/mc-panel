@@ -314,6 +314,35 @@ describe('plan', () => {
     expect(plan.backup).toBe(false)
   })
 
+  it('turns restarting when not responding on without a restart', async () => {
+    const { service, spec, db } = setup()
+    const plan = await service.plan(
+      'survival',
+      spec({ recovery: { restartWhenUnresponsive: true } }),
+    )
+    expect(plan.changes).toEqual([
+      {
+        area: 'settings',
+        action: 'set',
+        label: 'Restart when not responding',
+        from: 'Off',
+        to: 'On',
+      },
+    ])
+    expect(plan.restart).toBe(false)
+    await (
+      await service.apply('survival', plan.id)
+    ).done
+    expect(
+      db.select().from(schema.servers).where(eq(schema.servers.name, 'survival')).get(),
+    ).toMatchObject({ restartWhenUnresponsive: true })
+    expect((await service.currentSpec('survival')).recovery).toEqual({
+      restartWhenUnresponsive: true,
+    })
+    // Left out, it stays.
+    expect((await service.plan('survival', spec())).changes).toEqual([])
+  })
+
   it('sets off-site storage by name, and refuses one that does not exist', async () => {
     const { service, spec, db, calls } = setup()
     const set = await service.plan('survival', spec({ backups: { offsite: 'b2' } }))

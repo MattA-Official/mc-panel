@@ -49,6 +49,7 @@ export interface SettingsChange {
   }
   /** Off-site storage to copy backups to; null for none. */
   offsiteTarget?: number | null
+  restartWhenUnresponsive?: boolean
   content: ServerSpec['content']
 }
 
@@ -196,6 +197,16 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
       label: key,
       from: props[key],
       to: value,
+    })
+  }
+  if (spec.recovery && spec.recovery.restartWhenUnresponsive !== row.restartWhenUnresponsive) {
+    settings.restartWhenUnresponsive = spec.recovery.restartWhenUnresponsive
+    changes.push({
+      area: 'settings',
+      action: 'set',
+      label: 'Restart when not responding',
+      from: row.restartWhenUnresponsive ? 'On' : 'Off',
+      to: spec.recovery.restartWhenUnresponsive ? 'On' : 'Off',
     })
   }
   if (spec.backups) {

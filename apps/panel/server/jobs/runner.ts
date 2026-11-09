@@ -55,6 +55,7 @@ export interface SpecExtras {
   backups?: ServerSpec['backups']
   content?: ServerSpec['content']
   hostname?: string | null
+  recovery?: ServerSpec['recovery']
 }
 
 export interface RunnerDeps {
@@ -362,6 +363,7 @@ export class JobRunner {
             : {}),
           content: extras.content ?? [],
           hostname: extras.hostname ?? null,
+          restartWhenUnresponsive: extras.recovery?.restartWhenUnresponsive ?? false,
         })
         .run()
 

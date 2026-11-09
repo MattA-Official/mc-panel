@@ -420,6 +420,9 @@ export class SpecService {
             }
           : {}),
         ...(s.offsiteTarget !== undefined ? { offsiteTarget: s.offsiteTarget } : {}),
+        ...(s.restartWhenUnresponsive !== undefined
+          ? { restartWhenUnresponsive: s.restartWhenUnresponsive }
+          : {}),
         content: s.content,
       })
       .where(eq(schema.servers.name, name))

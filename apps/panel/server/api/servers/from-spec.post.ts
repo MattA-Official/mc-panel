@@ -39,6 +39,7 @@ export default defineEventHandler(async (event) => {
         backups: spec.backups,
         content: spec.content,
         hostname: spec.hostname ?? null,
+        recovery: spec.recovery,
       },
     )
     void done.then(() => syncBackupSchedules())

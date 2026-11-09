@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { schema } from '../db'
 
-const Topic = z.string().regex(/^(job:\d+|servers|console:[a-z][a-z0-9-]{1,30})$/)
+const Topic = z.string().regex(/^(job:\d+|servers|health|console:[a-z][a-z0-9-]{1,30})$/)
 const ClientMessage = z.discriminatedUnion('type', [
   z.object({ type: z.literal('subscribe'), topic: Topic }),
   z.object({ type: z.literal('unsubscribe'), topic: z.string().max(64) }),
@@ -21,6 +21,15 @@ const send = (peer: Peer, topic: string, data: unknown) => {
  */
 function attach(topic: string, emit: (data: unknown) => void): () => void {
   if (topic === 'servers') return useStatus().watch(emit)
+  if (topic === 'health') {
+    return useCrashes().watch(emit, () =>
+      useDb()
+        .select({ name: schema.servers.name })
+        .from(schema.servers)
+        .all()
+        .map((r) => r.name),
+    )
+  }
   if (topic.startsWith('console:')) {
     const name = topic.slice('console:'.length)
     const exists = useDb()
@@ -38,7 +47,7 @@ function attach(topic: string, emit: (data: unknown) => void): () => void {
 
 /**
  * One authenticated socket per tab. The browser subscribes to topics (`job:<id>`,
- * `servers`, `console:<name>`) and gets `{ topic, data }` messages back.
+ * `servers`, `health`, `console:<name>`) and gets `{ topic, data }` messages back.
  */
 export default defineWebSocketHandler({
   async upgrade(request) {
