@@ -7,6 +7,7 @@
 import { stat } from 'node:fs/promises'
 import { and, eq, inArray, isNull, lt } from 'drizzle-orm'
 import { schema, type Db } from '../db'
+import type { Notifier } from '../notify/types'
 
 export type Target = typeof schema.backupTargets.$inferSelect
 type Backup = typeof schema.backups.$inferSelect
@@ -43,6 +44,8 @@ export interface OffsiteDeps {
   now?: () => Date
   /** Delays between retries; tests shorten them. */
   backoffMs?: number[]
+  /** Tells people when copies keep failing, and when they work again. */
+  notifier?: Notifier
 }
 
 export class OffsiteError extends Error {}
@@ -277,6 +280,14 @@ export class OffsiteService {
         throw new Error(`the copy is ${size ?? 'missing'} bytes, not ${row.bytes}`)
       }
       set({ offsiteState: 'done', offsiteError: null, offsiteAt: this.now() })
+      this.deps.notifier?.resolve({
+        kind: 'offsite.failed',
+        server: row.server,
+        title: 'Off-site copies are working again',
+        detail: `${row.file} was copied to off-site storage.`,
+        severity: 'ok',
+        link: `/servers/${row.server}/backups`,
+      })
     } catch (err) {
       console.error(`[flytower] off-site copy of ${row.server}/${row.file} failed`, err)
       const attempts = row.offsiteAttempts + 1
@@ -285,7 +296,19 @@ export class OffsiteService {
       if (gone) return
       set({ offsiteState: 'failed', offsiteError: explain(err), offsiteAttempts: attempts })
       const wait = this.backoff[attempts - 1]
-      if (wait !== undefined && attempts < MAX_ATTEMPTS) {
+      const retrying = wait !== undefined && attempts < MAX_ATTEMPTS
+      // One blip that the next try fixes isn't worth a message.
+      if (attempts >= 2 || !retrying) {
+        this.deps.notifier?.notify({
+          kind: 'offsite.failed',
+          server: row.server,
+          title: 'Copying a backup off-site failed',
+          detail: `${explain(err)} Flytower keeps retrying for a while, and you can retry it from the Backups tab.`,
+          severity: 'warning',
+          link: `/servers/${row.server}/backups`,
+        })
+      }
+      if (retrying) {
         const timer = setTimeout(() => {
           this.timers.delete(timer)
           set({ offsiteState: 'pending' })

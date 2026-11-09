@@ -104,3 +104,9 @@ export async function postJson(
   if (!res.ok) throw await failure(res, what)
   return res
 }
+
+/** What other services need from the notifier, so they don't depend on all of it. */
+export interface Notifier {
+  notify(e: NotifyEvent): void
+  resolve(e: NotifyEvent & { kind: EventKind }): void
+}
