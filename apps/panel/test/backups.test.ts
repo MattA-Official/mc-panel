@@ -9,7 +9,9 @@ import { BackupService } from '../server/backups/service'
 import { openDb, schema } from '../server/db'
 import { JobRunner, type AgentCall } from '../server/jobs/runner'
 
-function setup(opts: { running?: boolean; free?: number; saveReply?: string } = {}) {
+function setup(
+  opts: { running?: boolean; free?: number; saveReply?: string; rconDownFor?: number } = {},
+) {
   const db = openDb(':memory:')
   const base = mkdtempSync(join(tmpdir(), 'ft-bk-'))
   const servers = join(base, 'servers')
@@ -53,6 +55,7 @@ function setup(opts: { running?: boolean; free?: number; saveReply?: string } = 
     sleep: async () => {},
   })
   let clock = Date.UTC(2026, 10, 9, 12)
+  let rconDownFor = opts.rconDownFor ?? 0
   const service = new BackupService({
     db,
     backupsDir: join(base, 'backups'),
@@ -60,6 +63,10 @@ function setup(opts: { running?: boolean; free?: number; saveReply?: string } = 
     agent,
     jobs: runner,
     rcon: async (_n, cmd) => {
+      if (rconDownFor > 0) {
+        rconDownFor--
+        throw new Error("Couldn't connect to RCON on port 25575. Is the server running?")
+      }
       calls.push(`rcon ${cmd}`)
       return cmd === 'save-all flush' ? (opts.saveReply ?? 'Saved the game') : 'ok'
     },
@@ -71,6 +78,16 @@ function setup(opts: { running?: boolean; free?: number; saveReply?: string } = 
 }
 
 describe('backups', () => {
+  it('waits for RCON on a server that has only just started', async () => {
+    const { service, calls } = setup({ running: true, rconDownFor: 3 })
+    await service.snapshot('survival', 'Before something')
+    expect(calls.filter((c) => c.startsWith('rcon'))).toEqual([
+      'rcon save-off',
+      'rcon save-all flush',
+      'rcon save-on',
+    ])
+  })
+
   it('pauses saving while a running server is archived', async () => {
     const { service, calls } = setup({ running: true })
     const final = await service.backup('survival', 'manual', 'before the update').done

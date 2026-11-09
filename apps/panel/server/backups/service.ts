@@ -258,7 +258,7 @@ export class BackupService {
     let paused = false
     try {
       if (running) {
-        await rcon(server, 'save-off')
+        await this.saveOffWhenReady(server)
         paused = true
         const reply = await rcon(server, 'save-all flush', 5 * 60_000)
         if (!/saved the game/i.test(reply)) {
@@ -273,6 +273,24 @@ export class BackupService {
         await rcon(server, 'save-on').catch((err) =>
           console.error(`[flytower] couldn't turn saving back on for ${server}`, err),
         )
+      }
+    }
+  }
+
+  /**
+   * Turns autosave off. A server that has only just started has no RCON until its world
+   * has loaded, so connection failures are retried for a while.
+   */
+  private async saveOffWhenReady(server: string) {
+    const sleep = this.deps.sleep ?? ((ms: number) => Bun.sleep(ms))
+    for (let i = 0; ; i++) {
+      try {
+        await this.deps.rcon(server, 'save-off')
+        return
+      } catch (err) {
+        const starting = /connect|ECONNREFUSED|closed/i.test((err as Error).message)
+        if (!starting || i >= 60 || !(await this.isRunning(server))) throw err
+        await sleep(2000)
       }
     }
   }
