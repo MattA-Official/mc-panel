@@ -95,7 +95,7 @@ async function healthy(d: UpdaterDeps, version: string): Promise<string | null> 
   const sleep = d.sleep ?? ((ms: number) => Bun.sleep(ms))
   const port = await panelPort(d.config)
   const deadline = Date.now() + (d.healthTimeoutMs ?? 120_000)
-  let last = 'the panel never answered'
+  let last: string
   for (;;) {
     try {
       const h = await d.health(port)
