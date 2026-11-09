@@ -18,6 +18,13 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: `Type ${name} to confirm.` })
   }
 
+  if (useBackups().isBusy(name)) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'A backup or restore is running. Try again when it has finished.',
+    })
+  }
+
   useConsole().forget(name)
   let archivedTo: string | null
   try {
@@ -30,6 +37,7 @@ export default defineEventHandler(async (event) => {
   }
   const db = useDb()
   db.delete(schema.servers).where(eq(schema.servers.name, name)).run()
+  syncBackupSchedules()
   db.insert(schema.audit)
     .values({ userId: user.id, action: 'server.delete', target: name, detail: { archivedTo } })
     .run()
