@@ -148,9 +148,7 @@ function menu(b: BackupRow) {
     </UCard>
 
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <p class="text-sm text-muted">
-        {{ count }} · {{ size(total) }}. Logs aren't included.
-      </p>
+      <p class="text-sm text-muted">{{ count }} · {{ size(total) }}. Logs aren't included.</p>
       <UButton
         label="Back up now"
         icon="i-lucide-archive"
