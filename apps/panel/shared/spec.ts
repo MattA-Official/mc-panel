@@ -1,0 +1,225 @@
+/**
+ * A server spec: one YAML document that says what a server is. The form pages and the YAML
+ * tab are two views of it. This file is shared by the browser and the panel's API, so it
+ * holds only the schema and pure helpers; YAML parsing lives in server/spec.
+ */
+import { z } from 'zod'
+
+export const SPEC_SCHEMA_PATH = '/schema/server-v1.json'
+
+/** Keys Flytower manages itself; edit them through their own settings. */
+export const MANAGED_PROPERTIES = ['server-port', 'enable-rcon', 'rcon.port', 'rcon.password']
+
+export const MIN_MEMORY_MB = 1024
+export const MAX_MEMORY_MB = 65536
+export const DEFAULT_MEMORY_MB = 4096
+
+/** "4G", "3584M" or a number of megabytes, to megabytes. */
+export function memoryToMb(value: string | number): number | null {
+  if (typeof value === 'number') return Number.isInteger(value) ? value : null
+  const m = /^\s*(\d+(?:\.\d+)?)\s*([MG])B?\s*$/i.exec(value)
+  if (!m) return null
+  const n = Number(m[1]) * (m[2]!.toUpperCase() === 'G' ? 1024 : 1)
+  return Number.isInteger(n) ? n : null
+}
+
+/** Megabytes the way a person would write them: 4096 is "4G", 3584 is "3584M". */
+export function mbToMemory(mb: number): string {
+  return mb % 1024 === 0 ? `${mb / 1024}G` : `${mb}M`
+}
+
+const versionString = (what: string) =>
+  z
+    .string({
+      error: (iss) =>
+        typeof iss.input === 'number'
+          ? `Put the ${what} in quotes. Unquoted, YAML reads it as the number ${iss.input} (so 1.20 would become 1.2).`
+          : `The ${what} should be text.`,
+    })
+    .trim()
+    .min(1)
+    .max(40)
+
+const Name = z
+  .string()
+  .regex(
+    /^[a-z][a-z0-9-]{1,30}$/,
+    'Use lowercase letters, digits and hyphens, 2 to 31 characters, starting with a letter.',
+  )
+  .refine((n) => !n.endsWith('-'), "The name can't end with a hyphen.")
+  .describe("The server's short name, used for its folder. It can't change once the server exists.")
+
+const Loader = z
+  .object({
+    type: z
+      .enum(['vanilla', 'fabric'], { error: 'The loader is "vanilla" or "fabric" for now.' })
+      .describe('Which server software runs the world.'),
+    minecraft: versionString('Minecraft version').describe('The Minecraft version, in quotes.'),
+    version: versionString('loader version')
+      .optional()
+      .describe('The loader version, for Fabric. Leave it out for the newest stable one.'),
+  })
+  .strict()
+
+const Memory = z
+  .union([z.string(), z.number()])
+  .transform((v, ctx) => {
+    const mb = memoryToMb(v)
+    if (mb === null) {
+      ctx.addIssue({ code: 'custom', message: 'Write memory like "4G" or "3584M".' })
+      return z.NEVER
+    }
+    if (mb < MIN_MEMORY_MB || mb > MAX_MEMORY_MB) {
+      ctx.addIssue({
+        code: 'custom',
+        message: `Memory must be between ${mbToMemory(MIN_MEMORY_MB)} and ${mbToMemory(MAX_MEMORY_MB)}.`,
+      })
+      return z.NEVER
+    }
+    return mb
+  })
+  .describe('Memory for Java, like "4G" or "3584M".')
+
+const Properties = z
+  .record(
+    z
+      .string()
+      .regex(/^[A-Za-z0-9._-]{1,64}$/, 'Property names are letters, numbers, dots and dashes.'),
+    z.union([z.string().max(2000), z.number(), z.boolean()]),
+  )
+  .superRefine((props, ctx) => {
+    for (const key of Object.keys(props)) {
+      if (MANAGED_PROPERTIES.includes(key)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [key],
+          message:
+            key === 'server-port'
+              ? 'Set the port with "port", not in properties.'
+              : `${key} is managed by Flytower.`,
+        })
+      }
+    }
+  })
+  .describe('Values for server.properties. Anything left out keeps its current value.')
+
+const ContentKind = z.enum(['mod', 'datapack'])
+
+const ModrinthItem = z
+  .object({
+    modrinth: z.string().trim().min(1).max(64).describe('A Modrinth project slug or id.'),
+    version: z
+      .string()
+      .trim()
+      .min(1)
+      .max(80)
+      .optional()
+      .describe('A version number or id. Leave it out for the newest compatible one.'),
+    kind: ContentKind.optional().describe('Usually worked out from the project.'),
+  })
+  .strict()
+
+const UrlItem = z
+  .object({
+    url: z
+      .url({ protocol: /^https$/, error: 'Content links must be https.' })
+      .describe('Where to download it.'),
+    sha256: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/i, 'sha256 is 64 hex characters.')
+      .describe('The file must match this hash, or it is refused.'),
+    kind: ContentKind.describe("Where it goes: mods/ or the world's datapacks/."),
+    filename: z
+      .string()
+      .regex(/^[\w.+-]{1,120}\.(jar|zip)$/, 'A file name ending in .jar or .zip.')
+      .optional(),
+  })
+  .strict()
+
+const ContentItem = z.union([ModrinthItem, UrlItem], {
+  error: 'Each content item needs "modrinth" (a project) or "url" with "sha256" and "kind".',
+})
+
+const Keep = z
+  .object({
+    last: z.number().int().min(0).max(100).default(6),
+    daily: z.number().int().min(0).max(366).default(7),
+    weekly: z.number().int().min(0).max(520).default(4),
+  })
+  .strict()
+
+const Backups = z
+  .object({
+    schedule: z
+      .string()
+      .trim()
+      .min(1)
+      .max(100)
+      .nullable()
+      .default(null)
+      .describe('A cron expression such as "0 4 * * *", or null for none.'),
+    timezone: z.string().trim().min(1).max(60).default('UTC'),
+    keep: Keep.default({ last: 6, daily: 7, weekly: 4 }),
+  })
+  .strict()
+
+export const ServerSpec = z
+  .object({
+    name: Name,
+    displayName: z.string().trim().min(1).max(60).optional(),
+    loader: Loader,
+    memory: Memory.optional(),
+    port: z
+      .number()
+      .int()
+      .min(1024)
+      .max(65535)
+      .optional()
+      .describe('The game port. Leave it out to use the next free one.'),
+    properties: Properties.default({}),
+    content: z.array(ContentItem).max(500).default([]),
+    backups: Backups.default({
+      schedule: null,
+      timezone: 'UTC',
+      keep: { last: 6, daily: 7, weekly: 4 },
+    }),
+  })
+  .strict()
+  .describe('A Flytower server.')
+
+/** What a spec says once defaults are filled in. */
+export type ServerSpec = z.output<typeof ServerSpec>
+/** What a person may write. */
+export type ServerSpecInput = z.input<typeof ServerSpec>
+export type ContentItem = z.output<typeof ContentItem>
+
+export interface SpecIssue {
+  /** Where, like "loader.minecraft" or "content.2.sha256"; empty for the whole document. */
+  path: string
+  message: string
+  /** 1-based line in the YAML, when it can be found. */
+  line?: number
+}
+
+export const issuePath = (path: readonly PropertyKey[]) => path.map(String).join('.')
+
+/** The spec as a person would write it: defaults left out, memory as "4G". */
+export function compactSpec(spec: ServerSpec): ServerSpecInput {
+  const out: Record<string, unknown> = { name: spec.name }
+  if (spec.displayName && spec.displayName !== spec.name) out.displayName = spec.displayName
+  out.loader = { ...spec.loader }
+  if (spec.memory !== undefined) out.memory = mbToMemory(spec.memory)
+  if (spec.port !== undefined) out.port = spec.port
+  if (Object.keys(spec.properties).length) out.properties = spec.properties
+  if (spec.content.length) out.content = spec.content
+  const b = spec.backups
+  const keepDefault = b.keep.last === 6 && b.keep.daily === 7 && b.keep.weekly === 4
+  if (b.schedule || b.timezone !== 'UTC' || !keepDefault) {
+    out.backups = {
+      schedule: b.schedule,
+      ...(b.timezone !== 'UTC' ? { timezone: b.timezone } : {}),
+      ...(keepDefault ? {} : { keep: b.keep }),
+    }
+  }
+  return out as ServerSpecInput
+}
