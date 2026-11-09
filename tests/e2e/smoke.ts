@@ -313,6 +313,44 @@ try {
       2000,
     )
     step(`added Lithium from Modrinth through plan and apply: ${loaded.slice(0, 120)}`)
+
+    // Vanilla Tweaks has no official API, so a change on their side is reported, not fatal.
+    try {
+      const cat = await api<{ datapacks: { name: string; packs: { name: string }[] }[] }>(
+        view,
+        '/api/servers/smoke/content/vanillatweaks',
+      )
+      if (cat.status !== 200) throw new Error(`catalogue: ${JSON.stringify(cat.body)}`)
+      const group = cat.body.datapacks[0]!
+      const pack = `${group.name}/${group.packs[0]!.name}`
+      const vtYaml = `name: smoke\nloader:\n  type: fabric\n  minecraft: "${mc}"\ncontent:\n  - modrinth: lithium\n  - vanillatweaks: ${JSON.stringify(pack)}\n`
+      const vtPlan = await api<{ ok: boolean; plan: { id: string; problems: string[] } }>(
+        view,
+        '/api/servers/smoke/plan',
+        { body: { yaml: vtYaml } },
+      )
+      if (!vtPlan.body.ok || vtPlan.body.plan.problems.length) {
+        throw new Error(`plan: ${JSON.stringify(vtPlan.body)}`)
+      }
+      const vtApply = await api<{ jobId: number }>(view, '/api/servers/smoke/apply', {
+        body: { planId: vtPlan.body.plan.id },
+      })
+      await waitForJob(vtApply.body.jobId, 'the Vanilla Tweaks apply job', 10 * 60_000)
+      const packs = await until(
+        'the datapack to load',
+        async () => {
+          const r = await api<{ reply: string }>(view, '/api/servers/smoke/command', {
+            body: { command: 'datapack list enabled' },
+          })
+          return r.status === 200 && r.body.reply.includes('vt-') ? r.body.reply : null
+        },
+        5 * 60_000,
+        2000,
+      )
+      step(`added Vanilla Tweaks "${pack}": ${packs.slice(0, 160)}`)
+    } catch (err) {
+      console.log(`⚠ Vanilla Tweaks check skipped: ${(err as Error).message}`)
+    }
   }
   console.log('smoke test passed')
 } catch (err) {
