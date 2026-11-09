@@ -55,7 +55,7 @@ const icons = {
             'text-error': stateOf(i) === 'failed',
           }"
         />
-        <span>{{ step }}</span>
+        <span class="whitespace-nowrap">{{ step }}</span>
         <span
           v-if="i === current && job?.message && job.state === 'running'"
           class="truncate font-mono text-xs text-muted"

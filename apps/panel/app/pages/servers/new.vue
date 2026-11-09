@@ -255,7 +255,13 @@ function startOver() {
             label="Port"
             description="Players connect to this. Firewall is opened for it."
           >
-            <UInputNumber v-model="form.port" :min="1024" :max="65535" class="w-40" />
+            <UInputNumber
+              v-model="form.port"
+              :min="1024"
+              :max="65535"
+              :format-options="{ useGrouping: false }"
+              class="w-40"
+            />
           </UFormField>
 
           <UCheckbox v-model="form.acceptEula" required>
