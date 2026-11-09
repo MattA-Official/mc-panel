@@ -56,7 +56,7 @@ describe('vanilla', () => {
 
   test('unknown versions give a readable error', async () => {
     const { vanilla } = createLoaders(fixtureFetch())
-    expect(vanilla.resolve('9.9')).rejects.toThrow("Minecraft 9.9 doesn't exist.")
+    await expect(vanilla.resolve('9.9')).rejects.toThrow("Minecraft 9.9 doesn't exist.")
   })
 
   test('caches the manifest', async () => {
@@ -81,8 +81,8 @@ describe('fabric', () => {
 
   test('pins a specific loader version', async () => {
     const { fabric } = createLoaders(fixtureFetch())
-    expect((await fabric.resolve('26.3', '0.18.3')).loaderVersion).toBe('0.18.3')
-    expect(fabric.resolve('26.3', '0.1.0')).rejects.toThrow(ProviderError)
+    await expect((await fabric.resolve('26.3', '0.18.3')).loaderVersion).toBe('0.18.3')
+    await expect(fabric.resolve('26.3', '0.1.0')).rejects.toThrow(ProviderError)
   })
 
   test('filters snapshots from the game list', async () => {
@@ -92,7 +92,9 @@ describe('fabric', () => {
 
   test('says when Fabric has no loader for a version', async () => {
     const { fabric } = createLoaders(fixtureFetch())
-    expect(fabric.resolve('1.99')).rejects.toThrow("Fabric doesn't support Minecraft 1.99 yet.")
+    await expect(fabric.resolve('1.99')).rejects.toThrow(
+      "Fabric doesn't support Minecraft 1.99 yet.",
+    )
   })
 })
 
@@ -114,7 +116,7 @@ describe('downloadVerified', () => {
 
   test('rejects and deletes a file that fails its checksum', async () => {
     const dest = join(await mkdtemp(join(tmpdir(), 'ft-')), 'server.jar')
-    expect(
+    await expect(
       downloadVerified(fixtureFetch(), url, dest, { algorithm: 'sha1', value: '0'.repeat(40) }),
     ).rejects.toThrow("didn't match its published checksum")
     await Bun.sleep(20)
@@ -123,8 +125,8 @@ describe('downloadVerified', () => {
 
   test('reports HTTP failures', async () => {
     const dest = join(await mkdtemp(join(tmpdir(), 'ft-')), 'x')
-    expect(downloadVerified(fixtureFetch(), 'https://example.com/x', dest, null)).rejects.toThrow(
-      '(404)',
-    )
+    await expect(
+      downloadVerified(fixtureFetch(), 'https://example.com/x', dest, null),
+    ).rejects.toThrow('(404)')
   })
 })
