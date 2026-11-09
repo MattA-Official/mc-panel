@@ -49,5 +49,11 @@ async function save() {
       <UButton label="Save" :disabled="!dirty" :loading="saving" @click="save" />
     </div>
     <p class="mt-3 text-sm text-muted">Players connect with <CopyAddress :server="server" /></p>
+    <DnsRecords
+      v-if="server.hostname"
+      class="mt-5"
+      :server="server.name"
+      :hostname="server.hostname"
+    />
   </section>
 </template>

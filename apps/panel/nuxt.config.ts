@@ -38,6 +38,9 @@ export default defineNuxtConfig({
     modrinthApi: 'https://api.modrinth.com/v2',
     vanillaTweaksSite: 'https://vanillatweaks.net',
     setupTokenFile: '/var/lib/flytower/setup-token.hash',
+    /** The machine's public addresses, if its interfaces don't show them (behind NAT). */
+    machineIpv4: '',
+    machineIpv6: '',
     devSetupToken: '',
     /** Pins the passkey domain; empty means the request's host. */
     rpId: '',
