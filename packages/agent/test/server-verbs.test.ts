@@ -111,3 +111,59 @@ describe('server.delete', () => {
     expect(ufwRuleNumbers(out, 'survival')).toEqual([])
   })
 })
+
+describe('server.configure', () => {
+  const configure = (params: Record<string, unknown>) =>
+    JSON.stringify({ id: 'g', verb: 'server.configure', params: { name: 'survival', ...params } })
+
+  it('rewrites memory in the env file and limits, keeping Java', async () => {
+    const { exec } = fakeExec({ 'id -u mc-survival': { code: 1 } })
+    const { ctx } = fakeContext(exec, undefined, paths)
+    await dispatch(create(), handlers, ctx)
+    const res = await dispatch(configure({ memoryMb: 2048 }), handlers, ctx)
+    expect(res).toMatchObject({ ok: true })
+    const env = readFileSync(join(paths.config, 'servers', 'survival.env'), 'utf8')
+    expect(env).toContain(`JAVA_HOME=${paths.runtimes}/temurin-25`)
+    expect(env).toContain('HEAP_MB=2048')
+    const limits = readFileSync(
+      join(paths.systemd, 'flytower-mc@survival.service.d', 'limits.conf'),
+      'utf8',
+    )
+    expect(limits).toContain('MemoryMax=3072M')
+  })
+
+  it('swaps the firewall rule for a new port', async () => {
+    const status = [
+      'Status: active',
+      '[ 1] 22/tcp                     ALLOW IN    Anywhere',
+      '[ 2] 25565/tcp                  ALLOW IN    Anywhere                   # flytower server survival',
+    ].join('\n')
+    const { exec, calls } = fakeExec({
+      'id -u mc-survival': { code: 1 },
+      'ufw status numbered': { stdout: status },
+    })
+    const { ctx } = fakeContext(exec, undefined, paths)
+    await dispatch(create(), handlers, ctx)
+    calls.length = 0
+    expect(await dispatch(configure({ port: 25570 }), handlers, ctx)).toMatchObject({ ok: true })
+    const cmds = calls.map((c) => [c.file, ...c.args].join(' '))
+    expect(cmds).toEqual([
+      'ufw status numbered',
+      'ufw --force delete 2',
+      'ufw allow 25570/tcp comment flytower server survival',
+    ])
+  })
+
+  it('refuses an empty change or an unknown server', async () => {
+    const { exec } = fakeExec()
+    const { ctx } = fakeContext(exec, undefined, paths)
+    expect(await dispatch(configure({}), handlers, ctx)).toMatchObject({
+      ok: false,
+      error: { code: 'invalid_params' },
+    })
+    expect(await dispatch(configure({ port: 30000 }), handlers, ctx)).toMatchObject({
+      ok: false,
+      error: { code: 'not_found' },
+    })
+  })
+})

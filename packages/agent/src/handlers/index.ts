@@ -12,5 +12,6 @@ export const handlers: Handlers = {
   'service.restart': service.restart,
   'runtime.install': runtime.install,
   'server.create': server.create,
+  'server.configure': server.configure,
   'server.delete': server.remove,
 }

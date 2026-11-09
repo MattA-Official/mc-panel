@@ -39,6 +39,17 @@ export const verbs = {
       .strict(),
     result: z.object({ directory: z.string(), user: z.string(), unit: z.string() }),
   },
+  'server.configure': {
+    params: z
+      .object({
+        name: ServerName,
+        memoryMb: z.number().int().min(512).max(262144).optional(),
+        port: Port.optional(),
+      })
+      .strict()
+      .refine((p) => p.memoryMb !== undefined || p.port !== undefined, 'nothing to change'),
+    result: z.object({}),
+  },
   'server.delete': {
     params: z.object({ name: ServerName }).strict(),
     result: z.object({ archivedTo: z.string().nullable() }),

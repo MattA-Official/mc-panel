@@ -71,6 +71,7 @@ const handlers: Handlers = {
     states.set(name, 'inactive')
     return { directory, user: userName(name), unit: unitName(name) }
   },
+  'server.configure': async () => ({}),
   'server.delete': async ({ name }) => {
     await rm(join(serversDir, name), { recursive: true, force: true })
     states.delete(name)

@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { AgentError, unitName, userName, type Params, type Result } from '@flytower/protocol'
 import type { AgentContext } from '../context.ts'
@@ -72,6 +72,37 @@ export async function create(
   await run(ctx, 'ufw', ['allow', `${p.port}/tcp`, 'comment', ufwComment(p.name)])
 
   return { directory: f.dir, user, unit: unitName(p.name) }
+}
+
+/**
+ * Changes a server's memory and/or port. Memory rewrites the env file and the MemoryMax
+ * drop-in; port swaps the firewall rule. Both take effect on the next restart.
+ */
+export async function configure(
+  p: Params<'server.configure'>,
+  ctx: AgentContext,
+): Promise<Result<'server.configure'>> {
+  const f = paths(ctx, p.name)
+  if (!existsSync(f.env)) throw new AgentError('not_found', `no server called ${p.name}`)
+
+  if (p.memoryMb !== undefined) {
+    const env = await readFile(f.env, 'utf8')
+    const javaHome = env.match(/^JAVA_HOME=(.+)$/m)?.[1]
+    if (!javaHome) throw new AgentError('failed', `${f.env} has no JAVA_HOME`)
+    await writeFile(f.env, envFile(javaHome, p.memoryMb), { mode: 0o644 })
+    await mkdir(f.dropInDir, { recursive: true, mode: 0o755 })
+    await writeFile(join(f.dropInDir, 'limits.conf'), limitsDropIn(p.memoryMb), { mode: 0o644 })
+    await run(ctx, 'systemctl', ['daemon-reload'])
+  }
+
+  if (p.port !== undefined) {
+    const status = await ctx.exec('ufw', ['status', 'numbered'])
+    for (const n of ufwRuleNumbers(status.stdout, p.name)) {
+      await run(ctx, 'ufw', ['--force', 'delete', String(n)])
+    }
+    await run(ctx, 'ufw', ['allow', `${p.port}/tcp`, 'comment', ufwComment(p.name)])
+  }
+  return {}
 }
 
 /** Rule numbers tagged for this server, highest first so deleting one does not renumber the rest. */
