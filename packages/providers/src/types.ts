@@ -5,7 +5,7 @@ export interface VersionEntry {
   stable: boolean
 }
 
-export type HashAlgorithm = 'sha1' | 'sha256'
+export type HashAlgorithm = 'sha1' | 'sha256' | 'sha512'
 
 export interface ExpectedHash {
   algorithm: HashAlgorithm
