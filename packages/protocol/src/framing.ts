@@ -9,8 +9,10 @@ export const encode = (message: unknown) => JSON.stringify(message) + '\n'
  */
 export function lineSplitter(onLine: (line: string) => void, onOverflow: () => void) {
   let buffer = ''
-  return (chunk: Buffer | string) => {
-    buffer += chunk.toString('utf8')
+  // Streaming decode, so a multi-byte character split across chunks survives.
+  const decoder = new TextDecoder()
+  return (chunk: Uint8Array | string) => {
+    buffer += typeof chunk === 'string' ? chunk : decoder.decode(chunk, { stream: true })
     let nl: number
     while ((nl = buffer.indexOf('\n')) !== -1) {
       const line = buffer.slice(0, nl)

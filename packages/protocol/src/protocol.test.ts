@@ -51,3 +51,17 @@ describe('lineSplitter', () => {
     expect(overflow).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('lineSplitter decoding', () => {
+  it('keeps a multi-byte character split across chunks', () => {
+    const lines: string[] = []
+    const feed = lineSplitter(
+      (l) => lines.push(l),
+      () => {},
+    )
+    const bytes = new TextEncoder().encode(encode({ motd: 'Théâtre ✨' }))
+    feed(bytes.slice(0, 12))
+    feed(bytes.slice(12))
+    expect(JSON.parse(lines[0] ?? '')).toEqual({ motd: 'Théâtre ✨' })
+  })
+})

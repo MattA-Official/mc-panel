@@ -37,5 +37,8 @@ const server = await listen(
 console.log(`flytower-agent ${ctx.version} listening`)
 
 for (const sig of ['SIGTERM', 'SIGINT'] as const) {
-  process.on(sig, () => server.close(() => process.exit(0)))
+  process.on(sig, () => {
+    server.close()
+    process.exit(0)
+  })
 }
