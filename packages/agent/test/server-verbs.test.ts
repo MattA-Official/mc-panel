@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'bun:test'
 import { dispatch, handlers } from '../src/index.ts'
 import { ufwRuleNumbers } from '../src/handlers/server.ts'
 import type { AgentContext } from '../src/context.ts'

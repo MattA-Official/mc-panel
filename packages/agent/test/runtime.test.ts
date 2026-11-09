@@ -1,9 +1,10 @@
+import type { Fetch } from '../src/context.ts'
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'bun:test'
 import { dispatch, handlers } from '../src/index.ts'
 import { realExec } from '../src/exec.ts'
 import { fakeContext } from './fakes.ts'
@@ -28,7 +29,7 @@ beforeEach(() => {
   sha = createHash('sha256').update(tarball).digest('hex')
 })
 
-function adoptium(checksum: () => string, seen: string[] = []): typeof fetch {
+function adoptium(checksum: () => string, seen: string[] = []): Fetch {
   return async (input) => {
     const url = String(input)
     seen.push(url)

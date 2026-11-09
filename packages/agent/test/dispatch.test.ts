@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { dispatch, handlers } from '../src/index.ts'
 import { fakeContext, fakeExec } from './fakes.ts'
 

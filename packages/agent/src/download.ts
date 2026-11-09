@@ -1,3 +1,4 @@
+import type { Fetch } from './context.ts'
 import { createHash } from 'node:crypto'
 import { createWriteStream } from 'node:fs'
 import { rm } from 'node:fs/promises'
@@ -7,7 +8,7 @@ import { AgentError } from '@flytower/protocol'
 
 const USER_AGENT = 'flytower-agent (+https://github.com/MattA-Official)'
 
-export async function getJson<T>(fetchImpl: typeof fetch, url: string): Promise<T> {
+export async function getJson<T>(fetchImpl: Fetch, url: string): Promise<T> {
   const res = await fetchImpl(url, {
     headers: { 'user-agent': USER_AGENT, accept: 'application/json' },
   })
@@ -17,7 +18,7 @@ export async function getJson<T>(fetchImpl: typeof fetch, url: string): Promise<
 
 /** Streams a URL to disk while hashing it; deletes the file if the SHA-256 does not match. */
 export async function downloadVerified(
-  fetchImpl: typeof fetch,
+  fetchImpl: Fetch,
   url: string,
   dest: string,
   sha256: string,

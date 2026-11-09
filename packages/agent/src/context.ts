@@ -1,10 +1,13 @@
 import type { Exec } from './exec.ts'
 
+/** The subset of fetch the agent uses; Bun's global fetch satisfies it. */
+export type Fetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>
+
 /** Everything a handler may touch. Tests swap these for fakes. */
 export interface AgentContext {
   exec: Exec
   /** Global fetch in production; a stub in tests. */
-  fetch: typeof fetch
+  fetch: Fetch
   /** CPU architecture as Node reports it (x64, arm64). */
   arch: string
   version: string

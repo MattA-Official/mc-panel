@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, mock } from 'bun:test'
 import { ServerName, verbs, lineSplitter, encode, MAX_LINE_BYTES, unitName } from './index.ts'
 
 describe('ServerName', () => {
@@ -45,9 +45,9 @@ describe('lineSplitter', () => {
     expect(lines.map((l) => JSON.parse(l))).toEqual([{ a: 1 }, { b: 2 }])
   })
   it('reports overflow for an over-long line', () => {
-    const overflow = vi.fn()
+    const overflow = mock()
     const feed = lineSplitter(() => {}, overflow)
     feed('x'.repeat(MAX_LINE_BYTES + 1))
-    expect(overflow).toHaveBeenCalledOnce()
+    expect(overflow).toHaveBeenCalledTimes(1)
   })
 })

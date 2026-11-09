@@ -1,3 +1,4 @@
+import type { Fetch } from '../src/context.ts'
 import type { AgentContext, AuditEvent } from '../src/context.ts'
 import type { Exec, ExecResult } from '../src/exec.ts'
 
@@ -20,7 +21,7 @@ export function fakeExec(answers: Record<string, Partial<ExecResult>> = {}) {
 
 export function fakeContext(
   exec: Exec,
-  fetchImpl: typeof fetch = async () => new Response('not stubbed', { status: 599 }),
+  fetchImpl: Fetch = async () => new Response('not stubbed', { status: 599 }),
   paths: AgentContext['paths'] = {
     servers: '/tmp/flytower/servers',
     runtimes: '/tmp/flytower/runtimes',
