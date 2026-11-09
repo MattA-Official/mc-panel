@@ -196,6 +196,13 @@ export const backupTargets = sqliteTable(
   (t) => [uniqueIndex('backup_targets_name').on(t.name)],
 )
 
+/** Panel-wide settings, one row per key, with JSON values. See server/settings.ts. */
+export const settings = sqliteTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value', { mode: 'json' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull().default(now),
+})
+
 /**
  * Where notifications go: a Discord webhook, an ntfy topic or a JSON webhook. The URL (which
  * holds the Discord token) and the ntfy token or webhook signing secret are sealed at rest.

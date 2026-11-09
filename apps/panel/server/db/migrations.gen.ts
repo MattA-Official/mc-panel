@@ -29,7 +29,11 @@ export const migrations: { tag: string; sql: string }[] = [
     "sql": "CREATE TABLE `backup_targets` (\n\t`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,\n\t`name` text NOT NULL,\n\t`endpoint` text NOT NULL,\n\t`region` text DEFAULT 'auto' NOT NULL,\n\t`bucket` text NOT NULL,\n\t`prefix` text DEFAULT 'flytower' NOT NULL,\n\t`access_key_id` text NOT NULL,\n\t`secret_sealed` text NOT NULL,\n\t`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL\n);\n--> statement-breakpoint\nCREATE UNIQUE INDEX `backup_targets_name` ON `backup_targets` (`name`);--> statement-breakpoint\nALTER TABLE `backups` ADD `offsite_state` text;--> statement-breakpoint\nALTER TABLE `backups` ADD `offsite_target` integer;--> statement-breakpoint\nALTER TABLE `backups` ADD `offsite_key` text;--> statement-breakpoint\nALTER TABLE `backups` ADD `offsite_error` text;--> statement-breakpoint\nALTER TABLE `backups` ADD `offsite_attempts` integer DEFAULT 0 NOT NULL;--> statement-breakpoint\nALTER TABLE `backups` ADD `offsite_at` integer;--> statement-breakpoint\nALTER TABLE `servers` ADD `offsite_target` integer;"
   },
   {
-    "tag": "0007_shallow_karma",
+    "tag": "0007_fuzzy_exodus",
+    "sql": "CREATE TABLE `settings` (\n\t`key` text PRIMARY KEY NOT NULL,\n\t`value` text NOT NULL,\n\t`updated_at` integer DEFAULT (unixepoch() * 1000) NOT NULL\n);\n"
+  },
+  {
+    "tag": "0008_superb_blonde_phantom",
     "sql": "CREATE TABLE `notify_channels` (\n\t`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,\n\t`name` text NOT NULL,\n\t`kind` text NOT NULL,\n\t`url_sealed` text NOT NULL,\n\t`secret_sealed` text,\n\t`target` text NOT NULL,\n\t`events` text DEFAULT '[]' NOT NULL,\n\t`servers` text DEFAULT '[]' NOT NULL,\n\t`enabled` integer DEFAULT true NOT NULL,\n\t`last_sent_at` integer,\n\t`last_error` text,\n\t`last_error_at` integer,\n\t`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL\n);\n--> statement-breakpoint\nCREATE UNIQUE INDEX `notify_channels_name` ON `notify_channels` (`name`);--> statement-breakpoint\nCREATE TABLE `notify_state` (\n\t`key` text PRIMARY KEY NOT NULL,\n\t`sent_at` integer NOT NULL,\n\t`open` integer DEFAULT false NOT NULL,\n\t`value` text\n);\n"
   }
 ]
