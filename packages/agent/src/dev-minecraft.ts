@@ -20,13 +20,56 @@ function properties(text: string): Record<string, string> {
   )
 }
 
+const online = ['Steve', 'Alex']
+
 const replies: Record<string, (args: string) => string> = {
-  list: () => 'There are 0 of a max of 20 players online: ',
+  list: () => `There are ${online.length} of a max of 20 players online: ${online.join(', ')}`,
+  kick: (a) => {
+    const n = a.split(' ')[0] ?? ''
+    const i = online.indexOf(n)
+    if (i < 0) return 'No player was found'
+    online.splice(i, 1)
+    return `Kicked ${n}: Kicked by an operator`
+  },
   seed: () => 'Seed: [-4172144997902289642]',
   say: () => '',
   help: () => '/advancement\n/ban\n/list\n/say\n/seed\n/stop\n/time\n/weather',
   time: (a) =>
     a.startsWith('query') ? 'The time is 6000' : `Set the time to ${a.split(' ')[1] ?? '0'}`,
+}
+
+type ListCmd = { file: string; add: boolean; ok: (n: string) => string }
+const LIST_CMDS: Record<string, ListCmd> = {
+  'whitelist add': { file: 'whitelist.json', add: true, ok: (n) => `Added ${n} to the whitelist` },
+  'whitelist remove': {
+    file: 'whitelist.json',
+    add: false,
+    ok: (n) => `Removed ${n} from the whitelist`,
+  },
+  op: { file: 'ops.json', add: true, ok: (n) => `Made ${n} a server operator` },
+  deop: { file: 'ops.json', add: false, ok: (n) => `Made ${n} no longer a server operator` },
+  ban: { file: 'banned-players.json', add: true, ok: (n) => `Banned ${n}` },
+  pardon: { file: 'banned-players.json', add: false, ok: (n) => `Unbanned ${n}` },
+}
+
+/** Applies whitelist/op/ban commands to the JSON files the way Minecraft does. */
+async function listCommand(dir: string, body: string): Promise<string | null> {
+  const key = Object.keys(LIST_CMDS).find((k) => body === k || body.startsWith(`${k} `))
+  if (!key) return null
+  const cmd = LIST_CMDS[key]!
+  const [name = '', ...reason] = body.slice(key.length).trim().split(' ')
+  const path = join(dir, cmd.file)
+  const list = JSON.parse(await readFile(path, 'utf8').catch(() => '[]')) as { name: string }[]
+  const has = list.some((e) => e.name.toLowerCase() === name.toLowerCase())
+  if (cmd.add === has) return 'Nothing changed'
+  const next = cmd.add
+    ? [
+        ...list,
+        { uuid: crypto.randomUUID(), name, ...(reason.length ? { reason: reason.join(' ') } : {}) },
+      ]
+    : list.filter((e) => e.name.toLowerCase() !== name.toLowerCase())
+  await writeFile(path, JSON.stringify(next, null, 2))
+  return cmd.ok(name)
 }
 
 export async function startFakeMinecraft(dir: string) {
@@ -59,11 +102,16 @@ export async function startFakeMinecraft(dir: string) {
       port,
       socket: {
         open: (s) => void (s.data = new PacketParser()),
-        data: (s, chunk) => {
+        data: async (s, chunk) => {
           for (const p of s.data.push(chunk)) {
             if (p.type === PacketType.Auth) {
               s.write(encodePacket(p.body === password ? p.id : -1, PacketType.Command, ''))
             } else if (p.type === PacketType.Command) {
+              const listed = await listCommand(dir, p.body)
+              if (listed !== null) {
+                s.write(encodePacket(p.id, PacketType.Response, listed))
+                continue
+              }
               const [cmd = '', ...rest] = p.body.split(' ')
               const reply = replies[cmd]?.(rest.join(' ')) ?? `Unknown or incomplete command`
               if (cmd === 'say')
