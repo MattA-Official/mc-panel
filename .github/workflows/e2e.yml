@@ -155,3 +155,53 @@ jobs:
           name: e2e-screenshots
           path: ${{ runner.temp }}/shots
           if-no-files-found: ignore
+
+  releases:
+    runs-on: ubuntu-24.04
+    outputs:
+      versions: ${{ steps.list.outputs.versions }}
+    steps:
+      - id: list
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          versions="$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
+            --jq '[.[] | select(.draft | not) | .tag_name | ltrimstr("v")]' | jq -sc 'add')"
+          echo "versions=$versions" >> "$GITHUB_OUTPUT"
+          echo "$versions"
+
+  upgrade:
+    needs: releases
+    if: needs.releases.outputs.versions != '[]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        from: ${{ fromJson(needs.releases.outputs.versions) }}
+    name: upgrade from ${{ matrix.from }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - run: bun scripts/package.ts --version 0.0.0-e2e --arch amd64 --out dist
+      - name: Boot a systemd container
+        run: |
+          mkdir -p old
+          docker build -t flytower-e2e tests/e2e
+          docker run -d --name vps --privileged --cgroupns=host --network host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw --tmpfs /run --tmpfs /run/lock \
+            -v "$PWD:/src:ro" flytower-e2e
+          for _ in $(seq 1 30); do
+            state="$(docker exec vps systemctl is-system-running 2>/dev/null || true)"
+            [[ "$state" == running || "$state" == degraded ]] && break
+            sleep 1
+          done
+      - name: Upgrade from ${{ matrix.from }}
+        run: bash tests/e2e/upgrade.sh "${{ matrix.from }}" /src/dist/flytower-0.0.0-e2e-linux-amd64.tar.gz
+      - name: Logs
+        if: failure()
+        run: docker exec vps journalctl -u flytower-agent -u flytower-panel --no-pager -n 200 || true
