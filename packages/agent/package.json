@@ -8,7 +8,8 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dev": "bun --watch src/dev.ts"
   },
   "dependencies": {
     "@flytower/protocol": "workspace:*"
