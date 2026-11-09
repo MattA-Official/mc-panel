@@ -1,0 +1,77 @@
+name: E2E
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  install-and-run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - name: Package
+        run: bun scripts/package.ts --version 0.0.0-e2e --arch amd64 --out dist
+
+      - name: Boot a systemd container
+        run: |
+          docker build -t flytower-e2e tests/e2e
+          docker run -d --name vps --privileged --cgroupns=host --network host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw --tmpfs /run --tmpfs /run/lock \
+            -v "$PWD:/src:ro" flytower-e2e
+          for _ in $(seq 1 30); do
+            state="$(docker exec vps systemctl is-system-running 2>/dev/null || true)"
+            [[ "$state" == running || "$state" == degraded ]] && break
+            sleep 1
+          done
+          echo "systemd: $state"
+
+      - name: Install
+        run: |
+          docker exec vps bash /src/installer/install.sh --domain localhost \
+            --tarball /src/dist/flytower-0.0.0-e2e-linux-amd64.tar.gz \
+            --no-caddy --no-firewall --setup-token e2e-setup-token
+          docker exec vps grep NUXT_APP_SECRET /etc/flytower/panel.env > first.env
+
+      - name: Install again (must be safe)
+        run: |
+          docker exec vps bash /src/installer/install.sh --domain localhost \
+            --tarball /src/dist/flytower-0.0.0-e2e-linux-amd64.tar.gz \
+            --no-caddy --no-firewall --setup-token e2e-setup-token
+          docker exec vps grep NUXT_APP_SECRET /etc/flytower/panel.env > second.env
+          cmp first.env second.env && echo "secret kept across re-runs"
+          docker exec vps systemctl is-active flytower-agent flytower-panel
+
+      - name: Smoke test in a browser
+        env:
+          E2E_URL: http://localhost:3000
+          E2E_SETUP_TOKEN: e2e-setup-token
+          E2E_SHOTS: ${{ runner.temp }}/shots
+        run: mkdir -p "$E2E_SHOTS" && bun tests/e2e/smoke.ts
+
+      - name: Logs
+        if: always()
+        run: |
+          docker exec vps journalctl -u flytower-agent -u flytower-panel -u 'flytower-mc@*' --no-pager -n 300 || true
+          docker exec vps sh -c 'tail -n 80 /srv/flytower/servers/*/logs/latest.log' || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-screenshots
+          path: ${{ runner.temp }}/shots
+          if-no-files-found: ignore
