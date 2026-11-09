@@ -109,6 +109,30 @@ describe('create-server job', () => {
     expect(runner.get(jobId)?.state).toBe('succeeded')
   })
 
+  it("carries a spec's properties, backups and content into a new server", async () => {
+    const { db, root, runner } = setup()
+    const final = await runner.createServer(input, undefined, {
+      properties: { motd: 'From YAML', 'max-players': '30' },
+      backups: {
+        schedule: '0 4 * * *',
+        timezone: 'Europe/London',
+        keep: { last: 3, daily: 2, weekly: 1 },
+      },
+      content: [{ modrinth: 'lithium' }],
+    }).done
+    expect(final).toMatchObject({ state: 'succeeded' })
+    const props = await readFile(join(root, 'server.properties'), 'utf8')
+    expect(props).toContain('motd=From YAML')
+    expect(props).toContain('max-players=30')
+    expect(props).toContain('rcon.port=25575')
+    expect(db.select().from(schema.servers).get()).toMatchObject({
+      backupSchedule: '0 4 * * *',
+      backupTz: 'Europe/London',
+      keepLast: 3,
+      content: [{ modrinth: 'lithium' }],
+    })
+  })
+
   it('picks the next free ports for a second server', async () => {
     const { runner, calls } = setup()
     await runner.createServer(input).done

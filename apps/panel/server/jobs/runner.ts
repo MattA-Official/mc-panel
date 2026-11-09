@@ -2,6 +2,7 @@ import { chmod, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
+import type { ServerSpec } from '../../shared/spec'
 import { ServerName, type Params, type Result, type Verb } from '@flytower/protocol'
 import {
   downloadVerified,
@@ -34,6 +35,13 @@ export const CreateServerInput = z.object({
   acceptEula: z.literal(true, { error: 'You need to accept the Minecraft EULA.' }),
 })
 export type CreateServerInput = z.input<typeof CreateServerInput>
+
+/** The parts of a spec the create form doesn't cover, for servers made from YAML. */
+export interface SpecExtras {
+  properties?: Record<string, string>
+  backups?: ServerSpec['backups']
+  content?: ServerSpec['content']
+}
 
 export interface RunnerDeps {
   db: Db
@@ -110,6 +118,7 @@ export class JobRunner {
   createServer(
     raw: CreateServerInput,
     source?: ImportSource,
+    extras: SpecExtras = {},
   ): { jobId: number; done: Promise<JobEvent> } {
     const input = CreateServerInput.parse(raw)
     const { port, rconPort } = this.claim(input.name, input.port)
@@ -123,7 +132,7 @@ export class JobRunner {
       .returning()
       .get()
 
-    const done = this.execute(job.id, input, port, rconPort, source).finally(() => {
+    const done = this.execute(job.id, input, port, rconPort, source, extras).finally(() => {
       this.reservedNames.delete(input.name)
       this.reservedPorts.delete(port)
       this.reservedPorts.delete(rconPort)
@@ -186,6 +195,7 @@ export class JobRunner {
     port: number,
     rconPort: number,
     source?: ImportSource,
+    extras: SpecExtras = {},
   ): Promise<JobEvent> {
     const { agent, loaders, db } = this.deps
     const step = this.stepper(id, source ? IMPORT_STEPS : STEPS)
@@ -240,10 +250,15 @@ export class JobRunner {
       const existing = source
         ? await readFile(join(dir, 'server.properties'), 'utf8').catch(() => null)
         : null
-      const properties =
+      let properties =
         existing !== null
           ? stringifyProperties(setProperties(parseProperties(existing), managed))
           : defaultProperties({ port, rconPort, rconPassword, motd: input.displayName })
+      if (extras.properties && Object.keys(extras.properties).length) {
+        properties = stringifyProperties(
+          setProperties(parseProperties(properties), extras.properties),
+        )
+      }
       // Group-writable, whatever the panel's umask, so the server (same group) can edit them.
       const files: [string, string][] = [
         ['eula.txt', EULA(acceptedAt)],
@@ -266,6 +281,16 @@ export class JobRunner {
           rconPort,
           rconPassword,
           eulaAcceptedAt: acceptedAt,
+          ...(extras.backups
+            ? {
+                backupSchedule: extras.backups.schedule,
+                backupTz: extras.backups.timezone,
+                keepLast: extras.backups.keep.last,
+                keepDaily: extras.backups.keep.daily,
+                keepWeekly: extras.backups.keep.weekly,
+              }
+            : {}),
+          content: extras.content ?? [],
         })
         .run()
 
