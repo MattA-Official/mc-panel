@@ -68,10 +68,10 @@ jobs:
           umask 077
           key="$(mktemp)"
           trap 'rm -f "$key"' EXIT
-          printf '%s\n' "$FLYTOWER_SIGNING_KEY" > "$key"
+          # Accepts the key however it was pasted (PEM, flattened, OpenSSH) and writes PKCS#8.
+          bun scripts/signing-key.ts "$key"
           if ! openssl pkey -in "$key" -noout 2>/dev/null; then
-            first="$(head -c 40 "$key" | head -1 | grep -o -- '-----BEGIN [A-Z ]*-----' || echo 'no PEM header')"
-            echo "::error::FLYTOWER_SIGNING_KEY isn't a private key openssl can read (it starts with: $first). It should be the whole file from 'openssl genpkey -algorithm ed25519', from -----BEGIN PRIVATE KEY----- to -----END PRIVATE KEY-----."
+            echo "::error::FLYTOWER_SIGNING_KEY isn't a private key openssl can read. It should be the whole file from 'openssl genpkey -algorithm ed25519' or 'ssh-keygen -t ed25519'."
             exit 1
           fi
           if [[ "$(openssl pkey -in "$key" -pubout)" != "$(cat installer/release-key.pem)" ]]; then
