@@ -109,6 +109,18 @@ describe('OffsiteService', () => {
     await expect(offsite.addTarget(input)).rejects.toThrow('already a target called b2')
   })
 
+  it('still uploads after a sweep that found nothing to do', async () => {
+    const { offsite, db, bucket, backup, row } = setup()
+    const { id: target } = await offsite.addTarget(input)
+    await offsite.sweep()
+    db.update(schema.servers).set({ offsiteTarget: target }).run()
+    const b = backup('survival-0.tar.zst')
+    offsite.queue(b)
+    await offsite.kick()
+    expect(row(b.id)).toMatchObject({ offsiteState: 'done' })
+    expect(bucket.objects.size).toBe(1)
+  })
+
   it('uploads new backups, retries failures, and deletes copies with the backup', async () => {
     const { offsite, db, bucket, backup, row, secrets } = setup()
     const { id: target } = await offsite.addTarget(input)

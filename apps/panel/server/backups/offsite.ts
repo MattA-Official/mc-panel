@@ -231,6 +231,8 @@ export class OffsiteService {
       return this.current
     }
     this.current = (async () => {
+      // Without this the body can finish (and clear `current`) before `current` is set.
+      await Promise.resolve()
       try {
         do {
           this.again = false
