@@ -53,6 +53,7 @@ const ICONS: Record<AuditKind, string> = {
   players: 'i-lucide-users',
   files: 'i-lucide-folder-open',
   access: 'i-lucide-key-round',
+  system: 'i-lucide-arrow-up-circle',
 }
 const when = (at: string) =>
   new Date(at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })

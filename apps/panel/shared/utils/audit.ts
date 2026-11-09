@@ -8,6 +8,7 @@ export const AUDIT_KINDS = {
   players: 'Players',
   files: 'Files',
   access: 'Sign-ins and access',
+  system: 'Flytower updates',
 } as const
 export type AuditKind = keyof typeof AUDIT_KINDS
 
@@ -18,6 +19,7 @@ export function auditKind(action: string): AuditKind {
   if (action.startsWith('files.')) return 'files'
   if (action === 'server.apply' || action === 'server.properties') return 'content'
   if (/^(auth|passkey|setup|ssh)\./.test(action)) return 'access'
+  if (action.startsWith('update.')) return 'system'
   return 'servers'
 }
 
@@ -56,6 +58,10 @@ export function describeAudit(
       return `Opened SSH${d.minutes ? ` for ${str(d.minutes)} minutes` : ''}`
     case 'ssh.close':
       return 'Closed SSH'
+    case 'update.install':
+      return `Updated Flytower to ${str(d.version)}`
+    case 'update.rollback':
+      return `Went back to Flytower ${str(d.version)}`
     case 'server.create':
       return `Created ${t}${d.from === 'spec' ? ' from YAML' : ''}`
     case 'server.import':
