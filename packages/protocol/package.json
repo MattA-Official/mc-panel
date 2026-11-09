@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Typed messages between the flytower panel and the privileged agent",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
