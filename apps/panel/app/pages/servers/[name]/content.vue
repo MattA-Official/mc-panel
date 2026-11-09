@@ -1,7 +1,7 @@
 <script setup lang="ts">
 type Kind = 'mod' | 'datapack'
 interface Item {
-  source: 'modrinth' | 'url'
+  source: 'modrinth' | 'url' | 'vanillatweaks'
   projectId: string
   slug: string
   title: string
@@ -11,7 +11,10 @@ interface Item {
   asked: boolean
   requiredBy: string[]
 }
-type Wanted = { modrinth: string; version?: string; kind?: Kind } | { url: string; kind: Kind }
+type Wanted =
+  | { modrinth: string; version?: string; kind?: Kind }
+  | { url: string; kind: Kind }
+  | { vanillatweaks: string; tweak?: 'datapack' | 'crafting' }
 interface Listing {
   accepts: Kind[]
   items: Item[]
@@ -74,11 +77,15 @@ async function add(hit: Hit) {
 
 async function remove(item: Item) {
   const spec = await currentSpec()
-  spec.content = spec.content.filter((c) =>
-    'modrinth' in c
-      ? c.modrinth !== item.slug && c.modrinth !== item.projectId
-      : c.url !== item.projectId,
-  )
+  spec.content = spec.content.filter((c) => {
+    if ('modrinth' in c) return c.modrinth !== item.slug && c.modrinth !== item.projectId
+    if ('vanillatweaks' in c) {
+      return (
+        `${c.tweak ?? 'datapack'}:${c.vanillatweaks}`.toLowerCase() !== item.projectId.toLowerCase()
+      )
+    }
+    return c.url !== item.projectId
+  })
   await change.value?.propose(spec, { title: `Remove ${item.title}` })
 }
 
@@ -142,7 +149,77 @@ onBeforeUnmount(() => clearTimeout(timer))
 function count(n: number) {
   return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}k` : String(n)
 }
-const pendingLabel = (w: Wanted) => ('modrinth' in w ? w.modrinth : w.url)
+const pendingLabel = (w: Wanted) =>
+  'modrinth' in w ? w.modrinth : 'vanillatweaks' in w ? w.vanillatweaks : w.url
+
+// Vanilla Tweaks: tick packs by category, then review.
+interface VtPack {
+  name: string
+  display: string
+  description: string
+  version: string
+}
+interface VtCategory {
+  name: string
+  packs: VtPack[]
+}
+const vtOpen = ref(false)
+const vtTab = ref<'datapack' | 'crafting'>('datapack')
+const vtFilter = ref('')
+const vtPicked = ref(new Set<string>())
+const {
+  data: vt,
+  error: vtError,
+  status: vtStatus,
+  execute: loadVt,
+} = useFetch<{ version: string; datapacks: VtCategory[]; crafting: VtCategory[] }>(
+  () => `/api/servers/${name.value}/content/vanillatweaks`,
+  { immediate: false, server: false },
+)
+const vtKey = (tweak: string, category: string, pack: string) => `${tweak}:${category}/${pack}`
+watch(vtOpen, async (o) => {
+  if (!o) return
+  if (!vt.value) loadVt()
+  const spec = await currentSpec()
+  vtPicked.value = new Set(
+    spec.content.flatMap((c) =>
+      'vanillatweaks' in c ? [`${c.tweak ?? 'datapack'}:${c.vanillatweaks}`] : [],
+    ),
+  )
+})
+const vtCategories = computed(() => {
+  const list = (vtTab.value === 'crafting' ? vt.value?.crafting : vt.value?.datapacks) ?? []
+  const q = vtFilter.value.trim().toLowerCase()
+  return list
+    .map((c) => ({
+      ...c,
+      packs: q
+        ? c.packs.filter(
+            (p) => p.display.toLowerCase().includes(q) || p.description.toLowerCase().includes(q),
+          )
+        : c.packs,
+    }))
+    .filter((c) => c.packs.length)
+})
+function toggleVt(key: string, on: boolean) {
+  const next = new Set(vtPicked.value)
+  if (on) next.add(key)
+  else next.delete(key)
+  vtPicked.value = next
+}
+async function reviewVt() {
+  const spec = await currentSpec()
+  const others = spec.content.filter((c) => !('vanillatweaks' in c))
+  const picked: Wanted[] = [...vtPicked.value].map((key) => {
+    const [tweak, pack] = [key.slice(0, key.indexOf(':')), key.slice(key.indexOf(':') + 1)]
+    return tweak === 'crafting'
+      ? { vanillatweaks: pack, tweak: 'crafting' }
+      : { vanillatweaks: pack }
+  })
+  spec.content = [...others, ...picked]
+  vtOpen.value = false
+  await change.value?.propose(spec, { title: 'Vanilla Tweaks' })
+}
 </script>
 
 <template>
@@ -165,6 +242,13 @@ const pendingLabel = (w: Wanted) => ('modrinth' in w ? w.modrinth : w.url)
           color="neutral"
           variant="outline"
           @click="update()"
+        />
+        <UButton
+          label="Vanilla Tweaks"
+          icon="i-lucide-sparkles"
+          color="neutral"
+          variant="outline"
+          @click="vtOpen = true"
         />
         <UButton label="Add content" icon="i-lucide-plus" @click="addOpen = true" />
       </div>
@@ -317,6 +401,70 @@ const pendingLabel = (w: Wanted) => ('modrinth' in w ? w.modrinth : w.url)
           <p v-if="!searching && !hits.length && !searchError" class="text-sm text-muted">
             Nothing found for this server's version.
           </p>
+        </div>
+      </template>
+    </USlideover>
+
+    <USlideover
+      v-model:open="vtOpen"
+      title="Vanilla Tweaks"
+      :description="
+        vt ? `Packs for Minecraft ${vt.version}. Tick what you want, untick to remove.` : undefined
+      "
+      :ui="{ content: 'w-full sm:max-w-xl' }"
+    >
+      <template #body>
+        <div class="space-y-4">
+          <UAlert
+            v-if="vtError"
+            color="warning"
+            variant="subtle"
+            icon="i-lucide-cloud-off"
+            :title="errorMessage(vtError)"
+          />
+          <p v-else-if="vtStatus === 'pending'" class="text-sm text-muted">
+            Loading the catalogue…
+          </p>
+          <template v-if="vt">
+            <UTabs
+              v-model="vtTab"
+              :items="[
+                { label: 'Datapacks', value: 'datapack' },
+                { label: 'Crafting tweaks', value: 'crafting' },
+              ]"
+              :content="false"
+              class="w-full"
+            />
+            <UInput
+              v-model="vtFilter"
+              icon="i-lucide-search"
+              placeholder="Filter"
+              aria-label="Filter Vanilla Tweaks"
+              class="w-full"
+            />
+            <details v-for="c in vtCategories" :key="c.name" open class="group">
+              <summary class="cursor-pointer py-1 text-sm font-semibold">
+                {{ c.name.replace(/\//g, ' › ') }}
+                <span class="font-normal text-dimmed">({{ c.packs.length }})</span>
+              </summary>
+              <ul class="space-y-2 py-2 pl-1">
+                <li v-for="p in c.packs" :key="p.name">
+                  <UCheckbox
+                    :model-value="vtPicked.has(vtKey(vtTab, c.name, p.name))"
+                    :label="p.display"
+                    :description="p.description || undefined"
+                    @update:model-value="(v) => toggleVt(vtKey(vtTab, c.name, p.name), v === true)"
+                  />
+                </li>
+              </ul>
+            </details>
+          </template>
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex w-full items-center justify-between gap-2">
+          <span class="text-sm text-muted">{{ vtPicked.size }} chosen</span>
+          <UButton label="Review" icon="i-lucide-list-checks" :disabled="!vt" @click="reviewVt" />
         </div>
       </template>
     </USlideover>
