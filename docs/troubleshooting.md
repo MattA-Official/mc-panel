@@ -23,6 +23,7 @@ A server's own logs are also on its **Logs** tab, and in `/srv/flytower/servers/
 - Its **Console** and **Logs** tabs show Minecraft's own error. The usual causes are a mod or plugin that doesn't suit the version, or a broken config file.
 - Remove the content you added last (or restore the backup taken before it), then start it again.
 - Out of memory: lower other servers' memory or raise this one's within the budget.
+- If it crashed, the **Console** tab's banner links to the crash report, and **Logs**, **Crashes** has the log from just before it. After three crashes in ten minutes it's left stopped; **Start** tries again. See [Crashes](crashes.md).
 
 ## SSH
 

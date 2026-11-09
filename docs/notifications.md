@@ -8,6 +8,9 @@ Set them up on **System**, **Notifications**. Each place Flytower sends to is a 
 
 | Group    | Event                                            | When                                                                                                        |
 | -------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| Problems | A server crashed                                 | When Flytower notices (within about ten seconds), with the cause. "Back up" follows once it's running.      |
+| Problems | A server kept crashing and was left stopped      | After three crashes in ten minutes. See [Crashes](crashes.md#crash-loops).                                  |
+| Problems | A server stopped responding                      | Its console hasn't answered for five minutes. "Responding again" follows when it does.                      |
 | Problems | A backup failed                                  | A manual or scheduled backup fails. A "working again" message follows the next good backup.                 |
 | Problems | Copying a backup off-site failed                 | An off-site copy fails twice in a row (one blip that the retry fixes stays quiet), and when it works again. |
 | Problems | The disk is nearly full                          | Once at 85%, once more at 95%, and "back to normal" when it drops below 80%.                                |
@@ -16,9 +19,9 @@ Set them up on **System**, **Notifications**. Each place Flytower sends to is a 
 | Activity | A server started or stopped                      | Within a minute of it happening, however it happened.                                                       |
 | Activity | A player joined or left                          | From the server's log, within a couple of seconds.                                                          |
 
-New channels start with the problems and updates ticked, and the activity left off. Crash alerts come with crash detection in a later release.
+New channels start with the problems and updates ticked, and the activity left off. Channels made before crash alerts existed get them ticked if they already had any problem ticked.
 
-**Quiet periods.** The same problem on the same server is sent at most once every 30 minutes, so a backup that fails every hour doesn't flood the channel. Updates are sent once per version. Activity isn't held back.
+**Quiet periods.** The same problem on the same server is sent at most once every 30 minutes (ten for crashes), so a backup that fails every hour doesn't flood the channel. Once a problem has cleared, the next one is sent straight away. Updates are sent once per version. Activity isn't held back.
 
 **Servers.** Leave **Servers** empty to hear about every server, including ones you create later, or pick some. Machine-wide events (the disk, Flytower updates) go to every channel that has them ticked.
 

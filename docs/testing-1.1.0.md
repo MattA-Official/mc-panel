@@ -29,6 +29,24 @@ You need a Discord server where you can make a webhook, and optionally the [ntfy
 - [ ] **Remove** asks for your passkey and the channel stops getting messages.
 - [ ] Point a channel at a broken address (edit it with a deleted webhook URL), stop a server, and see the error shown under the channel on System. Fix it and **Send test** clears the error.
 
+## 2. Crash detection
+
+You need a test server you don't mind crashing. SSH in (System, **SSH access**) for the first few checks, or use the console tricks below. See [Crashes](crashes.md).
+
+- [ ] Kill the server's Java process: `sudo pkill -KILL -u mc-<name>`. Within about ten seconds the badge reads **Restarting after a crash**, and the Console tab shows a banner: "Crashed at …", "It was killed by SIGKILL. It will be restarted in a moment."
+- [ ] About 15 seconds later it starts again by itself. The badge goes back to **Running**, the banner stays (now saying it was restarted), and a red dot marks it on the servers list.
+- [ ] A "Server crashed" notification arrives (if a channel has it ticked), then "Server is back up".
+- [ ] **Activity** lists "<name> crashed. It was killed by SIGKILL." by **Flytower**.
+- [ ] **Logs**, **Crashes** lists the crash, then "Back to normal". **The log before it** shows the last lines of the old log.
+- [ ] A real Minecraft crash report: on a test server with operator rights, the `/debug` key combination isn't available on a server, so the easiest way is a mod known to crash on your version, or ask me for a crash-test jar. The banner's cause becomes "Minecraft crashed: …" and **Open crash report** opens the file in the Files tab. (This also checks how 26.3 names its crash reports.)
+- [ ] Close the banner with its ✕. It stays closed after a reload, and the red dot goes.
+- [ ] **Crash loop**: kill it three times in a row, each time once it's back up. After the third, it stays stopped, the badge reads **Crash-looping**, a "Server keeps crashing" notification arrives, and the banner says to start it again once fixed. **Start** works first time, and "Server is running again" follows.
+- [ ] **Stop**, **Restart**, applying a change from the Content tab and a backup restore never count as crashes.
+- [ ] Typing `stop` in the console stops the server normally, with no crash recorded and no automatic restart.
+- [ ] **Not responding**: freeze the server with `sudo pkill -STOP -u mc-<name>` (this pauses Java without stopping it). After five minutes the badge reads **Not responding** and a notification arrives. `sudo pkill -CONT -u mc-<name>` brings it back, and within a minute it's **Running** again with a "responding again" notification.
+- [ ] Turn on **Settings**, **Crashes**, **Restart it when it stops responding**, freeze it again, and check it's restarted once after five minutes, and that Activity says so. The YAML tab now shows `recovery: restartWhenUnresponsive: true`.
+- [ ] After updating an existing install to this build, `systemctl cat flytower-mc@<name>` shows `StartLimitBurst=3` without the servers having been restarted by the update.
+
 ## Reporting feedback
 
 Open an issue with the **[Feedback](https://github.com/MattA-Official/mc-panel/issues/new?template=feedback.yml)** template, or comment on the pull request you're testing.

@@ -95,6 +95,14 @@ Left out entirely, a server's backup settings stay as they are. When present:
 | `keep`     | `last` (default 6), `daily` (7) and `weekly` (4): how many scheduled backups to keep. See [Backups](backups.md#how-many-are-kept). |
 | `offsite`  | The name of [off-site storage](backups.md#off-site-copies) from the System page, or `null` for none. Left out, it stays.           |
 
+### `recovery`
+
+What Flytower does when the server gets stuck. Left out, the current setting stays.
+
+| Field                     | Meaning                                                                                                                                             |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `restartWhenUnresponsive` | `true` to restart the server once when its console hasn't answered for five minutes. Defaults to `false`. See [Crashes](crashes.md#not-responding). |
+
 ## Errors
 
 Mistakes are marked on their line with a message saying what's wrong, and you can't apply until they're fixed. Problems the plan finds (a port in use, a mod with no build for your version, not enough memory) are listed in the plan, and stop it from applying.
