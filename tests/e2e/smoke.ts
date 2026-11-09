@@ -351,6 +351,68 @@ try {
     } catch (err) {
       console.log(`⚠ Vanilla Tweaks check skipped: ${(err as Error).message}`)
     }
+
+    // Pre-generation: add Chunky through a plan, then generate a small area and cancel.
+    const current = await api<{ spec: { content: unknown[] } }>(view, '/api/servers/smoke/spec')
+    const chunkyPlan = await api<{ ok: boolean; plan: { id: string; problems: string[] } }>(
+      view,
+      '/api/servers/smoke/plan',
+      {
+        body: {
+          spec: {
+            ...current.body.spec,
+            content: [...current.body.spec.content, { modrinth: 'chunky' }],
+          },
+        },
+      },
+    )
+    const noBuild = chunkyPlan.body.plan?.problems.find((p) =>
+      /no version|isn't available/i.test(p),
+    )
+    if (noBuild) {
+      console.log(`⚠ Pre-generation check skipped: ${noBuild}`)
+    } else {
+      if (!chunkyPlan.body.ok || chunkyPlan.body.plan.problems.length) {
+        throw new Error(`Chunky plan: ${JSON.stringify(chunkyPlan.body)}`)
+      }
+      const chunkyApply = await api<{ jobId: number }>(view, '/api/servers/smoke/apply', {
+        body: { planId: chunkyPlan.body.plan.id },
+      })
+      await waitForJob(chunkyApply.body.jobId, 'the Chunky apply job', 10 * 60_000)
+      await until(
+        'Chunky to be ready',
+        async () => {
+          const r = await api<{ blocked: string | null }>(view, '/api/servers/smoke/world/pregen')
+          return r.status === 200 && r.body.blocked === null ? true : null
+        },
+        5 * 60_000,
+        2000,
+      )
+      const started = await api<{ reply: string }>(view, '/api/servers/smoke/world/pregen', {
+        body: {
+          action: 'start',
+          dimension: 'overworld',
+          radius: 256,
+          center: null,
+          shape: 'square',
+        },
+      })
+      if (started.status !== 200) throw new Error(`pregen start: ${JSON.stringify(started.body)}`)
+      const progress = await until(
+        'Chunky to make progress',
+        async () => {
+          const r = await api<{ lines: string[] }>(
+            view,
+            '/api/servers/smoke/logs/view?name=latest.log&q=Processed',
+          )
+          return r.status === 200 && r.body.lines.length ? r.body.lines.at(-1) : null
+        },
+        5 * 60_000,
+        2000,
+      )
+      await api(view, '/api/servers/smoke/world/pregen', { body: { action: 'cancel' } })
+      step(`pre-generated with Chunky: ${progress.slice(0, 160)}`)
+    }
   }
   console.log('smoke test passed')
 } catch (err) {
