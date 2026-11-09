@@ -67,6 +67,9 @@ jobs:
         run: |
           call() { docker exec vps /opt/flytower/current/bin/bun /src/tests/e2e/agent-call.ts "$@"; }
           ssh_rules() { docker exec vps ufw status | grep -E '^(22/tcp|OpenSSH)' || true; }
+          # The container shares the runner's network, so turn ufw on without blocking anything:
+          # the test only needs the SSH rules to come and go.
+          docker exec vps sh -c 'ufw default allow incoming >/dev/null && ufw allow OpenSSH >/dev/null && ufw --force enable'
           call ssh.set '{"open":false}'
           if [ -n "$(ssh_rules)" ]; then echo "SSH still open after closing"; exit 1; fi
           call ssh.set '{"open":true,"minutes":1}'
@@ -77,6 +80,7 @@ jobs:
           if [ -n "$(ssh_rules)" ]; then echo "SSH still open after the window"; exit 1; fi
           # Leave it as the installer did.
           call ssh.set '{"open":true}'
+          docker exec vps ufw --force disable
 
       - name: Logs
         if: always()
