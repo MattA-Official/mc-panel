@@ -112,6 +112,36 @@ describe('server.delete', () => {
   })
 })
 
+describe('server.permissions', () => {
+  it('restores group access without following links', async () => {
+    const { exec, calls } = fakeExec({ 'id -u mc-survival': { code: 1 } })
+    const { ctx } = fakeContext(exec, undefined, paths)
+    await dispatch(create(), handlers, ctx)
+    calls.length = 0
+    const req = JSON.stringify({
+      id: 'p',
+      verb: 'server.permissions',
+      params: { name: 'survival' },
+    })
+    expect(await dispatch(req, handlers, ctx)).toMatchObject({ ok: true })
+    const dir = join(paths.servers, 'survival')
+    expect(calls.map((c) => [c.file, ...c.args].join(' '))).toEqual([
+      `chgrp -R --no-dereference flytower ${dir}`,
+      `chmod -R g+rwX,o-rwx ${dir}`,
+    ])
+  })
+
+  it('says when there is no such server', async () => {
+    const { exec } = fakeExec({})
+    const { ctx } = fakeContext(exec, undefined, paths)
+    const req = JSON.stringify({ id: 'p', verb: 'server.permissions', params: { name: 'nope' } })
+    expect(await dispatch(req, handlers, ctx)).toMatchObject({
+      ok: false,
+      error: { code: 'not_found' },
+    })
+  })
+})
+
 describe('server.configure', () => {
   const configure = (params: Record<string, unknown>) =>
     JSON.stringify({ id: 'g', verb: 'server.configure', params: { name: 'survival', ...params } })

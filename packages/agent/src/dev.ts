@@ -72,6 +72,7 @@ const handlers: Handlers = {
     return { directory, user: userName(name), unit: unitName(name) }
   },
   'server.configure': async () => ({}),
+  'server.permissions': async () => ({}),
   'server.delete': async ({ name }) => {
     await rm(join(serversDir, name), { recursive: true, force: true })
     states.delete(name)

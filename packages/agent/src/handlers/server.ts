@@ -105,6 +105,21 @@ export async function configure(
   return {}
 }
 
+/**
+ * Restores group access across a server folder (owner stays the server's user). Symlinks
+ * are not followed: chmod -R on Linux changes the link's target only on the command line.
+ */
+export async function permissions(
+  p: Params<'server.permissions'>,
+  ctx: AgentContext,
+): Promise<Result<'server.permissions'>> {
+  const f = paths(ctx, p.name)
+  if (!existsSync(f.dir)) throw new AgentError('not_found', `no server called ${p.name}`)
+  await run(ctx, 'chgrp', ['-R', '--no-dereference', ctx.panelGroup, f.dir])
+  await run(ctx, 'chmod', ['-R', 'g+rwX,o-rwx', f.dir])
+  return {}
+}
+
 /** Rule numbers tagged for this server, highest first so deleting one does not renumber the rest. */
 export function ufwRuleNumbers(statusNumbered: string, name: string): number[] {
   return [...statusNumbered.matchAll(/^\[\s*(\d+)\].*# (.+)$/gm)]

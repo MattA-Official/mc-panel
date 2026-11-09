@@ -50,6 +50,15 @@ export const verbs = {
       .refine((p) => p.memoryMb !== undefined || p.port !== undefined, 'nothing to change'),
     result: z.object({}),
   },
+  /**
+   * Gives the panel's group read and write on everything in a server folder. Minecraft
+   * writes some files (level.dat) through 0600 temporary files, which the panel then can't
+   * back up or edit.
+   */
+  'server.permissions': {
+    params: z.object({ name: ServerName }).strict(),
+    result: z.object({}),
+  },
   'server.delete': {
     params: z.object({ name: ServerName }).strict(),
     result: z.object({ archivedTo: z.string().nullable() }),

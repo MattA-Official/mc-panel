@@ -13,5 +13,6 @@ export const handlers: Handlers = {
   'runtime.install': runtime.install,
   'server.create': server.create,
   'server.configure': server.configure,
+  'server.permissions': server.permissions,
   'server.delete': server.remove,
 }
