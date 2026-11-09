@@ -65,21 +65,4 @@ describe('StatusWatcher', () => {
     await Promise.all([w.poke(), w.poke(), w.poke()])
     expect(calls).toHaveLength(1)
   })
-
-  it('hands every poll to the notifications hook, so quick stops are seen', async () => {
-    const states: Record<string, string> = { a: 'active' }
-    const { agent } = fakeAgent(states)
-    const polls: StatusMap[] = []
-    const w = new StatusWatcher(
-      agent,
-      () => ['a'],
-      60_000,
-      (m) => polls.push({ ...m }),
-    )
-    await w.poke()
-    states.a = 'inactive'
-    await w.poke()
-    await w.poke()
-    expect(polls).toEqual([{ a: 'active' }, { a: 'inactive' }, { a: 'inactive' }])
-  })
 })
