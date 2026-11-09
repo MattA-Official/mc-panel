@@ -24,6 +24,7 @@ PANEL_PORT=3000
 domain=""
 version="latest"
 pr=""
+beta=0
 tarball=""
 setup_token=""
 with_caddy=1
@@ -40,7 +41,8 @@ usage() {
 Usage: install.sh --domain <host> [options]
 
   --domain <host>       The panel's address, e.g. panel.example.com. Its DNS must point here.
-  --version <x.y.z>     Install this release instead of the latest.
+  --version <x.y.z>     Install this release instead of the latest stable one.
+  --beta                Install the newest release, betas included.
   --tarball <file>      Install from a release tarball already on this machine.
   --pr <number>         Install the test build of that pull request (for testing, not for
                         real servers). It's signed like a release.
@@ -56,6 +58,7 @@ while [[ $# -gt 0 ]]; do
     --version) version="${2#v}"; shift 2 ;;
     --tarball) tarball="${2:-}"; shift 2 ;;
     --pr) pr="${2:-}"; shift 2 ;;
+    --beta) beta=1; shift ;;
     --setup-token) setup_token="${2:-}"; shift 2 ;;
     --no-caddy) with_caddy=0; shift ;;
     --no-firewall) with_firewall=0; shift ;;
@@ -107,9 +110,15 @@ if [[ -z "$tarball" ]]; then
     say "Downloading the test build of pull request $pr ($arch)"
   else
     if [[ "$version" == latest ]]; then
-      # The newest v-tagged release, pre-releases included; test builds (pr-*) are skipped.
-      version="$(curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=30" |
-        sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p' | head -n1)"
+      if [[ "$beta" == 1 ]]; then
+        # The newest v-tagged release, betas included; test builds (pr-*) are skipped.
+        version="$(curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=30" |
+          sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p' | head -n1)"
+      else
+        # GitHub's latest release is the newest that isn't a pre-release (so no betas).
+        version="$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" |
+          sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p' | head -n1)"
+      fi
       [[ -n "$version" ]] || die "couldn't find the latest release"
     fi
     base="https://github.com/$REPO/releases/download/v$version"
