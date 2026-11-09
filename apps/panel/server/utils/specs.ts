@@ -9,7 +9,7 @@ let service: SpecService | undefined
 
 /** The Modrinth provider, shared so its cache is too. */
 export function useModrinth(): ContentProvider {
-  modrinth ??= modrinthProvider(fetch)
+  modrinth ??= modrinthProvider(fetch, useRuntimeConfig().modrinthApi)
   return modrinth
 }
 

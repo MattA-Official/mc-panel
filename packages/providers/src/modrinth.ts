@@ -77,14 +77,17 @@ export function rankVersions<T extends { version_type: string; date_published: s
   )
 }
 
-export function modrinthProvider(fetchImpl: Fetch = globalThis.fetch): ContentProvider {
+export function modrinthProvider(
+  fetchImpl: Fetch = globalThis.fetch,
+  api: string = API,
+): ContentProvider {
   const cache = cached<unknown>(10 * 60_000)
 
   async function get<T>(path: string): Promise<T | null> {
     return cache(path, async () => {
       let res: Response
       try {
-        res = await fetchImpl(`${API}${path}`, {
+        res = await fetchImpl(`${api}${path}`, {
           headers: { 'user-agent': USER_AGENT, accept: 'application/json' },
           signal: AbortSignal.timeout(20_000),
         })

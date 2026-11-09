@@ -34,6 +34,8 @@ export default defineNuxtConfig({
     importsDir: '/var/lib/flytower/imports',
     /** Where the agent archives deleted servers. */
     archiveDir: '/var/lib/flytower/archive',
+    /** Modrinth's API; overridable for a mirror or for tests. */
+    modrinthApi: 'https://api.modrinth.com/v2',
     setupTokenFile: '/var/lib/flytower/setup-token.hash',
     devSetupToken: '',
     /** Pins the passkey domain; empty means the request's host. */
