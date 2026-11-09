@@ -38,7 +38,11 @@ const panelOutput = join(repo, 'apps/panel/.output')
 if (!(await Bun.file(join(panelOutput, 'server/index.mjs')).exists())) {
   throw new Error('apps/panel/.output is missing; run `bun run build` first')
 }
-await cp(panelOutput, join(stage, 'panel'), { recursive: true })
+// Nitro links duplicate dependency versions with absolute symlinks into the build folder,
+// which won't exist on the server. Copy the real files instead.
+await cp(panelOutput, join(stage, 'panel'), { recursive: true, dereference: true })
+const links = (await $`find ${join(stage, 'panel')} -type l`.text()).trim()
+if (links) throw new Error(`symlinks left in the panel output:\n${links}`)
 
 // Agent: one bundled file, no node_modules.
 const agent = await Bun.build({
