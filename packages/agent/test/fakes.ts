@@ -28,6 +28,7 @@ export function fakeContext(
     archive: '/tmp/flytower/archive',
     config: '/tmp/flytower/etc',
     systemd: '/tmp/flytower/systemd',
+    state: '/tmp/flytower/state',
   },
 ) {
   const audit: AuditEvent[] = []

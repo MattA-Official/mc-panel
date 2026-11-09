@@ -39,6 +39,18 @@ async function halt(server: string) {
   running.delete(server)
 }
 
+// Pretend SSH firewall state.
+const ssh: { open: boolean; closesAt: Date | null; timer?: ReturnType<typeof setTimeout> } = {
+  open: true,
+  closesAt: null,
+}
+const sshState = () => ({
+  open: ssh.open,
+  ports: [22],
+  closesAt: ssh.closesAt?.toISOString() ?? null,
+  firewall: true,
+})
+
 const handlers: Handlers = {
   ping: async (_p, ctx) => protocolInfo(ctx.version),
   'service.status': async ({ server }) => ({
@@ -73,6 +85,16 @@ const handlers: Handlers = {
   },
   'server.configure': async () => ({}),
   'server.permissions': async () => ({}),
+  'ssh.status': async () => sshState(),
+  'ssh.set': async (p: { open: boolean; minutes?: number }) => {
+    clearTimeout(ssh.timer)
+    ssh.open = p.open
+    ssh.closesAt = p.open && p.minutes ? new Date(Date.now() + p.minutes * 60_000) : null
+    if (ssh.closesAt) {
+      ssh.timer = setTimeout(() => ((ssh.open = false), (ssh.closesAt = null)), p.minutes! * 60_000)
+    }
+    return sshState()
+  },
   'server.delete': async ({ name }) => {
     await rm(join(serversDir, name), { recursive: true, force: true })
     states.delete(name)

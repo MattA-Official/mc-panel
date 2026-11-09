@@ -65,7 +65,7 @@ describe('runtime.install', () => {
     const { ctx } = fakeContext(
       realExec,
       adoptium(() => sha, seen),
-      { servers: '', runtimes, archive: '', config: '', systemd: '' },
+      { servers: '', runtimes, archive: '', config: '', systemd: '', state: '' },
     )
     const first = await dispatch(install, handlers, ctx)
     expect(first).toEqual({
@@ -89,7 +89,7 @@ describe('runtime.install', () => {
     const { ctx } = fakeContext(
       realExec,
       adoptium(() => 'a'.repeat(64)),
-      { servers: '', runtimes, archive: '', config: '', systemd: '' },
+      { servers: '', runtimes, archive: '', config: '', systemd: '', state: '' },
     )
     const res = await dispatch(install, handlers, ctx)
     expect(res).toMatchObject({ ok: false, error: { code: 'failed' } })

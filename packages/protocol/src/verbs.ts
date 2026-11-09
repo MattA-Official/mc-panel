@@ -7,6 +7,16 @@ const Port = z.number().int().min(1024).max(65535)
  * Every operation the agent will perform. The agent refuses anything not listed here,
  * so this list is the whole of the panel's root access.
  */
+const SshState = z.object({
+  /** True if any firewall rule lets SSH in. */
+  open: z.boolean(),
+  ports: z.array(z.number().int()),
+  /** When a temporary opening ends, as an ISO time. */
+  closesAt: z.string().nullable(),
+  /** False if ufw is inactive, in which case nothing can be closed. */
+  firewall: z.boolean(),
+})
+
 export const verbs = {
   ping: {
     params: z.object({}).strict(),
@@ -58,6 +68,18 @@ export const verbs = {
   'server.permissions': {
     params: z.object({ name: ServerName }).strict(),
     result: z.object({}),
+  },
+  'ssh.status': { params: z.object({}).strict(), result: SshState },
+  /**
+   * Opens or closes SSH in the firewall. `minutes` opens it for that long; the agent closes
+   * it again itself, even across restarts.
+   */
+  'ssh.set': {
+    params: z
+      .object({ open: z.boolean(), minutes: z.number().int().min(1).max(1440).optional() })
+      .strict()
+      .refine((p) => p.open || p.minutes === undefined, 'minutes only applies when opening'),
+    result: SshState,
   },
   'server.delete': {
     params: z.object({ name: ServerName }).strict(),

@@ -17,10 +17,13 @@ export interface AgentContext {
     archive: string // /var/lib/flytower/archive
     config: string // /etc/flytower
     systemd: string // /etc/systemd/system
+    state: string // /var/lib/flytower/agent, root only
   }
   /** The panel's group. Server folders are group-owned by it so the panel can manage files. */
   panelGroup: string
   log: (event: AuditEvent) => void
+  /** Milliseconds since the epoch; swapped in tests. */
+  now?: () => number
 }
 
 export interface AuditEvent {

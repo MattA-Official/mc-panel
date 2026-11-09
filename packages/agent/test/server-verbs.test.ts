@@ -18,6 +18,7 @@ beforeEach(() => {
     archive: join(root, 'archive'),
     config: join(root, 'etc'),
     systemd: join(root, 'systemd'),
+    state: join(root, 'state'),
   }
   mkdirSync(join(paths.runtimes, 'temurin-25', 'bin'), { recursive: true })
   writeFileSync(join(paths.runtimes, 'temurin-25', 'bin', 'java'), '')

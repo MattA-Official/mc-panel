@@ -1,5 +1,6 @@
 import { realExec } from './exec.ts'
 import { handlers } from './handlers/index.ts'
+import { restoreSsh } from './handlers/ssh.ts'
 import { listen } from './server.ts'
 
 const env = (name: string, fallback: string) => process.env[name] ?? fallback
@@ -15,6 +16,7 @@ const ctx = {
     archive: env('FLYTOWER_ARCHIVE_DIR', '/var/lib/flytower/archive'),
     config: env('FLYTOWER_CONFIG_DIR', '/etc/flytower'),
     systemd: env('FLYTOWER_SYSTEMD_DIR', '/etc/systemd/system'),
+    state: env('FLYTOWER_AGENT_STATE_DIR', '/var/lib/flytower/agent'),
   },
   panelGroup: env('FLYTOWER_PANEL_GROUP', 'flytower'),
   // stdout goes to the journal; one JSON line per request.
@@ -35,6 +37,8 @@ const server = await listen(
   ctx,
 )
 console.log(`flytower-agent ${ctx.version} listening`)
+// An emergency SSH opening must end on time even if the agent restarted in between.
+await restoreSsh(ctx).catch((err) => console.error('restoring the SSH timer failed', err))
 
 for (const sig of ['SIGTERM', 'SIGINT'] as const) {
   process.on(sig, () => {
