@@ -191,12 +191,18 @@ function startOver() {
             color="neutral"
             variant="subtle"
             icon="i-lucide-folder-input"
-            title="Moving a server from somewhere else?"
-            description="Import its files or a singleplayer world instead of starting fresh."
+            title="Moving a server, or have a spec?"
+            description="Import its files or a singleplayer world, or paste a YAML spec, instead of filling this in."
             :actions="[
               {
                 label: 'Import a server',
                 to: '/servers/import',
+                color: 'neutral',
+                variant: 'outline',
+              },
+              {
+                label: 'From YAML',
+                to: '/servers/from-yaml',
                 color: 'neutral',
                 variant: 'outline',
               },

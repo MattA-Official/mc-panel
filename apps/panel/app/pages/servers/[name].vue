@@ -38,6 +38,7 @@ const tabs = computed(() => [
   { label: 'Backups', icon: 'i-lucide-archive', to: `/servers/${name.value}/backups` },
   { label: 'Files', icon: 'i-lucide-folder-open', to: `/servers/${name.value}/files` },
   { label: 'Settings', icon: 'i-lucide-sliders-horizontal', to: `/servers/${name.value}/settings` },
+  { label: 'YAML', icon: 'i-lucide-file-code', to: `/servers/${name.value}/yaml` },
 ])
 </script>
 
