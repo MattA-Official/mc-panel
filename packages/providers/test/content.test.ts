@@ -290,3 +290,17 @@ describe('sha512 downloads', () => {
     ).rejects.toThrow('checksum')
   })
 })
+
+describe('pinned versions', () => {
+  test('locked versions are kept for unpinned items and dependencies', async () => {
+    const pins: Record<string, string> = { lithium: 'LithOld1', P_fapi: 'FapiVer1' }
+    const set = await resolveAll(
+      [{ modrinth: 'lithium' }, { modrinth: 'chunky' }],
+      target,
+      modrinthProvider(fakeModrinth()),
+      { pinned: (p) => pins[p] },
+    )
+    expect(set.items.find((i) => i.slug === 'lithium')!.versionId).toBe('LithOld1')
+    expect(set.items.find((i) => i.slug === 'fabric-api')!.versionId).toBe('FapiVer1')
+  })
+})

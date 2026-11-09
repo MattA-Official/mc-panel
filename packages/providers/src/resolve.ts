@@ -16,11 +16,22 @@ export interface ResolvedSet {
 
 const MAX_ITEMS = 500
 
+export interface ResolveOptions {
+  /**
+   * The version to keep for a project (by id or slug) when nothing pins one, usually from
+   * the lockfile, so an apply doesn't quietly upgrade things.
+   */
+  pinned?: (project: string) => string | undefined
+}
+
 export async function resolveAll(
   wanted: WantedContent[],
   target: ContentTarget,
   modrinth: ContentProvider,
+  opts: ResolveOptions = {},
 ): Promise<ResolvedSet> {
+  const pin = (project: string, version?: string | null) =>
+    version ?? opts.pinned?.(project) ?? undefined
   const byProject = new Map<string, ResolvedContent & { requiredBy: string[] }>()
   const problems: string[] = []
   const queue: { ref: ContentRef; by: string | null }[] = []
@@ -32,7 +43,10 @@ export async function resolveAll(
       byProject.set(r.projectId, { ...r, requiredBy: [] })
       continue
     }
-    queue.push({ ref: { project: w.modrinth, version: w.version, kind: w.kind }, by: null })
+    queue.push({
+      ref: { project: w.modrinth, version: pin(w.modrinth, w.version), kind: w.kind },
+      by: null,
+    })
   }
 
   // Asked-for items first, so their pinned versions win over what a dependency would pick.
@@ -64,7 +78,10 @@ export async function resolveAll(
         if (!s.requiredBy.includes(r.title)) s.requiredBy.push(r.title)
         continue
       }
-      queue.push({ ref: { project: d.projectId, version: d.versionId ?? undefined }, by: r.title })
+      queue.push({
+        ref: { project: d.projectId, version: pin(d.projectId, d.versionId) },
+        by: r.title,
+      })
     }
   }
 
