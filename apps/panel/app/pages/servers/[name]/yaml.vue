@@ -229,14 +229,11 @@ onMounted(() => {
       <template #header>
         <h2 class="font-semibold">Applying</h2>
       </template>
-      <JobProgress :job-id="job" :steps="SPEC_STEPS" @finished="onFinished" />
-      <UAlert
-        v-if="finished"
-        class="mt-4"
-        :color="finished.state === 'succeeded' ? 'success' : 'error'"
-        variant="subtle"
-        :title="finished.state === 'succeeded' ? 'Applied' : `That didn't work`"
-        :description="finished.message ?? undefined"
+      <JobProgress
+        :job-id="job"
+        :steps="SPEC_STEPS"
+        success-title="Applied"
+        @finished="onFinished"
       />
       <template v-if="finished" #footer>
         <div class="flex justify-end">

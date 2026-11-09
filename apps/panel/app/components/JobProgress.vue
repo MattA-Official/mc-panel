@@ -1,5 +1,8 @@
 <script setup lang="ts">
-const props = defineProps<{ jobId: number; steps: readonly string[] }>()
+const props = withDefaults(
+  defineProps<{ jobId: number; steps: readonly string[]; successTitle?: string }>(),
+  { successTitle: 'Curtain up' },
+)
 const emit = defineEmits<{ finished: [job: JobEvent] }>()
 
 const job = ref<JobEvent | null>(null)
@@ -76,7 +79,7 @@ const icons = {
       color="success"
       variant="subtle"
       icon="i-lucide-party-popper"
-      title="Curtain up"
+      :title="successTitle"
       :description="job.message ?? undefined"
     />
   </div>

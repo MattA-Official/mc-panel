@@ -36,6 +36,7 @@ const tabs = computed(() => [
   { label: 'Logs', icon: 'i-lucide-scroll-text', to: `/servers/${name.value}/logs` },
   { label: 'Players', icon: 'i-lucide-users', to: `/servers/${name.value}/players` },
   { label: 'Backups', icon: 'i-lucide-archive', to: `/servers/${name.value}/backups` },
+  { label: 'Content', icon: 'i-lucide-package', to: `/servers/${name.value}/content` },
   { label: 'Files', icon: 'i-lucide-folder-open', to: `/servers/${name.value}/files` },
   { label: 'Settings', icon: 'i-lucide-sliders-horizontal', to: `/servers/${name.value}/settings` },
   { label: 'YAML', icon: 'i-lucide-file-code', to: `/servers/${name.value}/yaml` },
