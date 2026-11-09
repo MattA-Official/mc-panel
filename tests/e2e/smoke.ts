@@ -159,6 +159,31 @@ try {
     if (!(await goldIsThere())) throw new Error('the restore did not bring the gold block back')
     step('restored the backup through the UI and the block came back')
 
+    // World export: a zip with level.dat that unzip accepts, shared through a public link.
+    const exported = await api<{ jobId: number }>(view, '/api/servers/smoke/exports', { body: {} })
+    if (exported.status !== 200) throw new Error(`export failed: ${JSON.stringify(exported.body)}`)
+    await waitForJob(exported.body.jobId, 'the export job', 5 * 60_000)
+    const list = await api<{ id: number }[]>(view, '/api/servers/smoke/exports')
+    const link = await api<{ url: string }>(
+      view,
+      `/api/servers/smoke/exports/${list.body[0]!.id}/shares`,
+      {
+        body: { ttl: '1h' },
+      },
+    )
+    const zipRes = await fetch(link.body.url.replace(/^https?:\/\/[^/]+/, base))
+    if (zipRes.status !== 200) throw new Error(`share link answered ${zipRes.status}`)
+    const zipPath = `${process.env.RUNNER_TEMP ?? '/tmp'}/smoke-world.zip`
+    await Bun.write(zipPath, zipRes)
+    const test = Bun.spawnSync(['unzip', '-tq', zipPath])
+    const names = Bun.spawnSync(['unzip', '-Z1', zipPath]).stdout.toString()
+    if (test.exitCode !== 0 || !/\/level\.dat$/m.test(names)) {
+      throw new Error(`bad export zip: ${test.stdout}${test.stderr}`)
+    }
+    step(
+      `exported the world and downloaded it through a share link (${zipRes.headers.get('content-length')} bytes)`,
+    )
+
     const stopped = await api(view, '/api/servers/smoke/stop', { body: {} })
     if (stopped.status !== 200) throw new Error(`stop failed: ${JSON.stringify(stopped.body)}`)
     step('server stopped')
