@@ -1,10 +1,31 @@
 export type ServiceState =
   'active' | 'inactive' | 'activating' | 'deactivating' | 'failed' | 'unknown'
 
+export type LoaderId = 'vanilla' | 'fabric' | 'paper'
+
+/** How each loader is named and described in the UI. */
+export const LOADERS: Record<
+  LoaderId,
+  { label: string; description: string; versionLabel: string | null }
+> = {
+  fabric: { label: 'Fabric', description: 'Runs Fabric mods', versionLabel: 'Fabric loader' },
+  paper: {
+    label: 'Paper',
+    description: 'Faster vanilla, with plugins to come',
+    versionLabel: 'Paper build',
+  },
+  vanilla: { label: 'Vanilla', description: 'Plain Minecraft', versionLabel: null },
+}
+export const loaderItems = (Object.keys(LOADERS) as LoaderId[]).map((value) => ({
+  value,
+  label: LOADERS[value].label,
+  description: LOADERS[value].description,
+}))
+
 export interface Server {
   name: string
   displayName: string
-  loader: 'vanilla' | 'fabric'
+  loader: LoaderId
   mcVersion: string
   loaderVersion: string | null
   javaMajor: number
@@ -23,7 +44,7 @@ export function useLiveStatuses() {
 }
 
 export const loaderLabel = (s: Pick<Server, 'loader' | 'mcVersion'>) =>
-  `${s.loader === 'fabric' ? 'Fabric' : 'Vanilla'} ${s.mcVersion}`
+  `${LOADERS[s.loader]?.label ?? s.loader} ${s.mcVersion}`
 
 export const formatMemory = (mb: number) => `${(mb / 1024).toFixed(mb % 1024 ? 1 : 0)} GB`
 

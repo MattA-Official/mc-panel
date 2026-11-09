@@ -8,7 +8,7 @@ interface Task {
   rate: number | null
 }
 interface Status {
-  blocked: 'vanilla' | 'no-chunky' | 'stopped' | null
+  blocked: 'loader' | 'no-chunky' | 'stopped' | null
   tasks: Task[]
 }
 
@@ -100,13 +100,17 @@ async function addChunky() {
     </p>
 
     <UAlert
-      v-if="data.blocked === 'vanilla'"
+      v-if="data.blocked === 'loader'"
       class="mt-4"
       color="neutral"
       variant="subtle"
       icon="i-lucide-info"
       title="Needs Fabric"
-      description="Chunky is a Fabric mod. Change the loader to Fabric in Settings to use it."
+      :description="
+        server.loader === 'paper'
+          ? 'Chunky as a Paper plugin comes with plugin support. For now, switch to Fabric in Settings to use it.'
+          : 'Chunky is a Fabric mod. Change the loader to Fabric in Settings to use it.'
+      "
       :actions="[
         {
           label: 'Settings',

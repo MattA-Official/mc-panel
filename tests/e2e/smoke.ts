@@ -485,6 +485,38 @@ try {
     step(
       `metrics: ${sample.cpu}% CPU, ${sample.memMb} MB, ${sample.players} online, ${sample.mspt} ms a tick`,
     )
+
+    // Paper: newest stable build, checked by sha256, starts and answers RCON.
+    const paperVersions = await api<{ id: string }[]>(view, '/api/loaders/paper/minecraft')
+    const paperMc = paperVersions.body[0]?.id
+    if (!paperMc) throw new Error(`no Paper versions (${paperVersions.status})`)
+    await api(view, '/api/servers/smoke/stop', { body: {} })
+    const paper = await api<{ jobId: number }>(view, '/api/servers', {
+      body: {
+        name: 'smoke-paper',
+        displayName: 'Smoke on Paper',
+        loader: 'paper',
+        mcVersion: paperMc,
+        memoryMb: 1024,
+        port: 25590,
+        acceptEula: true,
+      },
+    })
+    if (paper.status !== 202) throw new Error(`Paper create failed: ${JSON.stringify(paper.body)}`)
+    const paperJob = await waitForJob(paper.body.jobId, 'the Paper create job', 10 * 60_000)
+    const paperReply = await until(
+      'Paper to answer RCON',
+      async () => {
+        const r = await api<{ reply: string }>(view, '/api/servers/smoke-paper/command', {
+          body: { command: 'version' },
+        })
+        return r.status === 200 && /paper/i.test(r.body.reply) ? r.body.reply : null
+      },
+      6 * 60_000,
+      3000,
+    )
+    step(`Paper ${paperMc}: ${paperJob.message} ${paperReply.split('\n')[0]!.slice(0, 100)}`)
+    await api(view, '/api/servers/smoke-paper/stop', { body: {} })
   }
   console.log('smoke test passed')
 } catch (err) {

@@ -1,6 +1,7 @@
+import { LOADER_IDS } from '@flytower/providers'
 import { z } from 'zod'
 
-const Params = z.object({ id: z.enum(['vanilla', 'fabric']) })
+const Params = z.object({ id: z.enum(LOADER_IDS) })
 const Query = z.object({ mc: z.string().min(1).max(40) })
 
 /** Loader versions for one Minecraft version, newest first. Empty for vanilla. */

@@ -1,3 +1,4 @@
+import { ACCEPTS } from '@flytower/providers'
 import { z } from 'zod'
 import { readLock } from '../../../../spec/lock'
 
@@ -12,10 +13,10 @@ export default defineEventHandler(async (event) => {
   const { name } = await specContext(event)
   const { kind, q, offset } = await getValidatedQuery(event, Query.parse)
   const row = findServer(name)
-  if (row.loader === 'vanilla' && kind === 'mod') {
+  if (!ACCEPTS[row.loader].includes(kind)) {
     throw createError({
       statusCode: 400,
-      statusMessage: 'Vanilla servers run datapacks, not mods.',
+      statusMessage: `${row.loader === 'paper' ? 'Paper' : 'Vanilla'} servers don't run ${kind}s.`,
     })
   }
   const lock = await readLock(serverDir(name)).catch(() => null)

@@ -6,8 +6,7 @@ interface Version {
   stable: boolean
 }
 
-const { data: loaders } =
-  await useFetch<{ id: 'vanilla' | 'fabric'; name: string }[]>('/api/loaders')
+const { data: loaders } = await useFetch<{ id: LoaderId; name: string }[]>('/api/loaders')
 const { data: defaults } = await useFetch<{
   port: number
   memoryMb: number
@@ -18,7 +17,7 @@ const { data: defaults } = await useFetch<{
 const form = reactive({
   displayName: '',
   name: '',
-  loader: 'fabric' as 'vanilla' | 'fabric',
+  loader: 'fabric' as LoaderId,
   mcVersion: '',
   loaderVersion: 'latest-stable',
   memoryMb: 4096,
@@ -106,7 +105,7 @@ const loaderItems = computed(() =>
   (loaders.value ?? []).map((l) => ({
     label: l.name,
     value: l.id,
-    description: l.id === 'fabric' ? 'Runs Fabric mods' : 'Plain Minecraft',
+    description: LOADERS[l.id]?.description ?? '',
   })),
 )
 
@@ -255,7 +254,10 @@ function startOver() {
               </template>
             </UFormField>
 
-            <UFormField v-if="form.loader === 'fabric'" label="Fabric loader">
+            <UFormField
+              v-if="LOADERS[form.loader].versionLabel"
+              :label="LOADERS[form.loader].versionLabel!"
+            >
               <USelect v-model="form.loaderVersion" :items="loaderVersionItems" class="w-full" />
             </UFormField>
           </div>

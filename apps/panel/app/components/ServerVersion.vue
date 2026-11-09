@@ -12,7 +12,7 @@ const { server, refresh } = useServerContext()
 const toast = useToast()
 const change = ref<{ propose: (spec: unknown, o: { title: string }) => Promise<void> }>()
 
-const loader = ref<'vanilla' | 'fabric'>(server.value?.loader ?? 'fabric')
+const loader = ref<LoaderId>(server.value?.loader ?? 'fabric')
 const minecraft = ref(server.value?.mcVersion ?? '')
 const snapshots = ref(false)
 watch(server, (s) => {
@@ -39,10 +39,6 @@ const items = computed(() => {
     value: v.id,
   }))
 })
-const loaderItems = [
-  { label: 'Fabric', value: 'fabric', description: 'Runs Fabric mods' },
-  { label: 'Vanilla', value: 'vanilla', description: 'Plain Minecraft' },
-]
 
 const dirty = computed(
   () =>

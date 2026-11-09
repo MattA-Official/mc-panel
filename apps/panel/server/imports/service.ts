@@ -221,7 +221,7 @@ export class ImportService {
     const detected = await detect(out)
     if (detected.unsupported) {
       throw new ImportError(
-        `This looks like a ${detected.unsupported} server. Flytower runs vanilla and Fabric for now.`,
+        `This looks like a ${detected.unsupported} server. Flytower runs vanilla, Fabric and Paper.`,
       )
     }
     // The upload itself is no longer needed.
@@ -282,7 +282,9 @@ export class ImportService {
 
 function summary(d: Detected) {
   const what =
-    d.kind === 'world' ? 'a world' : `a ${d.loader === 'fabric' ? 'Fabric' : 'vanilla'} server`
+    d.kind === 'world'
+      ? 'a world'
+      : `a ${{ vanilla: 'vanilla', fabric: 'Fabric', paper: 'Paper' }[d.loader]} server`
   return `Found ${what}${d.mcVersion ? ` for Minecraft ${d.mcVersion}` : ''}.`
 }
 

@@ -58,7 +58,7 @@ export const servers = sqliteTable(
   {
     name: text('name').primaryKey(),
     displayName: text('display_name').notNull(),
-    loader: text('loader', { enum: ['vanilla', 'fabric'] }).notNull(),
+    loader: text('loader', { enum: ['vanilla', 'fabric', 'paper'] }).notNull(),
     mcVersion: text('mc_version').notNull(),
     loaderVersion: text('loader_version'),
     javaMajor: integer('java_major').notNull(),

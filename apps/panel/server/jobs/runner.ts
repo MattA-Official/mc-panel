@@ -6,6 +6,7 @@ import type { ServerSpec } from '../../shared/spec'
 import { ServerName, type Params, type Result, type Verb } from '@flytower/protocol'
 import {
   downloadVerified,
+  LOADER_IDS,
   ProviderError,
   type Fetch,
   type LoaderId,
@@ -33,7 +34,7 @@ export type AgentCall = <V extends Verb>(
 export const CreateServerInput = z.object({
   name: ServerName,
   displayName: z.string().trim().min(1).max(60),
-  loader: z.enum(['vanilla', 'fabric']),
+  loader: z.enum(LOADER_IDS),
   mcVersion: z.string().min(1).max(40),
   loaderVersion: z.string().min(1).max(40).default('latest-stable'),
   memoryMb: z.number().int().min(1024).max(65536),

@@ -3,6 +3,7 @@
  * shown to the person first and then handed to apply unchanged.
  */
 import {
+  ACCEPTS,
   resolveAll,
   type ContentProvider,
   type LoaderId,
@@ -216,7 +217,7 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
   }
 
   // Content.
-  const accepts = target.loader === 'vanilla' ? ['datapack'] : ['mod', 'datapack']
+  const accepts: readonly string[] = ACCEPTS[target.loader]
   for (const item of spec.content) {
     const kind = item.kind
     if (kind && !accepts.includes(kind)) {
@@ -342,7 +343,16 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
   }
 }
 
-const LOADER_NAMES: Record<LoaderId, string> = { vanilla: 'Vanilla', fabric: 'Fabric' }
+const LOADER_NAMES: Record<LoaderId, string> = {
+  vanilla: 'Vanilla',
+  fabric: 'Fabric',
+  paper: 'Paper',
+}
+/** What a loader calls its own version, for plan lines. */
+const LOADER_VERSION_LABEL: Partial<Record<LoaderId, string>> = {
+  fabric: 'Fabric loader',
+  paper: 'Paper build',
+}
 
 /**
  * Works out a Minecraft version or loader change: the jar to install, the Java it needs,
@@ -359,7 +369,8 @@ async function planServer(
   const loaderChanged = want.type !== row.loader
   // Left as it was while Minecraft moves on, the loader version follows to the newest.
   const keptLoaderVersion = !want.version || want.version === row.loaderVersion
-  const loaderVersionChanged = want.type === 'fabric' && !keptLoaderVersion
+  const versioned = want.type !== 'vanilla'
+  const loaderVersionChanged = versioned && !keptLoaderVersion
   if (!mcChanged && !loaderChanged && !loaderVersionChanged) return undefined
 
   const provider = input.loaders?.[want.type]
@@ -387,7 +398,7 @@ async function planServer(
     }
   }
 
-  const askVersion = want.type === 'fabric' && !keptLoaderVersion ? want.version : undefined
+  const askVersion = versioned && !keptLoaderVersion ? want.version : undefined
   const resolved = await provider.resolve(want.minecraft, askVersion)
 
   if (mcChanged) {
@@ -413,7 +424,7 @@ async function planServer(
     changes.push({
       area: 'settings',
       action: row.loaderVersion ? 'set' : 'add',
-      label: 'Fabric loader',
+      label: LOADER_VERSION_LABEL[want.type] ?? 'Loader version',
       from: row.loaderVersion ?? undefined,
       to: resolved.loaderVersion,
     })

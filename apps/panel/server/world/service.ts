@@ -41,7 +41,7 @@ export interface WorldDeps {
 
 export interface PregenStatus {
   /** Why pre-generation can't run here, if it can't. */
-  blocked: 'vanilla' | 'no-chunky' | 'stopped' | null
+  blocked: 'loader' | 'no-chunky' | 'stopped' | null
   tasks: ChunkyTask[]
 }
 
@@ -75,7 +75,7 @@ export class WorldService {
   /** Whether Chunky can run, and what it's doing. */
   async pregenStatus(name: string): Promise<PregenStatus> {
     const row = this.row(name)
-    if (row.loader === 'vanilla') return { blocked: 'vanilla', tasks: [] }
+    if (row.loader !== 'fabric') return { blocked: 'loader', tasks: [] }
     const lock = await readLock(this.deps.serverDir(name))
     if (!lock.content.some((l) => l.source === 'modrinth' && l.slug === 'chunky')) {
       return { blocked: 'no-chunky', tasks: [] }
@@ -87,7 +87,7 @@ export class WorldService {
 
   private async ready(name: string) {
     const s = await this.pregenStatus(name)
-    if (s.blocked === 'vanilla') {
+    if (s.blocked === 'loader') {
       throw new WorldError('Pre-generation needs a Fabric server. Change the loader in Settings.')
     }
     if (s.blocked === 'no-chunky') throw new WorldError('Add Chunky to this server first.')

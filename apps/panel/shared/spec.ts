@@ -52,12 +52,16 @@ const Name = z
 const Loader = z
   .object({
     type: z
-      .enum(['vanilla', 'fabric'], { error: 'The loader is "vanilla" or "fabric" for now.' })
+      .enum(['vanilla', 'fabric', 'paper'], {
+        error: 'The loader is "vanilla", "fabric" or "paper".',
+      })
       .describe('Which server software runs the world.'),
     minecraft: versionString('Minecraft version').describe('The Minecraft version, in quotes.'),
     version: versionString('loader version')
       .optional()
-      .describe('The loader version, for Fabric. Leave it out for the newest stable one.'),
+      .describe(
+        'The Fabric loader version or Paper build number. Leave it out for the newest stable one.',
+      ),
   })
   .strict()
 

@@ -184,7 +184,7 @@ describe('pre-generation', () => {
   it('says why it cannot run', async () => {
     expect(
       (await (await setup({ loader: 'vanilla' })).world.pregenStatus('survival')).blocked,
-    ).toBe('vanilla')
+    ).toBe('loader')
     expect((await (await setup({ chunky: false })).world.pregenStatus('survival')).blocked).toBe(
       'no-chunky',
     )

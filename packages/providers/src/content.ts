@@ -17,6 +17,8 @@ export interface ContentTarget {
 export const ACCEPTS: Record<LoaderId, readonly ContentKind[]> = {
   vanilla: ['datapack'],
   fabric: ['mod', 'datapack'],
+  // Plugins come with #49.
+  paper: ['datapack'],
 }
 
 export interface ContentHit {

@@ -57,12 +57,8 @@
           "name": "audit_user_id_users_id_fk",
           "tableFrom": "audit",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -128,10 +124,7 @@
       "indexes": {
         "backups_file": {
           "name": "backups_file",
-          "columns": [
-            "server",
-            "file"
-          ],
+          "columns": ["server", "file"],
           "isUnique": true
         }
       },
@@ -216,12 +209,8 @@
           "name": "credentials_user_id_users_id_fk",
           "tableFrom": "credentials",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -416,10 +405,7 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "metrics_server_at_pk": {
-          "columns": [
-            "server",
-            "at"
-          ],
+          "columns": ["server", "at"],
           "name": "metrics_server_at_pk"
         }
       },
@@ -464,12 +450,8 @@
           "name": "recovery_codes_user_id_users_id_fk",
           "tableFrom": "recovery_codes",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -624,23 +606,17 @@
       "indexes": {
         "servers_port": {
           "name": "servers_port",
-          "columns": [
-            "port"
-          ],
+          "columns": ["port"],
           "isUnique": true
         },
         "servers_rcon_port": {
           "name": "servers_rcon_port",
-          "columns": [
-            "rcon_port"
-          ],
+          "columns": ["rcon_port"],
           "isUnique": true
         },
         "servers_hostname": {
           "name": "servers_hostname",
-          "columns": [
-            "hostname"
-          ],
+          "columns": ["hostname"],
           "isUnique": true
         }
       },
@@ -760,9 +736,7 @@
       "indexes": {
         "shares_token": {
           "name": "shares_token",
-          "columns": [
-            "token_hash"
-          ],
+          "columns": ["token_hash"],
           "isUnique": true
         }
       },
@@ -771,12 +745,8 @@
           "name": "shares_export_id_exports_id_fk",
           "tableFrom": "shares",
           "tableTo": "exports",
-          "columnsFrom": [
-            "export_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["export_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -784,12 +754,8 @@
           "name": "shares_created_by_users_id_fk",
           "tableFrom": "shares",
           "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }

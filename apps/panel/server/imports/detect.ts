@@ -11,14 +11,14 @@ export interface Detected {
   /** Path of the server or world inside the staging folder. */
   root: string
   kind: 'server' | 'world'
-  loader: 'vanilla' | 'fabric'
+  loader: 'vanilla' | 'fabric' | 'paper'
   loaderVersion: string | null
   mcVersion: string | null
   /** The world folder's name inside a server (level-name). */
   levelName: string
   worldFound: boolean
   hasMods: boolean
-  /** Set when this is something Flytower can't run yet, e.g. Paper. */
+  /** Set when this is something Flytower can't run yet, e.g. Forge. */
   unsupported: string | null
   warnings: string[]
 }
@@ -105,11 +105,19 @@ export async function detect(dir: string): Promise<Detected> {
   const worldFound = await exists(join(root, levelName, 'level.dat'))
 
   let unsupported: string | null = null
-  if (
-    top.some((n) => /^(bukkit|spigot|paper.*|purpur)\.yml$/.test(n)) ||
+  // Paper and the Bukkit family it grew from all run on Paper.
+  const paper =
+    top.some((n) => /^(bukkit|spigot|paper.*|purpur)\.yml$/.test(n) || /^paper.*\.jar$/.test(n)) ||
     (await exists(join(root, 'config', 'paper-global.yml')))
-  ) {
-    unsupported = 'Paper, Spigot or Purpur'
+  if (paper) {
+    if (
+      !top.some((n) => /^paper/.test(n)) &&
+      !(await exists(join(root, 'config', 'paper-global.yml')))
+    ) {
+      warnings.push(
+        "This looks like Spigot or Purpur. It'll run on Paper, which reads the same worlds and plugins.",
+      )
+    }
   } else if (await exists(lib('net', 'neoforged'))) unsupported = 'NeoForge'
   else if (await exists(lib('net', 'minecraftforge'))) unsupported = 'Forge'
   else if (await exists(lib('org', 'quiltmc'))) unsupported = 'Quilt'
@@ -122,7 +130,7 @@ export async function detect(dir: string): Promise<Detected> {
     top.includes('fabric-server-launch.jar')
 
   const mods = (await names(join(root, 'mods'))).filter((n) => n.endsWith('.jar'))
-  if (mods.length && !fabric && !unsupported) {
+  if (mods.length && !fabric && !paper && !unsupported) {
     warnings.push(
       "There's a mods folder but no sign of Fabric. Pick Fabric below if these are Fabric mods.",
     )
@@ -136,8 +144,8 @@ export async function detect(dir: string): Promise<Detected> {
   return {
     root,
     kind: 'server',
-    loader: fabric ? 'fabric' : 'vanilla',
-    loaderVersion: newest(fabricLoaders),
+    loader: paper ? 'paper' : fabric ? 'fabric' : 'vanilla',
+    loaderVersion: paper ? null : newest(fabricLoaders),
     mcVersion,
     levelName,
     worldFound,

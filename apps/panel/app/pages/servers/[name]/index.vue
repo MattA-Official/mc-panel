@@ -45,7 +45,7 @@ async function copy(text: string) {
           <dd>{{ loaderLabel(server) }}</dd>
         </div>
         <div v-if="server.loaderVersion">
-          <dt class="text-xs text-muted">Fabric loader</dt>
+          <dt class="text-xs text-muted">{{ LOADERS[server.loader].versionLabel }}</dt>
           <dd class="font-mono">{{ server.loaderVersion }}</dd>
         </div>
         <div>

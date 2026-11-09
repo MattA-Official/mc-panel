@@ -130,7 +130,7 @@ const fetchFiles = (async (input: string | URL | Request) => {
 const sha1 = (s: string) => new Bun.CryptoHasher('sha1').update(s).digest('hex')
 
 /** Minecraft 26.2 to 26.4; 26.4 needs Java 26. */
-function fakeLoader(id: 'vanilla' | 'fabric'): LoaderProvider {
+function fakeLoader(id: 'vanilla' | 'fabric' | 'paper'): LoaderProvider {
   return {
     id,
     name: id,
@@ -144,7 +144,8 @@ function fakeLoader(id: 'vanilla' | 'fabric'): LoaderProvider {
         value: mc === '26.3.1' ? '0'.repeat(40) : sha1(`${id}-server@${mc}`),
       },
       javaMajor: mc === '26.4' ? 26 : 25,
-      loaderVersion: id === 'fabric' ? (loader ?? '0.21.0') : null,
+      loaderVersion:
+        id === 'fabric' ? (loader ?? '0.21.0') : id === 'paper' ? (loader ?? '120') : null,
     }),
   }
 }
@@ -224,7 +225,11 @@ function setup(opts: { running?: boolean; loader?: 'vanilla' | 'fabric'; badHash
     },
     modrinth: fakeModrinth(opts),
     vanillatweaks: vanillaTweaksProvider(fetchFiles, 'https://vt.test'),
-    loaders: { vanilla: fakeLoader('vanilla'), fabric: fakeLoader('fabric') },
+    loaders: {
+      vanilla: fakeLoader('vanilla'),
+      fabric: fakeLoader('fabric'),
+      paper: fakeLoader('paper'),
+    },
     fetch: fetchFiles,
     readProperties: async () => toRecord(parseProperties(readFileSync(propsPath, 'utf8'))),
     writeProperties: async (_n, changes) =>
@@ -546,6 +551,50 @@ describe('version and loader changes', () => {
       'Fabric loader 0.21.0 → 0.22.0',
     ])
     expect(bump.restart).toBe(true)
+  })
+
+  it('switches vanilla to Paper and follows Paper builds', async () => {
+    const { service, dir, db } = setup({ loader: 'vanilla' })
+    writeFileSync(join(dir, 'server.jar'), 'old jar')
+    db.update(schema.servers).set({ loaderVersion: null }).run()
+    const paper = (minecraft: string, version?: string) =>
+      ServerSpec.parse({
+        name: 'survival',
+        loader: { type: 'paper', minecraft, ...(version ? { version } : {}) },
+      })
+    const plan = await service.plan('survival', paper('26.3'))
+    expect(plan.problems).toEqual([])
+    expect(plan.changes.map((c) => `${c.action} ${c.label} ${c.to}`)).toEqual([
+      'set Loader Paper',
+      'add Paper build 120',
+    ])
+    await (
+      await service.apply('survival', plan.id)
+    ).done
+    expect(readFileSync(join(dir, 'server.jar'), 'utf8')).toBe('paper-server@26.3')
+    const row = db.select().from(schema.servers).where(eq(schema.servers.name, 'survival')).get()!
+    expect(row).toMatchObject({ loader: 'paper', loaderVersion: '120' })
+
+    const bump = await service.plan('survival', paper('26.3', '125'))
+    expect(bump.changes.map((c) => `${c.label} ${c.from} → ${c.to}`)).toEqual([
+      'Paper build 120 → 125',
+    ])
+    expect((await service.plan('survival', paper('26.2'))).problems[0]).toContain(
+      'restore a backup',
+    )
+  })
+
+  it("won't move a Fabric server with mods to Paper", async () => {
+    const { service } = setup()
+    const plan = await service.plan(
+      'survival',
+      ServerSpec.parse({
+        name: 'survival',
+        loader: { type: 'paper', minecraft: '26.3' },
+        content: [{ modrinth: 'lithium' }],
+      }),
+    )
+    expect(plan.problems.join(' ')).toMatch(/mod/i)
   })
 
   it('a bad jar download changes nothing', async () => {

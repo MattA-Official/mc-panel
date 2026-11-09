@@ -6,6 +6,7 @@ import { mkdir, readdir, rename, rm, stat } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { eq } from 'drizzle-orm'
 import {
+  ACCEPTS,
   downloadVerified,
   ProviderError,
   requestDownload,
@@ -173,7 +174,7 @@ export class SpecService {
     const asked = row.content ?? []
     const isAsked = (l: LockedItem) => asked.some((a) => askedFor(a, l))
     return {
-      accepts: row.loader === 'vanilla' ? ['datapack'] : ['mod', 'datapack'],
+      accepts: [...ACCEPTS[row.loader]],
       items: lock.content.map((l) => ({
         source: l.source,
         projectId: l.projectId,

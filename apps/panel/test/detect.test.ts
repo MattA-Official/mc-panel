@@ -66,11 +66,18 @@ describe('detect', () => {
     expect(d.root.endsWith('My World')).toBe(true)
   })
 
+  it('runs Paper and the Bukkit family on Paper', async () => {
+    const paper = await detect(
+      make({ 'server.properties': '', 'config/paper-global.yml': '', 'plugins/': '' }),
+    )
+    expect(paper).toMatchObject({ loader: 'paper', unsupported: null })
+    expect(paper.warnings.some((w) => w.includes('Spigot'))).toBe(false)
+    const spigot = await detect(make({ 'server.properties': '', 'spigot.yml': '' }))
+    expect(spigot.loader).toBe('paper')
+    expect(spigot.warnings.some((w) => w.includes('Spigot or Purpur'))).toBe(true)
+  })
+
   it('recognises loaders it cannot run yet', async () => {
-    expect(
-      (await detect(make({ 'server.properties': '', 'paper.yml': '', 'plugins/': '' })))
-        .unsupported,
-    ).toBe('Paper, Spigot or Purpur')
     expect(
       (
         await detect(

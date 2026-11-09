@@ -3,7 +3,7 @@ useHead({ title: 'Import a server' })
 
 interface Detected {
   kind: 'server' | 'world'
-  loader: 'vanilla' | 'fabric'
+  loader: LoaderId
   loaderVersion: string | null
   mcVersion: string | null
   levelName: string
@@ -161,7 +161,7 @@ const { data: defaults } = await useFetch<{ port: number; memoryMb: number; maxM
 const form = reactive({
   displayName: '',
   name: '',
-  loader: 'vanilla' as 'vanilla' | 'fabric',
+  loader: 'vanilla' as LoaderId,
   mcVersion: '',
   loaderVersion: 'latest-stable',
   memoryMb: 4096,
@@ -267,7 +267,7 @@ function size(n: number) {
             :title="
               meta!.detected!.kind === 'world'
                 ? 'A world, ready to become a new server'
-                : `A ${meta!.detected!.loader === 'fabric' ? 'Fabric' : 'vanilla'} server${meta!.detected!.hasMods ? ' with mods' : ''}`
+                : `A ${meta!.detected!.loader === 'vanilla' ? 'vanilla' : LOADERS[meta!.detected!.loader].label} server${meta!.detected!.hasMods ? ' with mods' : ''}`
             "
             :description="`From ${meta!.label}. The server jar is downloaded fresh; everything else is kept.`"
           />
@@ -291,14 +291,7 @@ function size(n: number) {
           </UFormField>
           <div class="grid gap-6 sm:grid-cols-2">
             <UFormField label="Loader">
-              <USelect
-                v-model="form.loader"
-                :items="[
-                  { label: 'Fabric', value: 'fabric' },
-                  { label: 'Vanilla', value: 'vanilla' },
-                ]"
-                class="w-full"
-              />
+              <USelect v-model="form.loader" :items="loaderItems" class="w-full" />
             </UFormField>
             <UFormField
               label="Minecraft version"
@@ -369,7 +362,7 @@ function size(n: number) {
         <template v-else>
           <p class="text-muted">
             Bring a server from another host or a singleplayer world. Zip, .tar.gz and .tar.zst
-            files work. Vanilla and Fabric servers can be imported for now.
+            files work. Vanilla, Fabric, Paper and Spigot servers can be imported.
           </p>
           <URadioGroup v-model="source" :items="sources" variant="card" orientation="horizontal" />
 

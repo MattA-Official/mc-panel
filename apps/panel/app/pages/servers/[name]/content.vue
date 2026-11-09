@@ -227,7 +227,7 @@ async function reviewVt() {
     <div class="flex flex-wrap items-center justify-between gap-2">
       <p class="text-sm text-muted">
         {{
-          server.loader === 'vanilla'
+          server.loader !== 'fabric'
             ? 'Datapacks from Modrinth, kept in the world folder.'
             : 'Mods and datapacks from Modrinth, matched to Fabric and Minecraft ' +
               server.mcVersion +
@@ -332,7 +332,7 @@ async function reviewVt() {
       icon="i-lucide-package"
       title="Nothing installed yet"
       :description="
-        server.loader === 'vanilla'
+        server.loader !== 'fabric'
           ? 'Add a datapack to change how the world plays.'
           : 'Add mods for performance, tools or new things to do.'
       "
