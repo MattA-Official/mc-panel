@@ -1,0 +1,16 @@
+{
+  "name": "@kiln/protocol",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Typed messages between the kiln panel and the privileged agent",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  }
+}
