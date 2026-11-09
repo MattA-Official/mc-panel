@@ -2,7 +2,19 @@
  * Switching Flytower to another installed release, and back again if it isn't healthy.
  * Runs as its own transient systemd unit, because it restarts the agent that started it.
  */
-import { cp, readdir, readFile, readlink, rename, rm, symlink, writeFile } from 'node:fs/promises'
+import {
+  chmod,
+  chown,
+  cp,
+  readdir,
+  readFile,
+  readlink,
+  rename,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Exec } from './exec.ts'
@@ -127,14 +139,15 @@ export async function runUpdate(d: UpdaterDeps, to: string, manual = false): Pro
     return write({ ...record, state: 'failed', reason: `release ${to} isn't installed` })
   }
 
-  const saved: string[] = []
+  const saved: Saved[] = []
   try {
     await run(d.exec, 'systemctl', ['stop', 'flytower-panel.service'])
     for (const f of DB_FILES) {
       const src = join(d.panelData, f)
       if (!existsSync(src)) continue
+      const { uid, gid, mode } = await stat(src)
       await cp(src, join(d.panelData, `${f}.before-${to}`), { preserveTimestamps: true })
-      saved.push(f)
+      saved.push({ file: f, uid, gid, mode })
     }
     await switchTo(d, to)
     const problem = await healthy(d, to)
@@ -150,12 +163,29 @@ export async function runUpdate(d: UpdaterDeps, to: string, manual = false): Pro
   }
 }
 
-async function rollBack(d: UpdaterDeps, from: string, to: string, saved: string[]) {
+/** A database file as it was before the update, and who owned it. */
+interface Saved {
+  file: string
+  uid: number
+  gid: number
+  mode: number
+}
+
+async function rollBack(d: UpdaterDeps, from: string, to: string, saved: Saved[]) {
   await d.exec('systemctl', ['stop', 'flytower-panel.service'])
   for (const f of DB_FILES) {
-    const copy = join(d.panelData, `${f}.before-${to}`)
-    if (saved.includes(f)) await cp(copy, join(d.panelData, f), { preserveTimestamps: true })
-    else await rm(join(d.panelData, f), { force: true })
+    const was = saved.find((s) => s.file === f)
+    const dest = join(d.panelData, f)
+    if (!was) {
+      await rm(dest, { force: true })
+      continue
+    }
+    // The updater runs as root, so a restored file must go back to the panel's user, or
+    // SQLite can't open it (a root-owned -shm file stops the panel starting at all).
+    await rm(dest, { force: true })
+    await cp(join(d.panelData, `${f}.before-${to}`), dest, { preserveTimestamps: true })
+    await chown(dest, was.uid, was.gid)
+    await chmod(dest, was.mode & 0o7777)
   }
   await switchTo(d, from)
 }
