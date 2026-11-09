@@ -59,6 +59,18 @@ try {
   if (!health.body.agent.ok) throw new Error('the panel cannot reach the agent')
   step(`agent ${health.body.agent.version} reachable`)
 
+  {
+    const res = await fetch(`${base}/`)
+    const csp = res.headers.get('content-security-policy') ?? ''
+    if (
+      !csp.includes("frame-ancestors 'none'") ||
+      res.headers.get('x-content-type-options') !== 'nosniff'
+    ) {
+      throw new Error(`security headers missing: ${csp || 'no CSP'}`)
+    }
+    step('security headers set')
+  }
+
   if (!process.env.E2E_SKIP_SERVER) {
     const versions = await api<{ id: string }[]>(view, '/api/loaders/fabric/minecraft')
     const mc = process.env.E2E_MC_VERSION ?? versions.body[0]?.id
