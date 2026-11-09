@@ -12,7 +12,7 @@ describe('ServerName', () => {
     },
   )
   it('builds the unit name', () => {
-    expect(unitName('survival')).toBe('kiln-mc@survival.service')
+    expect(unitName('survival')).toBe('flytower-mc@survival.service')
   })
 })
 

@@ -1,4 +1,4 @@
-import { AgentError, unitName, type Params, type Result } from '@kiln/protocol'
+import { AgentError, unitName, type Params, type Result } from '@flytower/protocol'
 import type { AgentContext } from '../context.ts'
 
 const ACTIVE_STATES = ['active', 'inactive', 'activating', 'deactivating', 'failed'] as const

@@ -9,10 +9,10 @@ export interface AgentContext {
   arch: string
   version: string
   paths: {
-    servers: string // /srv/kiln/servers
-    runtimes: string // /opt/kiln/runtimes
-    archive: string // /var/lib/kiln/archive
-    config: string // /etc/kiln
+    servers: string // /srv/flytower/servers
+    runtimes: string // /opt/flytower/runtimes
+    archive: string // /var/lib/flytower/archive
+    config: string // /etc/flytower
     systemd: string // /etc/systemd/system
   }
   /** The panel's group. Server folders are group-owned by it so the panel can manage files. */

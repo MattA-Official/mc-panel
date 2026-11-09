@@ -3,9 +3,9 @@ import { createWriteStream } from 'node:fs'
 import { rm } from 'node:fs/promises'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
-import { AgentError } from '@kiln/protocol'
+import { AgentError } from '@flytower/protocol'
 
-const USER_AGENT = 'kiln-agent (+https://github.com/MattA-Official)'
+const USER_AGENT = 'flytower-agent (+https://github.com/MattA-Official)'
 
 export async function getJson<T>(fetchImpl: typeof fetch, url: string): Promise<T> {
   const res = await fetchImpl(url, {

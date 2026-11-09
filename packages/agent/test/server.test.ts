@@ -3,7 +3,7 @@ import { connect } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { encode, lineSplitter } from '@kiln/protocol'
+import { encode, lineSplitter } from '@flytower/protocol'
 import { handlers } from '../src/index.ts'
 import { listen } from '../src/server.ts'
 import { fakeContext, fakeExec } from './fakes.ts'
@@ -35,7 +35,7 @@ function roundTrip(socketPath: string, lines: string[]) {
 
 describe('socket server', () => {
   it('answers pipelined requests in order and sets mode 0660', async () => {
-    const socketPath = join(mkdtempSync(join(tmpdir(), 'kiln-')), 'agent.sock')
+    const socketPath = join(mkdtempSync(join(tmpdir(), 'flytower-')), 'agent.sock')
     const { ctx } = fakeContext(fakeExec().exec)
     const server = await listen({ socketPath, group: null }, handlers, ctx)
     close = () => server.close()

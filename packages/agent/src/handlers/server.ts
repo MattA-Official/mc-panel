@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { AgentError, unitName, userName, type Params, type Result } from '@kiln/protocol'
+import { AgentError, unitName, userName, type Params, type Result } from '@flytower/protocol'
 import type { AgentContext } from '../context.ts'
 import { envFile, limitsDropIn, templateUnit } from '../units.ts'
 
@@ -20,11 +20,11 @@ const paths = (ctx: AgentContext, name: string) => ({
   dir: join(ctx.paths.servers, name),
   env: join(ctx.paths.config, 'servers', `${name}.env`),
   dropInDir: join(ctx.paths.systemd, `${unitName(name)}.d`),
-  template: join(ctx.paths.systemd, 'kiln-mc@.service'),
+  template: join(ctx.paths.systemd, 'flytower-mc@.service'),
 })
 
 /** ufw rules are tagged so delete can find exactly the rule create added. */
-export const ufwComment = (name: string) => `kiln server ${name}`
+export const ufwComment = (name: string) => `flytower server ${name}`
 
 /**
  * Creates the OS side of a server: its user, its folder (owned by the server, group = the

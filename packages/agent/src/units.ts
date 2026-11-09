@@ -6,9 +6,9 @@ import type { AgentContext } from './context.ts'
  * drop-in, never from string-building inside this template. `$$` is systemd's escape for a
  * literal `$`, so the shell (not systemd) expands the variables.
  */
-export const templateUnit = (ctx: AgentContext) => `# Managed by kiln. Changes are overwritten.
+export const templateUnit = (ctx: AgentContext) => `# Managed by Flytower. Changes are overwritten.
 [Unit]
-Description=Minecraft server %i (kiln)
+Description=Minecraft server %i (Flytower)
 After=network-online.target
 Wants=network-online.target
 
@@ -29,7 +29,7 @@ ProtectHome=yes
 PrivateTmp=yes
 PrivateDevices=yes
 ReadWritePaths=${ctx.paths.servers}/%i
-Slice=kiln-mc.slice
+Slice=flytower-mc.slice
 
 [Install]
 WantedBy=multi-user.target
@@ -54,8 +54,8 @@ export const JVM_FLAGS = [
 ].join(' ')
 
 export const envFile = (javaHome: string, heapMb: number) =>
-  `# Managed by kiln.\nJAVA_HOME=${javaHome}\nHEAP_MB=${heapMb}\nJVM_FLAGS=${JVM_FLAGS}\n`
+  `# Managed by Flytower.\nJAVA_HOME=${javaHome}\nHEAP_MB=${heapMb}\nJVM_FLAGS=${JVM_FLAGS}\n`
 
 /** Heap plus 1 GB for the JVM's own overhead, so a leak cannot take the whole box down. */
 export const limitsDropIn = (heapMb: number) =>
-  `# Managed by kiln.\n[Service]\nMemoryMax=${heapMb + 1024}M\nMemorySwapMax=0\n`
+  `# Managed by Flytower.\n[Service]\nMemoryMax=${heapMb + 1024}M\nMemorySwapMax=0\n`

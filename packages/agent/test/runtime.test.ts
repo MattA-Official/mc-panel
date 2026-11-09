@@ -13,7 +13,7 @@ let tarball: Buffer
 let sha: string
 
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), 'kiln-rt-'))
+  root = mkdtempSync(join(tmpdir(), 'flytower-rt-'))
   const src = join(root, 'src', 'jdk-25.0.1+8-jre', 'bin')
   mkdirSync(src, { recursive: true })
   writeFileSync(join(src, 'java'), '#!/bin/sh\n', { mode: 0o755 })

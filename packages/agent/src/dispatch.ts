@@ -7,7 +7,7 @@ import {
   type Response,
   type Result,
   type Verb,
-} from '@kiln/protocol'
+} from '@flytower/protocol'
 import type { AgentContext } from './context.ts'
 
 export type Handler<V extends Verb> = (params: Params<V>, ctx: AgentContext) => Promise<Result<V>>

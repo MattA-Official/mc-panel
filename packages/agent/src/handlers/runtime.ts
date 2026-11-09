@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { AgentError, type Params, type Result } from '@kiln/protocol'
+import { AgentError, type Params, type Result } from '@flytower/protocol'
 import type { AgentContext } from '../context.ts'
 import { downloadVerified, getJson } from '../download.ts'
 
@@ -11,7 +11,7 @@ interface AdoptiumAsset {
 }
 
 const ADOPTIUM = 'https://api.adoptium.net/v3/assets/latest'
-const MARKER = '.kiln-runtime.json'
+const MARKER = '.flytower-runtime.json'
 
 const adoptiumArch = (arch: string) => {
   if (arch === 'x64') return 'x64'

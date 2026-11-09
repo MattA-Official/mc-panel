@@ -3,7 +3,7 @@ import { dispatch, handlers } from '../src/index.ts'
 import { fakeContext, fakeExec } from './fakes.ts'
 
 const loaded = {
-  'systemctl show kiln-mc@survival.service --property=LoadState': { stdout: 'loaded\n' },
+  'systemctl show flytower-mc@survival.service --property=LoadState': { stdout: 'loaded\n' },
 }
 
 const req = (verb: string, params: unknown = {}, id = 'r1') => JSON.stringify({ id, verb, params })
@@ -45,7 +45,10 @@ describe('service verbs', () => {
     const { ctx } = fakeContext(exec)
     const res = await dispatch(req('service.start', { server: 'survival' }), handlers, ctx)
     expect(res.ok).toBe(true)
-    expect(calls.at(-1)).toEqual({ file: 'systemctl', args: ['start', 'kiln-mc@survival.service'] })
+    expect(calls.at(-1)).toEqual({
+      file: 'systemctl',
+      args: ['start', 'flytower-mc@survival.service'],
+    })
   })
 
   it('refuses a server systemd does not know', async () => {
@@ -59,7 +62,7 @@ describe('service verbs', () => {
   it('reports status', async () => {
     const { exec } = fakeExec({
       ...loaded,
-      'systemctl show kiln-mc@survival.service --property=ActiveState,ActiveEnterTimestamp': {
+      'systemctl show flytower-mc@survival.service --property=ActiveState,ActiveEnterTimestamp': {
         stdout: 'ActiveState=active\nActiveEnterTimestamp=Mon 2026-11-09 12:00:00 UTC\n',
       },
     })
@@ -75,13 +78,13 @@ describe('service verbs', () => {
   it('surfaces systemctl failures as failed', async () => {
     const { exec } = fakeExec({
       ...loaded,
-      'systemctl restart': { code: 1, stderr: 'Job for kiln-mc@survival.service failed.' },
+      'systemctl restart': { code: 1, stderr: 'Job for flytower-mc@survival.service failed.' },
     })
     const { ctx } = fakeContext(exec)
     const res = await dispatch(req('service.restart', { server: 'survival' }), handlers, ctx)
     expect(res).toMatchObject({
       ok: false,
-      error: { code: 'failed', message: 'Job for kiln-mc@survival.service failed.' },
+      error: { code: 'failed', message: 'Job for flytower-mc@survival.service failed.' },
     })
   })
 })

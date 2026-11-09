@@ -22,11 +22,11 @@ export function fakeContext(
   exec: Exec,
   fetchImpl: typeof fetch = async () => new Response('not stubbed', { status: 599 }),
   paths: AgentContext['paths'] = {
-    servers: '/tmp/kiln/servers',
-    runtimes: '/tmp/kiln/runtimes',
-    archive: '/tmp/kiln/archive',
-    config: '/tmp/kiln/etc',
-    systemd: '/tmp/kiln/systemd',
+    servers: '/tmp/flytower/servers',
+    runtimes: '/tmp/flytower/runtimes',
+    archive: '/tmp/flytower/archive',
+    config: '/tmp/flytower/etc',
+    systemd: '/tmp/flytower/systemd',
   },
 ) {
   const audit: AuditEvent[] = []
@@ -34,7 +34,7 @@ export function fakeContext(
     exec,
     fetch: fetchImpl,
     arch: 'x64',
-    panelGroup: 'kiln',
+    panelGroup: 'flytower',
     version: '0.0.0-test',
     paths,
     log: (e) => audit.push(e),

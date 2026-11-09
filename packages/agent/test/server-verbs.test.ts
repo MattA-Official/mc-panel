@@ -11,7 +11,7 @@ let root: string
 let paths: AgentContext['paths']
 
 beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), 'kiln-srv-'))
+  root = mkdtempSync(join(tmpdir(), 'flytower-srv-'))
   paths = {
     servers: join(root, 'servers'),
     runtimes: join(root, 'runtimes'),
@@ -41,22 +41,22 @@ describe('server.create', () => {
     expect(cmds).toContain(
       `useradd --system --home-dir ${paths.servers}/survival --no-create-home --shell /usr/sbin/nologin --user-group mc-survival`,
     )
-    expect(cmds).toContain(`chown mc-survival:kiln ${paths.servers}/survival`)
+    expect(cmds).toContain(`chown mc-survival:flytower ${paths.servers}/survival`)
     expect(cmds).toContain(`chmod 2770 ${paths.servers}/survival`)
-    expect(cmds).toContain('ufw allow 25565/tcp comment kiln server survival')
+    expect(cmds).toContain('ufw allow 25565/tcp comment flytower server survival')
     expect(cmds.indexOf('systemctl daemon-reload')).toBeLessThan(
-      cmds.indexOf('systemctl enable kiln-mc@survival.service'),
+      cmds.indexOf('systemctl enable flytower-mc@survival.service'),
     )
 
     const env = readFileSync(join(paths.config, 'servers', 'survival.env'), 'utf8')
     expect(env).toContain(`JAVA_HOME=${paths.runtimes}/temurin-25`)
     expect(env).toContain('HEAP_MB=6144')
     const limits = readFileSync(
-      join(paths.systemd, 'kiln-mc@survival.service.d', 'limits.conf'),
+      join(paths.systemd, 'flytower-mc@survival.service.d', 'limits.conf'),
       'utf8',
     )
     expect(limits).toContain('MemoryMax=7168M')
-    const unit = readFileSync(join(paths.systemd, 'kiln-mc@.service'), 'utf8')
+    const unit = readFileSync(join(paths.systemd, 'flytower-mc@.service'), 'utf8')
     expect(unit).toContain('User=mc-%i')
     expect(unit).toContain('ProtectSystem=strict')
   })
@@ -84,8 +84,8 @@ describe('server.delete', () => {
       'ufw status numbered': {
         stdout: [
           '[ 1] 22/tcp     ALLOW IN    Anywhere',
-          '[ 2] 25565/tcp  ALLOW IN    Anywhere    # kiln server survival',
-          '[ 3] 25565/tcp (v6) ALLOW IN Anywhere (v6) # kiln server survival',
+          '[ 2] 25565/tcp  ALLOW IN    Anywhere    # flytower server survival',
+          '[ 3] 25565/tcp (v6) ALLOW IN Anywhere (v6) # flytower server survival',
         ].join('\n'),
       },
     })
@@ -107,7 +107,7 @@ describe('server.delete', () => {
   })
 
   it('only matches rules tagged for that exact server', () => {
-    const out = '[ 4] 25566/tcp ALLOW IN Anywhere # kiln server survival-2\n'
+    const out = '[ 4] 25566/tcp ALLOW IN Anywhere # flytower server survival-2\n'
     expect(ufwRuleNumbers(out, 'survival')).toEqual([])
   })
 })

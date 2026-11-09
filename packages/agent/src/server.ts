@@ -1,7 +1,7 @@
 import { chmodSync, chownSync, existsSync, mkdirSync, readFileSync, unlinkSync } from 'node:fs'
 import { createServer, type Server } from 'node:net'
 import { dirname } from 'node:path'
-import { encode, lineSplitter } from '@kiln/protocol'
+import { encode, lineSplitter } from '@flytower/protocol'
 import type { AgentContext } from './context.ts'
 import { dispatch, type Handlers } from './dispatch.ts'
 

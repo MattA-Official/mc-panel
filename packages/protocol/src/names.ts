@@ -12,7 +12,7 @@ export const ServerName = z
 export type ServerName = z.infer<typeof ServerName>
 
 /** The systemd instance for a server. */
-export const unitName = (name: ServerName) => `kiln-mc@${name}.service`
+export const unitName = (name: ServerName) => `flytower-mc@${name}.service`
 
 /** The Linux user that owns and runs a server. */
 export const userName = (name: ServerName) => `mc-${name}`
