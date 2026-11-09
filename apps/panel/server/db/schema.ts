@@ -76,6 +76,8 @@ export const servers = sqliteTable(
     keepLast: integer('keep_last').notNull().default(6),
     keepDaily: integer('keep_daily').notNull().default(7),
     keepWeekly: integer('keep_weekly').notNull().default(4),
+    /** Where backups are copied off the machine; null keeps them local only. */
+    offsiteTarget: integer('offsite_target'),
     /** The spec's content list as written; the lockfile in the server folder pins it. */
     content: text('content', { mode: 'json' }).$type<ContentItem[]>().notNull().default([]),
     createdAt: createdAt(),
@@ -98,6 +100,13 @@ export const backups = sqliteTable(
     kind: text('kind', { enum: ['manual', 'scheduled', 'safety'] }).notNull(),
     note: text('note'),
     createdAt: createdAt(),
+    /** The off-site copy: null when the server has no target. */
+    offsiteState: text('offsite_state', { enum: ['pending', 'uploading', 'done', 'failed'] }),
+    offsiteTarget: integer('offsite_target'),
+    offsiteKey: text('offsite_key'),
+    offsiteError: text('offsite_error'),
+    offsiteAttempts: integer('offsite_attempts').notNull().default(0),
+    offsiteAt: integer('offsite_at', { mode: 'timestamp_ms' }),
   },
   (t) => [uniqueIndex('backups_file').on(t.server, t.file)],
 )
@@ -168,4 +177,21 @@ export const metrics = sqliteTable(
     diskMb: integer('disk_mb'), // machine only: used on the servers' disk
   },
   (t) => [primaryKey({ columns: [t.server, t.at] })],
+)
+
+/** S3-compatible storage that backups are copied to. The secret is encrypted at rest. */
+export const backupTargets = sqliteTable(
+  'backup_targets',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    name: text('name').notNull(),
+    endpoint: text('endpoint').notNull(),
+    region: text('region').notNull().default('auto'),
+    bucket: text('bucket').notNull(),
+    prefix: text('prefix').notNull().default('flytower'),
+    accessKeyId: text('access_key_id').notNull(),
+    secretSealed: text('secret_sealed').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('backup_targets_name').on(t.name)],
 )

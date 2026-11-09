@@ -12,14 +12,21 @@ export default defineEventHandler(async (event) => {
     // A schedule saved before a Bun upgrade changed parsing; show it without a next run.
   }
   return {
-    backups: backups.map(({ id, file, bytes, kind, note, createdAt }) => ({
-      id,
-      file,
-      bytes,
-      kind,
-      note,
-      createdAt,
-    })),
+    backups: await Promise.all(
+      backups.map(async (b) => ({
+        id: b.id,
+        file: b.file,
+        bytes: b.bytes,
+        kind: b.kind,
+        note: b.note,
+        createdAt: b.createdAt,
+        local: await Bun.file(service.path(b)).exists(),
+        offsite: b.offsiteState
+          ? { state: b.offsiteState, error: b.offsiteError, at: b.offsiteAt }
+          : null,
+      })),
+    ),
+    offsiteTarget: server.offsiteTarget,
     schedule: {
       cron: server.backupSchedule,
       tz: server.backupTz,

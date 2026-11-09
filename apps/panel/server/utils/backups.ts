@@ -1,11 +1,28 @@
 import type { H3Event } from 'h3'
+import { deriveSecret } from 'nuxt/server'
 import { z } from 'zod'
+import { join } from 'node:path'
 import { ExportService } from '../backups/exports'
 import { BackupScheduler } from '../backups/scheduler'
 import { BackupError, BackupService } from '../backups/service'
+import { OffsiteService, s3Store, sealer } from '../backups/offsite'
 import { schema } from '../db'
 
 let service: BackupService | undefined
+let offsite: OffsiteService | undefined
+
+/** The one off-site copier for this process. */
+export function useOffsite(): OffsiteService {
+  const seal = sealer(() => deriveSecret('flytower:backup-targets'))
+  offsite ??= new OffsiteService({
+    db: useDb(),
+    store: s3Store,
+    seal: seal.seal,
+    unseal: seal.unseal,
+    localPath: (row) => join(useRuntimeConfig().backupsDir, row.server, row.file),
+  })
+  return offsite
+}
 let exportService: ExportService | undefined
 let scheduler: BackupScheduler | undefined
 
@@ -20,6 +37,7 @@ export function useBackups(): BackupService {
     rcon: (name, command, timeoutMs) =>
       useConsole().command(name, command, { echo: false, timeoutMs }),
     stopped: (name) => useConsole().forget(name),
+    offsite: useOffsite(),
   })
   return service
 }

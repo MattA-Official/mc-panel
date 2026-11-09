@@ -104,6 +104,14 @@ export function describeAudit(
       return `Restored a backup of ${t}`
     case 'backup.schedule':
       return `Changed ${t}'s backup schedule`
+    case 'backup.offsite':
+      return d.target
+        ? `Started copying ${t}'s backups to ${str(d.target)}`
+        : `Stopped copying ${t}'s backups off-site`
+    case 'backup.target.add':
+      return `Added the off-site backup target ${str(d.name)}`
+    case 'backup.target.remove':
+      return `Removed the off-site backup target ${str(d.name)}`
     case 'world.export':
       return `Exported ${t}'s world`
     case 'world.export.delete':

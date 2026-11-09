@@ -43,6 +43,13 @@
       "when": 1794243077078,
       "tag": "0005_thin_nighthawk",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1794247040972,
+      "tag": "0006_silky_bedlam",
+      "breakpoints": true
     }
   ]
 }

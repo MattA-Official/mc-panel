@@ -38,6 +38,12 @@ export interface BackupDeps {
   now?: () => Date
   freeBytes?: (dir: string) => Promise<number>
   sleep?: (ms: number) => Promise<void>
+  /** Off-site copies, when set up. */
+  offsite?: {
+    queue(row: Backup): void
+    removeCopy(row: Backup): Promise<void>
+    fetch(row: Backup): Promise<void>
+  }
 }
 
 const stampOf = (d: Date) =>
@@ -107,7 +113,10 @@ export class BackupService {
     )
     const rows = db.select().from(schema.backups).where(eq(schema.backups.server, server)).all()
     for (const row of rows) {
-      if (!files.has(row.file)) db.delete(schema.backups).where(eq(schema.backups.id, row.id)).run()
+      // Gone from disk: kept if there's an off-site copy to restore from, dropped if not.
+      if (!files.has(row.file) && row.offsiteState !== 'done') {
+        db.delete(schema.backups).where(eq(schema.backups.id, row.id)).run()
+      }
       files.delete(row.file)
     }
     for (const file of files) {
@@ -145,6 +154,7 @@ export class BackupService {
       const row = this.get(server, id)
       await rm(this.path(row), { force: true })
       this.deps.db.delete(schema.backups).where(eq(schema.backups.id, id)).run()
+      await this.deps.offsite?.removeCopy(row)
       return row
     } finally {
       this.busy.delete(server)
@@ -202,6 +212,7 @@ export class BackupService {
     for (const b of gone) {
       await rm(this.path(b), { force: true })
       db.delete(schema.backups).where(eq(schema.backups.id, b.id)).run()
+      await this.deps.offsite?.removeCopy(b)
     }
     return gone
   }
@@ -230,11 +241,13 @@ export class BackupService {
     }
     const file = `${server}-${stampOf(createdAt)}-${kind}.tar.zst`
     const { bytes } = await createArchive(this.deps.serverDir(server), join(dir, file))
-    return this.deps.db
+    const row = this.deps.db
       .insert(schema.backups)
       .values({ server, file, bytes, kind, note, createdAt })
       .returning()
       .get()
+    this.deps.offsite?.queue(row)
+    return row
   }
 
   private async checkSpace(server: string) {
@@ -380,6 +393,12 @@ export class BackupService {
     this.deps.stopped?.(server)
 
     job.step(1)
+    // Only an off-site copy left: bring it back first.
+    if (!(await Bun.file(this.path(row)).exists())) {
+      if (!this.deps.offsite) throw new BackupError("This backup's file is missing.")
+      job.step(1, 'Downloading the off-site copy')
+      await this.deps.offsite.fetch(row)
+    }
     await agent('server.permissions', { name: server }, { timeoutMs: 120_000 })
     await this.checkSpace(server)
     const safety = await this.archive(server, 'safety', `Before restoring ${row.file}`)
