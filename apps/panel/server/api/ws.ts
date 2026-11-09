@@ -1,8 +1,9 @@
 import type { Peer } from 'crossws'
 import { z } from 'zod'
 
+const Topic = z.string().regex(/^(job:\d+|servers)$/)
 const ClientMessage = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('subscribe'), topic: z.string().regex(/^job:\d+$/) }),
+  z.object({ type: z.literal('subscribe'), topic: Topic }),
   z.object({ type: z.literal('unsubscribe'), topic: z.string().max(64) }),
 ])
 
@@ -12,16 +13,20 @@ const send = (peer: Peer, topic: string, data: unknown) => {
   peer.send(JSON.stringify({ topic, data }))
 }
 
-/** Sends the current state first, so a late subscriber never misses where things are. */
-function snapshot(topic: string): unknown {
-  const [kind, id] = topic.split(':')
-  if (kind === 'job') return useJobs().get(Number(id))
-  return null
+/**
+ * Wires a topic to its source. Each source sends its current state first, so a late or
+ * reconnecting subscriber never misses where things are.
+ */
+function attach(topic: string, emit: (data: unknown) => void): () => void {
+  if (topic === 'servers') return useStatus().watch(emit)
+  const off = useJobs().bus.subscribe(topic, emit)
+  emit(useJobs().get(Number(topic.slice('job:'.length))))
+  return off
 }
 
 /**
- * One authenticated socket per tab. The browser subscribes to topics (`job:<id>` now,
- * console streams later) and gets `{ topic, data }` messages back.
+ * One authenticated socket per tab. The browser subscribes to topics (`job:<id>`,
+ * `servers`, console streams later) and gets `{ topic, data }` messages back.
  */
 export default defineWebSocketHandler({
   async upgrade(request) {
@@ -47,9 +52,8 @@ export default defineWebSocketHandler({
     if (subs.has(topic)) return
     subs.set(
       topic,
-      useJobs().bus.subscribe(topic, (data) => send(peer, topic, data)),
+      attach(topic, (data) => send(peer, topic, data)),
     )
-    send(peer, topic, snapshot(topic))
   },
   close(peer) {
     for (const off of subscriptions.get(peer.id)?.values() ?? []) off()
