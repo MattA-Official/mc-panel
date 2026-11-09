@@ -1,0 +1,61 @@
+# Installing Flytower
+
+Flytower installs on a fresh **Ubuntu 24.04+** or **Debian 12+** server (amd64 or arm64). The installer sets up the panel only. Java and Minecraft are installed later, from the panel, when you create a server.
+
+You need:
+
+- A VPS with at least 4 GB of RAM (8 GB if you want more than one server running).
+- A domain name you can add a DNS record to, for the panel itself (for example `panel.example.com`). Passkeys only work over HTTPS on a real name, and Flytower gets the certificate for you.
+
+## Option A: Hetzner Cloud, no SSH at all
+
+1. **Pick a setup token.** Any long random string, for example from a password manager. You'll type it into the panel once.
+2. In the Hetzner Cloud console, create a server:
+   - **Image:** Ubuntu 24.04
+   - **Type:** CPX21 or larger (CPX31 for a few servers)
+   - **Networking:** keep a public IPv4
+   - **Cloud config:** paste this, with your domain and token:
+
+     ```yaml
+     #cloud-config
+     runcmd:
+       - curl -fsSL https://github.com/MattA-Official/mc-panel/releases/download/v0.1.0/install.sh | bash -s -- --domain panel.example.com --setup-token YOUR-SETUP-TOKEN
+     ```
+
+3. Once the server shows its IPv4 address, add a DNS **A record** for your panel domain pointing at it. If your DNS is on Cloudflare, leave it **DNS only** (grey cloud).
+4. Wait two or three minutes, then open `https://panel.example.com`. If the certificate isn't ready yet, give it another minute: Caddy keeps retrying once DNS resolves.
+5. Enter the setup token, create your passkey, and save your recovery codes.
+
+## Option B: an existing server over SSH
+
+```sh
+curl -fsSL https://github.com/MattA-Official/mc-panel/releases/download/v0.1.0/install.sh \
+  | sudo bash -s -- --domain panel.example.com
+```
+
+The installer prints a setup token at the end. It works once, within 24 hours. Lost it before finishing setup? Run the same command again for a new one.
+
+## What the installer does
+
+- Unpacks the release (which includes its own Bun runtime) into `/opt/flytower/releases/<version>` and points `/opt/flytower/current` at it.
+- Creates a `flytower` system user for the panel. The panel never runs as root; a small root helper (`flytower-agent`) does the handful of things that need it.
+- Installs Caddy for HTTPS, and opens ports 22, 80 and 443 with ufw. Minecraft ports are opened per server as you create them.
+- Stores data in `/var/lib/flytower`, configuration in `/etc/flytower`, and servers in `/srv/flytower/servers/<name>`.
+
+Running the installer again is safe. It upgrades in place and keeps your data, secret and servers.
+
+### Options
+
+| Option                 | Meaning                                                                    |
+| ---------------------- | -------------------------------------------------------------------------- |
+| `--domain <host>`      | The panel's address. Required.                                             |
+| `--version <x.y.z>`    | Install a specific release. Defaults to the newest.                        |
+| `--setup-token <text>` | Use this setup token instead of generating one.                            |
+| `--tarball <file>`     | Install from a release tarball already on the machine.                     |
+| `--no-caddy`           | Skip Caddy if you run your own HTTPS proxy (point it at `127.0.0.1:3000`). |
+| `--no-firewall`        | Leave ufw alone.                                                           |
+
+## Troubleshooting
+
+- **The page doesn't load:** check DNS points at the server (`dig +short panel.example.com`), and that ports 80 and 443 are allowed in any provider firewall.
+- **Logs:** `journalctl -u flytower-panel -u flytower-agent -n 100`, and `journalctl -u flytower-mc@<name>` for a server.

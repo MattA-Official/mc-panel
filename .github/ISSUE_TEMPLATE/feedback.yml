@@ -1,0 +1,35 @@
+name: Feedback
+description: Something broke, felt wrong, or could be better while testing a release
+labels: [feedback]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Shown on the System page.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of feedback?
+      options:
+        - Something broke
+        - Something was confusing
+        - An idea or request
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you saw instead. Screenshots welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (optional)
+      description: Output of `journalctl -u flytower-panel -u flytower-agent -n 200 --no-pager`, if you have it.
+      render: text

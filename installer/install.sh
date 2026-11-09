@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Flytower installer. Safe to run again: it upgrades in place and keeps secrets and data.
 #
-#   curl -fsSL https://github.com/MattA-Official/mc-panel/releases/latest/download/install.sh \
+#   curl -fsSL https://github.com/MattA-Official/mc-panel/releases/download/v<version>/install.sh \
 #     | sudo bash -s -- --domain panel.example.com
 #
 set -euo pipefail

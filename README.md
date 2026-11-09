@@ -2,7 +2,9 @@
 
 A self-hosted web panel for running Minecraft servers. Install it once on a fresh VPS, then create, configure and run any number of servers from the browser. Sign-in is by passkey, and you never need SSH again.
 
-> Status: early development, heading for 0.1.0. Not ready for real worlds yet.
+> Status: 0.1.0 pre-release for testing. Not ready for real worlds yet.
+
+**Install:** see [docs/install.md](docs/install.md). **Testing a release:** see [docs/testing-0.1.0.md](docs/testing-0.1.0.md).
 
 ## What it is
 
@@ -13,12 +15,16 @@ A self-hosted web panel for running Minecraft servers. Install it once on a fres
 
 ## Layout
 
-| Path                | What                                                                    |
-| ------------------- | ----------------------------------------------------------------------- |
-| `apps/panel`        | Nuxt web app (UI and API), runs unprivileged (coming in 0.1.0)          |
-| `packages/agent`    | Root helper that performs a fixed list of operations over a Unix socket |
-| `packages/protocol` | Shared message schemas between the panel and the agent                  |
-| `installer/`        | One-line installer for a fresh Ubuntu VPS (coming in 0.1.0)             |
+| Path                 | What                                                                    |
+| -------------------- | ----------------------------------------------------------------------- |
+| `apps/panel`         | Nuxt web app (UI and API), runs unprivileged                            |
+| `packages/agent`     | Root helper that performs a fixed list of operations over a Unix socket |
+| `packages/protocol`  | Shared message schemas between the panel and the agent                  |
+| `packages/providers` | Where Minecraft and loaders come from (Mojang, Fabric)                  |
+| `packages/rcon`      | Minecraft RCON client                                                   |
+| `installer/`         | One-line installer for a fresh Ubuntu or Debian VPS                     |
+| `scripts/`           | Release packaging and notes                                             |
+| `tests/e2e/`         | Installer and browser smoke test (Bun.WebView, systemd container)       |
 
 ## Development
 
@@ -29,6 +35,13 @@ bun install
 bun test
 bun run lint
 bun run typecheck
+```
+
+To work on the panel without root or systemd, run the fake agent next to the dev server. It simulates services, logs and RCON:
+
+```sh
+bun run --filter @flytower/agent dev   # terminal 1
+bun run --filter @flytower/panel dev   # terminal 2, then open http://localhost:3000 (setup token: dev-setup-token)
 ```
 
 Roadmap, milestones and issues are tracked on GitHub.
