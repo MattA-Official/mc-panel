@@ -26,7 +26,8 @@ const description = computed(() => {
         : status.value === 'active'
           ? ' It was restarted automatically.'
           : ''
-  return `${c.cause ?? ''}${after}`.trim()
+  const cause = (c.cause ?? '').trim()
+  return `${cause && !/[.!?]$/.test(cause) ? `${cause}.` : cause}${after}`.trim()
 })
 
 async function dismiss() {

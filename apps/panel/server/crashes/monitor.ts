@@ -4,8 +4,9 @@
  * notifications and a condition the UI shows: crashed, crash-looping or not responding.
  *
  * systemd does the restarting (Restart=on-failure, three tries in ten minutes); this only
- * notices. Stops, starts and restarts that Flytower itself asked for are never crashes: the
- * agent wrapper marks a server as "expected" while such a call is in flight and shortly after.
+ * notices. Stops and restarts that Flytower itself asked for are never crashes: the agent
+ * wrapper marks a server as "expected" while such a call is in flight, and for the first look
+ * after it. Starts aren't marked, since a server that dies straight after starting crashed.
  */
 import { and, desc, eq, gte, inArray, isNull, lt } from 'drizzle-orm'
 import type { Result } from '@flytower/protocol'
@@ -33,8 +34,8 @@ export interface Health {
 export type HealthMap = Record<string, Health>
 
 export const KEEP_MS = 30 * 24 * 3600_000
-/** How long after a Flytower-initiated stop, start or restart a state change is still expected. */
-export const EXPECTED_GRACE_MS = 20_000
+/** How long after a Flytower-initiated stop or restart a state change is still expected. */
+export const EXPECTED_GRACE_MS = 3_000
 /** Missed console answers in a row (one a minute) before a server counts as not responding. */
 export const MISSES = 5
 /** The same, before the console has answered at all since it started: big worlds load slowly. */
@@ -53,6 +54,8 @@ export interface CrashDeps {
   /** Starts or restarts a server (through the agent, so it counts as expected). */
   start: (server: string) => Promise<void>
   restart: (server: string) => Promise<void>
+  /** Called when a server is found to have crashed, to drop its dead console connection. */
+  onCrash?: (server: string) => void
   now?: () => Date
 }
 
@@ -68,6 +71,8 @@ interface Track {
   autoRestarted: boolean
   inFlight: number
   expectedUntil: number
+  /** Looks still to treat as expected once the call has finished. */
+  skip: number
 }
 
 const SIGNALS: Record<number, string> = {
@@ -145,6 +150,7 @@ export class CrashMonitor {
         autoRestarted: false,
         inFlight: 0,
         expectedUntil: 0,
+        skip: 0,
       }
       this.tracks.set(server, t)
     }
@@ -156,8 +162,8 @@ export class CrashMonitor {
   }
 
   /**
-   * Marks a server as being stopped, started or restarted by Flytower. Call the returned
-   * function when the call finishes; changes stay expected for a short while after.
+   * Marks a server as being stopped or restarted by Flytower. Call the returned function when
+   * the call finishes; the next look at it (which sees how the stop ended) is expected too.
    */
   expect(server: string): () => void {
     const t = this.track(server)
@@ -168,11 +174,18 @@ export class CrashMonitor {
       done = true
       t.inFlight--
       t.expectedUntil = this.nowMs() + EXPECTED_GRACE_MS
+      t.skip = 1
     }
   }
 
+  /** Whether this look is part of a stop or restart Flytower asked for. Uses up the skip. */
   private expected(t: Track) {
-    return t.inFlight > 0 || this.nowMs() < t.expectedUntil
+    if (t.inFlight > 0 || this.nowMs() < t.expectedUntil) return true
+    if (t.skip > 0) {
+      t.skip--
+      return true
+    }
+    return false
   }
 
   // ------------------------------------------------------------------ systemd
@@ -303,6 +316,7 @@ export class CrashMonitor {
     missed = false,
     found?: CrashReport | null,
   ) {
+    this.deps.onCrash?.(server)
     const dir = this.deps.serverDir(server)
     const [report, logTail] = await Promise.all([
       found !== undefined ? found : findCrashReport(dir, this.since(t)),

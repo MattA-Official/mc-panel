@@ -11,6 +11,7 @@ export function useCrashes(): CrashMonitor {
     serverDir: (name) => join(useRuntimeConfig().serversDir, name),
     notify: useNotify(),
     start: async (server) => void (await agent('service.start', { server })),
+    onCrash: (server) => useConsole().forget(server),
     restart: async (server) => {
       useConsole().forget(server)
       await agent('service.restart', { server }, { timeoutMs: 150_000 })

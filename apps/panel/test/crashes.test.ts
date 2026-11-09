@@ -126,7 +126,21 @@ describe('crash detection', () => {
     await see(up())
     const done = mon.expect('survival')
     await see(stopping)
-    // A stop that hit TimeoutStopSec ends failed with Result=timeout.
+    done()
+    // The first look after the stop returned: it crashed on the way down (exit code 1).
+    clock += 60_000
+    await mon.observe({
+      survival: {
+        ...stopped,
+        active: 'failed',
+        result: 'exit-code',
+        exitKind: 'exited',
+        exitStatus: 1,
+      },
+    })
+    await see(up())
+    const again = mon.expect('survival')
+    // A restart whose stop hit TimeoutStopSec.
     await see({
       ...stopped,
       active: 'failed',
@@ -134,15 +148,26 @@ describe('crash detection', () => {
       exitKind: 'killed',
       exitStatus: 9,
     })
-    done()
-    await see(up())
-    const again = mon.expect('survival')
-    await see(autoRestart({ result: 'exit-code' }))
     again()
-    clock += EXPECTED_GRACE_MS
     await see(up())
     expect(events()).toEqual([])
     expect(sent).toEqual([])
+  })
+
+  it('still counts a crash straight after a start or restart', async () => {
+    await see(stopped)
+    // Starts aren't marked: one that dies at once is a crash, often a bad mod.
+    await see(up())
+    await see(autoRestart())
+    expect(events().map((e) => e.kind)).toEqual(['crash'])
+    await see(up(1))
+    const done = mon.expect('survival')
+    await see(up(0))
+    done()
+    await see(up(0))
+    clock += EXPECTED_GRACE_MS
+    await see(autoRestart())
+    expect(events().filter((e) => e.kind === 'crash')).toHaveLength(2)
   })
 
   it('treats a plain stop from the console as a stop, not a crash', async () => {
