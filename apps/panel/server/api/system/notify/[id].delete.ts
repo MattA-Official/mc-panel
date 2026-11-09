@@ -8,6 +8,5 @@ export default defineEventHandler(async (event) => {
   const { id } = await getValidatedRouterParams(event, Params.parse)
   const removed = await notifyHttp(() => useNotify().remove(id))
   audit(user.id, 'notify.channel.remove', null, { name: removed.name, kind: removed.kind })
-  syncPlayerWatcher()
   return { ok: true }
 })

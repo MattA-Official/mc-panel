@@ -48,6 +48,7 @@ let clock: number
 let sent: { how: 'notify' | 'resolve'; e: NotifyEvent }[]
 let starts: string[]
 let restarts: string[]
+let crashed: string[]
 let mon: CrashMonitor
 
 const dir = (s: string) => join(root, s)
@@ -64,6 +65,7 @@ beforeEach(() => {
   sent = []
   starts = []
   restarts = []
+  crashed = []
   mon = new CrashMonitor({
     db,
     serverDir: dir,
@@ -73,6 +75,7 @@ beforeEach(() => {
     },
     start: async (s) => void starts.push(s),
     restart: async (s) => void restarts.push(s),
+    onCrash: (s) => void crashed.push(s),
     now: () => new Date(clock),
   })
 })
@@ -107,10 +110,12 @@ describe('crash detection', () => {
     expect(sent[0]!.e.detail).toContain('restarted automatically')
     expect(audit()).toMatchObject([{ action: 'server.crashed', target: 'survival', userId: null }])
 
-    // systemd brings it back: one "back up" message, and the banner stays until dismissed.
+    // The log watcher is told, so its "back up" waits until players can join.
+    expect(crashed).toEqual(['survival'])
+    // systemd brings it back; the banner stays until dismissed.
     await see(up(1))
     expect(mon.condition('survival')).toBeNull()
-    expect(sent.at(-1)).toMatchObject({ how: 'resolve', e: { kind: 'server.crashed' } })
+    expect(sent).toHaveLength(1)
     expect(mon.health(['survival']).survival!.crash).toMatchObject({ kind: 'crash' })
     expect(events().map((r) => r.kind)).toEqual(['crash', 'recovered'])
   })
@@ -183,7 +188,8 @@ describe('crash detection', () => {
     await see(up(1))
     expect(events().map((e) => e.kind)).toEqual(['crash', 'recovered'])
     expect(events()[0]!.cause).toBe('It stopped unexpectedly.')
-    expect(sent.map((s) => s.how)).toEqual(['notify', 'resolve'])
+    expect(sent.map((s) => s.how)).toEqual(['notify'])
+    expect(crashed).toEqual(['survival'])
   })
 
   it('marks a crash loop when systemd gives up, and clears it on the next start', async () => {

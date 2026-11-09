@@ -9,7 +9,7 @@ Flytower follows systemd's journal (through its system helper), so it hears abou
 1. systemd restarts it after 15 seconds. On newer systems (systemd 254 or later, such as Ubuntu 24.04) the wait grows with each crash, up to a minute.
 2. Flytower records the crash with its cause, a link to Minecraft's crash report if one was written, and the last 50 lines of the log (which would otherwise be lost when the server starts again).
 3. The server's badge reads **Restarting after a crash**, and the **Console** tab shows a banner with the time, the cause and an **Open crash report** button, which opens the report in the **Files** tab. The banner stays until you close it, even after the server is back. The servers list shows a red dot next to a server with a crash nobody has looked at.
-4. The crash is in **Activity**, credited to Flytower, and a [notification](notifications.md) is sent, followed by "Server is back up" once it's running again.
+4. The crash is in **Activity**, credited to Flytower, and a [notification](notifications.md) is sent, followed by "Server is back up" once players can join again (when the log says it's ready).
 
 The cause is one of:
 

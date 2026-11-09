@@ -438,6 +438,10 @@ export class NotifyService {
           c.events.includes(e.kind) &&
           (!e.server || c.servers.length === 0 || c.servers.includes(e.server)),
       )
+    const where = e.server ? ` (${e.server})` : ''
+    console.log(
+      `[flytower] notification "${e.title}"${where}: ${channels.length ? `sending to ${channels.map((c) => c.name).join(', ')}` : 'no channel wants it'}`,
+    )
     if (!channels.length) return
     const msg = this.message(e)
     for (const c of channels) {

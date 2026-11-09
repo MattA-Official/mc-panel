@@ -11,6 +11,5 @@ export default defineEventHandler(async (event) => {
     target: added.target,
     events: added.events,
   })
-  syncPlayerWatcher()
   return added
 })

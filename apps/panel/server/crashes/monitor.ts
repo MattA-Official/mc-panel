@@ -54,7 +54,10 @@ export interface CrashDeps {
   /** Starts or restarts a server (through the agent, so it counts as expected). */
   start: (server: string) => Promise<void>
   restart: (server: string) => Promise<void>
-  /** Called when a server is found to have crashed, to drop its dead console connection. */
+  /**
+   * Called when a server is found to have crashed: to drop its dead console connection, and
+   * so the log watcher says "back up" when it's ready again.
+   */
   onCrash?: (server: string) => void
   now?: () => Date
 }
@@ -371,6 +374,11 @@ export class CrashMonitor {
     })
   }
 
+  /**
+   * Running again after a crash or crash loop. The crash alert's "back up" is sent by the log
+   * watcher once the server is ready for players (see onCrash); a crash loop's all-clear is
+   * sent here, when someone starts it again.
+   */
   private recovered(server: string, t: Track) {
     const was = t.condition
     t.condition = null
@@ -384,14 +392,6 @@ export class CrashMonitor {
         link: `/servers/${server}`,
       })
     }
-    this.deps.notify.resolve({
-      kind: 'server.crashed',
-      server,
-      title: 'Server is back up',
-      detail: 'It started again after crashing.',
-      severity: 'ok',
-      link: `/servers/${server}`,
-    })
   }
 
   // ------------------------------------------------------------------ the console

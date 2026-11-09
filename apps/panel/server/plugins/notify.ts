@@ -1,7 +1,8 @@
-// Notifications: follows server logs for joins and leaves if a channel wants them, and checks
-// for new versions of Flytower and installed content every six hours. Runs after db.
+// Notifications: follows every server's log (through inotify, so no polling) for starts,
+// stops, restarts, joins and leaves, and checks for new versions of Flytower and installed
+// content every six hours. Runs after db.
 export default defineNitroPlugin((nitro) => {
-  syncPlayerWatcher()
+  syncLogWatcher()
   const check = () =>
     void checkUpdatesForNotify().catch((err) =>
       console.error('[flytower] update check for notifications failed', err),
@@ -11,7 +12,7 @@ export default defineNitroPlugin((nitro) => {
   nitro.hooks.hook('close', async () => {
     clearTimeout(first)
     clearInterval(timer)
-    usePlayerWatcher().stop()
+    useLogWatcher().stop()
     await useNotify().idle()
   })
 })

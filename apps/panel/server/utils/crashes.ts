@@ -11,10 +11,20 @@ export function useCrashes(): CrashMonitor {
     serverDir: (name) => join(useRuntimeConfig().serversDir, name),
     notify: useNotify(),
     start: async (server) => void (await agent('service.start', { server })),
-    onCrash: (server) => useConsole().forget(server),
+    onCrash: (server) => {
+      useConsole().forget(server)
+      useLogWatcher().crashed(server)
+    },
     restart: async (server) => {
       useConsole().forget(server)
-      await agent('service.restart', { server }, { timeoutMs: 150_000 })
+      // The not-responding alert already said it's being restarted; "Server restarted" follows.
+      useLogWatcher().restartPressed(server, false)
+      try {
+        await agent('service.restart', { server }, { timeoutMs: 150_000 })
+      } catch (err) {
+        useLogWatcher().restartFailed(server)
+        throw err
+      }
     },
   })
   return monitor
