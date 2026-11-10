@@ -31,27 +31,33 @@ Players connect to your VPS's address, with `:port` if it isn't 25565. To give e
 
 - **Import server**: upload a world (a zip of the world folder) or a whole server folder, from your own computer or another host. Vanilla, Fabric, Paper, Spigot and Purpur servers are recognised. Spigot and Purpur come in as Paper, which reads the same worlds and plugins. `server.properties`, the whitelist, ops and bans come across.
 - **From YAML**: paste a [server spec](spec.md), for example one downloaded from another Flytower.
-- **Clone** (a server's **Settings** tab): a copy with the same settings and content, with or without its world.
+- **Clone** (a server's **Settings**, **Maintenance**): a copy with the same settings and content, with or without its world.
 - **A deleted server**: deleting a server archives its folder first, and you can import it back from **Import server**.
 
 ## The server's tabs
 
-| Tab         | What it's for                                                                                                     |
-| ----------- | ----------------------------------------------------------------------------------------------------------------- |
-| Console     | Live output, and commands (without the `/`). Start, stop and restart are in the header.                           |
-| Logs        | Today's log and older ones, to read or download.                                                                  |
-| Players     | Who's online; kick, ban, operators, and the whitelist.                                                            |
-| Performance | CPU, memory, players and time per tick over the last hour, day or week.                                           |
-| Backups     | Backups, schedules, restoring, off-site copies, and world exports you can share.                                  |
-| Content     | Mods, plugins and datapacks. See [Content](content.md).                                                           |
-| World       | Pre-generating chunks (with Chunky), resetting the world, and copying another server's world in.                  |
-| Files       | The server folder: edit, upload, rename, delete.                                                                  |
-| Settings    | Name, `server.properties`, memory, port, address, Minecraft version and loader, cloning, and deleting the server. |
-| YAML        | The whole server as one [spec](spec.md), to edit or download.                                                     |
+| Tab      | What it's for                                                                                                                                                                                                                                           |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Console  | Live output, and commands (without the `/`). Start, stop and restart are in the header. **View logs** opens today's log and older ones to search or download, and **Crashes** lists recent crashes.                                                     |
+| Players  | **People**: who's online; kick, ban, operators, and the whitelist. **Stats**: leaderboards and a card for every player (see [Stats](stats.md)).                                                                                                         |
+| Content  | Mods, plugins and datapacks. See [Content](content.md).                                                                                                                                                                                                 |
+| World    | **Backups** (taking, restoring, schedule, off-site copies), the **Web map**, **Past worlds** and world exports, and **Tools**: pre-generating chunks, copying another server's world in, and resetting.                                                 |
+| Files    | The server folder: edit, upload, rename, delete.                                                                                                                                                                                                        |
+| Settings | **General**: `server.properties`, memory, version and loader, address. **Community**: public page, player stats, Discord chat. **Schedules**. **Maintenance**: crashes, disk use, cloning, deleting. **YAML**: the whole server as one [spec](spec.md). |
+
+## How busy a server is
+
+On the servers list, each running server's card shows its **Tick** time, **Memory** and **CPU**, with a line of tick time over the last hour. Each figure is marked ● fine, ▲ busy or ■ struggling, and hovering over it says why:
+
+- **Tick**: Minecraft aims for 20 ticks a second, so each tick has 50 ms. Over 40 ms is busy; over 50 ms is struggling, and the game slows down for everyone.
+- **Memory**: busy over 90% of the server's memory limit. Give it more under **Settings**, **General** if it stays there.
+- **CPU**: the server's share of the whole machine. Busy when it has been over 85% for five minutes in a row.
+
+Click the figures for the full charts: CPU, memory, players and time per tick over the last hour, day or week.
 
 ## How it looks in the server list
 
-**Settings**, **Game settings** has the server's entry in Minecraft's multiplayer list.
+**Settings**, **General**, **Game settings** has the server's entry in Minecraft's multiplayer list.
 
 - **Server icon**: **Upload** a PNG, JPEG or WebP picture (up to 10 MB), drag and zoom to crop it square, and save. Flytower scales it to the 64×64 `server-icon.png` Minecraft reads, keeping only the image itself (nothing else from the file, such as its metadata). **Remove** goes back to the default. Clones keep the icon. It isn't part of the [spec](spec.md), since a spec can't carry a picture.
 - **Message of the day**: two lines, with colours and formatting from the toolbar, or `§` codes with **Show codes**. See [`properties`](spec.md#properties).

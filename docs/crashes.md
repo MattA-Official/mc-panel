@@ -2,8 +2,6 @@
 section: Running servers
 order: 15
 since: '1.1.0'
-panelRoute:
-  - '/servers/:name/logs'
 ---
 
 # Crashes
@@ -22,11 +20,11 @@ Flytower follows systemd's journal (through its system helper), so it hears abou
 The cause is one of:
 
 - **Minecraft crashed**, with the crash report's description, such as "Exception ticking world".
-- **Out of memory**: either the server went over its memory limit and the system stopped it, or Java ran out of heap. Give it more memory on the **Settings** tab, or take out mods.
+- **Out of memory**: either the server went over its memory limit and the system stopped it, or Java ran out of heap. Give it more memory under **Settings**, **General**, or take out mods.
 - **Java itself crashed** (an `hs_err_pid….log` file in the server folder).
 - **It exited with code N**, or **It was killed by SIGKILL** (or another signal), when there's nothing more specific.
 
-Every crash, crash loop and "not responding" from the last 30 days is listed under **Logs**, **Crashes**, each with its crash report and the log from just before it.
+Every crash, crash loop and "not responding" from the last 30 days is listed under the Console's **Crashes** button (or **View logs**, **Crashes**), each with its crash report and the log from just before it.
 
 ## Crash loops
 
@@ -34,9 +32,9 @@ After three crashes in ten minutes, the server is left stopped and marked **Cras
 
 ## Not responding
 
-Once a minute, Flytower asks each running server for its player list and tick time over RCON (the same questions as the **Performance** charts). If a server that systemd says is running doesn't answer for five minutes in a row, it's marked **Not responding** and a notification is sent. A server that has only just started gets fifteen minutes, since a big world can take a while to load.
+Once a minute, Flytower asks each running server for its player list and tick time over RCON (the same questions as the performance charts on the servers list). If a server that systemd says is running doesn't answer for five minutes in a row, it's marked **Not responding** and a notification is sent. A server that has only just started gets fifteen minutes, since a big world can take a while to load.
 
-Nothing else happens unless you turn on **Restart it when it stops responding** on the server's **Settings** tab (or `recovery: { restartWhenUnresponsive: true }` in its [YAML](spec.md#recovery)). Then Flytower restarts it once. If it's still stuck afterwards, it stays marked but isn't restarted again until it has answered at least once.
+Nothing else happens unless you turn on **Restart it when it stops responding** under the server's **Settings**, **Maintenance** (or `recovery: { restartWhenUnresponsive: true }` in its [YAML](spec.md#recovery)). Then Flytower restarts it once. If it's still stuck afterwards, it stays marked but isn't restarted again until it has answered at least once.
 
 ## What isn't a crash
 
