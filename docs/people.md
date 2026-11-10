@@ -27,7 +27,7 @@ If someone's access changes while they have the panel open, it updates when they
 
 ## Inviting someone
 
-1. Go to **System**, **People**, and choose **Invite someone**.
+1. Go to **People** in the sidebar, and choose **Invite someone**.
 2. Pick a role and a server (or all servers). A note for who it's for is optional and only shown to you.
 3. Copy the link and send it to them. It works once, for 7 days, and is only shown once.
 
@@ -37,7 +37,7 @@ You can only give someone access you have yourself.
 
 ## Changing or removing someone
 
-On **System**, **People**, choose the pencil to change someone's roles, or the remove button to take them off. Both ask for your passkey and apply straight away: a removed person is signed out on their next click and their passkeys stop working.
+On **People**, choose the pencil to change someone's roles, or the remove button to take them off. Both ask for your passkey and apply straight away: a removed person is signed out on their next click and their passkeys stop working.
 
 The last Owner can't be removed or given a smaller role. Make someone else an Owner first.
 

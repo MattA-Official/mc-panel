@@ -71,7 +71,7 @@ On **System**, **Branding**. See [Branding](branding.md). Have an SVG and a PNG 
 - [ ] With another tab open on the panel, save a change in the first. The other tab changes by itself.
 - [ ] Discord: **Send test** on a Discord channel. The message comes from your name (and your logo, if it's a PNG), and the footer has your name.
 - [ ] In-game: add an **Announcement** on a server's **Schedules** tab and **Run now**. It appears in your accent colour, not gold. A restart's countdown does too.
-- [ ] Register a new passkey (**System**, **Account and security**): the browser's prompt names your panel. Old passkeys still sign in.
+- [ ] Register a new passkey (**Your account**, your name at the bottom of the sidebar): the browser's prompt names your panel. Old passkeys still sign in.
 - [ ] **Reset to Flytower** asks first, then puts everything back.
 - [ ] The browser's console shows no content security policy errors on any page.
 
@@ -147,9 +147,9 @@ On a server with a hostname whose A record points at the VPS, on a box where the
 ## People and roles
 
 1. **Setup link**: on a fresh install, open the setup link the installer prints. You go straight to creating your passkey, and the address bar no longer shows the token. Also try typing the token on `/setup` instead.
-2. Go to **System**, **People**. You're listed as Owner on all servers.
+2. Go to **People** in the sidebar. You're listed as Owner on all servers.
 3. Choose **Invite someone**, pick **Operator** on one server, and make the link (your passkey is asked for). Open it in a private window or on another device. You see who invited you and as what. Pick a name, create a passkey, save the codes.
-4. As the new person: that server shows, others don't. Start and stop and the console work. Files is hidden, Settings says **View only**, and System shows only Overview and Account and security.
+4. As the new person: that server shows, others don't. Start and stop and the console work. Files is hidden, Settings says **View only**, System shows only Overview, and People isn't in the sidebar.
 5. As the Owner, change them to **Viewer**. Without reloading, their next click can't reach the console.
 6. Remove them. Their next click signs them out.
 7. Try making yourself an Admin while you're the only Owner. It's refused.
@@ -159,11 +159,18 @@ On a server with a hostname whose A record points at the VPS, on a box where the
 
 ### Custom roles and what people see
 
-1. On **System**, **People**, choose **New role**. Call it Moderator and tick **Read the console and logs** and **Manage players**. See the server is ticked and can't be unticked.
+1. On **People**, choose **New role**. Call it Moderator and tick **Read the console and logs** and **Manage players**. See the server is ticked and can't be unticked.
 2. Invite someone as **Viewer** on one server and join as them. Check that:
    - **New server** doesn't show.
    - Opening the server lands on **Players**, with no Console, Logs or Files tabs and no Start or Stop.
    - **Settings** says **View only**, and nothing can be changed.
-   - **System** shows only Overview and Account and security.
+   - **System** shows only Overview, and **People** isn't in the sidebar.
 3. As the Owner, change them to **Moderator** on that server. Switch back to their tab: Console and Logs appear, with no box for typing commands.
 4. Try deleting Moderator while they have it. It's refused. Give them another role, then delete it.
+
+### Your account
+
+1. Click your name at the bottom of the sidebar. **Your account** shows Profile, your passkeys and recovery codes, and Signed-in devices. **System** no longer has Account and security, and SSH is its own section there. Old links to `/system/account` and `/system/people` still land in the right place.
+2. Change your name. The sidebar, People and Activity show the new name.
+3. Pick **Light**, then sign in on another browser: it's light there too. The sun and moon button in the sidebar saves your choice as well.
+4. Sign in on a second browser, then choose **Sign out everywhere else** on the first. The second is signed out on its next click; the first stays signed in.
