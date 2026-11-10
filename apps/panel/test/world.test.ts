@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'bun:test'
@@ -49,7 +49,12 @@ describe('chunky', () => {
 })
 
 async function setup(
-  opts: { loader?: 'vanilla' | 'fabric'; chunky?: boolean; running?: boolean } = {},
+  opts: {
+    loader?: 'vanilla' | 'fabric'
+    chunky?: boolean
+    running?: boolean
+    keepFails?: string
+  } = {},
 ) {
   const db = openDb(':memory:')
   const servers = mkdtempSync(join(tmpdir(), 'ft-world-'))
@@ -114,6 +119,8 @@ async function setup(
     'chunky confirm': 'Done.',
   }
   const snapshots: string[] = []
+  const keptBackups: boolean[] = []
+  const pastWorlds: { name: string; files: string[] }[] = []
   const locked = new Set<string>()
   const propsPath = join(dir, 'server.properties')
   const runner = new JobRunner({
@@ -134,12 +141,21 @@ async function setup(
         locked.add(n)
         return () => void locked.delete(n)
       },
-      snapshot: async (_n, note) => {
+      snapshot: async (_n, note, o) => {
         snapshots.push(note)
+        keptBackups.push(!!o?.kept)
         return {} as never
       },
       withSavesPaused: async (_s, _r, fn) => fn(),
       ensureSpace: async () => {},
+    },
+    exports: {
+      keepWorld: async (_n, path, name) => {
+        if (opts.keepFails) throw new Error(opts.keepFails)
+        const files = [...new Bun.Glob('**/*').scanSync({ cwd: path })].sort()
+        pastWorlds.push({ name, files })
+        return { name } as never
+      },
     },
     rcon: async (_n, command) => {
       sent.push(command)
@@ -177,7 +193,7 @@ async function setup(
       eulaAcceptedAt: new Date(),
     })
     .run()
-  return { world, dir, calls, sent, snapshots, replies, propsPath }
+  return { world, dir, calls, sent, snapshots, keptBackups, pastWorlds, replies, propsPath }
 }
 
 describe('pre-generation', () => {
@@ -244,6 +260,56 @@ describe('world reset', () => {
     expect(readFileSync(propsPath, 'utf8')).toContain('level-seed=\n')
     expect(calls).toContain('service.stop')
     expect(calls.at(-2)).toBe('service.start')
+  })
+
+  it('keeps the old world as a past world, and the backup forever, before clearing', async () => {
+    const { world, dir, snapshots, keptBackups, pastWorlds } = await setup()
+    const job = await world.reset(
+      'survival',
+      { random: true },
+      {
+        pastWorld: '2025–26 world',
+        keepBackup: true,
+      },
+    ).done
+    expect(job).toMatchObject({ state: 'succeeded' })
+    expect(job.message).toContain('"2025–26 world" in Past worlds')
+    expect(snapshots).toEqual(['Before resetting the world (2025–26 world)'])
+    expect(keptBackups).toEqual([true])
+    expect(pastWorlds).toEqual([
+      {
+        name: '2025–26 world',
+        files: ['datapacks/graves.zip', 'level.dat', 'region/r.0.0.mca'],
+      },
+    ])
+    expect(existsSync(join(dir, 'world', 'level.dat'))).toBe(false)
+  })
+
+  it("leaves the world alone if the past world can't be kept", async () => {
+    const { world, dir, calls, keptBackups, pastWorlds } = await setup({
+      keepFails: 'Not enough disk space',
+    })
+    const job = await world.reset('survival', { random: true }, { pastWorld: 'Old' }).done
+    expect(job).toMatchObject({ state: 'failed' })
+    expect(job.message).toContain('Not enough disk space')
+    expect(keptBackups).toEqual([false])
+    expect(pastWorlds).toEqual([])
+    expect(readFileSync(join(dir, 'world', 'level.dat'), 'utf8')).toBe('level')
+    expect(calls.at(-1)).toBe('service.start')
+  })
+
+  it('skips the past world when there was no world yet, or none was asked for', async () => {
+    const empty = await setup()
+    rmSync(join(empty.dir, 'world', 'level.dat'))
+    expect(
+      (await empty.world.reset('survival', { random: true }, { pastWorld: 'Old' }).done).state,
+    ).toBe('succeeded')
+    expect(empty.pastWorlds).toEqual([])
+
+    const blank = await setup()
+    await blank.world.reset('survival', { random: true }, { pastWorld: '  ' }).done
+    expect(blank.pastWorlds).toEqual([])
+    expect(blank.snapshots).toEqual(['Before resetting the world'])
   })
 
   it('keeps or sets the seed, and leaves a stopped server stopped', async () => {

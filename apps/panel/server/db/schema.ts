@@ -106,6 +106,8 @@ export const backups = sqliteTable(
     bytes: integer('bytes').notNull(),
     kind: text('kind', { enum: ['manual', 'scheduled', 'safety'] }).notNull(),
     note: text('note'),
+    /** Kept forever: pruning never deletes it, e.g. the last backup before a world reset. */
+    kept: integer('kept', { mode: 'boolean' }).notNull().default(false),
     createdAt: createdAt(),
     /** The off-site copy: null when the server has no target. */
     offsiteState: text('offsite_state', { enum: ['pending', 'uploading', 'done', 'failed'] }),
@@ -124,7 +126,10 @@ export const exports = sqliteTable('exports', {
   file: text('file').notNull(),
   bytes: integer('bytes').notNull(),
   createdAt: createdAt(),
+  /** Ignored for past worlds, which never expire. */
   expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+  /** Set for a past world: the old world kept when the world was reset. */
+  name: text('name'),
 })
 
 export const shares = sqliteTable(

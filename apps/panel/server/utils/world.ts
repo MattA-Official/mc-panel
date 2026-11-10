@@ -13,6 +13,7 @@ export function useWorld(): WorldService {
     agent,
     jobs: useJobs(),
     backups: useBackups(),
+    exports: useExports(),
     rcon: (name, command, timeoutMs) =>
       useConsole().command(name, command, { echo: false, timeoutMs }),
     readProperties,

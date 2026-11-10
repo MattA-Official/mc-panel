@@ -16,6 +16,8 @@ Some things are left out because they're never worth restoring: `logs`, `crash-r
 
 Scheduled backups are thinned out by the **keep** settings. By default Flytower keeps the newest 6, plus the newest from each of the last 7 days and the last 4 weeks. The three newest safety backups are kept. Backups you take yourself are never deleted automatically.
 
+To keep any backup forever, choose **Keep forever** on it. It gets a **Kept** badge, retention never deletes it, and it doesn't count towards the numbers above. **Stop keeping forever** hands it back to retention.
+
 When the disk is 95% full, scheduled backups are skipped rather than risk filling it, and **Back up now** asks first. See [Disk space](disk.md).
 
 ## Restoring
@@ -39,3 +41,14 @@ The secret key is encrypted with the panel's app secret (in `/etc/flytower/panel
 ## Sharing a world
 
 **World**, **Export world** makes a zip of just the world, ready for single player. **Share** gives a link anyone can download it from, without signing in, for as long as you choose. Revoke a link to stop it working.
+
+## Past worlds
+
+Resetting a world (**World**, **Reset the world**) can end a season rather than throw it away. The reset dialog offers to:
+
+- **Keep the old world as a past world**, under a name you choose (for example "2025–26 world"). Flytower zips the old world, datapacks included, after the server has stopped and before anything is cleared, so it opens in single player exactly as it was. If there isn't room on the disk, the reset stops and nothing changes.
+- **Keep the final backup forever**: the safety backup taken first is marked as kept. It holds the whole server (mods, settings and world), not just the world.
+
+Past worlds are listed under **World**, **Past worlds**, and are kept until you delete them. Each one can be downloaded, shared with a link like an export, renamed, or turned into a new server with **Start a server from it**, which opens **Import** with that world chosen. **Import**, **A past world** lists every server's past worlds too.
+
+Deleting a server leaves its past worlds and backups in place.
