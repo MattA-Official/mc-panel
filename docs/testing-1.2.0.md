@@ -29,11 +29,11 @@ On any server where you can join with a real (online-mode) account, and ideally 
 
 On any server, in **Settings**, **Game settings**. Have Minecraft open on the multiplayer screen with the server added, to compare.
 
-- [ ] **Message of the day** shows two lines and a preview of the server's entry in the multiplayer list. An MOTD written before (plain, or with `§` codes typed by hand) opens already formatted, and opening the tab alone doesn't mark anything unsaved.
+- [ ] **Message of the day** is one box with two rows (Enter starts the second line; a third is refused), with a preview of the server's entry in the multiplayer list. An MOTD written before (plain, or with `§` codes typed by hand) opens already formatted, and opening the tab alone doesn't mark anything unsaved.
 - [ ] Select a word and pick a colour from the colour menu, then bold, italic, underline, strikethrough and obfuscated. The word changes in the line and the preview straight away; obfuscated text keeps changing in the preview. Pressing a format again on the same word turns it off, and **Clear formatting** takes everything off the selection.
 - [ ] With nothing selected, press **Bold** (or pick a colour) and type: the new text is bold, and moving the cursor away forgets it.
-- [ ] Paste `§dpink` into a line: it arrives as pink text, not as the codes.
-- [ ] Turn on **Show codes**. Both lines show the raw `§` text, the toolbar buttons insert codes at the cursor, and turning it off reads your edits back in, formatted.
+- [ ] Paste `§dpink` into the box: it arrives as pink text, not as the codes.
+- [ ] Turn on **Show codes**. The box shows the raw `§` text, the toolbar buttons insert codes at the cursor, and turning it off reads your edits back in, formatted.
 - [ ] Type a first line that's too long. The preview wraps it as the game does, and a warning says how many pixels too wide it is and what gets cut off.
 - [ ] Save and restart the server. The multiplayer list shows the same two lines, colours and formatting as the preview (the font and the default icon differ, since Mojang's aren't shipped).
 - [ ] `server.properties` (Files tab) has the MOTD on one line, with `\n` between the two lines and `§` for each `§`. Reload Settings: the editor reads it back unchanged.
