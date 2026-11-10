@@ -12,6 +12,8 @@ import { leaderboardCommand, statsCommand, type StatsSource } from '../discord/c
 import { DiscordError, DiscordService, INTERACTIONS_PATH } from '../discord/service'
 import { CommandRegistry } from '../discord/registry'
 import { playersCommand, statusCommand, type ServerSource } from '../discord/commands/servers'
+import { staffCommands, type StaffDeps } from '../discord/commands/staff'
+import { toMessage, type Reply } from '../discord/registry'
 
 let service: DiscordService | undefined
 
@@ -76,11 +78,32 @@ export function useCommands(): CommandRegistry {
     },
     origin: () => useDiscord().endpointUrl()?.replace(INTERACTIONS_PATH, '') ?? null,
   }
+  const staff: StaffDeps = {
+    servers: source.servers,
+    running: async (name) => (await useStatus().current())[name] === 'active',
+    whitelist: (name, action, player) => changePlayers(name, `whitelist-${action}`, player),
+    async restart(name) {
+      const ready = untilReady(name)
+      await powerServer(name, 'restart')
+      return ready
+    },
+    backup(name, note) {
+      const { done } = backupHttp(() => useBackups().backup(name, 'manual', note))
+      return {
+        done: done.then((e) => ({ ok: e.state === 'succeeded', message: e.message ?? '' })),
+      }
+    },
+    command: (name, command) => useConsole().command(name, command),
+    audit(action, target, detail) {
+      useDb().insert(schema.audit).values({ userId: null, action, target, detail }).run()
+    },
+  }
   commands = new CommandRegistry()
     .add(statusCommand(source))
     .add(playersCommand(source))
     .add(leaderboardCommand(statsSource))
     .add(statsCommand(statsSource))
+  for (const c of staffCommands(staff)) commands.add(c)
   return commands
 }
 
@@ -109,6 +132,11 @@ export function discordAccessFor(interaction: Interaction): Access {
       .map((r) => [r.id, rolePermissions(r)] as const),
   )
   return discordAccess(discordRoleMappings(), interaction, (id) => roles.get(id) ?? null)
+}
+
+/** Posts a command's follow-up (a restart or backup finishing) to its interaction. */
+export async function postDiscordFollowUp(interaction: Interaction, reply: Reply) {
+  await useDiscord().api.followUp(interaction.application_id, interaction.token, toMessage(reply))
 }
 
 /**

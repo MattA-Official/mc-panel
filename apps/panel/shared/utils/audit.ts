@@ -170,6 +170,8 @@ export function describeAudit(
       return `Stopped ${t}`
     case 'server.restart':
       return `Restarted ${t}`
+    case 'server.say':
+      return `Said “${str(d.message)}” on ${t}`
     case 'server.command':
       return `Ran /${str(d.command).replace(/^\//, '')} on ${t}`
     case 'server.properties':

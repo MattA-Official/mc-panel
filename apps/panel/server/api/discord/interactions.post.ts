@@ -42,5 +42,6 @@ export default defineEventHandler(async (event) => {
         })
         .run()
     },
+    followUp: postDiscordFollowUp,
   })
 })
