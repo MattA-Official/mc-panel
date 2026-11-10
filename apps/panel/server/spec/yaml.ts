@@ -126,6 +126,29 @@ export function parseSpec(text: string): ParsedSpec {
       issues.push({ path: issuePath(path), message: msg, line: lineOf(text, path) })
     }
   }
+  const tz = spec.timezone ?? 'UTC'
+  if (spec.timezone) {
+    try {
+      new Intl.DateTimeFormat('en', { timeZone: tz })
+    } catch {
+      const path = ['timezone']
+      issues.push({ path: 'timezone', message: `Unknown time zone ${tz}.`, line: lineOf(text, path) })
+    }
+  }
+  for (const [i, item] of (spec.schedules ?? []).entries()) {
+    const key = 'restart' in item ? 'restart' : 'cron'
+    const cron = 'restart' in item ? item.restart : item.cron
+    try {
+      nextRun(cron, 'UTC')
+    } catch (err) {
+      const path = ['schedules', i, key]
+      issues.push({
+        path: issuePath(path),
+        message: (err as Error).message,
+        line: lineOf(text, path),
+      })
+    }
+  }
   return issues.length ? { ok: false, issues } : { ok: true, spec }
 }
 
