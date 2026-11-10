@@ -27,7 +27,7 @@ export interface PageInput {
   icon: string | null
   /** Whether the server has anything for players to install (Modrinth mods or extras). */
   hasPack: boolean
-  /** Whether the server's web map is public and made. */
+  /** Whether the server's web map is on, public and drawn. */
   hasMap: boolean
   /** `motd` from server.properties. */
   motd: string

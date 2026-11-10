@@ -30,14 +30,16 @@ export async function buildPublicStatus(
     (page.pack.extras.length > 0 ||
       lock.content.some((i) => i.kind === 'mod' && i.source === 'modrinth'))
   // Only a map anyone can open: public, with the page on (Discord asks about any server).
+  const map = readMapSettings(row.map)
   const hasMap =
     page.enabled &&
-    readMapSettings(row.map).public &&
-    (
+    map.enabled &&
+    map.public &&
+    !!(
       await useMap()
         .status(name)
         .catch(() => null)
-    )?.ready === true
+    )?.lastPass
   return publicStatus({
     row,
     page,
