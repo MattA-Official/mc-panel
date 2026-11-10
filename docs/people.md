@@ -28,7 +28,13 @@ On **Access**, the **Roles** tab lists every role, and **New role** makes your o
 
 A server's settings are split so a role can cover just part of them: **Change settings** (properties, MOTD, icon, memory, recovery, address, time zone), **Manage content** (mods, plugins, datapacks, game version), **Manage schedules**, **Change backup settings**, and **Manage community features** (public page, stats, Discord chat, web map). The YAML tab can change everything at once, so it needs **Edit the YAML**; a change made anywhere else only needs the permission for the part it touches.
 
-Changing a role changes it for everyone who has it, straight away. A role can be deleted once nobody has it, and its unused invite links are cancelled. Built-in roles can't be changed, and you can't make a role that can do more than you can.
+The editor groups permissions by area, and **All** ticks a whole area. Permissions that come with one you've ticked are ticked and locked, with what brings them. Ones you don't have yourself are switched off, since you can't hand them out. Permissions that amount to full control (console commands, changing files or content, the YAML, managing people or roles, updates and SSH) are marked **Powerful**, with a line on why.
+
+Every role, built-in ones included, has a copy button. **New role** can also **Start from** any role. A copy only keeps the permissions you have yourself. Under each role you can see how many people have it and where.
+
+On **People**, the checklist button shows what someone can do: everything their roles add up to, on all servers, on single servers, and across Flytower.
+
+Changing a role changes it for everyone who has it, straight away. A role can be deleted once nobody has it, and its unused invite links are cancelled. Built-in roles can't be changed (copy one instead), and you can't make a role that can do more than you can. **Activity** says which permissions a change added or removed, and which roles someone was given or lost.
 
 ## What people see
 
