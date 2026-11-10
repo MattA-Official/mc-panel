@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
+import { systemUpdateCount } from '#shared/updates'
 
 const { productName } = useAppConfig()
 const { state, refresh } = useAuthState()
@@ -10,11 +11,21 @@ async function signOut() {
   await navigateTo('/login')
 }
 
-const items: NavigationMenuItem[] = [
+// Updates for Flytower or Java put a count on System; server ones show on each server.
+const updates = useLiveUpdates()
+const systemUpdates = computed(() => systemUpdateCount(updates.value))
+const items = computed<NavigationMenuItem[]>(() => [
   { label: 'Servers', icon: 'i-lucide-server', to: '/' },
   { label: 'Activity', icon: 'i-lucide-history', to: '/activity' },
-  { label: 'System', icon: 'i-lucide-settings', to: '/system' },
-]
+  {
+    label: 'System',
+    icon: 'i-lucide-settings',
+    to: '/system',
+    ...(systemUpdates.value
+      ? { badge: { label: String(systemUpdates.value), color: 'info', variant: 'subtle' } }
+      : {}),
+  },
+])
 </script>
 
 <template>

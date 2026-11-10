@@ -275,3 +275,22 @@ export const serverEvents = sqliteTable(
   },
   (t) => [index('server_events_server_at').on(t.server, t.at)],
 )
+
+/**
+ * What the background update check last found, per thing checked: `('flytower', '*')`,
+ * `('content', <server>)`, `('minecraft', <server>)` or `('java', <major>)`. A failed check
+ * sets only the error, so the last good result (and its badge) stays.
+ */
+export const updateStatus = sqliteTable(
+  'update_status',
+  {
+    scope: text('scope', { enum: ['flytower', 'content', 'minecraft', 'java'] }).notNull(),
+    subject: text('subject').notNull(),
+    /** The last good result; its shape depends on the scope. */
+    summary: text('summary', { mode: 'json' }).$type<unknown>(),
+    checkedAt: integer('checked_at', { mode: 'timestamp_ms' }),
+    lastError: text('last_error'),
+    errorAt: integer('error_at', { mode: 'timestamp_ms' }),
+  },
+  (t) => [primaryKey({ columns: [t.scope, t.subject] })],
+)

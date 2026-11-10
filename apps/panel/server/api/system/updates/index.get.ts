@@ -16,6 +16,15 @@ export default defineEventHandler(async (event) => {
   try {
     const newest = await newestRelease(channel, check)
     if (newest && compareVersions(newest.version, current) > 0) latest = newest
+    // Keep the System badge in step with what this page shows.
+    useUpdates().store('flytower', '*', {
+      current,
+      latest: latest && {
+        version: latest.version,
+        prerelease: latest.prerelease,
+        url: latest.url,
+      },
+    })
   } catch (err) {
     checkError = `Couldn't check for updates: ${(err as Error).message}`
   }

@@ -41,6 +41,7 @@ export default defineEventHandler(async (event) => {
   forgetMetrics(db, name)
   useDiskUsage().forget(name)
   forgetNotifyServer(name)
+  useUpdates().forget(name)
   syncBackupSchedules()
   await useExports().removeAll(name)
   db.insert(schema.audit)

@@ -4,4 +4,5 @@ useHead({ title: 'Updates' })
 
 <template>
   <FlytowerUpdates />
+  <JavaRuntimes />
 </template>

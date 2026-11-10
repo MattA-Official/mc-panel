@@ -19,7 +19,7 @@ A server's **Content** tab lists what it runs. **Add content** searches the sour
 
 ## Updates
 
-Nothing updates by itself. **Check for updates** shows what's newer for your Minecraft version; update one item or all of them. When you change the Minecraft version (Settings, **Version**), the plan moves every item to a build for the new version, and names anything that has none. The plan won't apply until you remove those.
+Nothing updates by itself. The Content tab shows what's newer for your Minecraft version; update one item or all of them. Flytower also checks in the background every six hours and puts the number of updates on the server's card and its **Content** tab, and says when a newer Minecraft is out that everything installed is ready for. See [Update badges](updating.md#update-badges). When you change the Minecraft version (Settings, **Version**), the plan moves every item to a build for the new version, and names anything that has none. The plan won't apply until you remove those.
 
 ## Removing
 

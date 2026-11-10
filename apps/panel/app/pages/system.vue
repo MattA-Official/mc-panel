@@ -1,21 +1,38 @@
 <script setup lang="ts">
+import { systemUpdateCount } from '#shared/updates'
+
+const updates = useLiveUpdates()
 /** System is split into sections, so health, updates, storage, alerts and sign-in each get a page. */
-const sections = [
+const sections = computed(() => [
   { label: 'Overview', icon: 'i-lucide-gauge', to: '/system', exact: true },
-  { label: 'Updates', icon: 'i-lucide-arrow-up-circle', to: '/system/updates' },
+  {
+    label: 'Updates',
+    icon: 'i-lucide-arrow-up-circle',
+    to: '/system/updates',
+    ...(systemUpdateCount(updates.value)
+      ? {
+          badge: {
+            label: String(systemUpdateCount(updates.value)),
+            color: 'info' as const,
+            variant: 'subtle' as const,
+          },
+        }
+      : {}),
+  },
   { label: 'Off-site storage', icon: 'i-lucide-cloud', to: '/system/storage' },
   { label: 'Notifications', icon: 'i-lucide-bell', to: '/system/notifications' },
   { label: 'Account and security', icon: 'i-lucide-shield', to: '/system/account' },
-]
+])
 const route = useRoute()
 const current = computed(
   () =>
-    [...sections]
+    [...sections.value]
       .reverse()
-      .find((s) => (s.exact ? route.path === s.to : route.path.startsWith(s.to))) ?? sections[0]!,
+      .find((s) => (s.exact ? route.path === s.to : route.path.startsWith(s.to))) ??
+    sections.value[0]!,
 )
 const menu = computed(() => [
-  sections.map((s) => ({ ...s, type: 'link' as const, active: s.to === current.value.to })),
+  sections.value.map((s) => ({ ...s, type: 'link' as const, active: s.to === current.value.to })),
 ])
 </script>
 
