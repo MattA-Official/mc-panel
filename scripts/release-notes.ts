@@ -3,6 +3,7 @@
  *
  *   bun scripts/release-notes.ts v0.1.0 [previous-tag]
  *
+ * A stable release starts from the last stable tag, so it covers its betas too.
  * A written summary in .github/release-notes/<version>.md, if there is one, goes first.
  * A squash merge whose message lists the branch's commits (GitHub's "* feat: ..." lines)
  * is split back into those commits. Commits that still aren't Conventional Commits are
@@ -13,9 +14,17 @@ import { $ } from 'bun'
 const REPO = 'https://github.com/MattA-Official/mc-panel'
 const [to = 'HEAD', fromArg] = process.argv.slice(2)
 
+// A stable release lists everything since the last stable one, betas included.
+const stable = /^v?\d+\.\d+\.\d+$/.test(to)
+const exclude = stable ? ['--exclude', 'v*-*'] : []
 const previous =
   fromArg ??
-  (await $`git describe --tags --abbrev=0 --match ${'v*'} ${to}^`.nothrow().quiet().text()).trim()
+  (
+    await $`git describe --tags --abbrev=0 --match ${'v*'} ${exclude} ${to}^`
+      .nothrow()
+      .quiet()
+      .text()
+  ).trim()
 const range = previous ? `${previous}..${to}` : to
 const raw = await $`git log ${range} --format=%H%x1f%s%x1f%b%x1e`.text()
 
