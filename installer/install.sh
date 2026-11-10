@@ -317,10 +317,15 @@ if [[ -z "$setup_token" ]]; then
   # 20 characters from an alphabet without look-alikes.
   setup_token="$(tr -dc 'ABCDEFGHJKMNPQRSTVWXYZ23456789' </dev/urandom | head -c 20)"
 fi
+# The panel may still be starting from an earlier restart, and it imports and deletes this file
+# as soon as it sees it. So write it under another name, set its owner and mode, then move it
+# into place in one step.
+token_tmp="$(mktemp "$STATE_DIR/.setup-token.XXXXXX")"
 FLYTOWER_TOKEN="$setup_token" "$bun" -e \
-  "await Bun.write('$STATE_DIR/setup-token.hash', await Bun.password.hash(process.env.FLYTOWER_TOKEN, 'argon2id'))"
-chown flytower:flytower "$STATE_DIR/setup-token.hash"
-chmod 0600 "$STATE_DIR/setup-token.hash"
+  "await Bun.write('$token_tmp', await Bun.password.hash(process.env.FLYTOWER_TOKEN, 'argon2id'))"
+chown flytower:flytower "$token_tmp"
+chmod 0600 "$token_tmp"
+mv -f "$token_tmp" "$STATE_DIR/setup-token.hash"
 # The panel picks the token up at boot.
 systemctl restart flytower-panel.service
 
