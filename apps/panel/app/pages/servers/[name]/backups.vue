@@ -91,6 +91,7 @@ function onFinished(e: JobEvent) {
 const { data: disk, refresh: refreshDisk } = useDiskStatus()
 const noteOpen = ref(false)
 watch(noteOpen, (open) => open && void refreshDisk())
+useOpenFromQuery('backup', () => (noteOpen.value = true))
 const note = ref('')
 async function backupNow() {
   noteOpen.value = false
