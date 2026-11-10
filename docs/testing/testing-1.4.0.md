@@ -47,3 +47,20 @@ You need two servers, one running and one stopped.
 - [ ] Pages are findable: Activity, System, Updates, Notifications, New server, Import, From YAML, Your account.
 - [ ] Help pages still show once you type, below servers and pages.
 - [ ] Signed in as a Viewer: no Start, Stop, Back up now, Clone or Delete, and no New server.
+
+## Keyboard shortcuts
+
+Click somewhere blank on the page first so no field has focus.
+
+- [ ] **?** opens a sheet listing every shortcut. Escape closes it.
+- [ ] **G** then **S**, **A** or **Y** go to Servers, Activity and System from any page. On a server, **G** then **C**, **P**, **N**, **W**, **F**, **T** and **M** go to Console, Players, Content, World, Files, Settings and YAML; **G B** goes to World (backups). Off a server page these do nothing.
+- [ ] On any server tab, **L** (or **G L**) opens the Logs pop-up; Escape closes it.
+- [ ] **[** and **]** go to the previous and next server on the same tab, wrapping round.
+- [ ] On Servers, **J** highlights the first card and **J**/**K** (or the arrow keys) move along. **Enter** opens the server; **.** opens its menu.
+- [ ] On Files, **J**/**K** move through the rows, **Enter** opens a file in the editor (or a folder), and **Shift + Delete** asks to delete it. On Backups and Content, **Enter** or **.** opens the row's menu.
+- [ ] **/** on the console of a running server puts the cursor in the command line.
+- [ ] **Ctrl + S** (⌘S on a Mac) saves Settings (even with the cursor in a field), and on YAML starts **Review**.
+- [ ] Typing in any field, the console or the YAML editor never triggers a shortcut (try typing "gs" or "?").
+- [ ] With a dialog or menu open, letters do nothing behind it.
+- [ ] Ctrl + K: on a server, its tab rows show their shortcuts (Backups G B). The palette lists **Keyboard shortcuts**.
+- [ ] **Your account → This browser → Use single-key shortcuts** off: letters, **?**, **/**, **[** and **]** do nothing, but Ctrl + K and Ctrl + S still work. Another browser is unaffected. Turn it back on.
