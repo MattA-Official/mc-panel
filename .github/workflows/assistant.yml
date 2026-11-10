@@ -12,10 +12,10 @@ name: Assistant
 #   CLAUDE_CODE_OAUTH_TOKEN  a Claude subscription token from `claude setup-token`, or
 #   ANTHROPIC_API_KEY        an Anthropic API key. One of the two is required; the
 #                            subscription token wins when both are set.
-#   PROJECTS_TOKEN      optional. A classic personal access token with the `repo` and
-#                       `project` scopes, needed for the user-owned Projects board.
-#                       Without it, gh uses this workflow's own token, which can edit
-#                       releases, issues and pull requests but can't reach the board.
+#   PROJECTS_TOKEN           optional. A classic personal access token with the `repo`
+#                            and `project` scopes, needed for the user-owned Projects
+#                            board. Without it, gh uses this workflow's own token, which
+#                            can edit releases, issues and pull requests but not the board.
 on:
   issue_comment:
     types: [created]
