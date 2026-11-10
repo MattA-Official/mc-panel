@@ -123,6 +123,93 @@ export function withImplied(keys: readonly string[]): Permission[] {
   return expandPermissions([...out])
 }
 
+/** How the role editor groups permissions. Every permission is in exactly one area. */
+export const PERMISSION_AREAS: { label: string; install: boolean; permissions: Permission[] }[] = [
+  { label: 'See', install: false, permissions: ['server.view'] },
+  {
+    label: 'Power and console',
+    install: false,
+    permissions: ['server.power', 'console.read', 'console.command'],
+  },
+  { label: 'Players', install: false, permissions: ['players.manage'] },
+  {
+    label: 'Backups',
+    install: false,
+    permissions: [
+      'backups.create',
+      'backups.download',
+      'backups.restore',
+      'backups.delete',
+      'backups.schedule',
+    ],
+  },
+  { label: 'World', install: false, permissions: ['world.manage'] },
+  { label: 'Files', install: false, permissions: ['files.read', 'files.write'] },
+  {
+    label: 'Settings',
+    install: false,
+    permissions: [
+      'settings.edit',
+      'content.manage',
+      'schedules.manage',
+      'community.manage',
+      'spec.edit',
+      'server.delete',
+    ],
+  },
+  { label: 'Servers', install: true, permissions: ['servers.create', 'activity.all'] },
+  {
+    label: 'People',
+    install: true,
+    permissions: ['people.invite', 'people.manage', 'roles.manage'],
+  },
+  {
+    label: 'Flytower',
+    install: true,
+    permissions: [
+      'system.updates',
+      'system.notifications',
+      'system.integrations',
+      'system.branding',
+      'system.ssh',
+    ],
+  },
+]
+
+/**
+ * Permissions that amount to full control of a server or the machine, and why. The role
+ * editor marks them, so nobody hands them out without knowing.
+ */
+export const POWERFUL: Partial<Record<Permission, string>> = {
+  'console.command': 'Anything an operator can type, including making someone an operator.',
+  'files.write': 'Can add a mod or plugin, which is code running on the machine.',
+  'content.manage': 'Can add a mod or plugin, which is code running on the machine.',
+  'spec.edit': 'Changes everything about the server at once, including its content.',
+  'people.manage': 'Can give others any access they have themselves.',
+  'roles.manage': 'Changing a role changes everyone who has it.',
+  'system.updates': 'Can move Flytower to another version or channel.',
+  'system.ssh': 'A shell on the machine Flytower runs on.',
+}
+
+/**
+ * For each permission that comes along with another in `keys`, the first one that brings
+ * it: the editor ticks and locks those, saying why.
+ */
+export function impliedBy(keys: readonly Permission[]): Partial<Record<Permission, Permission>> {
+  const out: Partial<Record<Permission, Permission>> = {}
+  const walk = (from: Permission, p: Permission) => {
+    for (const q of IMPLIES[p] ?? []) {
+      if (out[q]) continue
+      out[q] = from
+      walk(from, q)
+    }
+  }
+  for (const p of keys) walk(p, p)
+  const onServer = keys.find((p) => p !== 'server.view' && isServerPermission(p))
+  if (onServer && !out['server.view']) out['server.view'] = onServer
+  return out
+}
+
 export type BuiltInRole = 'owner' | 'admin' | 'operator' | 'viewer'
 
 /** The roles every install has. Their permissions live here, so an update can widen them. */
