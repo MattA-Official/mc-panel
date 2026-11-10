@@ -46,6 +46,7 @@ async function restart() {
     <ServerAddress />
     <ServerPublicPage />
     <ServerStats />
+    <ServerDiscordChat />
     <ServerRecovery />
     <ServerDisk />
     <ServerVersion />

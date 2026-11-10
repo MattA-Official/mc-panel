@@ -28,4 +28,30 @@ You need a panel with a domain, a Discord server you can add apps to (a test one
 - [ ] Stop the server: `/status` says Offline straight away. Start it: Starting, then Online once players can join.
 - [ ] `curl -X POST https://<panel>/api/discord/interactions -d '{}'` gets a 401.
 - [ ] In the portal, change the endpoint URL to something else and save, then press **Test connection** in Flytower: the card says **Endpoint not set**. **Try the endpoint again** puts it back.
+- [ ] **Discord roles**: press **Give a Discord role access**. Copy a test Discord role's ID (Developer Mode on, right-click the role, **Copy Role ID**), call it Staff, pick **Operator** on **All servers** and save. You're asked for your passkey, and the card lists "Staff gets Operator on all servers". **Activity** shows the change.
+- [ ] Owner isn't in the role list. A made-up ID like `abc` keeps **Save** greyed out.
+- [ ] As a Discord member with the Staff role, `/status` now also suggests servers whose public page is off.
+- [ ] Change the mapping to one server and save: `/status` only adds that server.
+- [ ] Without the Staff role, `/restart` answers "Sorry, you can't use that", only to you, and **Activity** shows "Tried /restart … without access".
+- [ ] With the Staff role: `/whitelist add <player>` whitelists them (check the Players tab), and `/whitelist remove` takes them off. With more than one server, leaving out `server` asks which.
+- [ ] `/say hello @everyone` shows `[Discord] <your name>: hello @everyone` in the game, and pings nobody in Discord.
+- [ ] `/restart`: "Restarting" straight away, then "… is back up" once the server is ready.
+- [ ] `/backup note:test`: "Backing up", then "Backed up … <size>". The backup has the note in the Backups tab.
+- [ ] **Activity** shows each of these as "<your Discord name> via Discord".
 - [ ] **Disconnect**: after the passkey check the card is back to empty, the commands disappear from Discord (it may take a minute, or reopen Discord), and the portal's endpoint is empty.
+
+## Game chat to Discord
+
+You need a Discord channel you can add webhooks to and a running Fabric or Paper server. Player faces need the panel to have a domain. See [Game chat in a channel](discord.md#game-chat-in-a-channel).
+
+- [ ] In Discord, the channel's settings, **Integrations**, **Webhooks**, **New Webhook**, **Copy Webhook URL**.
+- [ ] Server, **Settings**, **Discord chat**: paste `https://example.com/hook` and press **Turn on**. It's refused as not a Discord webhook.
+- [ ] Paste the real URL and press **Send a test**: "Flytower will post … chat here." arrives in the channel.
+- [ ] Press **Turn on**. After the passkey check the card says **On** and shows only the webhook's ID. **Activity** shows "Started posting … chat to Discord".
+- [ ] Join the server: "**you** joined the game" appears in the channel within a second, with your face.
+- [ ] Say something: it appears under your name with your face. Say `**bold** @everyone <@1> # big https://example.com`: it shows exactly as typed, nobody is pinged, and the link works without a preview.
+- [ ] `/me waves` appears in italics.
+- [ ] Send ten lines quickly (or paste them): they all arrive, joined into fewer messages, in order.
+- [ ] Turn **Chat** off and save: chat stops, joins and leaves still post. Turn **Joins and leaves** off: they stop too.
+- [ ] Delete the webhook in Discord, then say something: the card says **Stopped** with Discord's reason. Paste a new webhook and save: chat posts again.
+- [ ] **Turn off**: nothing more is posted, and the card is back to empty.

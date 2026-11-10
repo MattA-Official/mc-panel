@@ -266,6 +266,8 @@ async function copyEndpoint() {
           @click="confirming = true"
         />
       </div>
+
+      <DiscordRoles />
     </div>
 
     <UModal

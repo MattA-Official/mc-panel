@@ -7,6 +7,8 @@ import {
   compactPublicPage,
   defaultPublicPage,
   describePublicPage,
+  samePublicPage,
+  showsLeaderboard,
 } from '../shared/public-page'
 import { compactSpec } from '../shared/spec'
 import { specFromServer } from '../server/spec/from-server'
@@ -102,6 +104,7 @@ const base = (over: Partial<PageInput> = {}): PageInput => ({
   hasPack: false,
   maxPlayers: 30,
   withUuids: (names) => names.map((name) => ({ name, uuid: `uuid-${name}` })),
+  statsEnabled: true,
   ...over,
 })
 
@@ -138,6 +141,7 @@ describe('public status', () => {
         'description',
         'displayName',
         'icon',
+        'leaderboard',
         'motd',
         'name',
         'pack',
@@ -172,7 +176,7 @@ describe('public page settings', () => {
     expect(defaultPublicPage()).toEqual({
       enabled: false,
       description: '',
-      show: { players: 'count', version: true },
+      show: { players: 'count', version: true, leaderboard: false },
       pack: { enabled: true, extras: [] },
     })
     expect(compactPublicPage(defaultPublicPage())).toBeNull()
@@ -268,5 +272,42 @@ describe('pack on the page', () => {
       pack: { extras: [{ modrinth: 'iris' }] },
     })
     expect(PublicPage.safeParse({ pack: { extras: [{ modrinth: '../x' }] } }).success).toBe(false)
+  })
+})
+
+describe('leaderboards on the public page', () => {
+  const page = (show: Record<string, unknown>) => PublicPage.parse({ enabled: true, show })
+
+  test('are off by default', () => {
+    expect(publicStatus(base()).leaderboard).toBe(false)
+    expect(publicStatus(base({ page: page({ players: 'names' }) })).leaderboard).toBe(false)
+  })
+
+  test('show when asked for on a page that shows names', () => {
+    const p = page({ players: 'names', leaderboard: true })
+    expect(publicStatus(base({ page: p })).leaderboard).toBe(true)
+    expect(showsLeaderboard(p, true)).toBe(true)
+  })
+
+  test('follow the player visibility setting', () => {
+    for (const players of ['count', 'none']) {
+      const p = page({ players, leaderboard: true })
+      expect(publicStatus(base({ page: p })).leaderboard).toBe(false)
+    }
+  })
+
+  test('hide while the server keeps no stats', () => {
+    const p = page({ players: 'names', leaderboard: true })
+    expect(publicStatus(base({ page: p, statsEnabled: false })).leaderboard).toBe(false)
+  })
+
+  test('round-trip through the spec and the plan summary', () => {
+    const p = page({ players: 'names', leaderboard: true })
+    expect(compactPublicPage(p)).toEqual({
+      enabled: true,
+      show: { players: 'names', leaderboard: true },
+    })
+    expect(samePublicPage(p, page({ players: 'names' }))).toBe(false)
+    expect(describePublicPage(p)).toBe('On, showing player names and leaderboards')
   })
 })

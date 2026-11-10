@@ -8,9 +8,12 @@ use std::time::Duration;
 
 use flytower_agent::dispatch::dispatch;
 use flytower_agent::events::{Journal, UnitEvents};
-use flytower_agent::exec::RealExec;
-use flytower_agent::handlers::{Context, handle};
+use flytower_agent::exec::{Exec, RealExec};
+use flytower_agent::fetch::Curl;
+use flytower_agent::handlers::{Context, handle, server, ssh, system_clock, update};
+use flytower_agent::release::RELEASE_KEY;
 use flytower_agent::server::{ListenOptions, bind, group_id, serve};
+use flytower_agent::units::Paths;
 
 fn env(name: &str, fallback: &str) -> String {
     std::env::var(name).unwrap_or_else(|_| fallback.to_string())
@@ -21,14 +24,24 @@ fn main() -> ExitCode {
         eprintln!("flytower-agent must run as root");
         return ExitCode::FAILURE;
     }
+    let exec: Arc<dyn Exec> = Arc::new(RealExec::default());
     let events = UnitEvents::new(Arc::new(Journal::default()), Duration::from_secs(5));
     events.start();
     let ctx = Context {
         version: env("FLYTOWER_VERSION", "0.0.0-dev"),
-        exec: Box::new(RealExec::default()),
+        exec: Arc::clone(&exec),
+        now: system_clock(),
+        fetch: Arc::new(Curl {
+            exec: Arc::clone(&exec),
+        }),
+        arch: std::env::consts::ARCH.into(),
         events: Some(events),
+        paths: Paths::from_env(),
+        panel_group: env("FLYTOWER_PANEL_GROUP", "flytower"),
+        releases_url: env("FLYTOWER_RELEASES_URL", update::RELEASES),
+        release_key: RELEASE_KEY.into(),
     };
-    let group = env("FLYTOWER_PANEL_GROUP", "flytower");
+    let group = ctx.panel_group.clone();
     let gid = match group_id(&group, Path::new("/etc/group")) {
         Ok(gid) => gid,
         Err(e) => {
@@ -51,6 +64,20 @@ fn main() -> ExitCode {
         }
     };
     println!("flytower-agent {} (rust) listening", ctx.version);
+    // An emergency SSH opening must end on time even if the agent restarted in between.
+    if let Err(e) = ssh::restore(&ctx) {
+        eprintln!("restoring the SSH timer failed: {}", e.message);
+    }
+    match server::refresh_template(&ctx) {
+        Ok(true) => println!("updated the server unit template"),
+        Ok(false) => {}
+        Err(e) => eprintln!("updating the server unit template failed: {}", e.message),
+    }
+    match update::refresh_agent_unit(&ctx) {
+        Ok(true) => println!("pointed the agent unit at bin/flytower-agent"),
+        Ok(false) => {}
+        Err(e) => eprintln!("updating the agent unit failed: {}", e.message),
+    }
     serve(&listener, Some(gid), move |line| {
         // stdout goes to the journal; one JSON line per request.
         dispatch(line, |p| handle(&p, &ctx), |audit| println!("{audit}"))
