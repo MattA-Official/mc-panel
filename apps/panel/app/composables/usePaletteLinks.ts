@@ -47,13 +47,17 @@ export function usePaletteLinks(navigation: Ref<{ label: string; icon: string; t
           { label: 'New server from YAML', icon: 'i-lucide-file-code', to: '/servers/from-yaml' },
         ]
       : []),
-    ...(can('system.manage')
+    ...(can('system.updates')
+      ? [{ label: 'Updates', icon: 'i-lucide-download', to: '/system/updates' }]
+      : []),
+    ...(can('system.integrations')
       ? [
-          { label: 'Updates', icon: 'i-lucide-download', to: '/system/updates' },
           { label: 'Off-site storage', icon: 'i-lucide-cloud', to: '/system/storage' },
-          { label: 'Notifications', icon: 'i-lucide-bell', to: '/system/notifications' },
           { label: 'Integrations', icon: 'i-lucide-blocks', to: '/system/integrations' },
         ]
+      : []),
+    ...(can('system.notifications')
+      ? [{ label: 'Notifications', icon: 'i-lucide-bell', to: '/system/notifications' }]
       : []),
     { label: 'Your account', icon: 'i-lucide-user', to: '/account' },
   ])

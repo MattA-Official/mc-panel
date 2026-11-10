@@ -8,7 +8,7 @@ const flytower = computed(() => updates.value?.flytower?.summary?.latest ?? null
 
 <template>
   <UAlert
-    v-if="flytower && can('system.manage')"
+    v-if="flytower && can('system.updates')"
     color="info"
     variant="subtle"
     icon="i-lucide-arrow-up-circle"

@@ -25,6 +25,7 @@ async function act(fn: () => Promise<unknown>, done: string) {
   }
 }
 
+const can = useCan()
 const roleForm = ref<{ id: string | null; name: string; permissions: Permission[] } | null>(null)
 const removingRole = ref<RoleView | null>(null)
 const PERMISSION_GROUPS = [
@@ -88,6 +89,7 @@ async function deleteRole() {
           </p>
         </div>
         <UButton
+          v-if="can('roles.manage')"
           icon="i-lucide-plus"
           label="New role"
           class="shrink-0 self-start"
@@ -110,7 +112,7 @@ async function deleteRole() {
           </p>
           <p class="text-xs text-muted">{{ roleHelp(r) }}</p>
         </div>
-        <div v-if="!r.builtIn" class="flex shrink-0 gap-1">
+        <div v-if="!r.builtIn && can('roles.manage')" class="flex shrink-0 gap-1">
           <UButton
             icon="i-lucide-pencil"
             color="neutral"

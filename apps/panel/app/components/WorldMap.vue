@@ -29,7 +29,7 @@ const { server, refresh: refreshServer } = useServerContext()
 const toast = useToast()
 const can = useCan()
 const name = computed(() => server.value?.name ?? '')
-const canConfigure = computed(() => can('server.configure', name.value))
+const canConfigure = computed(() => can('community.manage', name.value))
 const canDraw = computed(() => can('world.manage', name.value))
 
 const status = ref<Status | null>(null)

@@ -17,7 +17,7 @@ async function signOut() {
 // Updates for Flytower or Java put a count on System; server ones show on each server.
 const updates = useLiveUpdates()
 const can = useCan()
-const systemUpdates = computed(() => (can('system.manage') ? systemUpdateCount(updates.value) : 0))
+const systemUpdates = computed(() => (can('system.updates') ? systemUpdateCount(updates.value) : 0))
 
 // The person's saved appearance follows them to every device, and any change here
 // (the sidebar button or Appearance on Your account) is saved for them.
@@ -52,7 +52,7 @@ onMounted(() => document.addEventListener('visibilitychange', onVisible))
 onBeforeUnmount(() => document.removeEventListener('visibilitychange', onVisible))
 const items = computed<NavigationMenuItem[]>(() => [
   { label: 'Servers', icon: 'i-lucide-server', to: '/' },
-  ...(can('people.manage') ? [{ label: 'Access', icon: 'i-lucide-users', to: '/access' }] : []),
+  ...(can('people.invite') ? [{ label: 'Access', icon: 'i-lucide-users', to: '/access' }] : []),
   { label: 'Activity', icon: 'i-lucide-history', to: '/activity' },
   {
     label: 'System',
