@@ -1,6 +1,7 @@
 //! `flytower-map render --world DIR --out DIR [options]` draws a world's tiles and prints one
 //! line of JSON saying what it did. `flytower-map dimensions --world DIR` lists what it would
-//! draw. See the library docs for the output folder.
+//! draw. `flytower-map palette --jar FILE --out FILE` makes the colour palette from the
+//! Minecraft client jar. See the library docs for the output folder.
 
 use std::ffi::OsString;
 use std::fmt::Write as _;
@@ -16,7 +17,8 @@ use flytower_map::{manifest, quote, world};
 const USAGE: &str = "\
 usage: flytower-map render --world DIR --out DIR [--palette FILE] [--dimension ID]...
                            [--full] [--threads N] [--levels N]
-       flytower-map dimensions --world DIR";
+       flytower-map dimensions --world DIR
+       flytower-map palette --jar CLIENT.JAR --out FILE";
 
 /// The output format. Bump it if a field changes meaning.
 const FORMAT: u32 = 1;
@@ -27,6 +29,7 @@ struct Args {
     world: Option<PathBuf>,
     out: Option<PathBuf>,
     palette: Option<PathBuf>,
+    jar: Option<PathBuf>,
     only: Vec<String>,
     opts: Options,
 }
@@ -35,7 +38,7 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, String> {
     let mut parsed = Args::default();
     let mut args = args.into_iter();
     parsed.command = match args.next().and_then(|a| a.into_string().ok()) {
-        Some(c) if c == "render" || c == "dimensions" => c,
+        Some(c) if c == "render" || c == "dimensions" || c == "palette" => c,
         Some(c) => return Err(format!("unknown command {c}")),
         None => return Err("give a command".into()),
     };
@@ -46,6 +49,7 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, String> {
             "--world" => parsed.world = Some(value()?.into()),
             "--out" => parsed.out = Some(value()?.into()),
             "--palette" => parsed.palette = Some(value()?.into()),
+            "--jar" => parsed.jar = Some(value()?.into()),
             "--dimension" => parsed.only.push(value()?.to_string_lossy().into_owned()),
             "--full" => parsed.opts.full = true,
             "--threads" => match value()?.to_str().and_then(|n| n.parse().ok()) {
@@ -58,6 +62,12 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, String> {
             },
             _ => return Err(format!("unknown option {}", arg.to_string_lossy())),
         }
+    }
+    if parsed.command == "palette" {
+        if parsed.jar.is_none() || parsed.out.is_none() {
+            return Err("give --jar and --out".into());
+        }
+        return Ok(parsed);
     }
     if parsed.world.is_none() {
         return Err("give --world".into());
@@ -103,6 +113,9 @@ fn main() -> ExitCode {
 }
 
 fn run(args: &Args) -> Result<String, String> {
+    if args.command == "palette" {
+        return make_palette(args);
+    }
     let world_dir = args.world.as_deref().unwrap_or(std::path::Path::new("."));
     if !world_dir.is_dir() {
         return Err(format!("{} isn't a folder", world_dir.display()));
@@ -167,4 +180,23 @@ fn run(args: &Args) -> Result<String, String> {
     .map_err(|e| format!("maps.json: {e}"))?;
     let _ = writeln!(json, "],\"ms\":{}}}", started.elapsed().as_millis());
     Ok(json)
+}
+
+/// Makes a palette from the client jar and writes it, checking it reads back first.
+fn make_palette(args: &Args) -> Result<String, String> {
+    let (Some(jar_path), Some(out)) = (&args.jar, &args.out) else {
+        return Err("give --jar and --out".into());
+    };
+    let bytes = std::fs::read(jar_path).map_err(|e| format!("{}: {e}", jar_path.display()))?;
+    let jar =
+        flytower_map::jar::Jar::new(bytes).map_err(|e| format!("{}: {e}", jar_path.display()))?;
+    let text =
+        flytower_map::colours::palette(&jar).map_err(|e| format!("{}: {e}", jar_path.display()))?;
+    Palette::parse(&text).map_err(|e| format!("made a palette that doesn't read back: {e}"))?;
+    render::write_atomic(out, text.as_bytes()).map_err(|e| format!("{}: {e}", out.display()))?;
+    let blocks = text.lines().filter(|l| l.starts_with("block ")).count();
+    let biomes = text.lines().filter(|l| l.starts_with("biome ")).count();
+    Ok(format!(
+        "{{\"version\":{FORMAT},\"blocks\":{blocks},\"biomes\":{biomes}}}\n"
+    ))
 }

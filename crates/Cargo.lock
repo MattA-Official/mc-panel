@@ -85,6 +85,7 @@ dependencies = [
  "flate2",
  "lz4_flex",
  "png",
+ "serde_json",
 ]
 
 [[package]]
