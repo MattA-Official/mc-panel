@@ -2,7 +2,7 @@ import { checkRecords, expectedRecords, machineAddresses, publicLookup } from '.
 
 /** The DNS records this server's hostname needs, and whether public DNS has them. */
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  await requireServerPermission(event, 'server.view')
   const server = findServer(getRouterParam(event, 'name') ?? '')
   if (!server.hostname) return { hostname: null, records: [] }
   const config = useRuntimeConfig()

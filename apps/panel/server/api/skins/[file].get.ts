@@ -5,6 +5,7 @@ import { uuidHex } from '@flytower/providers'
  * disk, so browsers never contact a third party about who plays here.
  */
 export default defineEventHandler(async (event) => {
+  await requireSignedIn(event)
   const file = getRouterParam(event, 'file') ?? ''
   const hex = file.endsWith('.png') ? uuidHex(file.slice(0, -4)) : null
   if (!hex) throw createError({ statusCode: 404, statusMessage: 'No such player.' })

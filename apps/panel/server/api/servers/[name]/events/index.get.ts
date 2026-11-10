@@ -4,6 +4,7 @@ const Params = z.object({ name: z.string().max(40) })
 
 /** Crashes and other trouble from the last 30 days, newest first. */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'server.view')
   const { name } = await getValidatedRouterParams(event, Params.parse)
   findServer(name)
   return useCrashes()

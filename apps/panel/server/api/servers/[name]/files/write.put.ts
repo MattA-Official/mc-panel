@@ -7,6 +7,7 @@ const Body = z.object({
 })
 
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'files.write')
   const ctx = await fileContext(event)
   const { path, content } = await readValidatedBody(event, Body.parse)
   return fileAction(ctx, 'write', { path }, async () => {

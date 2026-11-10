@@ -1,5 +1,6 @@
 import type { ContentItem } from '../../shared/spec'
 import type { PublicPage } from '../../shared/public-page'
+import type { Permission } from '../../shared/permissions'
 import { sql } from 'drizzle-orm'
 import {
   blob,
@@ -331,4 +332,33 @@ export const schedules = sqliteTable(
     createdAt: createdAt(),
   },
   (t) => [index('schedules_server').on(t.server, t.position)],
+)
+
+/**
+ * Named sets of permissions. Built-in roles (owner, admin, operator, viewer) take their
+ * permissions from shared/permissions.ts, so the column only matters for custom roles.
+ */
+export const roles = sqliteTable('roles', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  builtIn: integer('built_in', { mode: 'boolean' }).notNull().default(false),
+  permissions: text('permissions', { mode: 'json' }).$type<Permission[]>().notNull().default([]),
+  createdAt: createdAt(),
+})
+
+/** A person holds a role for one server, or for all servers when `server` is null. */
+export const grants = sqliteTable(
+  'grants',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    roleId: text('role_id')
+      .notNull()
+      .references(() => roles.id, { onDelete: 'cascade' }),
+    server: text('server').references(() => servers.name, { onDelete: 'cascade' }),
+    createdAt: createdAt(),
+  },
+  (t) => [index('grants_user').on(t.userId)],
 )

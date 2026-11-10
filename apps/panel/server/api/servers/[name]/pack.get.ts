@@ -7,6 +7,7 @@ const Params = z.object({ name: z.string().max(40) })
 
 /** What the players' modpack holds and what it leaves out, for the Public page card. */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'server.view')
   const { name } = await getValidatedRouterParams(event, Params.parse)
   const row = findServer(name)
   const unavailable = packUnavailable(row)

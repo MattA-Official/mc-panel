@@ -4,6 +4,7 @@ const Query = z.object({ offset: z.coerce.number().int().min(0) })
 
 /** One chunk of an upload, at most 32 MB, appended at `offset`. */
 export default defineEventHandler(async (event) => {
+  await requirePermission(event, 'servers.create')
   const { imports, id } = await importContext(event)
   const { offset } = await getValidatedQuery(event, Query.parse)
   const body = toWebRequest(event).body

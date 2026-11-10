@@ -18,6 +18,7 @@ const Body = z
 
 /** Changes memory, the game port and/or the hostname. Memory and port apply on the next restart. */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'server.configure')
   const { user } = await requireUserSession(event)
   const { name } = await getValidatedRouterParams(event, Params.parse)
   const body = await readValidatedBody(event, Body.parse)

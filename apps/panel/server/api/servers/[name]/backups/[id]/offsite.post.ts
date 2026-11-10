@@ -4,6 +4,7 @@ const Params = z.object({ id: z.coerce.number().int() })
 
 /** Retries a failed off-site upload now. */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'backups.create')
   const { name, service } = await backupContext(event)
   const { id } = await getValidatedRouterParams(event, Params.parse)
   backupHttp(() => service.get(name, id))

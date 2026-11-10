@@ -15,6 +15,7 @@ const Body = z.object({
  * afterwards through a plan the person can review.
  */
 export default defineEventHandler(async (event) => {
+  await requirePermission(event, 'servers.create')
   const { user } = await requireUserSession(event)
   const body = await readValidatedBody(event, Body.parse)
   const parsed = parseSpec(body.yaml)

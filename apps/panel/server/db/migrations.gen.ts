@@ -55,5 +55,9 @@ export const migrations: { tag: string; sql: string }[] = [
   {
     "tag": "0013_public_page",
     "sql": "ALTER TABLE `servers` ADD `public_page` text;"
+  },
+  {
+    "tag": "0014_roles",
+    "sql": "CREATE TABLE `grants` (\n\t`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,\n\t`user_id` integer NOT NULL,\n\t`role_id` text NOT NULL,\n\t`server` text,\n\t`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,\n\tFOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade,\n\tFOREIGN KEY (`role_id`) REFERENCES `roles`(`id`) ON UPDATE no action ON DELETE cascade,\n\tFOREIGN KEY (`server`) REFERENCES `servers`(`name`) ON UPDATE no action ON DELETE cascade\n);\n--> statement-breakpoint\nCREATE INDEX `grants_user` ON `grants` (`user_id`);--> statement-breakpoint\nCREATE TABLE `roles` (\n\t`id` text PRIMARY KEY NOT NULL,\n\t`name` text NOT NULL,\n\t`built_in` integer DEFAULT false NOT NULL,\n\t`permissions` text DEFAULT '[]' NOT NULL,\n\t`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL\n);\n--> statement-breakpoint\nINSERT INTO `roles` (`id`, `name`, `built_in`) VALUES ('owner', 'Owner', 1), ('admin', 'Admin', 1), ('operator', 'Operator', 1), ('viewer', 'Viewer', 1);\n--> statement-breakpoint\nINSERT INTO `grants` (`user_id`, `role_id`, `server`) SELECT `id`, 'owner', NULL FROM `users`;\n"
   }
 ]

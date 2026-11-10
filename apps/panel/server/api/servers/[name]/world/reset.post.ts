@@ -15,6 +15,7 @@ const Options = z.object({
 
 /** Resets the world after a backup. Needs a recent passkey check. */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'world.manage')
   await requireElevated(event)
   const { user, name, world } = await worldContext(event)
   const { seed, opts } = await readValidatedBody(event, (b) => ({

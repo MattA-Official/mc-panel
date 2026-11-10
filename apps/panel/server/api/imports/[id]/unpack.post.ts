@@ -9,6 +9,7 @@ const Body = z.union([
 
 /** Fetches if needed, unpacks and inspects, as a job. */
 export default defineEventHandler(async (event) => {
+  await requirePermission(event, 'servers.create')
   const { user, imports, id } = await importContext(event)
   const body = await readValidatedBody(event, Body.parse)
   await importHttp(() => imports.get(id))

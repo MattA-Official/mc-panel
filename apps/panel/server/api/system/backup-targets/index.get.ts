@@ -2,7 +2,7 @@ import { schema } from '../../../db'
 
 /** Off-site backup targets, without their secrets, and which servers use each. */
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  await requirePermission(event, 'system.manage')
   const servers = useDb()
     .select({ name: schema.servers.name, target: schema.servers.offsiteTarget })
     .from(schema.servers)

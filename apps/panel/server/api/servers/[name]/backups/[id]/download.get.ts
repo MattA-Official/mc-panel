@@ -1,5 +1,6 @@
 /** The backup file itself. */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'backups.download')
   const { name, service } = await backupContext(event)
   const { id } = getRouterParams(event)
   const row = backupHttp(() => service.get(name, Number(id)))
