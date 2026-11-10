@@ -12,13 +12,14 @@ const updates = useLiveUpdates()
 const updatesOf = (s: Server) => serverUpdateCount(updates.value, s.name)
 const when = (iso: string) =>
   new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+const can = useCan()
 </script>
 
 <template>
   <UDashboardPanel id="servers">
     <template #header>
       <UDashboardNavbar title="Servers">
-        <template #right>
+        <template v-if="can('servers.create')" #right>
           <UButton icon="i-lucide-plus" label="New server" to="/servers/new" />
         </template>
       </UDashboardNavbar>

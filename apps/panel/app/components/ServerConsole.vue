@@ -1,5 +1,7 @@
 <script setup lang="ts">
 const props = defineProps<{ server: string; running: boolean }>()
+const can = useCan()
+const canSend = computed(() => can('console.command', props.server))
 
 type ConsoleMessage = { type: 'snapshot' | 'lines'; lines: string[] }
 const MAX_LINES = 1000
@@ -122,7 +124,11 @@ async function send() {
         @click="jumpToLatest"
       />
     </div>
-    <form class="flex items-center gap-2 border-t border-default p-2" @submit.prevent="send">
+    <form
+      v-if="canSend"
+      class="flex items-center gap-2 border-t border-default p-2"
+      @submit.prevent="send"
+    >
       <span class="pl-2 font-mono text-primary" aria-hidden="true">&gt;</span>
       <UInput
         v-model="input"

@@ -4,12 +4,26 @@ import { systemUpdateCount } from '#shared/updates'
 
 const updates = useLiveUpdates()
 const { state } = useAuthState()
-const canManagePeople = computed(() =>
-  state.value?.access ? can(state.value.access, 'people.manage') : false,
-)
+const allowed = (p: 'people.manage' | 'system.manage') =>
+  state.value?.access ? can(state.value.access, p) : false
 /** System is split into sections, so health, updates, storage, alerts, branding and sign-in each get a page. */
-const sections = computed(() => [
+interface Section {
+  label: string
+  icon: string
+  to: string
+  exact?: boolean
+  badge?: { label: string; color: 'info'; variant: 'subtle' }
+}
+const sections = computed<Section[]>(() => [
   { label: 'Overview', icon: 'i-lucide-gauge', to: '/system', exact: true },
+  ...(allowed('system.manage') ? systemSections.value : []),
+  ...(allowed('people.manage')
+    ? [{ label: 'People', icon: 'i-lucide-users', to: '/system/people' }]
+    : []),
+  { label: 'Account and security', icon: 'i-lucide-shield', to: '/system/account' },
+])
+/** Install-wide pages, for people who manage Flytower itself. */
+const systemSections = computed<Section[]>(() => [
   {
     label: 'Updates',
     icon: 'i-lucide-arrow-up-circle',
@@ -24,13 +38,9 @@ const sections = computed(() => [
         }
       : {}),
   },
-  ...(canManagePeople.value
-    ? [{ label: 'People', icon: 'i-lucide-users', to: '/system/people' }]
-    : []),
   { label: 'Off-site storage', icon: 'i-lucide-cloud', to: '/system/storage' },
   { label: 'Notifications', icon: 'i-lucide-bell', to: '/system/notifications' },
   { label: 'Branding', icon: 'i-lucide-palette', to: '/system/branding' },
-  { label: 'Account and security', icon: 'i-lucide-shield', to: '/system/account' },
 ])
 const route = useRoute()
 const current = computed(
