@@ -1,0 +1,15 @@
+[package]
+name = "flytower-agent"
+description = "Flytower's system helper: runs as root and does a fixed list of jobs for the panel."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+rustix = { version = "1.1", default-features = false, features = ["std", "net", "process"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+
+[lints]
+workspace = true
