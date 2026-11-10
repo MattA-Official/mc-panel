@@ -8,7 +8,7 @@ export const AUDIT_KINDS = {
   players: 'Players',
   files: 'Files',
   access: 'Sign-ins and access',
-  system: 'Flytower and notifications',
+  system: 'Flytower, notifications and branding',
 } as const
 export type AuditKind = keyof typeof AUDIT_KINDS
 
@@ -17,9 +17,11 @@ export function auditKind(action: string): AuditKind {
   if (action.startsWith('world.')) return 'world'
   if (action.startsWith('players.')) return 'players'
   if (action.startsWith('files.')) return 'files'
-  if (action === 'server.apply' || action === 'server.properties') return 'content'
+  if (action === 'server.apply' || action === 'server.properties' || action === 'server.icon') {
+    return 'content'
+  }
   if (/^(auth|passkey|recovery|setup|ssh)\./.test(action)) return 'access'
-  if (action.startsWith('update.') || action.startsWith('notify.')) return 'system'
+  if (/^(update|notify|branding)\./.test(action)) return 'system'
   return 'servers'
 }
 
@@ -78,6 +80,18 @@ export function describeAudit(
       return d.channel === 'beta'
         ? 'Chose to be offered beta releases'
         : 'Chose stable releases only'
+    case 'branding.update':
+      return `Changed the branding${d.name ? ` (${str(d.name)}, ${str(d.accent)})` : ''}`
+    case 'branding.reset':
+      return "Reset the branding to Flytower's own"
+    case 'branding.logo':
+      return 'Uploaded a new logo'
+    case 'branding.favicon':
+      return 'Uploaded a new favicon'
+    case 'branding.logo.remove':
+      return 'Removed the logo'
+    case 'branding.favicon.remove':
+      return 'Removed the favicon'
     case 'server.create':
       return `Created ${t}${d.from === 'spec' ? ' from YAML' : ''}`
     case 'server.import':
@@ -108,6 +122,8 @@ export function describeAudit(
       return `Ran /${str(d.command).replace(/^\//, '')} on ${t}`
     case 'server.properties':
       return `Changed ${t}'s settings${Array.isArray(d.keys) ? ` (${d.keys.join(', ')})` : ''}`
+    case 'server.icon':
+      return d.removed ? `Removed ${t}'s icon` : `Changed ${t}'s icon`
     case 'server.resources': {
       const bits = [
         d.memoryMb ? `memory ${Number(d.memoryMb) / 1024} GB` : '',

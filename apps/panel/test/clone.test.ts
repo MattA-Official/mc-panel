@@ -12,6 +12,7 @@ function source() {
   writeFileSync(join(src, 'server.jar'), 'jar')
   writeFileSync(join(src, 'server.properties'), 'motd=Hi\n')
   writeFileSync(join(src, 'flytower.lock.json'), '{}')
+  writeFileSync(join(src, 'server-icon.png'), 'png')
   writeFileSync(join(src, 'mods', 'lithium.jar'), 'mod')
   writeFileSync(join(src, 'logs', 'latest.log'), 'log')
   writeFileSync(join(src, 'world', 'region', 'r.0.0.mca'), 'chunks')
@@ -27,6 +28,7 @@ describe('clone copy', () => {
     expect(readFileSync(join(dest, 'mods', 'lithium.jar'), 'utf8')).toBe('mod')
     expect(existsSync(join(dest, 'world', 'region', 'r.0.0.mca'))).toBe(true)
     expect(existsSync(join(dest, 'flytower.lock.json'))).toBe(true)
+    expect(readFileSync(join(dest, 'server-icon.png'), 'utf8')).toBe('png')
     for (const gone of ['server.jar', 'logs', '.flytower-staging']) {
       expect(existsSync(join(dest, gone))).toBe(false)
     }

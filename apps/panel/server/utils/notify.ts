@@ -26,6 +26,14 @@ export function useNotify(): NotifyService {
         .from(schema.servers)
         .where(eq(schema.servers.name, name))
         .get()?.displayName ?? null,
+    brand: () => {
+      const b = useBranding()
+      const logo = b.image('logo')
+      return {
+        name: b.settings().name,
+        pngLogo: logo?.type === 'image/png' ? `/branding/logo?v=${logo.hash}` : null,
+      }
+    },
   })
   return service
 }

@@ -11,6 +11,8 @@ export interface RestartDeps {
   restart: () => Promise<void>
   now: () => number
   sleep: (ms: number) => Promise<void>
+  /** The colour for in-game messages: the brand's accent, or `gold`. */
+  colour?: string
 }
 
 export interface RestartTask {
@@ -22,22 +24,25 @@ export interface RestartTask {
 /** Warnings with this many seconds or fewer go on screen as a title, too. */
 const TITLE_SECONDS = 10
 
-/** Flytower's gold, for in-game messages. */
+/** Flytower's gold, for in-game messages when the panel has no brand colour of its own. */
 export const GOLD = 'gold'
 
-/** The console command that shows a line in everyone's chat, in Flytower's gold. */
-export function tellAll(text: string): string {
-  return `tellraw @a ${JSON.stringify({ text, color: GOLD })}`
+/**
+ * The console command that shows a line in everyone's chat, in the brand's colour (a named
+ * colour or `#RRGGBB`, which every version Flytower runs understands).
+ */
+export function tellAll(text: string, colour = GOLD): string {
+  return `tellraw @a ${JSON.stringify({ text, color: colour })}`
 }
 
 /** The console commands for one warning. */
-export function warningCommands(seconds: number): string[] {
+export function warningCommands(seconds: number, colour = GOLD): string[] {
   const when = spokenDuration(seconds)
-  const out = [tellAll(`Server restarting in ${when}`)]
+  const out = [tellAll(`Server restarting in ${when}`, colour)]
   if (seconds <= TITLE_SECONDS) {
     out.push(
-      `title @a subtitle ${JSON.stringify({ text: `in ${when}`, color: GOLD })}`,
-      `title @a title ${JSON.stringify({ text: 'Restarting', color: GOLD })}`,
+      `title @a subtitle ${JSON.stringify({ text: `in ${when}`, color: colour })}`,
+      `title @a title ${JSON.stringify({ text: 'Restarting', color: colour })}`,
     )
   }
   return out
@@ -94,7 +99,7 @@ export async function runRestart(
     if (!empty) {
       for (const w of warningTimeline(restartAt, task.warn, deps.now())) {
         await wait(w.at - deps.now())
-        for (const cmd of warningCommands(w.seconds)) {
+        for (const cmd of warningCommands(w.seconds, deps.colour)) {
           // A warning that doesn't arrive is no reason to call off the restart.
           await deps.rcon(cmd).catch(() => {})
         }
@@ -106,7 +111,7 @@ export async function runRestart(
   } catch (err) {
     // Players who were told it's coming hear that it isn't.
     if (err instanceof RestartCancelled && warned) {
-      await deps.rcon(tellAll('The restart has been called off')).catch(() => {})
+      await deps.rcon(tellAll('The restart has been called off', deps.colour)).catch(() => {})
     }
     throw err
   }

@@ -42,6 +42,8 @@ export interface ScheduleDeps {
   now?: () => number
   sleep?: (ms: number) => Promise<void>
   busyWaitMs?: number
+  /** The colour for in-game messages, from the panel's branding. Defaults to gold. */
+  colour?: () => string
 }
 
 /** What one run came to. `ok` is null when it was skipped. */
@@ -249,12 +251,13 @@ export class ScheduleService {
 
   private async execute(row: Row, at: number, signal: AbortSignal): Promise<Outcome> {
     const rcon = (command: string) => this.deps.rcon(row.server, command)
+    const colour = this.deps.colour?.()
     if (row.kind === 'command') {
       const reply = await rcon(row.text ?? '')
       return { ok: true, result: 'Ran', reply: reply.slice(0, MAX_REPLY) }
     }
     if (row.kind === 'announce') {
-      await rcon(tellAll(row.text ?? ''))
+      await rcon(tellAll(row.text ?? '', colour))
       return { ok: true, result: 'Announced' }
     }
     const out = await runRestart(
@@ -263,6 +266,7 @@ export class ScheduleService {
         restart: () => this.deps.restart(row.server),
         now: this.now,
         sleep: this.sleep,
+        colour,
       },
       { warn: row.warn, skipWhenEmpty: row.skipWhenEmpty },
       at,

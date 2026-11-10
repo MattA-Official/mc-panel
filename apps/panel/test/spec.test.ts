@@ -65,6 +65,15 @@ describe('spec', () => {
     if (back.ok) expect(back.spec).toEqual(spec)
   })
 
+  test('a two-line MOTD with § codes reads back the same', () => {
+    const motd = '§6§lNew Theatre §r§7Survival\n§bOpen to members'
+    const spec = specFromServer(row as never, { ...props, motd })
+    const yaml = toYaml(spec)
+    expect(yaml).toContain('motd: "§6§lNew Theatre §r§7Survival\\n§bOpen to members"')
+    const back = parseSpec(yaml)
+    expect(back.ok && back.spec.properties['motd']).toBe(motd)
+  })
+
   test('secrets never go into a spec', () => {
     const spec = specFromServer(row as never, {
       ...props,

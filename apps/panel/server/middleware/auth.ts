@@ -1,6 +1,12 @@
 import { needsSetup } from '../auth/setup-token'
 
-const ALWAYS_OPEN = new Set(['/api/health', '/api/auth/state', '/api/auth/logout'])
+const ALWAYS_OPEN = new Set([
+  '/api/health',
+  '/api/auth/state',
+  '/api/auth/logout',
+  // The sign-in, setup and status pages show the install's name and logo.
+  '/api/branding',
+])
 const SETUP_ROUTES = new Set([
   '/api/setup/token',
   '/api/passkeys/register-options',

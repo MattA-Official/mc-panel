@@ -1,6 +1,11 @@
 <script setup lang="ts">
-const { productName } = useAppConfig()
-useHead({ titleTemplate: (t) => (t ? `${t} · ${productName}` : productName) })
+const name = useBrandName()
+await callOnce('brand', loadBrand)
+// Read the name in the getter, so the tab's title follows a rename straight away.
+useHead(() => {
+  const n = name.value
+  return { titleTemplate: (t?: string) => (t ? `${t} · ${n}` : n) }
+})
 </script>
 
 <template>

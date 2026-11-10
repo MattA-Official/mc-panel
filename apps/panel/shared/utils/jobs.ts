@@ -83,6 +83,7 @@ export const SPEC_STEPS = [
 export const WORLD_RESET_STEPS = [
   'Backing up',
   'Stopping the server',
+  'Keeping the old world',
   'Clearing the world',
   'Setting the seed',
   'Starting the server',

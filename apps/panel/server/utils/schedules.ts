@@ -1,3 +1,4 @@
+import { gameColour } from '../../shared/branding'
 import { ScheduleService } from '../schedules/service'
 
 let service: ScheduleService | undefined
@@ -33,6 +34,7 @@ export function useSchedules(): ScheduleService {
     restart: restartLikeTheButton,
     notify: useNotify(),
     bus: useJobs().bus,
+    colour: () => gameColour(useBranding().settings()),
   })
   return service
 }

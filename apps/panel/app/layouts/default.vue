@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
+import { showPoweredBy } from '#shared/branding'
 import { systemUpdateCount } from '#shared/updates'
 
-const { productName } = useAppConfig()
+const productName = useBrandName()
+const brand = useBrand()
+useLiveBrand()
 const { state, refresh } = useAuthState()
 
 async function signOut() {
@@ -34,32 +37,34 @@ const items = computed<NavigationMenuItem[]>(() => [
     <UDashboardGroup class="relative inset-auto min-h-0 flex-1">
       <UDashboardSidebar collapsible :ui="{ footer: 'border-t border-default' }">
         <template #header="{ collapsed }">
-          <NuxtLink to="/" class="flex items-center gap-2 px-1">
-            <img src="/flytower-mark.svg" alt="" class="size-7" />
-            <span
-              v-if="!collapsed"
-              class="font-display text-2xl font-extrabold uppercase tracking-wide"
-            >
-              {{ productName }}
-            </span>
+          <NuxtLink to="/" class="flex w-full min-w-0 items-center gap-2 px-1">
+            <img
+              :src="brand?.logo ?? '/flytower-mark.svg'"
+              alt=""
+              class="h-7 w-auto max-w-24 shrink-0 object-contain"
+            />
+            <BrandName v-if="!collapsed" :name="productName" class="flex-1" />
           </NuxtLink>
         </template>
         <template #default="{ collapsed }">
           <UNavigationMenu :collapsed="collapsed" :items="items" orientation="vertical" />
         </template>
         <template #footer="{ collapsed }">
-          <div class="flex w-full items-center gap-2">
-            <span v-if="!collapsed" class="truncate text-sm text-muted">{{
-              state?.user?.name
-            }}</span>
-            <UColorModeButton v-if="!collapsed" class="ms-auto" />
-            <UButton
-              icon="i-lucide-log-out"
-              color="neutral"
-              variant="ghost"
-              aria-label="Sign out"
-              @click="signOut"
-            />
+          <div class="flex w-full flex-col gap-2">
+            <div class="flex w-full items-center gap-2">
+              <span v-if="!collapsed" class="truncate text-sm text-muted">{{
+                state?.user?.name
+              }}</span>
+              <UColorModeButton v-if="!collapsed" class="ms-auto" />
+              <UButton
+                icon="i-lucide-log-out"
+                color="neutral"
+                variant="ghost"
+                aria-label="Sign out"
+                @click="signOut"
+              />
+            </div>
+            <PoweredBy v-if="!collapsed && brand && showPoweredBy(brand)" />
           </div>
         </template>
       </UDashboardSidebar>
