@@ -32,6 +32,7 @@ interface Hit {
   iconUrl: string | null
   downloads: number
   kind: Kind
+  serverSide: 'required' | 'optional' | 'unsupported' | 'unknown'
   installed: boolean
 }
 interface Update {
@@ -140,6 +141,11 @@ const searchError = ref('')
 let timer: ReturnType<typeof setTimeout> | undefined
 
 const source = ref<'modrinth' | 'hangar'>('modrinth')
+/** Client-only mods usually do nothing on a server, but some server mods need one. */
+const clientOnly = ref(false)
+const canShowClientOnly = computed(
+  () => kind.value !== 'datapack' && sourceName.value === 'Modrinth',
+)
 const sourceItems = [
   { label: 'Modrinth', value: 'modrinth' },
   { label: 'Hangar', value: 'hangar' },
@@ -166,6 +172,7 @@ async function search() {
           kind: kind.value,
           q: query.value,
           source: kind.value === 'plugin' ? source.value : 'modrinth',
+          clientOnly: canShowClientOnly.value && clientOnly.value ? 'true' : 'false',
         },
       },
     )
@@ -178,7 +185,7 @@ async function search() {
     searching.value = false
   }
 }
-watch([query, kind, source], () => {
+watch([query, kind, source, clientOnly], () => {
   clearTimeout(timer)
   timer = setTimeout(search, 350)
 })
@@ -486,6 +493,13 @@ const pendingText = computed(() => {
             :loading="searching"
             autofocus
           />
+          <USwitch
+            v-if="canShowClientOnly"
+            v-model="clientOnly"
+            size="sm"
+            label="Show client-only"
+            description="Modrinth marks these as running only on players' computers. Add one only if a server mod needs it."
+          />
           <UAlert v-if="searchError" color="error" variant="subtle" :title="searchError" />
           <ul class="divide-y divide-default">
             <li v-for="h in hits" :key="h.projectId" class="flex items-start gap-3 py-3">
@@ -501,6 +515,14 @@ const pendingText = computed(() => {
                 <p class="font-medium">
                   {{ h.title }}
                   <span class="text-xs font-normal text-dimmed">by {{ h.author }}</span>
+                  <UBadge
+                    v-if="h.serverSide === 'unsupported'"
+                    color="warning"
+                    variant="subtle"
+                    size="sm"
+                    label="Client-only"
+                    class="ml-1 align-middle"
+                  />
                 </p>
                 <p class="line-clamp-2 text-sm text-muted">{{ h.description }}</p>
                 <p class="text-xs text-dimmed">{{ count(h.downloads) }} downloads</p>

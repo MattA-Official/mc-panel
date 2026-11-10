@@ -12,6 +12,8 @@ export interface PlanView {
   server: string
   changes: PlanChange[]
   problems: string[]
+  /** Older plans kept from before warnings existed may not have them. */
+  warnings?: string[]
   restart: boolean
   backup: boolean
   downloadBytes: number
@@ -53,6 +55,14 @@ const ACTIONS = {
       variant="subtle"
       icon="i-lucide-octagon-alert"
       :title="p"
+    />
+    <UAlert
+      v-for="w in plan.warnings ?? []"
+      :key="w"
+      color="warning"
+      variant="subtle"
+      icon="i-lucide-triangle-alert"
+      :title="w"
     />
 
     <p v-if="!plan.changes.length && !plan.problems.length" class="text-sm text-muted">
