@@ -305,7 +305,7 @@ export class ScheduleService {
         title: `Scheduled ${row.kind === 'restart' ? 'restart' : row.kind === 'command' ? 'command' : 'announcement'} failed`,
         detail: `${describeTask(toSpec(row))}: ${o.result}`,
         severity: 'warning',
-        link: `/servers/${row.server}/schedules`,
+        link: `/servers/${row.server}/settings/schedules`,
       })
     } else if (o.ok === true) {
       this.deps.notify?.resolve({
@@ -313,7 +313,7 @@ export class ScheduleService {
         server: row.server,
         title: 'Scheduled tasks are working again',
         severity: 'ok',
-        link: `/servers/${row.server}/schedules`,
+        link: `/servers/${row.server}/settings/schedules`,
       })
     }
   }

@@ -179,6 +179,30 @@ try {
     await shot('2-console')
     step('server started and console streaming')
 
+    // Right-click menus (#106): the card's menu follows the live state; Shift leaves it alone.
+    await view.navigate(`${base}/`)
+    const rightClick = (shift: boolean) =>
+      view.evaluate(`document.querySelector('[data-e2e=server-card]').dispatchEvent(
+        new MouseEvent('contextmenu', { bubbles: true, cancelable: true, shiftKey: ${shift}, clientX: 200, clientY: 200 }))`)
+    await until('the server card', () =>
+      view.evaluate<boolean>(`!!document.querySelector('[data-e2e=server-card]')`),
+    )
+    await rightClick(true)
+    await Bun.sleep(300)
+    if (await view.evaluate<boolean>(`!!document.querySelector('[role=menu]')`)) {
+      throw new Error('Shift + right-click opened the Flytower menu')
+    }
+    await rightClick(false)
+    await until('the card menu with Restart and Stop', () =>
+      view.evaluate<boolean>(
+        `(() => { const m = document.querySelector('[role=menu]')?.innerText ?? ''; return m.includes('Restart') && m.includes('Stop') && !m.includes('Start') })()`,
+      ),
+    )
+    await view.evaluate(
+      `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`,
+    )
+    step('right-click menu on a running server card')
+
     const reply = await until(
       'RCON',
       async () => {
@@ -338,7 +362,7 @@ try {
 
     /** Restores the newest backup through the UI, which also answers the passkey check. */
     const restoreNewest = async (waitFor: string) => {
-      await view.navigate(`${base}/servers/smoke/backups`)
+      await view.navigate(`${base}/servers/smoke/world`)
       await waitForText(view, waitFor, 30_000)
       // Menus open on a real pointer press, so use native clicks here.
       await view.click('[aria-label^="Actions for backup"]')

@@ -61,7 +61,7 @@ const actions = computed(() => {
       label: 'Crash history',
       color: 'neutral' as const,
       variant: 'outline' as const,
-      to: { path: `/servers/${name}/logs`, query: { log: 'crashes' } },
+      to: { path: `/servers/${name}`, query: { logs: 'crashes' } },
     },
   ]
 })

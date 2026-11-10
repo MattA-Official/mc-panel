@@ -10,7 +10,7 @@ Each server can have a page that anyone can open without signing in, at `https:/
 
 ## Turning it on
 
-A server's **Settings**, **Public page**: switch on **Show a public page for this server**, write a description (up to 500 characters, shown as plain text with line breaks), choose what it says about players, and **Save**. The card then shows the page's address with a copy button.
+A server's **Settings**, **Community**, **Public page**: switch on **Show a public page for this server**, write a description (up to 500 characters, shown as plain text with line breaks), choose what it says about players, and **Save**. The card then shows the page's address with a copy button.
 
 If the server has its own [hostname](addresses.md), the page is also at `https://<hostname>`, such as `https://survival.example.com`. See [On the server's own address](#on-the-servers-own-address).
 
@@ -30,7 +30,7 @@ Bear in mind that Minecraft itself already tells anyone who adds your server to 
 
 ## Leaderboards
 
-With **Names and heads** chosen, you can also tick **Show leaderboards**. The page then shows the top five for playtime, deaths, mob kills, distance travelled and blocks mined, for all time, this month and this week, from the same figures as the server's [Stats tab](stats.md). It's off unless you turn it on.
+With **Names and heads** chosen, you can also tick **Show leaderboards**. The page then shows the top five for playtime, deaths, mob kills, distance travelled and blocks mined, for all time, this month and this week, from the same figures as the server's [stats](stats.md) on its Players tab. It's off unless you turn it on.
 
 Leaderboards only show while the page shows names and the server keeps [player stats](stats.md). Players left out of stats never appear. Only names, heads and the figures leave the panel: nothing about when people played or who is left out.
 

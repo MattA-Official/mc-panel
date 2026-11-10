@@ -85,14 +85,10 @@ export function allowedUsername(name: string): boolean {
   return !!name.trim() && !/discord|clyde|```/i.test(name) && !/^(everyone|here)$/i.test(name)
 }
 
-export const JOIN_COLOUR = 0x1f7a4f
-export const LEAVE_COLOUR = 0x6b7280
-
 export interface Post {
   username?: string
   avatar_url?: string
   content?: string
-  embeds?: { author: { name: string; icon_url?: string }; color: number }[]
   allowed_mentions: { parse: [] }
   flags: number
 }
@@ -106,17 +102,32 @@ export interface Item {
   ready?: Promise<unknown>
 }
 
+/** A line's text: what they said, or `joined the game` / `left the game`. */
 function lineText(i: Item): string {
   const l = i.line
   if (l.kind === 'chat') return l.emote ? `_${escapeChat(l.text)}_` : escapeChat(l.text)
   return l.kind === 'joined' ? 'joined the game' : 'left the game'
 }
 
-/** One player's chat lines, posted as them. */
-export function chatPost(items: Item[]): Post {
+/** As posted under the player's name: joins and leaves in italics, so they read as events. */
+function ownLine(i: Item): string {
+  return i.line.kind === 'chat' ? lineText(i) : `_${lineText(i)}_`
+}
+
+/** As posted under someone else's name: `**Steve**: hi`, or `**Steve** joined the game`. */
+function namedLine(i: Item): string {
+  const who = `**${escapeChat(i.line.player)}**`
+  return i.line.kind === 'chat' ? `${who}: ${lineText(i)}` : `_${who} ${lineText(i)}_`
+}
+
+/**
+ * One player's lines in a row (chat, joins and leaves), posted as them with their head, all in
+ * plain text like the rest of the relay.
+ */
+export function playerPost(items: Item[]): Post {
   const first = items[0]!
   const player = first.line.player
-  const body = items.map(lineText).join('\n')
+  const body = items.map(ownLine).join('\n')
   if (allowedUsername(player)) {
     return {
       username: player.slice(0, USERNAME_MAX),
@@ -128,25 +139,7 @@ export function chatPost(items: Item[]): Post {
   }
   // A name Discord won't take: post under the webhook's own name, with theirs in the text.
   return {
-    content: items
-      .map((i) => `**${escapeChat(player)}**: ${lineText(i)}`)
-      .join('\n')
-      .slice(0, CONTENT_MAX),
-    allowed_mentions: { parse: [] },
-    flags: SUPPRESS_EMBEDS,
-  }
-}
-
-/** Joins and leaves: one short coloured line each with the player's head, up to 10 a message. */
-export function activityPost(items: Item[]): Post {
-  return {
-    embeds: items.slice(0, 10).map((i) => ({
-      author: {
-        name: `${i.line.player} ${lineText(i)}`,
-        ...(i.avatar && { icon_url: i.avatar }),
-      },
-      color: i.line.kind === 'joined' ? JOIN_COLOUR : LEAVE_COLOUR,
-    })),
+    content: items.map(namedLine).join('\n').slice(0, CONTENT_MAX),
     allowed_mentions: { parse: [] },
     flags: SUPPRESS_EMBEDS,
   }
@@ -156,10 +149,7 @@ export function activityPost(items: Item[]): Post {
 export function digestPost(items: Item[], skipped = 0): Post {
   const lines: string[] = []
   if (skipped) lines.push(`_…${skipped} earlier line${skipped === 1 ? '' : 's'} not sent_`)
-  for (const i of items) {
-    const who = `**${escapeChat(i.line.player)}**`
-    lines.push(i.line.kind === 'chat' ? `${who}: ${lineText(i)}` : `_${who} ${lineText(i)}_`)
-  }
+  for (const i of items) lines.push(namedLine(i))
   let content = ''
   for (const l of lines) {
     if (content.length + l.length + 1 > CONTENT_MAX) break
@@ -175,8 +165,7 @@ export const QUEUE_MAX = 200
 
 /**
  * The next message to send from the front of the queue, and how many lines it takes. A digest
- * takes as many lines as fit; anything else takes one player's chat in a row, or a run of joins
- * and leaves.
+ * takes as many lines as fit; anything else takes one player's lines in a row.
  */
 export function nextPost(queue: Item[], skipped = 0): { post: Post; take: number } {
   if (queue.length > DIGEST_AT || skipped) {
@@ -191,21 +180,16 @@ export function nextPost(queue: Item[], skipped = 0): { post: Post; take: number
     return { post: digestPost(queue.slice(0, take), skipped), take }
   }
   const first = queue[0]!
-  if (first.line.kind === 'chat') {
-    let take = 1
-    let size = lineText(first).length
-    while (take < queue.length) {
-      const next = queue[take]!
-      if (next.line.kind !== 'chat' || next.line.player !== first.line.player) break
-      size += lineText(next).length + 1
-      if (size > CONTENT_MAX) break
-      take++
-    }
-    return { post: chatPost(queue.slice(0, take)), take }
-  }
   let take = 1
-  while (take < queue.length && take < 10 && queue[take]!.line.kind !== 'chat') take++
-  return { post: activityPost(queue.slice(0, take)), take }
+  let size = ownLine(first).length
+  while (take < queue.length) {
+    const next = queue[take]!
+    if (next.line.player !== first.line.player) break
+    size += ownLine(next).length + 1
+    if (size > CONTENT_MAX) break
+    take++
+  }
+  return { post: playerPost(queue.slice(0, take)), take }
 }
 
 /** How long Discord says to wait before the next request, from a response's headers. */

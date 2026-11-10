@@ -7,8 +7,9 @@ use std::path::{Path, PathBuf};
 use flate2::Compression;
 use flate2::write::{GzEncoder, ZlibEncoder};
 use flytower_map::palette::Palette;
-use flytower_map::render::{Options, render};
+use flytower_map::render::{Options, render, render_with};
 use flytower_map::{manifest, tiles, world};
+use std::sync::atomic::{AtomicU32, Ordering};
 
 /// A fresh, empty folder for one test.
 fn scratch(name: &str) -> PathBuf {
@@ -196,6 +197,7 @@ fn opts() -> Options {
         threads: 2,
         full: false,
         levels: 2,
+        progress: false,
     }
 }
 
@@ -308,8 +310,14 @@ fn only_redraws_what_changed() {
     )
     .unwrap();
     fs::remove_file(regions.join("r.3.3.mca")).unwrap();
-    let third = render(&dims[0], &out, &palette, opts()).unwrap();
+    // Every region file counts towards progress once, drawn or not.
+    let done = AtomicU32::new(0);
+    let third = render_with(&dims[0], &out, &palette, opts(), &|| {
+        done.fetch_add(1, Ordering::Relaxed);
+    })
+    .unwrap();
     assert_eq!((third.drawn, third.unchanged, third.removed), (1, 2, 1));
+    assert_eq!(done.into_inner(), third.regions);
     assert!(!tiles::path(&dir, 0, 3, 3).exists());
     assert!(!tiles::path(&dir, 1, 1, 1).exists());
     assert!(tiles::path(&dir, 2, 0, 0).exists());

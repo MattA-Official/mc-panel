@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { server, status } = useServerContext()
+const { server, status, health } = useServerContext()
 const route = useRoute()
 // Without the console, the server opens on its players instead.
 const can = useCan()
@@ -10,6 +10,19 @@ if (!can('console.read', String(route.params.name))) {
 const address = computed(() =>
   server.value ? connectAddress(server.value, location.hostname) : '',
 )
+/** Crashes nobody has dismissed yet, for the count on the Crashes button. */
+const { data: events, refresh: refreshEvents } = await useFetch<
+  { kind: ServerEventKind; dismissed: boolean }[]
+>(() => `/api/servers/${String(route.params.name)}/events`, { default: () => [] })
+watch(
+  () => health.value.crash?.id,
+  () => refreshEvents(),
+)
+const unseenCrashes = computed(
+  () => events.value.filter((e) => e.kind !== 'recovered' && !e.dismissed).length,
+)
+const logsLink = (logs: string) => ({ query: { ...route.query, logs } })
+
 const copied = ref(false)
 async function copy(text: string) {
   await navigator.clipboard.writeText(text)
@@ -21,6 +34,26 @@ async function copy(text: string) {
 <template>
   <div v-if="server" class="space-y-4">
     <CrashBanner />
+    <div class="flex gap-2 lg:hidden">
+      <UButton
+        label="View logs"
+        icon="i-lucide-scroll-text"
+        color="neutral"
+        variant="outline"
+        :to="logsLink('')"
+      />
+      <UButton
+        label="Crashes"
+        icon="i-lucide-octagon-alert"
+        color="neutral"
+        variant="outline"
+        :to="logsLink('crashes')"
+      >
+        <template v-if="unseenCrashes" #trailing>
+          <UBadge :label="String(unseenCrashes)" color="error" variant="subtle" size="sm" />
+        </template>
+      </UButton>
+    </div>
     <div class="grid gap-6 lg:grid-cols-[1fr_20rem]">
       <ServerConsole
         :server="server.name"
@@ -71,6 +104,38 @@ async function copy(text: string) {
             </dd>
           </div>
         </dl>
+        <div class="hidden space-y-2 lg:block">
+          <UButton
+            label="View logs"
+            icon="i-lucide-scroll-text"
+            color="neutral"
+            variant="outline"
+            block
+            class="justify-start"
+            :to="logsLink('')"
+            data-e2e="open-logs"
+          />
+          <UButton
+            label="Crashes"
+            icon="i-lucide-octagon-alert"
+            color="neutral"
+            variant="outline"
+            block
+            class="justify-start"
+            :to="logsLink('crashes')"
+            data-e2e="open-crashes"
+          >
+            <template v-if="unseenCrashes" #trailing>
+              <UBadge
+                :label="`${unseenCrashes} new`"
+                color="error"
+                variant="subtle"
+                size="sm"
+                class="ms-auto"
+              />
+            </template>
+          </UButton>
+        </div>
       </aside>
     </div>
   </div>
