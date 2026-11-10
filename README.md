@@ -47,7 +47,7 @@ The installer prints a one-time setup token. Open your domain, enter it, and cre
 
 **Stable or Beta.** The installer installs the newest stable release by default. Add `--beta` for the newest release including betas, or `--version <x.y.z>` for a specific one. Once installed, choose the update channel under **System → Updates**. See [Stable or Beta](docs/updating.md#stable-or-beta).
 
-**Testing a pull request.** `--pr <number>` installs the signed test build of that pull request. It's for test boxes, not real servers. Each release's testing notes are in `docs/testing-<version>.md`.
+**Testing a pull request.** `--pr <number>` installs the signed test build of that pull request. It's for test boxes, not real servers. Each release's testing notes are in `docs/testing/testing-<version>.md`.
 
 ## Development
 

@@ -1,3 +1,10 @@
+---
+section: Looking after the machine
+order: 23
+panelRoute:
+  - '/system/ssh#ssh'
+---
+
 # Troubleshooting
 
 ## The panel doesn't load

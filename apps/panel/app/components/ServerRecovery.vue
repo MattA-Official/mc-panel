@@ -26,6 +26,7 @@ async function set(on: boolean) {
     <p class="mt-1 text-sm text-muted">
       A crashed server is restarted after 15 seconds. After three crashes in ten minutes it is left
       stopped until you start it again, so it doesn't crash forever.
+      <HelpLink to="crashes#crash-loops" />
     </p>
     <USwitch
       class="mt-4"

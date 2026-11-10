@@ -15,7 +15,7 @@ It installs over what's there and keeps your data and sign-in. Test builds are n
 
 ## Discord app
 
-You need a panel with a domain, a Discord server you can add apps to (a test one is best), and a Fabric or Paper server with its public page on. See [Discord app](discord.md).
+You need a panel with a domain, a Discord server you can add apps to (a test one is best), and a Fabric or Paper server with its public page on. See [Discord app](../discord.md).
 
 - [ ] In the [Developer Portal](https://discord.com/developers/applications), make a New Application, then on **Bot** press **Reset Token** and copy it.
 - [ ] **System**, **Integrations**: paste a made-up token. It's refused without asking for your passkey. Paste a real token with one character changed: Discord refuses it, and nothing is saved.

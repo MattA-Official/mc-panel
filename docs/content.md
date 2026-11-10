@@ -1,3 +1,10 @@
+---
+section: Running servers
+order: 10
+panelRoute:
+  - '/servers/:name/content'
+---
+
 # Mods, plugins and datapacks
 
 A server's **Content** tab lists what it runs. **Add content** searches the sources Flytower trusts. Everything you add goes into a [plan](first-server.md#plans) first, and every download is checked against the hash its source publishes, so a tampered file is refused.

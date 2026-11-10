@@ -40,6 +40,7 @@ const over = computed(() => !!budget.value && budget.value.givenMb > budget.valu
       <p class="text-xs text-muted">
         This machine has {{ gb(budget.totalMb) }}. 1 GB is kept for the system and Flytower, and
         each server counts its memory plus about 0.5 GB that Java uses around it.
+        <HelpLink to="first-server#memory-budget" />
       </p>
     </template>
   </div>

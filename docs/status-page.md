@@ -1,3 +1,9 @@
+---
+section: Running servers
+order: 13
+since: '1.2.0'
+---
+
 # Public status page
 
 Each server can have a page that anyone can open without signing in, at `https://<your panel>/s/<server name>`. It shows the server's name, icon and MOTD, a few lines you write about it, whether it's up, the address to join with a **Copy** button, the Minecraft version, and who's online. It wears your [branding](branding.md) and works in light and dark mode. It's useful to link from a Discord server or a website, and those sites show a preview of the link with the server's name and description.
