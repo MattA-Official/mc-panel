@@ -2,13 +2,13 @@
 section: Running servers
 order: 17
 panelRoute:
-  - '/servers/:name/yaml'
+  - '/servers/:name/settings/yaml'
   - '/servers/from-yaml'
 ---
 
 # Server YAML reference
 
-Every server can be written as one YAML document, its **spec**. The **YAML** tab shows a server's spec and lets you edit it. **New server**, **From YAML** makes a server from one. Changes go through a [plan](first-server.md#plans) like any other.
+Every server can be written as one YAML document, its **spec**. **Settings**, **YAML** shows a server's spec and lets you edit it. **New server**, **From YAML** makes a server from one. Changes go through a [plan](first-server.md#plans) like any other.
 
 The first line points editors at the schema (`/schema/server-v1.json` on your panel). In VS Code with the YAML extension, that gives you autocomplete and checking.
 
@@ -96,7 +96,7 @@ properties:
   motd: "§6§lNew Theatre §r§7Survival\n§bOpen to members"
 ```
 
-The editor in **Settings**, **Game settings** writes the same string, so you rarely need to type codes by hand. Hex colours aren't supported, because vanilla only reads the 16 colours from `server.properties`.
+The editor in **Settings**, **General**, **Game settings** writes the same string, so you rarely need to type codes by hand. Hex colours aren't supported, because vanilla only reads the 16 colours from `server.properties`.
 
 ### `content`
 

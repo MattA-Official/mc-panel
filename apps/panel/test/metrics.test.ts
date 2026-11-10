@@ -6,6 +6,7 @@ import {
   parseMeminfo,
   parseProcStat,
   parseTickQuery,
+  recent,
   series,
   type MachineReading,
 } from '../server/metrics/sampler'
@@ -114,6 +115,20 @@ describe('MetricsSampler', () => {
     const week = series(db, 'survival', 'week', now().getTime())
     expect(week.points).toHaveLength(336)
     expect(week.points.at(-1)!.players).toBe(3)
+  })
+
+  it("lists each server's last hour for the overview, without the machine", async () => {
+    const { db, sampler, advance, now } = setup()
+    await sampler.sample()
+    advance({ cores: 1, machinePct: 10 })
+    await sampler.sample()
+    db.insert(schema.metrics).values({ server: 'old', at: 1000, cpu: 1 }).run()
+
+    const got = recent(db, now().getTime())
+    expect(Object.keys(got)).toEqual(['survival'])
+    expect(got.survival).toHaveLength(2)
+    expect(got.survival!.at(-1)).toMatchObject({ memMb: 2048 })
+    expect(got.survival![0]!.at).toBeLessThan(got.survival![1]!.at)
   })
 
   it('drops samples older than a week', async () => {

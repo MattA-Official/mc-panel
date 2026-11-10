@@ -227,7 +227,7 @@ export class BackupService {
           title: 'Backups are working again',
           detail: `A ${what} just finished (${formatBytes(row.bytes)}).`,
           severity: 'ok',
-          link: `/servers/${server}/backups`,
+          link: `/servers/${server}/world`,
         })
         return job.succeed(`Backed up ${formatBytes(row.bytes)}.${describeSkipped(row.skipped)}`)
       })
@@ -239,7 +239,7 @@ export class BackupService {
           title: err instanceof BackupSkipped ? `A ${what} was skipped` : `A ${what} failed`,
           detail: failed.message ?? undefined,
           severity: 'critical',
-          link: `/servers/${server}/backups`,
+          link: `/servers/${server}/world`,
         })
         return failed
       })

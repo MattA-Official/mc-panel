@@ -133,9 +133,9 @@ describe('serverActions', () => {
     find(groups, 'Clone…')!.onSelect!()
     find(groups, 'Back up now')!.onSelect!()
     expect(calls).toEqual([
-      'go /servers/survival/settings?delete=1',
-      'go /servers/survival/settings?clone=1',
-      'go /servers/survival/backups?backup=now',
+      'go /servers/survival/settings/maintenance?delete=1',
+      'go /servers/survival/settings/maintenance?clone=1',
+      'go /servers/survival/world?backup=now',
     ])
     expect(find(groups, 'Delete…')!.color).toBe('error')
   })

@@ -298,3 +298,30 @@ export function forgetMetrics(db: Db, server: string) {
     .where(sql`${schema.metrics.server} = ${server}`)
     .run()
 }
+
+/** One minute of a running server's figures, for the servers overview. */
+export interface RecentPoint {
+  at: number
+  cpu: number | null
+  memMb: number | null
+  mspt: number | null
+}
+
+/**
+ * Every server's samples from the last hour, oldest first, for the live figures and the
+ * tick-time line on the servers overview. Servers with no samples (stopped all hour) are
+ * left out.
+ */
+export function recent(db: Db, nowMs: number): Record<string, RecentPoint[]> {
+  const m = schema.metrics
+  const from = Math.floor(nowMs / 1000) - RANGES.hour.seconds
+  const rows = db
+    .select({ server: m.server, at: m.at, cpu: m.cpu, memMb: m.memMb, mspt: m.mspt })
+    .from(m)
+    .where(and(sql`${m.server} <> ${MACHINE}`, gte(m.at, from)))
+    .orderBy(m.at)
+    .all()
+  const out: Record<string, RecentPoint[]> = {}
+  for (const { server, ...point } of rows) (out[server] ??= []).push(point)
+  return out
+}

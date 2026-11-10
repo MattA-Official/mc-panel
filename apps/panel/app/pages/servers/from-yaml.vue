@@ -106,7 +106,7 @@ async function onFile(e: Event) {
               trailing
               :to="
                 created.hasContent
-                  ? `/servers/${created.name}/yaml?review`
+                  ? `/servers/${created.name}/settings/yaml?review`
                   : `/servers/${created.name}`
               "
             />

@@ -16,13 +16,13 @@ A full disk is one of the few things that can corrupt a Minecraft world: if the 
 
 The table under it lists each server's total and its largest part, with links to its details and its backups. A server's total includes its backups and world exports, since those are kept for it.
 
-Each server's **Settings** tab has a **Disk use** card that splits the server into:
+Each server's **Settings**, **Maintenance** has a **Disk use** card that splits the server into:
 
 | Part                     | What's in it                                                                                    |
 | ------------------------ | ----------------------------------------------------------------------------------------------- |
 | World                    | Every folder starting with `world`, and the folder named by `level-name` in `server.properties` |
 | Backups                  | This server's backups, kept in `/var/lib/flytower/backups/<name>`                               |
-| World exports            | Zips made with **World**, **Export world**                                                      |
+| World exports            | Zips made with **World**, **Past worlds**                                                       |
 | Logs and crash reports   | `logs` and `crash-reports`                                                                      |
 | Mods, plugins and config | `mods`, `plugins` and `config`                                                                  |
 | Web map                  | The server's [web map](map.md), kept in `/var/lib/flytower/maps/servers/<name>`                 |
@@ -56,7 +56,7 @@ A scheduled backup that's skipped doesn't start at all, so it can't fill the dis
 
 Old backups and world exports are the usual culprits.
 
-- Lower how many backups each server keeps (**Backups**, **Schedule**), or delete old ones. Backups you took yourself are never deleted automatically.
-- Delete world exports you've already downloaded (**World**, **Export world**).
+- Lower how many backups each server keeps (**World**, **Backups**, **Schedule**), or delete old ones. Backups you took yourself are never deleted automatically.
+- Delete world exports you've already downloaded (**World**, **Past worlds**).
 - Deleted servers are kept as archives in `/var/lib/flytower/archive` so they can be brought back. Delete the ones you're sure about over [SSH](troubleshooting.md).
 - With [off-site copies](backups.md#off-site-copies) set up, you can keep fewer backups on the machine.
