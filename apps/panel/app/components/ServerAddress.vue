@@ -34,7 +34,7 @@ async function save() {
     <h2 class="text-base font-semibold">Address</h2>
     <p class="mt-1 text-sm text-muted">
       A name players connect with instead of an IP address and port. You'll need DNS records for it
-      with whoever runs your domain.
+      with whoever runs your domain. <HelpLink to="addresses#dns-records" />
     </p>
     <div class="mt-4 flex flex-wrap items-end gap-3">
       <UFormField label="Hostname" class="min-w-64 flex-1">

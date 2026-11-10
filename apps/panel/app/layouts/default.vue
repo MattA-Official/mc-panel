@@ -62,7 +62,24 @@ const items = computed<NavigationMenuItem[]>(() => [
       ? { badge: { label: String(systemUpdates.value), color: 'info', variant: 'subtle' } }
       : {}),
   },
+  { label: 'Help', icon: 'i-lucide-book-open', to: '/help' },
 ])
+
+// Search (Ctrl+K or ⌘K) covers the help pages and jumps to panel pages. The docs index only
+// loads the first time it opens.
+const docsNavigation = useDocsNavigation()
+const { open: searchOpen } = useContentSearch()
+const searchFiles = ref<Awaited<ReturnType<typeof queryCollectionSearchSections>>>([])
+watch(searchOpen, async (open) => {
+  if (open && !searchFiles.value.length) {
+    const sections = await queryCollectionSearchSections('docs', { ignoredTags: ['code'] })
+    // Each page's H1 comes back as a second copy of the page itself; keep just the page.
+    searchFiles.value = sections.filter((s) => !(s.level === 1 && s.id.includes('#')))
+  }
+})
+const searchLinks = computed(() =>
+  items.value.map((i) => ({ label: `Go to ${i.label}`, icon: i.icon, to: i.to })),
+)
 </script>
 
 <template>
@@ -81,6 +98,7 @@ const items = computed<NavigationMenuItem[]>(() => [
           </NuxtLink>
         </template>
         <template #default="{ collapsed }">
+          <UContentSearchButton :collapsed="collapsed" label="Search" class="w-full" />
           <UNavigationMenu :collapsed="collapsed" :items="items" orientation="vertical" />
         </template>
         <template #footer="{ collapsed }">
@@ -116,6 +134,14 @@ const items = computed<NavigationMenuItem[]>(() => [
         </template>
       </UDashboardSidebar>
       <slot />
+      <HelpPanel />
+      <UContentSearch
+        :files="searchFiles"
+        :navigation="docsNavigation"
+        :links="searchLinks"
+        :fuse="{ resultLimit: 30 }"
+        placeholder="Search help…"
+      />
     </UDashboardGroup>
   </div>
 </template>

@@ -1,0 +1,23 @@
+{
+  "name": "@flytower/docs-layer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The docs/ folder as a Nuxt layer: the Content collection, link handling and help routing shared by the panel and the website",
+  "main": "./nuxt.config.ts",
+  "exports": {
+    ".": "./nuxt.config.ts",
+    "./collection": "./collection.ts",
+    "./routes": "./routes.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nuxt/content": "3.16.2"
+  },
+  "peerDependencies": {
+    "nuxt": "^4",
+    "@nuxt/ui": "^4"
+  }
+}

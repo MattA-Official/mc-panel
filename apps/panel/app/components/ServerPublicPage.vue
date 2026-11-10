@@ -121,6 +121,7 @@ const PLAYER_ITEMS: { label: string; value: PlayerVisibility; description: strin
     <p class="mt-1 text-sm text-muted">
       A page anyone can open without signing in, with the address to join, whether the server is up
       and who's on. Useful to link from a Discord server or a website.
+      <HelpLink to="status-page" />
     </p>
 
     <div
@@ -184,6 +185,25 @@ const PLAYER_ITEMS: { label: string; value: PlayerVisibility; description: strin
           :items="PLAYER_ITEMS"
           data-e2e="public-page-players"
         />
+        <div>
+          <UCheckbox
+            v-model="form.show.leaderboard"
+            label="Show leaderboards"
+            description="The top five for playtime, deaths, mob kills, distance and blocks mined, for all time, this month and this week. Players left out of stats never appear."
+            :disabled="form.show.players !== 'names' || !server.stats.enabled"
+            data-e2e="public-page-leaderboard"
+          />
+          <p
+            v-if="form.show.players !== 'names' || !server.stats.enabled"
+            class="mt-1 ms-6 text-sm text-muted"
+          >
+            {{
+              !server.stats.enabled
+                ? 'Player stats are off for this server, so there is nothing to show.'
+                : 'Leaderboards are lists of names, so they only show when the page shows names and heads.'
+            }}
+          </p>
+        </div>
         <UCheckbox
           v-model="form.show.version"
           label="Show the Minecraft version and loader"

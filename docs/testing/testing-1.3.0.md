@@ -15,7 +15,7 @@ It installs over what's there and keeps your data and sign-in. Test builds are n
 
 ## Discord app
 
-You need a panel with a domain, a Discord server you can add apps to (a test one is best), and a Fabric or Paper server with its public page on. See [Discord app](discord.md).
+You need a panel with a domain, a Discord server you can add apps to (a test one is best), and a Fabric or Paper server with its public page on. See [Discord app](../discord.md).
 
 - [ ] In the [Developer Portal](https://discord.com/developers/applications), make a New Application, then on **Bot** press **Reset Token** and copy it.
 - [ ] **System**, **Integrations**: paste a made-up token. It's refused without asking for your passkey. Paste a real token with one character changed: Discord refuses it, and nothing is saved.
@@ -28,6 +28,16 @@ You need a panel with a domain, a Discord server you can add apps to (a test one
 - [ ] Stop the server: `/status` says Offline straight away. Start it: Starting, then Online once players can join.
 - [ ] `curl -X POST https://<panel>/api/discord/interactions -d '{}'` gets a 401.
 - [ ] In the portal, change the endpoint URL to something else and save, then press **Test connection** in Flytower: the card says **Endpoint not set**. **Try the endpoint again** puts it back.
+- [ ] **Discord roles**: press **Give a Discord role access**. Copy a test Discord role's ID (Developer Mode on, right-click the role, **Copy Role ID**), call it Staff, pick **Operator** on **All servers** and save. You're asked for your passkey, and the card lists "Staff gets Operator on all servers". **Activity** shows the change.
+- [ ] Owner isn't in the role list. A made-up ID like `abc` keeps **Save** greyed out.
+- [ ] As a Discord member with the Staff role, `/status` now also suggests servers whose public page is off.
+- [ ] Change the mapping to one server and save: `/status` only adds that server.
+- [ ] Without the Staff role, `/restart` answers "Sorry, you can't use that", only to you, and **Activity** shows "Tried /restart … without access".
+- [ ] With the Staff role: `/whitelist add <player>` whitelists them (check the Players tab), and `/whitelist remove` takes them off. With more than one server, leaving out `server` asks which.
+- [ ] `/say hello @everyone` shows `[Discord] <your name>: hello @everyone` in the game, and pings nobody in Discord.
+- [ ] `/restart`: "Restarting" straight away, then "… is back up" once the server is ready.
+- [ ] `/backup note:test`: "Backing up", then "Backed up … <size>". The backup has the note in the Backups tab.
+- [ ] **Activity** shows each of these as "<your Discord name> via Discord".
 - [ ] **Disconnect**: after the passkey check the card is back to empty, the commands disappear from Discord (it may take a minute, or reopen Discord), and the portal's endpoint is empty.
 
 ## Game chat to Discord

@@ -5,3 +5,4 @@ bun.lock
 **/public/*.svg
 **/migrations/meta
 **/migrations.gen.ts
+protocol/schema.json

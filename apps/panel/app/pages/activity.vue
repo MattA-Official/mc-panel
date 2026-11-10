@@ -61,7 +61,9 @@ const when = (at: string) => formatDateTime(at)
 <template>
   <UDashboardPanel id="activity">
     <template #header>
-      <UDashboardNavbar title="Activity" />
+      <UDashboardNavbar title="Activity">
+        <template #right><HelpButton /></template>
+      </UDashboardNavbar>
     </template>
     <template #body>
       <div class="mx-auto w-full max-w-5xl space-y-4">

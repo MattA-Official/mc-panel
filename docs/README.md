@@ -1,6 +1,14 @@
+---
+title: Overview
+section: Getting started
+order: 1
+---
+
 # Flytower documentation
 
 Flytower is a web panel for running Minecraft servers on your own VPS. You install it once, then create and look after servers from the browser. You sign in with a passkey.
+
+These pages are also in the panel itself, for the version you have installed: **Help** in the sidebar, the **?** at the top of each page for the page you're on, and **Ctrl+K** (**⌘K** on a Mac) to search them.
 
 ## Getting started
 
@@ -17,6 +25,7 @@ Flytower is a web panel for running Minecraft servers on your own VPS. You insta
 - [Public status page](status-page.md): a page anyone can open, with the address, whether it's up and who's on.
 - [Scheduled tasks](schedules.md): restarts with an in-game countdown, console commands and announcements.
 - [Crashes](crashes.md): crash reports, crash loops, and servers that stop responding.
+- [Player stats](stats.md): leaderboards for playtime, deaths, kills, distance and blocks mined, and leaving players out.
 - [Notifications](notifications.md): Discord, ntfy and JSON webhooks for crashes, failed backups, a filling disk, updates and players.
 - [Discord app](discord.md): slash commands like `/status` and `/players` in your Discord server.
 - [Server YAML reference](spec.md): every field of a server spec.

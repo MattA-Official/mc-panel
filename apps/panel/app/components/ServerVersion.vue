@@ -72,7 +72,7 @@ async function review() {
     <h2 class="text-base font-semibold">Version</h2>
     <p class="mt-1 text-sm text-muted">
       Upgrading takes a backup first. The world is upgraded when the server starts, and can only go
-      back by restoring that backup.
+      back by restoring that backup. <HelpLink to="content#updates" />
     </p>
     <div class="mt-4 grid gap-4 sm:grid-cols-2">
       <UFormField label="Loader">

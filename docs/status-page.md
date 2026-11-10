@@ -1,3 +1,9 @@
+---
+section: Running servers
+order: 13
+since: '1.2.0'
+---
+
 # Public status page
 
 Each server can have a page that anyone can open without signing in, at `https://<your panel>/s/<server name>`. It shows the server's name, icon and MOTD, a few lines you write about it, whether it's up, the address to join with a **Copy** button, the Minecraft version, and who's online. It wears your [branding](branding.md) and works in light and dark mode. It's useful to link from a Discord server or a website, and those sites show a preview of the link with the server's name and description.
@@ -21,6 +27,12 @@ You choose what the page says about who's online:
 - **Nothing**.
 
 Bear in mind that Minecraft itself already tells anyone who adds your server to their multiplayer list how many people are on, and a sample of their names, unless you set `hide-online-players=true` in the server's settings.
+
+## Leaderboards
+
+With **Names and heads** chosen, you can also tick **Show leaderboards**. The page then shows the top five for playtime, deaths, mob kills, distance travelled and blocks mined, for all time, this month and this week, from the same figures as the server's [Stats tab](stats.md). It's off unless you turn it on.
+
+Leaderboards only show while the page shows names and the server keeps [player stats](stats.md). Players left out of stats never appear. Only names, heads and the figures leave the panel: nothing about when people played or who is left out.
 
 ## Modpack for players
 

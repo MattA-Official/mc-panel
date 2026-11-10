@@ -207,6 +207,7 @@ const nextText = computed(() =>
       <div v-if="form.preset !== 'off'">
         <p class="mb-2 text-sm text-muted">
           Which scheduled backups to keep. Backups you make yourself are kept until you delete them.
+          <HelpLink to="backups#how-many-are-kept" />
         </p>
         <div class="flex flex-wrap items-start gap-3">
           <UFormField label="Latest" help="backups">

@@ -4,6 +4,7 @@
  * the server's settings allow, from /api/public/servers/<name>.
  */
 import type { PublicStatus } from '#shared/public-page'
+import { PERIOD_LABELS, PERIODS, type Board, type Period } from '#shared/leaderboards'
 import { layoutMotd, motdPlainText } from '~~/shared/utils/motd'
 
 definePageMeta({ layout: 'public' })
@@ -53,6 +54,17 @@ const motd = computed(() =>
 
 const skin = (uuid: string) =>
   `/api/public/servers/${encodeURIComponent(name.value)}/skins/${encodeURIComponent(uuid)}.png`
+
+// Leaderboards, when the page shows them: fetched only then, and again when the period changes.
+const period = ref<Period>('all')
+const showBoards = computed(() => !!data.value?.leaderboard)
+const { data: boards, execute: loadBoards } = useFetch<{ boards: Board[] }>(
+  () => `/api/public/servers/${encodeURIComponent(name.value)}/leaderboards`,
+  { query: { period }, immediate: false, watch: false, server: false },
+)
+watch([showBoards, period], ([on]) => on && loadBoards(), { immediate: true })
+// With nothing at all yet, the section stays hidden rather than showing empty boards.
+const hasBoards = computed(() => (boards.value?.boards ?? []).some((b) => b.entries.length))
 
 const playersLine = computed(() => {
   const p = data.value?.players
@@ -158,6 +170,32 @@ const playersLine = computed(() => {
           <span>{{ p.name }}</span>
         </li>
       </ul>
+    </section>
+
+    <section
+      v-if="showBoards && boards && (hasBoards || period !== 'all')"
+      class="space-y-3"
+      aria-labelledby="status-leaderboards"
+      data-e2e="status-leaderboards"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="status-leaderboards" class="font-semibold">Leaderboards</h2>
+        <div class="flex gap-1" role="group" aria-label="Period">
+          <UButton
+            v-for="p in PERIODS"
+            :key="p"
+            :label="PERIOD_LABELS[p]"
+            size="xs"
+            :color="period === p ? 'primary' : 'neutral'"
+            :variant="period === p ? 'soft' : 'ghost'"
+            :aria-pressed="period === p"
+            @click="period = p"
+          />
+        </div>
+      </div>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <LeaderboardList v-for="b in boards!.boards" :key="b.key" :board="b" :skin="skin" />
+      </div>
     </section>
   </article>
 </template>

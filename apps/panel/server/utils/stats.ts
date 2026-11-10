@@ -6,6 +6,9 @@ import { parseList } from '../players'
 import { schema } from '../db'
 import { eq } from 'drizzle-orm'
 import { readStatsSettings, type StatsSettings } from '../../shared/stats-settings'
+import { PERIODS, type Board, type Period, type StatsOverview } from '../../shared/leaderboards'
+import { showsLeaderboard, type PublicPage } from '../../shared/public-page'
+import { buildBoards, buildCards, periodStart } from '../stats/leaderboards'
 
 /** A server's player stats settings, with defaults filled in. */
 export function statsSettings(server: string): StatsSettings {
@@ -156,4 +159,94 @@ export async function takeStatsSnapshots() {
       console.error(`[flytower] stats snapshot for ${name} failed`, err)
     }
   }
+}
+
+/** A server's time zone, UTC when it isn't set. */
+function serverTimezone(server: string): string {
+  return (
+    useDb()
+      .select({ tz: schema.servers.timezone })
+      .from(schema.servers)
+      .where(eq(schema.servers.name, server))
+      .get()?.tz ?? 'UTC'
+  )
+}
+
+/** Names by UUID from usercache.json, for players with stats but no sessions. */
+async function userCacheNames(server: string): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  const cache = await readUserCache(server).catch(() => null)
+  if (!Array.isArray(cache)) return out
+  for (const e of cache as { name?: unknown; uuid?: unknown }[]) {
+    if (typeof e?.name === 'string' && typeof e.uuid === 'string')
+      out.set(e.uuid.toLowerCase(), e.name)
+  }
+  return out
+}
+
+/**
+ * The leaderboards and player cards for a period. Left-out players never appear, whatever
+ * is in the tables.
+ */
+export async function statsOverview(
+  server: string,
+  period: Period,
+  opts: { limit?: number; cards?: boolean } = {},
+): Promise<StatsOverview> {
+  const settings = statsSettings(server)
+  const leftOut = new Set(settings.leaveOut.map((p) => p.uuid))
+  const since = periodStart(period, serverTimezone(server), Date.now())
+  const snap = useStatsSnapshot()
+  const totals = snap.totals(server, since)
+  await useSessions().idle()
+  const sessions = useSessions().summary(server)
+  const fromSessions = new Map(sessions.map((s) => [s.uuid, s.name]))
+  const fromCache = await userCacheNames(server)
+  const nameOf = (uuid: string) => {
+    const n = fromSessions.get(uuid)
+    return n && n !== uuid ? n : (fromCache.get(uuid) ?? uuid)
+  }
+  return {
+    enabled: settings.enabled,
+    period,
+    since: since ?? null,
+    updatedAt: snap.lastTaken(server),
+    boards: buildBoards(totals, nameOf, leftOut, opts.limit ?? 10),
+    players: opts.cards === false ? [] : buildCards(totals, sessions, nameOf, leftOut),
+  }
+}
+
+/** How many places each board shows on a public page. */
+export const PUBLIC_LIMIT = 5
+
+/**
+ * The leaderboards a public page shows, or null when it shows none. Only names and figures
+ * leave the panel; nothing about visits or who is left out.
+ */
+export async function publicLeaderboards(
+  server: string,
+  page: PublicPage,
+  period: Period,
+): Promise<{
+  period: Period
+  since: string | null
+  updatedAt: number | null
+  boards: Board[]
+} | null> {
+  if (!showsLeaderboard(page, statsSettings(server).enabled)) return null
+  const o = await statsOverview(server, period, { limit: PUBLIC_LIMIT, cards: false })
+  return { period: o.period, since: o.since, updatedAt: o.updatedAt, boards: o.boards }
+}
+
+/** Every player on any of a public page's leaderboards, for their heads. */
+export async function publicLeaderboardUuids(
+  server: string,
+  page: PublicPage,
+): Promise<Set<string>> {
+  const out = new Set<string>()
+  for (const period of PERIODS) {
+    const l = await publicLeaderboards(server, page, period)
+    for (const b of l?.boards ?? []) for (const e of b.entries) out.add(e.uuid)
+  }
+  return out
 }

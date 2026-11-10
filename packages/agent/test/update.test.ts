@@ -100,6 +100,20 @@ describe('update.install', () => {
     expect(run.args.at(-1)).toBe('0.5.0')
   })
 
+  it('downloads native builds from their own tag', async () => {
+    const { p } = layout()
+    const requested: string[] = []
+    const fetch = (async (url: string) => {
+      requested.push(String(url))
+      return new Response('', { status: 404 })
+    }) as never
+    const { exec } = fakeExec()
+    const { ctx } = fakeContext(exec, fetch, p)
+    ctx.releasesUrl = 'https://releases.test'
+    await dispatch(call('update.install', { version: '1.2.0-beta.2.native.1' }), handlers, ctx)
+    expect(requested[0]).toBe('https://releases.test/native-1.2.0-beta.2.native.1/SHA256SUMS')
+  })
+
   it('refuses a bad signature before downloading the archive', async () => {
     const { root, p } = layout()
     const { fetch, requested } = await release(root, { badSig: true })

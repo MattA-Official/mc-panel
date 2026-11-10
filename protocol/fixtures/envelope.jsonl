@@ -1,0 +1,12 @@
+{"kind":"request","valid":true,"value":{"id":"1","verb":"ping","params":{}}}
+{"kind":"request","valid":true,"note":"params are checked per verb, not by the envelope","value":{"id":"a-64-char-id-is-fine","verb":"service.start","params":{"server":"survival"}}}
+{"kind":"request","valid":false,"note":"missing id","value":{"verb":"ping","params":{}}}
+{"kind":"request","valid":false,"note":"empty id","value":{"id":"","verb":"ping","params":{}}}
+{"kind":"request","valid":false,"note":"id over 64 characters","value":{"id":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","verb":"ping","params":{}}}
+{"kind":"request","valid":false,"note":"unknown top-level key","value":{"id":"1","verb":"ping","params":{},"sudo":true}}
+{"kind":"request","valid":false,"note":"missing params","value":{"id":"1","verb":"ping"}}
+{"kind":"response","valid":true,"value":{"id":"1","ok":true,"result":{"agentVersion":"1.2.0","protocol":1}}}
+{"kind":"response","valid":true,"value":{"id":"1","ok":false,"error":{"code":"not_found","message":"no such server"}}}
+{"kind":"response","valid":false,"note":"unknown error code","value":{"id":"1","ok":false,"error":{"code":"oops","message":"no"}}}
+{"kind":"response","valid":false,"note":"error without a message","value":{"id":"1","ok":false,"error":{"code":"failed"}}}
+{"kind":"response","valid":false,"note":"ok is not a boolean","value":{"id":"1","ok":"yes","result":{}}}

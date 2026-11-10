@@ -1,3 +1,11 @@
+---
+section: Getting started
+order: 4
+panelRoute:
+  - '/account'
+  - '/activity#who-did-what'
+---
+
 # Your account, passkeys and recovery codes
 
 Flytower has no passwords. You sign in with a **passkey**: your phone, laptop or password manager proves it's you with your fingerprint, face or PIN. Passkeys can't be phished, and there's nothing to leak.

@@ -3,7 +3,7 @@
 import type { Inline } from '#shared/utils/markdown'
 
 const props = defineProps<{ source: string }>()
-const blocks = computed(() => parseMarkdown(props.source))
+const blocks = computed(() => parseNotes(props.source))
 
 function inline(parts: Inline[]) {
   return parts.map((p) => {
