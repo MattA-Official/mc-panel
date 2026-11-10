@@ -17,6 +17,12 @@ export const ResponseType = {
 /** Message flag: only the person who used the command sees the answer. */
 export const EPHEMERAL = 1 << 6
 
+export interface DiscordUser {
+  id: string
+  username?: string
+  global_name?: string | null
+}
+
 export interface Interaction {
   id: string
   type: number
@@ -24,8 +30,8 @@ export interface Interaction {
   token: string
   guild_id?: string
   data?: unknown
-  member?: { user?: { id: string }; roles?: string[] }
-  user?: { id: string }
+  member?: { user?: DiscordUser; roles?: string[]; nick?: string | null }
+  user?: DiscordUser
 }
 
 /** A short private answer, for anything Flytower can't do (yet). */

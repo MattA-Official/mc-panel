@@ -1,6 +1,7 @@
+import { schema } from '../../db'
 import type { Interaction } from '../../discord/interactions'
 import { route } from '../../discord/registry'
-import { NO_ACCESS } from '../../../shared/permissions'
+import { discordActor, viaDiscord } from '../../discord/roles'
 import { verifyInteraction } from '../../discord/verify'
 
 /**
@@ -28,6 +29,18 @@ export default defineEventHandler(async (event) => {
   if (interaction.application_id !== app.applicationId) {
     throw createError({ statusCode: 401, statusMessage: 'Not for this app.' })
   }
-  // Nobody from Discord has access in Flytower yet; mapping Discord roles comes later.
-  return route(useCommands(), interaction, () => NO_ACCESS)
+  return route(useCommands(), interaction, discordAccessFor, {
+    refused(ctx, command) {
+      const server = typeof ctx.options.server === 'string' ? ctx.options.server.slice(0, 40) : null
+      useDb()
+        .insert(schema.audit)
+        .values({
+          userId: null,
+          action: 'discord.refused',
+          target: server,
+          detail: viaDiscord(discordActor(interaction), { command: command.name }),
+        })
+        .run()
+    },
+  })
 })
