@@ -175,7 +175,13 @@ const discard = () => (draft.value = { ...base.value })
   <section class="rounded-lg border border-default p-5">
     <h2 class="text-base font-semibold">Game settings</h2>
     <p v-if="!data" class="mt-4 text-sm text-muted">Loading…</p>
-    <div v-else class="mt-4 grid gap-x-6 gap-y-5 sm:grid-cols-2">
+    <ServerIcon
+      v-if="data"
+      class="mt-4 border-b border-default pb-5"
+      :motd="draft.motd ?? ''"
+      :max-players="numbers['max-players']!.value"
+    />
+    <div v-if="data" class="mt-5 grid gap-x-6 gap-y-5 sm:grid-cols-2">
       <template v-for="f in FIELDS" :key="f.key">
         <UFormField
           v-if="f.type === 'motd'"
@@ -187,6 +193,7 @@ const discard = () => (draft.value = { ...base.value })
             v-model="draft[f.key]!"
             :name="server?.displayName ?? server?.name ?? 'Minecraft Server'"
             :max-players="numbers['max-players']!.value"
+            :icon="server?.icon"
           />
         </UFormField>
         <UFormField v-else-if="f.type === 'select'" :label="f.label" :description="f.help">
