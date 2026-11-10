@@ -77,7 +77,7 @@ export async function install(
   }
   // Native builds (docs/decisions/0001-rust-and-go.md) have their own tags, which panels from
   // before the Native channel never look at.
-  const tag = /-native\./.test(p.version) ? `native-${p.version}` : `v${p.version}`
+  const tag = /-(.+\.)?native\.\d+$/.test(p.version) ? `native-${p.version}` : `v${p.version}`
   const base = `${ctx.releasesUrl ?? RELEASES}/${tag}`
   const name = `flytower-${p.version}-linux-${archOf(ctx)}.tar.gz`
   const work = join(prefix, 'releases', `.download-${p.version}`)

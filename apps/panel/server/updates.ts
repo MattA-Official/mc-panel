@@ -22,8 +22,11 @@ const API = 'https://api.github.com/repos/MattA-Official/mc-panel/releases?per_p
 
 const isPre = (version: string) => version.replace(/^v/, '').includes('-')
 
-/** A native build's version, like 1.5.0-native.1. */
-export const isNative = (version: string) => /-native\./.test(version)
+/**
+ * A native build's version: the release it's built alongside plus a native counter, such as
+ * 1.2.0-beta.2.native.1 (with 1.2.0-beta.2) or 1.2.0-native.1 (with 1.2.0).
+ */
+export const isNative = (version: string) => /-(.+\.)?native\.\d+$/.test(version)
 
 /** The release tag for a version: native builds have their own, so older panels skip them. */
 export const releaseTag = (version: string) =>
@@ -106,11 +109,11 @@ export async function listReleases(fetchImpl: Fetch = fetch): Promise<Release[]>
 
 /**
  * Releases offered on a channel. Stable skips betas. Beta offers betas too, but never native
- * builds. Native offers native builds and stable releases, so a native install moves to the
- * stable release that includes the native work once there is one.
+ * builds. Native offers only native builds: 1.2.0 sorts after 1.2.0-native.1, so offering
+ * stable releases there would take a native install off native without anyone asking.
  */
 export function onChannel(releases: Release[], channel: UpdateChannel): Release[] {
-  if (channel === 'native') return releases.filter((r) => r.native || !r.prerelease)
+  if (channel === 'native') return releases.filter((r) => r.native)
   if (channel === 'beta') return releases.filter((r) => !r.native)
   return releases.filter((r) => !r.prerelease)
 }

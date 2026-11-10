@@ -110,8 +110,8 @@ describe('update.install', () => {
     const { exec } = fakeExec()
     const { ctx } = fakeContext(exec, fetch, p)
     ctx.releasesUrl = 'https://releases.test'
-    await dispatch(call('update.install', { version: '1.5.0-native.1' }), handlers, ctx)
-    expect(requested[0]).toBe('https://releases.test/native-1.5.0-native.1/SHA256SUMS')
+    await dispatch(call('update.install', { version: '1.2.0-beta.2.native.1' }), handlers, ctx)
+    expect(requested[0]).toBe('https://releases.test/native-1.2.0-beta.2.native.1/SHA256SUMS')
   })
 
   it('refuses a bad signature before downloading the archive', async () => {
