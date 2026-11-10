@@ -1,3 +1,11 @@
+---
+section: Running servers
+order: 18
+since: '1.3.0'
+panelRoute:
+  - '/system/integrations'
+---
+
 # Discord app
 
 Flytower can answer **slash commands** in your Discord server, such as `/status` and `/players`, through a Discord app you make. It's separate from [notifications](notifications.md), which only need a channel webhook.
