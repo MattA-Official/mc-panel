@@ -1,3 +1,5 @@
+import type { PublicPage } from '#shared/public-page'
+
 export type ServiceState =
   'active' | 'inactive' | 'activating' | 'deactivating' | 'failed' | 'unknown'
 
@@ -62,6 +64,7 @@ export interface Server {
   hostname: string | null
   createdAt: string
   restartWhenUnresponsive: boolean
+  publicPage: PublicPage
   status: ServiceState
   health: Health
 }

@@ -2,6 +2,8 @@ const PUBLIC = new Set(['/setup', '/login'])
 
 /** Sends the browser to setup, sign-in or passkey enrolment as the session requires. */
 export default defineNuxtRouteMiddleware(async (to) => {
+  // Public status pages are for anyone, signed in or not.
+  if (to.path.startsWith('/s/')) return
   const { state, refresh } = useAuthState()
   const s = state.value ?? (await refresh())
 

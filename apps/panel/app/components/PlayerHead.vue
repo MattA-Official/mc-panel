@@ -4,9 +4,13 @@
  * at (40,8) on top, each 8×8 on a 64-wide skin. The browser does the cropping, so the
  * server never decodes an image. Decorative: the player's name always sits beside it.
  */
-const props = withDefaults(defineProps<{ uuid: string; size?: number }>(), { size: 24 })
+const props = withDefaults(defineProps<{ uuid: string; size?: number; src?: string }>(), {
+  size: 24,
+  src: undefined,
+})
 
-const url = computed(() => `/api/skins/${encodeURIComponent(props.uuid)}.png`)
+// The public status page passes its own skin URL, which works without signing in.
+const url = computed(() => props.src ?? `/api/skins/${encodeURIComponent(props.uuid)}.png`)
 const hat = ref(true)
 
 /**
