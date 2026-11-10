@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { routeToPage } from '@flytower/docs-layer/routes'
+
 definePageMeta({ layout: 'docs' })
 
 const route = useRoute()

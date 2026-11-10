@@ -1,24 +1,22 @@
 <script setup lang="ts">
 import type { ContentNavigationItem } from '@nuxt/content'
+import { groupBySection, pageRoute, type DocsPage } from '@flytower/docs-layer/routes'
 
 const navigation = inject<Ref<ContentNavigationItem[] | null>>('navigation')
-const { docsNav } = useAppConfig()
+const base = useAppConfig().docs?.base ?? '/docs'
 
-// Group the flat docs list into the sections from app.config, in reading order.
+// Group the docs into sections from their `section` and `order` frontmatter; README is "Overview".
 const groups = computed<ContentNavigationItem[]>(() => {
-  const all = (navigation?.value ?? []).flatMap((item) => item.children ?? [item])
-  const byPath = new Map(all.map((item) => [item.path, item]))
-  return docsNav.map((section) => ({
+  const pages = (navigation?.value ?? []).flatMap(
+    (item) => item.children ?? [item],
+  ) as (ContentNavigationItem & DocsPage)[]
+  return groupBySection(pages).map((section) => ({
     title: section.title,
-    path: section.pages[0] ?? '/docs',
-    children: section.pages
-      .map((path) => byPath.get(path))
-      .filter((item): item is ContentNavigationItem => !!item)
-      .map((item) =>
-        item.path === '/docs/readme'
-          ? { ...item, title: 'Overview', path: '/docs', exact: true }
-          : item,
-      ),
+    path: pageRoute(section.pages[0]?.path ?? base, base),
+    children: section.pages.map((page) => {
+      const path = pageRoute(page.path, base)
+      return path === base ? { ...page, title: 'Overview', path, exact: true } : { ...page, path }
+    }),
   }))
 })
 </script>

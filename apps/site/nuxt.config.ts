@@ -4,6 +4,8 @@
 // static assets and is free to grow server routes later.
 export default defineNuxtConfig({
   compatibilityDate: '2026-11-01',
+  // The docs collection, link handling and section grouping are shared with the panel.
+  extends: ['../../packages/docs-layer'],
   modules: ['@nuxt/ui', '@nuxt/content'],
   css: ['~/assets/css/main.css'],
   colorMode: { preference: 'dark', fallback: 'dark' },

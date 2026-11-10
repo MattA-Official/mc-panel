@@ -4,7 +4,7 @@ const site = useAppConfig().site
 // Navigation and search data for every docs page, fetched once at build time and stored in
 // each prerendered page's payload, so visitors never query a database.
 const { data: navigation } = await useAsyncData('docs-navigation', () =>
-  queryCollectionNavigation('docs'),
+  queryCollectionNavigation('docs', ['section', 'order']),
 )
 const { data: searchFiles } = useLazyAsyncData(
   'docs-search',

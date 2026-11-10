@@ -14,25 +14,8 @@ export default defineAppConfig({
     install:
       'curl -fsSL https://github.com/MattA-Official/mc-panel/releases/latest/download/install.sh | sudo bash -s -- --domain panel.example.com',
   },
-  /** Docs sidebar, in reading order. Paths match the files in the repo's docs/ folder. */
-  docsNav: [
-    {
-      title: 'Getting started',
-      pages: ['/docs/readme', '/docs/install', '/docs/first-server', '/docs/account'],
-    },
-    {
-      title: 'Running servers',
-      pages: [
-        '/docs/content',
-        '/docs/backups',
-        '/docs/addresses',
-        '/docs/crashes',
-        '/docs/notifications',
-      ],
-    },
-    { title: 'Looking after the machine', pages: ['/docs/updating', '/docs/troubleshooting'] },
-    { title: 'Reference', pages: ['/docs/spec'] },
-  ],
+  /** Docs are served at /docs; the sidebar groups pages by their `section` frontmatter. */
+  docs: { base: '/docs' },
   ui: {
     colors: {
       primary: 'tungsten',

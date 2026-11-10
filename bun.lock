@@ -47,6 +47,7 @@
       "name": "@flytower/site",
       "version": "0.0.0",
       "dependencies": {
+        "@flytower/docs-layer": "workspace:*",
         "@fontsource-variable/big-shoulders-display": "^5.3.0",
         "@fontsource-variable/ibm-plex-sans": "^5.3.0",
         "@fontsource/ibm-plex-mono": "^5.3.0",
