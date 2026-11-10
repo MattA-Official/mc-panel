@@ -5,9 +5,8 @@ import {
   DIGEST_AT,
   QUEUE_MAX,
   accountName,
-  activityPost,
   allowedUsername,
-  chatPost,
+  playerPost,
   escapeChat,
   nextPost,
   parseRelayLine,
@@ -89,7 +88,7 @@ describe('making chat safe for Discord', () => {
   })
 
   it('posts chat as the player with mentions off and previews off', () => {
-    const p = chatPost([item(chat('Steve', 'hi @here'), 'https://p/heads/x.png')])
+    const p = playerPost([item(chat('Steve', 'hi @here'), 'https://p/heads/x.png')])
     expect(p).toEqual({
       username: 'Steve',
       avatar_url: 'https://p/heads/x.png',
@@ -102,19 +101,23 @@ describe('making chat safe for Discord', () => {
   it("puts names Discord won't take in the text instead", () => {
     expect(allowedUsername('DiscordFan')).toBe(false)
     expect(allowedUsername('Steve')).toBe(true)
-    const p = chatPost([item(chat('DiscordFan', 'hi'))])
+    const p = playerPost([item(chat('DiscordFan', 'hi'))])
     expect(p.username).toBeUndefined()
     expect(p.content).toBe('**DiscordFan**: hi')
   })
 
-  it('posts joins and leaves as a short coloured line with the head', () => {
-    const p = activityPost([item({ kind: 'joined', player: 'Steve' }, 'https://h')])
-    expect(p.embeds).toEqual([
-      { author: { name: 'Steve joined the game', icon_url: 'https://h' }, color: 0x1f7a4f },
-    ])
-    expect(p.allowed_mentions).toEqual({ parse: [] })
-    // Suppressing embeds would hide the line itself.
-    expect(p.flags).toBeUndefined()
+  it('posts joins and leaves as plain text under the player, with their head', () => {
+    const p = playerPost([item({ kind: 'joined', player: 'Steve' }, 'https://h')])
+    expect(p).toEqual({
+      username: 'Steve',
+      avatar_url: 'https://h',
+      content: '_joined the game_',
+      allowed_mentions: { parse: [] },
+      flags: 4,
+    })
+    expect(playerPost([item({ kind: 'left', player: 'DiscordFan' })]).content).toBe(
+      '_**DiscordFan** left the game_',
+    )
   })
 })
 
@@ -126,13 +129,15 @@ describe('joining lines that pile up', () => {
     expect(post.content).toBe('a\nb')
   })
 
-  it('joins a run of joins and leaves', () => {
+  it("joins a player's join and first words, and stops at the next player", () => {
     const q = [
       item({ kind: 'joined', player: 'Steve' }),
-      item({ kind: 'left', player: 'Alex' }),
       item(chat('Steve', 'hi')),
+      item({ kind: 'left', player: 'Alex' }),
     ]
-    expect(nextPost(q).take).toBe(2)
+    const { post, take } = nextPost(q)
+    expect(take).toBe(2)
+    expect(post.content).toBe('_joined the game_\nhi')
   })
 
   it('sends a big backlog as one digest', () => {

@@ -48,7 +48,7 @@ You need a Discord channel you can add webhooks to and a running Fabric or Paper
 - [ ] Server, **Settings**, **Discord chat**: paste `https://example.com/hook` and press **Turn on**. It's refused as not a Discord webhook.
 - [ ] Paste the real URL and press **Send a test**: "Flytower will post … chat here." arrives in the channel.
 - [ ] Press **Turn on**. After the passkey check the card says **On** and shows only the webhook's ID. **Activity** shows "Started posting … chat to Discord".
-- [ ] Join the server: "**you** joined the game" appears in the channel within a second, with your face.
+- [ ] Join the server: "_joined the game_" appears in the channel within a second, in plain text under your name with your face. Leave: "_left the game_" appears the same way.
 - [ ] Say something: it appears under your name with your face. Say `**bold** @everyone <@1> # big https://example.com`: it shows exactly as typed, nobody is pinged, and the link works without a preview.
 - [ ] `/me waves` appears in italics.
 - [ ] Send ten lines quickly (or paste them): they all arrive, joined into fewer messages, in order.
