@@ -43,5 +43,9 @@ export const migrations: { tag: string; sql: string }[] = [
   {
     "tag": "0010_update_status",
     "sql": "CREATE TABLE `update_status` (\n\t`scope` text NOT NULL,\n\t`subject` text NOT NULL,\n\t`summary` text,\n\t`checked_at` integer,\n\t`last_error` text,\n\t`error_at` integer,\n\tPRIMARY KEY(`scope`, `subject`)\n);\n"
+  },
+  {
+    "tag": "0011_scheduled_tasks",
+    "sql": "CREATE TABLE `schedules` (\n\t`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,\n\t`server` text NOT NULL,\n\t`position` integer DEFAULT 0 NOT NULL,\n\t`kind` text NOT NULL,\n\t`cron` text NOT NULL,\n\t`text` text,\n\t`warn` text DEFAULT '[]' NOT NULL,\n\t`skip_when_empty` integer DEFAULT true NOT NULL,\n\t`last_run_at` integer,\n\t`last_ok` integer,\n\t`last_result` text,\n\t`last_reply` text,\n\t`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL\n);\n--> statement-breakpoint\nCREATE INDEX `schedules_server` ON `schedules` (`server`,`position`);--> statement-breakpoint\nALTER TABLE `servers` ADD `timezone` text DEFAULT 'UTC' NOT NULL;--> statement-breakpoint\n-- Channels that already take problem alerts hear about failed scheduled tasks too, as new channels do.\nUPDATE `notify_channels` SET `events` = (\n\tSELECT json_group_array(`value`) FROM (\n\t\tSELECT `value` FROM json_each(`notify_channels`.`events`)\n\t\tUNION SELECT 'schedule.failed'\n\t)\n) WHERE EXISTS (\n\tSELECT 1 FROM json_each(`notify_channels`.`events`)\n\tWHERE `value` IN ('backup.failed', 'offsite.failed', 'disk.full')\n);\n"
   }
 ]

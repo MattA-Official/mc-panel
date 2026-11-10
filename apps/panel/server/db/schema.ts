@@ -85,6 +85,8 @@ export const servers = sqliteTable(
     restartWhenUnresponsive: integer('restart_when_unresponsive', { mode: 'boolean' })
       .notNull()
       .default(false),
+    /** IANA time zone the server's scheduled tasks are read in. */
+    timezone: text('timezone').notNull().default('UTC'),
     createdAt: createdAt(),
   },
   (t) => [
@@ -293,4 +295,32 @@ export const updateStatus = sqliteTable(
     errorAt: integer('error_at', { mode: 'timestamp_ms' }),
   },
   (t) => [primaryKey({ columns: [t.scope, t.subject] })],
+)
+
+/**
+ * Restarts, console commands and announcements a server runs on a schedule, in its own time
+ * zone (servers.timezone). The spec's `schedules` list, in order, plus each task's last run.
+ */
+export const schedules = sqliteTable(
+  'schedules',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    server: text('server').notNull(),
+    position: integer('position').notNull().default(0),
+    kind: text('kind', { enum: ['restart', 'command', 'announce'] }).notNull(),
+    cron: text('cron').notNull(),
+    /** The command or announcement; null for a restart. */
+    text: text('text'),
+    /** Seconds before a restart to warn players, longest first. */
+    warn: text('warn', { mode: 'json' }).$type<number[]>().notNull().default([]),
+    skipWhenEmpty: integer('skip_when_empty', { mode: 'boolean' }).notNull().default(true),
+    lastRunAt: integer('last_run_at', { mode: 'timestamp_ms' }),
+    lastOk: integer('last_ok', { mode: 'boolean' }),
+    /** What happened, like "Restarted in 41s" or "Skipped: the server wasn't running". */
+    lastResult: text('last_result'),
+    /** A command's reply. */
+    lastReply: text('last_reply'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('schedules_server').on(t.server, t.position)],
 )
