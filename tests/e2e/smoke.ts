@@ -280,6 +280,25 @@ try {
     await waitForJob(backup.body.jobId, 'the backup job', 5 * 60_000)
     step('backed up a running server')
 
+    {
+      // Disk use: the finished backup has the server measured again, backups and all.
+      const disk = await until('the server to be measured', async () => {
+        const r = await api<{
+          percent: number | null
+          servers: { server: string; bytes: number; groups: { world: number; backups: number } }[]
+        }>(view, '/api/system/disk')
+        const s = r.body.servers.find((x) => x.server === 'smoke')
+        return s && s.groups.world > 0 && s.groups.backups > 0 ? { ...r.body, s } : null
+      })
+      await view.navigate(`${base}/system`)
+      await waitForText(view, 'Largest part')
+      await waitForText(view, 'Smoke')
+      await shot('2c-disk-use')
+      step(
+        `disk ${disk.percent}% full; smoke measured at ${Math.round(disk.s.bytes / 1024 / 1024)} MB`,
+      )
+    }
+
     await rcon('setblock 0 100 0 minecraft:air')
     if (await goldIsThere()) throw new Error('the gold block should be gone before restoring')
 

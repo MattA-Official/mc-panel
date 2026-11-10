@@ -11,7 +11,13 @@ import { JobRunner, type AgentCall } from '../server/jobs/runner'
 import type { NotifyEvent } from '../server/notify/types'
 
 function setup(
-  opts: { running?: boolean; free?: number; saveReply?: string; rconDownFor?: number } = {},
+  opts: {
+    running?: boolean
+    free?: number
+    saveReply?: string
+    rconDownFor?: number
+    diskPercent?: number
+  } = {},
 ) {
   const notes: NotifyEvent[] = []
   const db = openDb(':memory:')
@@ -74,6 +80,7 @@ function setup(
     },
     now: () => new Date((clock += 60_000)),
     freeBytes: async () => opts.free ?? 1e12,
+    diskPercent: () => opts.diskPercent ?? null,
     sleep: async () => {},
     notifier: {
       notify: (e) => notes.push(e),
@@ -138,6 +145,28 @@ describe('backups', () => {
       'Not enough disk space',
     )
     expect(calls.some((c) => c.startsWith('rcon'))).toBe(false)
+  })
+
+  it('skips scheduled backups when the disk is 95% full, but not manual ones', async () => {
+    const { service, calls, notes } = setup({ running: true, diskPercent: 96.2 })
+    const skipped = await service.backup('survival', 'scheduled').done
+    expect(skipped.state).toBe('failed')
+    expect(skipped.message).toStartWith('Skipped: the disk is 96% full')
+    // Nothing was touched: saving was never paused.
+    expect(calls.some((c) => c.startsWith('rcon'))).toBe(false)
+    expect(notes).toEqual([
+      expect.objectContaining({
+        kind: 'backup.failed',
+        title: 'A scheduled backup was skipped',
+        detail: expect.stringContaining('96% full'),
+      }),
+    ])
+    expect((await service.backup('survival', 'manual').done).state).toBe('succeeded')
+  })
+
+  it('runs scheduled backups as normal below 95%', async () => {
+    const { service } = setup({ diskPercent: 94.9 })
+    expect((await service.backup('survival', 'scheduled').done).state).toBe('succeeded')
   })
 
   it('allows one operation per server at a time', async () => {

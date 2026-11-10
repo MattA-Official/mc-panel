@@ -100,6 +100,23 @@ On a 26.3 server (or any Minecraft version from 1.21.9 on):
 - [ ] **Clone** the server. In the clone's **Files** tab, `management-server-secret` is 40 letters and digits and different from the original's.
 - [ ] **Activity** shows the property change and the clone without any secret in their details.
 
+## Disk use
+
+See [Disk space](disk.md). To try the warnings without filling a real disk, use a spare VPS and make a large file over SSH, for example `sudo fallocate -l 20G /var/tmp/filler`, sized to take the disk past 85% and then 95% (**System** shows how full it is). Delete it afterwards with `sudo rm /var/tmp/filler`.
+
+- [ ] **System**, **Overview**, **Disk**: the bar shows each server in its own colour, then everything else, then free space. Hovering shows each part's size, and the figures add up to roughly what `df -h /srv` says.
+- [ ] The table lists each server's size and its largest part. **Details** opens its Settings tab and **Backups** its Backups tab.
+- [ ] A server's **Settings** tab has a **Disk use** card with World, Backups, World exports, Logs, Mods and Other. A server with a custom `level-name` counts that folder as its world.
+- [ ] **Back up now**, then reload System: the server's Backups figure has gone up without pressing **Measure now**.
+- [ ] **Measure now** shows a spinner while it measures, then the new time.
+- [ ] Restart Flytower (`sudo systemctl restart flytower-panel`): the figures are still there straight away.
+- [ ] Past 85%: System shows a warning, and a channel with **The disk is nearly full** ticked gets one message.
+- [ ] Past 95%: a red banner shows on every page, with a link to System. A second message arrives.
+- [ ] Past 95%, set a backup schedule a minute or two away: the job says "Skipped: the disk is …% full", nothing is archived, and a channel with **A backup failed** ticked hears "A scheduled backup was skipped".
+- [ ] Past 95%, **Back up now** shows a warning and the button reads **Back up anyway**.
+- [ ] Delete the filler: the banner goes on the next page you open, and "Disk space is back to normal" arrives once it's below 80%.
+- [ ] On a phone, the banner, the bar and the table fit the screen.
+
 ## Scheduled tasks
 
 On a test server you can join. See [Scheduled tasks](schedules.md).

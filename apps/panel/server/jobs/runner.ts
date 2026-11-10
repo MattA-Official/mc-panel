@@ -235,6 +235,10 @@ export class JobRunner {
       .get()
     const event = toEvent(row!)
     this.bus.publish(`job:${id}`, event)
+    // Every finished job, for things that follow up on any of them (like disk use).
+    if (finished) {
+      this.bus.publish('jobs:finished', { ...event, kind: row!.kind, server: row!.server })
+    }
     return event
   }
 

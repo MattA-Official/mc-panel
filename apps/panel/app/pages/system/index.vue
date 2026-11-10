@@ -47,4 +47,7 @@ const flytower = computed(() => updates.value?.flytower?.summary?.latest ?? null
   <UCard>
     <MemoryBudget detailed />
   </UCard>
+  <UCard>
+    <DiskUse />
+  </UCard>
 </template>
