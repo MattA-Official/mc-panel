@@ -413,3 +413,32 @@ describe('describeCron', () => {
     expect(describeCron('0 5 1 * *')).toBe('0 5 1 * *')
   })
 })
+
+describe('calling off a restart', () => {
+  it('stops the countdown, tells players, and never restarts', async () => {
+    let now = Date.parse('2026-07-01T04:45:00Z')
+    const log: string[] = []
+    let restarted = false
+    const abort = new AbortController()
+    const run = runRestart(
+      {
+        now: () => now,
+        // Real time stands still; the countdown only moves when the test lets it.
+        sleep: (ms) => new Promise((r) => setTimeout(() => r(void (now += ms)), 5)),
+        rcon: async (cmd) => {
+          log.push(cmd)
+          return cmd === 'list' ? 'There are 1 of a max of 20 players online: a' : ''
+        },
+        restart: async () => void (restarted = true),
+      },
+      { warn: [900, 300], skipWhenEmpty: true },
+      Date.parse('2026-07-01T05:00:00Z'),
+      abort.signal,
+    )
+    await Bun.sleep(1)
+    abort.abort()
+    await expect(run).rejects.toThrow('Cancelled')
+    expect(restarted).toBe(false)
+    expect(log.at(-1)).toBe('tellraw @a {"text":"The restart has been called off","color":"gold"}')
+  })
+})

@@ -14,7 +14,7 @@ import {
 import { schema, type Db } from '../db'
 import type { Bus } from '../jobs/bus'
 import type { Notifier } from '../notify/types'
-import { runRestart, tellAll } from './restart'
+import { RestartCancelled, runRestart, tellAll } from './restart'
 import { CronTimers, nextRun } from './timers'
 
 type Row = typeof schema.schedules.$inferSelect
@@ -57,8 +57,8 @@ export class ScheduleService {
   private timers: CronTimers
   private now: () => number
   private sleep: (ms: number) => Promise<void>
-  /** Task ids with a run in progress. */
-  private running = new Set<number>()
+  /** Task ids with a run in progress, and how to call each off. */
+  private running = new Map<number, AbortController>()
 
   constructor(private deps: ScheduleDeps) {
     this.timers = deps.timers ?? new CronTimers()
@@ -186,7 +186,8 @@ export class ScheduleService {
     const row = this.rows().find((r) => r.id === id)
     if (!row || this.running.has(id)) return
     const server = row.server
-    this.running.add(id)
+    const abort = new AbortController()
+    this.running.set(id, abort)
     this.publish(server)
     let release: (() => void) | null = null
     let outcome: Outcome
@@ -205,10 +206,13 @@ export class ScheduleService {
           0,
           this.now() - (at - (row.kind === 'restart' ? leadMs(row.warn) : 0)),
         )
-        outcome = await this.execute(row, at + late)
+        outcome = await this.execute(row, at + late, abort.signal)
       }
     } catch (err) {
-      outcome = { ok: false, result: (err as Error).message || 'Something went wrong.' }
+      outcome =
+        err instanceof RestartCancelled
+          ? { ok: null, result: 'Cancelled before the restart' }
+          : { ok: false, result: (err as Error).message || 'Something went wrong.' }
     } finally {
       release?.()
     }
@@ -234,7 +238,16 @@ export class ScheduleService {
     }
   }
 
-  private async execute(row: Row, at: number): Promise<Outcome> {
+  /** Calls off a restart's countdown. Commands and announcements are over too fast to stop. */
+  cancel(server: string, id: number) {
+    const row = this.rows(server).find((r) => r.id === id)
+    if (!row) throw new ScheduleError('No such task.')
+    const run = this.running.get(id)
+    if (!run) throw new ScheduleError("That task isn't running.")
+    run.abort()
+  }
+
+  private async execute(row: Row, at: number, signal: AbortSignal): Promise<Outcome> {
     const rcon = (command: string) => this.deps.rcon(row.server, command)
     if (row.kind === 'command') {
       const reply = await rcon(row.text ?? '')
@@ -253,6 +266,7 @@ export class ScheduleService {
       },
       { warn: row.warn, skipWhenEmpty: row.skipWhenEmpty },
       at,
+      signal,
     )
     const how = out.empty
       ? 'nobody was online, so no countdown'

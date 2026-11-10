@@ -132,6 +132,8 @@ export function describeAudit(
       return `Changed ${t}'s backup schedule`
     case 'schedule.update':
       return `Changed ${t}'s scheduled tasks`
+    case 'schedule.cancel':
+      return `Called off a scheduled restart of ${t}`
     case 'schedule.run':
       return `${t}: ${str(d.task)}. ${str(d.result)}`
     case 'backup.offsite':

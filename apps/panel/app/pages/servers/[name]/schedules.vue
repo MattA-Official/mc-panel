@@ -3,6 +3,7 @@ import {
   describeCron,
   formatDuration,
   parseDuration,
+  spokenDuration,
   toItem,
   type SchedulesView,
   type TaskKind,
@@ -116,8 +117,14 @@ async function saveZone() {
   }
 }
 
-// Run now
+// Run now: a restart asks first, since it counts down and then restarts.
+const confirming = ref<TaskView | null>(null)
+function askRun(t: TaskView) {
+  if (t.kind === 'restart') confirming.value = t
+  else void runNow(t)
+}
 async function runNow(t: TaskView) {
+  confirming.value = null
   try {
     data.value = await $fetch<SchedulesView>(
       `/api/servers/${name.value}/schedules/${t.id}/run` as string,
@@ -127,12 +134,24 @@ async function runNow(t: TaskView) {
       title: t.kind === 'restart' ? 'Restart started' : 'Running it now',
       description:
         t.kind === 'restart' && t.warn.length
-          ? `Players are warned first; it restarts in ${formatDuration(Math.max(...t.warn))}.`
+          ? `Anyone online is warned first, and it restarts in ${spokenDuration(Math.max(...t.warn))}.`
           : undefined,
       color: 'success',
     })
   } catch (err) {
     toast.add({ title: "Couldn't run it", description: errorMessage(err), color: 'error' })
+  }
+}
+
+async function cancel(t: TaskView) {
+  try {
+    data.value = await $fetch<SchedulesView>(
+      `/api/servers/${name.value}/schedules/${t.id}/run` as string,
+      { method: 'DELETE' },
+    )
+    toast.add({ title: 'Restart called off', color: 'success' })
+  } catch (err) {
+    toast.add({ title: "Couldn't call it off", description: errorMessage(err), color: 'error' })
   }
 }
 
@@ -357,13 +376,23 @@ async function submit() {
               />
             </UTooltip>
             <UButton
+              v-if="t.running && t.kind === 'restart'"
+              label="Call off"
+              icon="i-lucide-circle-stop"
+              size="xs"
+              color="warning"
+              variant="outline"
+              @click="cancel(t)"
+            />
+            <UButton
+              v-else
               label="Run now"
               icon="i-lucide-play"
               size="xs"
               color="neutral"
               variant="outline"
               :disabled="t.running"
-              @click="runNow(t)"
+              @click="askRun(t)"
             />
             <UButton
               icon="i-lucide-pencil"
@@ -502,6 +531,35 @@ async function submit() {
         <div class="flex w-full justify-end gap-2">
           <UButton label="Cancel" color="neutral" variant="ghost" @click="editing = null" />
           <UButton label="Save" :loading="saving" :disabled="!!formError" @click="submit" />
+        </div>
+      </template>
+    </UModal>
+
+    <UModal
+      :open="confirming !== null"
+      title="Restart now?"
+      @update:open="(v) => !v && (confirming = null)"
+    >
+      <template #body>
+        <p v-if="confirming" class="text-sm">
+          <template v-if="confirming.warn.length">
+            Anyone online is warned in chat, and the server restarts in
+            {{ spokenDuration(Math.max(...confirming.warn)) }}. You can call it off until then.
+            <template v-if="confirming.skipWhenEmpty">
+              If nobody is online, it restarts straight away.</template
+            >
+          </template>
+          <template v-else>The server restarts straight away, without warnings.</template>
+        </p>
+      </template>
+      <template #footer>
+        <div class="flex w-full justify-end gap-2">
+          <UButton label="Cancel" color="neutral" variant="ghost" @click="confirming = null" />
+          <UButton
+            label="Start the countdown"
+            icon="i-lucide-rotate-cw"
+            @click="confirming && runNow(confirming)"
+          />
         </div>
       </template>
     </UModal>

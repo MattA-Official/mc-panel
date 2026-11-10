@@ -51,6 +51,11 @@ export function warningTimeline(restartAt: number, warn: number[], now: number) 
     .filter((w) => w.at >= now - 1000)
 }
 
+/** The countdown was called off before the restart. */
+export class RestartCancelled extends Error {
+  override name = 'RestartCancelled'
+}
+
 export interface RestartOutcome {
   /** How many warnings went out. */
   warned: number
@@ -68,7 +73,14 @@ export async function runRestart(
   deps: RestartDeps,
   task: RestartTask,
   restartAt: number,
+  /** Calls off the countdown; once the restart itself has begun, it finishes. */
+  signal?: AbortSignal,
 ): Promise<RestartOutcome> {
+  const aborted = new Promise<void>((resolve) => signal?.addEventListener('abort', () => resolve()))
+  const wait = async (ms: number) => {
+    if (ms > 0 && !signal?.aborted) await Promise.race([deps.sleep(ms), aborted])
+    if (signal?.aborted) throw new RestartCancelled('Cancelled')
+  }
   let empty = false
   if (task.skipWhenEmpty) {
     const online = await deps
@@ -78,18 +90,25 @@ export async function runRestart(
     empty = online?.count === 0
   }
   let warned = 0
-  if (!empty) {
-    for (const w of warningTimeline(restartAt, task.warn, deps.now())) {
-      const wait = w.at - deps.now()
-      if (wait > 0) await deps.sleep(wait)
-      for (const cmd of warningCommands(w.seconds)) {
-        // A warning that doesn't arrive is no reason to call off the restart.
-        await deps.rcon(cmd).catch(() => {})
+  try {
+    if (!empty) {
+      for (const w of warningTimeline(restartAt, task.warn, deps.now())) {
+        await wait(w.at - deps.now())
+        for (const cmd of warningCommands(w.seconds)) {
+          // A warning that doesn't arrive is no reason to call off the restart.
+          await deps.rcon(cmd).catch(() => {})
+        }
+        warned++
       }
-      warned++
+      await wait(restartAt - deps.now())
     }
-    const wait = restartAt - deps.now()
-    if (wait > 0) await deps.sleep(wait)
+    await wait(0)
+  } catch (err) {
+    // Players who were told it's coming hear that it isn't.
+    if (err instanceof RestartCancelled && warned) {
+      await deps.rcon(tellAll('The restart has been called off')).catch(() => {})
+    }
+    throw err
   }
   const started = deps.now()
   // The stop saves too; this makes sure the world is on disk if the stop goes badly.
