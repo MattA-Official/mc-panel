@@ -1,8 +1,8 @@
 import { and, asc, count, eq, isNull, ne } from 'drizzle-orm'
 import { schema, type Db, type DbOrTx } from '../db'
 import {
-  ALL_PERMISSIONS,
   can,
+  withImplied,
   isBuiltInRole,
   isServerPermission,
   type Access,
@@ -300,12 +300,9 @@ export function saveRole(
 ) {
   const name = input.name.trim()
   if (!name) throw new PeopleError('Give the role a name.')
-  const permissions = ALL_PERMISSIONS.filter((p) => input.permissions.includes(p))
+  // Implied permissions come along (anything on a server needs the server to be seen).
+  const permissions = withImplied(input.permissions)
   if (!permissions.length) throw new PeopleError('Pick at least one permission.')
-  // Anything a role can do on a server needs the server's card to be seen.
-  if (permissions.some(isServerPermission) && !permissions.includes('server.view')) {
-    permissions.unshift('server.view')
-  }
   if (!permissions.every((p) => can(access, p))) {
     throw new PeopleError("You can't make a role with more access than you have.", 403)
   }

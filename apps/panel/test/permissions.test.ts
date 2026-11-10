@@ -93,7 +93,9 @@ describe('built-in roles', () => {
     }
     for (const p of [
       'files.read',
-      'server.configure',
+      'settings.edit',
+      'content.manage',
+      'spec.edit',
       'backups.download',
       'backups.restore',
       'server.delete',
@@ -109,8 +111,11 @@ describe('built-in roles', () => {
     expect(can(one, 'people.manage')).toBe(false)
     const all = roleOn('admin', null)
     expect(can(all, 'servers.create')).toBe(true)
-    expect(can(all, 'system.manage')).toBe(false)
+    expect(can(all, 'system.updates')).toBe(false)
+    expect(can(all, 'system.ssh')).toBe(false)
     expect(can(all, 'people.manage')).toBe(false)
+    expect(can(all, 'people.invite')).toBe(false)
+    expect(can(all, 'roles.manage')).toBe(false)
     expect(can(all, 'activity.all')).toBe(false)
   })
 
