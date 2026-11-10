@@ -68,6 +68,53 @@ describe('updates', () => {
   it('defaults to beta only when a beta is running', () => {
     expect(defaultChannel('1.0.1')).toBe('stable')
     expect(defaultChannel('1.1.0-beta.1')).toBe('beta')
+    expect(defaultChannel('1.2.0-beta.2.native.1')).toBe('native')
+    expect(defaultChannel('1.2.0-native.1')).toBe('native')
+  })
+
+  describe('native builds', () => {
+    const list = () =>
+      listReleases(async () =>
+        Response.json([
+          rel('v1.2.0'),
+          rel('native-1.2.0-native.1', true, true),
+          rel('v1.2.0-beta.3', true, true),
+          rel('native-1.2.0-beta.2.native.2', true, true),
+          rel('native-1.2.0-beta.2.native.1', true, true),
+          // Mislabelled: a native version under a v tag, or the other way round.
+          rel('v1.3.0-beta.1.native.1', true, true),
+          rel('native-1.3.0', true, true),
+        ]),
+      )
+
+    it('are read from native- tags only', async () => {
+      const natives = (await list()).filter((r) => r.native).map((r) => r.version)
+      expect(natives).toEqual(['1.2.0-native.1', '1.2.0-beta.2.native.2', '1.2.0-beta.2.native.1'])
+      const all = (await list()).map((r) => r.version)
+      expect(all).not.toContain('1.3.0')
+      expect(all).not.toContain('1.3.0-beta.1.native.1')
+    })
+
+    it('sort with the release they were built alongside', () => {
+      expect(compareVersions('1.2.0-beta.2.native.2', '1.2.0-beta.2.native.1')).toBeGreaterThan(0)
+      expect(compareVersions('1.2.0-beta.3.native.1', '1.2.0-beta.2.native.9')).toBeGreaterThan(0)
+      expect(compareVersions('1.2.0-native.1', '1.2.0-beta.3.native.1')).toBeGreaterThan(0)
+      expect(compareVersions('1.3.0-beta.1.native.1', '1.2.0-native.4')).toBeGreaterThan(0)
+    })
+
+    it('are never offered on Beta or Stable', async () => {
+      expect(onChannel(await list(), 'beta')[0]?.version).toBe('1.2.0')
+      expect(onChannel(await list(), 'beta').some((r) => r.native)).toBe(false)
+      expect(onChannel(await list(), 'stable')[0]?.version).toBe('1.2.0')
+    })
+
+    it('are the only thing offered on Native, so a stable never takes a box off it', async () => {
+      expect(onChannel(await list(), 'native').map((r) => r.version)).toEqual([
+        '1.2.0-native.1',
+        '1.2.0-beta.2.native.2',
+        '1.2.0-beta.2.native.1',
+      ])
+    })
   })
 
   it('remembers the chosen channel', () => {

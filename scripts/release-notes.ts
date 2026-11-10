@@ -17,14 +17,18 @@ const [to = 'HEAD', fromArg] = process.argv.slice(2)
 // A stable release lists everything since the last stable one, betas included.
 const stable = /^v?\d+\.\d+\.\d+$/.test(to)
 const exclude = stable ? ['--exclude', 'v*-*'] : []
-const previous =
-  fromArg ??
+const describe = async (match: string) =>
   (
-    await $`git describe --tags --abbrev=0 --match ${'v*'} ${exclude} ${to}^`
+    await $`git describe --tags --abbrev=0 --match ${match} ${exclude} ${to}^`
       .nothrow()
       .quiet()
       .text()
   ).trim()
+// A native build (native-x.y.z-native.n) lists what's new since the last native build, or
+// since the release the native branch last took in for the first one.
+let previous = fromArg ?? ''
+if (!previous && to.startsWith('native-')) previous = await describe('native-*')
+if (!previous) previous = await describe('v*')
 const range = previous ? `${previous}..${to}` : to
 const raw = await $`git log ${range} --format=%H%x1f%s%x1f%b%x1e`.text()
 
@@ -79,7 +83,7 @@ const sections: [string, (c: Commit) => boolean][] = [
 const commits = parse(raw)
 const used = new Set<Commit>()
 const out: string[] = []
-const summary = Bun.file(`.github/release-notes/${to.replace(/^v/, '')}.md`)
+const summary = Bun.file(`.github/release-notes/${to.replace(/^(v|native-)/, '')}.md`)
 if (await summary.exists()) out.push((await summary.text()).trim(), '')
 for (const [title, match] of sections) {
   const list = commits.filter((c) => match(c) && !used.has(c))

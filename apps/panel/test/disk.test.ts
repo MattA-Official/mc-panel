@@ -1,8 +1,27 @@
-import { linkSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync, chmodSync } from 'node:fs'
+import {
+  chmodSync,
+  linkSync,
+  mkdirSync,
+  mkdtempSync,
+  openSync,
+  closeSync,
+  ftruncateSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'bun:test'
-import { DiskUsage, groupOf, largestGroup, measure, measureServer } from '../server/disk'
+import {
+  DiskUsage,
+  groupOf,
+  largestGroup,
+  measure,
+  measureInTs,
+  measureMany,
+  measureServer,
+  measureWithBinary,
+} from '../server/disk'
 import { diskLevel, type DiskReport } from '../shared/disk'
 
 const KB = 1024
@@ -114,6 +133,61 @@ describe('measuring', () => {
     about(s.groups.exports, 120 * KB)
     expect(s.bytes).toBe(Object.values(s.groups).reduce((a, b) => a + b, 0))
     expect(s.unreadable).toBe(0)
+  })
+})
+
+/** A tree with every awkward case: nesting, hard links across paths, symlinks, sparse files. */
+function awkward() {
+  const { base, file } = tree()
+  file(join(base, 'world', 'region', 'r.0.0.mca'), 300 * KB)
+  file(join(base, 'world', 'level.dat'), 3 * KB)
+  for (let i = 0; i < 30; i++) file(join(base, 'world', 'data', `map_${i}.dat`), i * 100)
+  file(join(base, 'backups', 'b.tar.zst'), 200 * KB)
+  linkSync(join(base, 'backups', 'b.tar.zst'), join(base, 'world', 'linked.tar.zst'))
+  symlinkSync(join(base, 'backups'), join(base, 'world', 'backups-link'))
+  const sparse = openSync(join(base, 'world', 'region', 'sparse.mca'), 'w')
+  ftruncateSync(sparse, 512 * 1024 * 1024)
+  closeSync(sparse)
+  return [join(base, 'world'), join(base, 'backups'), join(base, 'missing')]
+}
+
+describe('falling back to the TypeScript walk', () => {
+  it('when flytower-du is missing', async () => {
+    const paths = awkward()
+    expect(await measureMany(paths, '/nonexistent/flytower-du')).toEqual(await measureInTs(paths))
+  })
+
+  it('when flytower-du fails', async () => {
+    const paths = awkward()
+    expect(await measureMany(paths, '/bin/false')).toEqual(await measureInTs(paths))
+  })
+})
+
+// The Rust job in CI builds crates/flytower-du and runs these with FLYTOWER_DU set.
+describe.skipIf(!process.env.FLYTOWER_DU)('flytower-du', () => {
+  const rust = () => measureWithBinary(process.env.FLYTOWER_DU!)
+
+  it('gives exactly the same numbers as the TypeScript walk', async () => {
+    const paths = awkward()
+    const ts = await measureInTs(paths)
+    expect(await rust()(paths)).toEqual(ts)
+    // The hard link counts towards the first path only, and the sparse file barely counts.
+    expect(ts[0]!.bytes).toBeLessThan(10 * 1024 * KB)
+  })
+
+  it('measures a server the same way', async () => {
+    const { dirs, file } = tree()
+    file(join(dirs.serversDir, 's', 'world', 'level.dat'), 50 * KB)
+    file(join(dirs.backupsDir, 's', 'b.tar.zst'), 80 * KB)
+    const deps = {
+      serverDir: (n: string) => join(dirs.serversDir, n),
+      backupsDir: dirs.backupsDir,
+      exportsDir: dirs.exportsDir,
+      levelName: async () => null,
+    }
+    expect(await measureServer({ ...deps, measure: rust() }, 's', new Date(0))).toEqual(
+      await measureServer({ ...deps, measure: measureInTs }, 's', new Date(0)),
+    )
   })
 })
 
