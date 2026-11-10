@@ -13,6 +13,7 @@ import {
 import { isExcluded } from '../server/backups/archive'
 import { openDb, schema } from '../server/db'
 import type { AgentCall } from '../server/jobs/runner'
+import { MAP_CSP, mapAccess, mapFile } from '../server/map/serve'
 import { MapService } from '../server/map/service'
 import { dataDir, hasSquaremap, squaremapConfig, webDir } from '../server/map/squaremap'
 import { writeLock } from '../server/spec/lock'
@@ -218,5 +219,54 @@ describe('map service', () => {
     const { service, dir } = await setup({ installed: false })
     await service.syncAll()
     expect(existsSync(join(dir, 'squaremap'))).toBe(false)
+  })
+})
+
+describe('serving the map', () => {
+  const root = '/srv/flytower/servers/survival/squaremap/web'
+
+  it('finds files inside the web folder only', () => {
+    expect(mapFile(root, '')).toEqual({
+      file: `${root}/index.html`,
+      type: 'text/html; charset=utf-8',
+      cache: 'no-cache',
+    })
+    expect(mapFile(root, 'tiles/minecraft_overworld/3/0_0.png')).toMatchObject({
+      file: `${root}/tiles/minecraft_overworld/3/0_0.png`,
+      type: 'image/png',
+      cache: 'public, max-age=60',
+    })
+    expect(mapFile(root, 'tiles/players.json')?.cache).toBe('no-cache')
+    expect(mapFile(root, 'assets/index-B-TqULzJ.js')?.cache).toContain('immutable')
+    for (const bad of [
+      '../config.yml',
+      'tiles/../../config.yml',
+      '/etc/passwd',
+      '.hidden.png',
+      'tiles//x.png',
+      'x.png\0',
+      'tiles\\x.png',
+      'assets/index.js.map',
+      'config.yml',
+    ]) {
+      expect(mapFile(root, bad)).toBeNull()
+    }
+  })
+
+  it('opens public maps to anyone, and private ones to people who can see the server', () => {
+    const pub = { public: true, players: true }
+    const priv = { public: false, players: true }
+    expect(mapAccess({ map: pub, publicPage: true, canView: null })).toBe('allow')
+    // A public map with the page off is private.
+    expect(mapAccess({ map: pub, publicPage: false, canView: null })).toBe('sign-in')
+    expect(mapAccess({ map: priv, publicPage: true, canView: null })).toBe('sign-in')
+    expect(mapAccess({ map: priv, publicPage: true, canView: false })).toBe('not-found')
+    expect(mapAccess({ map: priv, publicPage: false, canView: true })).toBe('allow')
+  })
+
+  it('lets nothing load from other sites', () => {
+    expect(MAP_CSP).toContain("default-src 'self'")
+    expect(MAP_CSP).not.toContain('https:')
+    expect(MAP_CSP).toContain("frame-ancestors 'none'")
   })
 })
