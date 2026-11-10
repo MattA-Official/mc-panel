@@ -28,4 +28,8 @@ You need a panel with a domain, a Discord server you can add apps to (a test one
 - [ ] Stop the server: `/status` says Offline straight away. Start it: Starting, then Online once players can join.
 - [ ] `curl -X POST https://<panel>/api/discord/interactions -d '{}'` gets a 401.
 - [ ] In the portal, change the endpoint URL to something else and save, then press **Test connection** in Flytower: the card says **Endpoint not set**. **Try the endpoint again** puts it back.
+- [ ] **Discord roles**: press **Give a Discord role access**. Copy a test Discord role's ID (Developer Mode on, right-click the role, **Copy Role ID**), call it Staff, pick **Operator** on **All servers** and save. You're asked for your passkey, and the card lists "Staff gets Operator on all servers". **Activity** shows the change.
+- [ ] Owner isn't in the role list. A made-up ID like `abc` keeps **Save** greyed out.
+- [ ] As a Discord member with the Staff role, `/status` now also suggests servers whose public page is off.
+- [ ] Change the mapping to one server and save: `/status` only adds that server.
 - [ ] **Disconnect**: after the passkey check the card is back to empty, the commands disappear from Discord (it may take a minute, or reopen Discord), and the portal's endpoint is empty.
