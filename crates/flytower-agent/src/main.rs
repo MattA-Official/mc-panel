@@ -9,8 +9,9 @@ use std::time::Duration;
 use flytower_agent::dispatch::dispatch;
 use flytower_agent::events::{Journal, UnitEvents};
 use flytower_agent::exec::RealExec;
-use flytower_agent::handlers::{Context, handle};
+use flytower_agent::handlers::{Context, handle, server};
 use flytower_agent::server::{ListenOptions, bind, group_id, serve};
+use flytower_agent::units::Paths;
 
 fn env(name: &str, fallback: &str) -> String {
     std::env::var(name).unwrap_or_else(|_| fallback.to_string())
@@ -27,8 +28,10 @@ fn main() -> ExitCode {
         version: env("FLYTOWER_VERSION", "0.0.0-dev"),
         exec: Box::new(RealExec::default()),
         events: Some(events),
+        paths: Paths::from_env(),
+        panel_group: env("FLYTOWER_PANEL_GROUP", "flytower"),
     };
-    let group = env("FLYTOWER_PANEL_GROUP", "flytower");
+    let group = ctx.panel_group.clone();
     let gid = match group_id(&group, Path::new("/etc/group")) {
         Ok(gid) => gid,
         Err(e) => {
@@ -51,6 +54,11 @@ fn main() -> ExitCode {
         }
     };
     println!("flytower-agent {} (rust) listening", ctx.version);
+    match server::refresh_template(&ctx) {
+        Ok(true) => println!("updated the server unit template"),
+        Ok(false) => {}
+        Err(e) => eprintln!("updating the server unit template failed: {}", e.message),
+    }
     serve(&listener, Some(gid), move |line| {
         // stdout goes to the journal; one JSON line per request.
         dispatch(line, |p| handle(&p, &ctx), |audit| println!("{audit}"))
