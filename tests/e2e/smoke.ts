@@ -202,8 +202,12 @@ try {
       registries: Record<string, string[]>
     }
     const commands = await api<Commands>(view, '/api/servers/smoke/commands?wait=1')
-    const names = Object.keys(commands.body.root?.literals ?? {})
-    if (commands.status !== 200 || commands.body.vanilla !== 'ready' || !names.includes('give')) {
+    const commandNames = Object.keys(commands.body.root?.literals ?? {})
+    if (
+      commands.status !== 200 ||
+      commands.body.vanilla !== 'ready' ||
+      !commandNames.includes('give')
+    ) {
       throw new Error(
         `command catalogue: ${commands.status} ${JSON.stringify(commands.body).slice(0, 300)}`,
       )
@@ -213,7 +217,7 @@ try {
       throw new Error('the catalogue has no item ids')
     }
     step(
-      `console completion knows ${names.length} commands and ${commands.body.registries.item.length} items`,
+      `console completion knows ${commandNames.length} commands and ${commands.body.registries.item.length} items`,
     )
 
     // Crash detection: kill Java outright. systemd restarts it after 15 seconds; Flytower
