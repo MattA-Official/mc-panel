@@ -149,6 +149,22 @@ public:
       - modrinth: complementary-reimagined
 ```
 
+### `map`
+
+The server's [web map](map.md), made by squaremap. squaremap itself goes in `content` (`modrinth: squaremap`). Left out, the current settings stay.
+
+| Field     | Meaning                                                                                                                                      |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `public`  | `true` to let anyone open the map without signing in. Needs the public page on. Defaults to `false`: only people who can see the server can. |
+| `players` | `false` to hide where players are. Their positions are then never written to disk. Defaults to `true`.                                       |
+
+```yaml
+content:
+  - modrinth: squaremap
+map:
+  public: true
+```
+
 ### `timezone`
 
 The time zone the server's [scheduled tasks](schedules.md) run in, such as `Europe/London`. Left out, it stays (UTC to begin with). Backups have their own, under `backups`.

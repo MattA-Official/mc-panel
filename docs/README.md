@@ -15,6 +15,7 @@ Flytower is a web panel for running Minecraft servers on your own VPS. You insta
 - [Backups](backups.md): schedules, retention, restoring, off-site copies, and past worlds.
 - [Addresses and DNS](addresses.md): giving each server its own hostname.
 - [Public status page](status-page.md): a page anyone can open, with the address, whether it's up and who's on.
+- [Web map](map.md): a live map of the world in the browser, made by squaremap.
 - [Scheduled tasks](schedules.md): restarts with an in-game countdown, console commands and announcements.
 - [Crashes](crashes.md): crash reports, crash loops, and servers that stop responding.
 - [Notifications](notifications.md): Discord, ntfy and JSON webhooks for crashes, failed backups, a filling disk, updates and players.
