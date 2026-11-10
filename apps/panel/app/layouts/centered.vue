@@ -20,8 +20,6 @@ const brand = useBrand()
     <div class="w-full max-w-md">
       <slot />
     </div>
-    <p v-if="brand && showPoweredBy(brand)" class="text-xs text-dimmed" data-e2e="powered-by">
-      Powered by Flytower
-    </p>
+    <PoweredBy v-if="brand && showPoweredBy(brand)" />
   </main>
 </template>
