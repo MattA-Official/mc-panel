@@ -19,7 +19,8 @@ type Fetch = (input: string, init?: RequestInit) => Promise<Response>
 
 /** A line worth relaying. `player` is the name as the log shows it. */
 export type RelayLine =
-  | { kind: 'chat'; player: string; text: string; emote?: boolean }
+  /** `console` is chat sent from the panel's console: `player` is the person, not a player. */
+  | { kind: 'chat'; player: string; text: string; emote?: boolean; console?: boolean }
   | { kind: 'joined' | 'left'; player: string }
   /** `text` follows the player's name; `whole` is set when the name isn't first, so it's all of it. */
   | { kind: 'death' | 'advancement'; player: string; text: string; whole?: boolean }
@@ -149,6 +150,11 @@ function lineText(i: Item): string {
   return l.kind === 'joined' ? 'joined the game' : 'left the game'
 }
 
+/** Who a line is from as Discord shows it: the player, or `[Server] Matt` for console chat. */
+export function senderName(l: RelayLine): string {
+  return l.kind === 'chat' && l.console ? `[Server] ${l.player}` : l.player
+}
+
 /** As posted under the player's name: everything but chat in italics, so it reads as an event. */
 function ownLine(i: Item): string {
   return i.line.kind === 'chat' ? lineText(i) : `_${lineText(i)}_`
@@ -156,7 +162,7 @@ function ownLine(i: Item): string {
 
 /** As posted under someone else's name: `**Steve**: hi`, or `**Steve** joined the game`. */
 function namedLine(i: Item): string {
-  const who = `**${escapeChat(i.line.player)}**`
+  const who = `**${escapeChat(senderName(i.line))}**`
   if (i.line.kind === 'chat') return `${who}: ${lineText(i)}`
   // `Bob showed Steve that not just the floor is lava` already says who.
   if (i.line.kind === 'death' && i.line.whole) return `_${lineText(i)}_`
@@ -169,7 +175,7 @@ function namedLine(i: Item): string {
  */
 export function playerPost(items: Item[]): Post {
   const first = items[0]!
-  const player = first.line.player
+  const player = senderName(first.line)
   const body = items.map(ownLine).join('\n')
   if (allowedUsername(player)) {
     return {
@@ -215,7 +221,7 @@ export function nextPost(queue: Item[], skipped = 0): { post: Post; take: number
     let take = 0
     let size = skipped ? 40 : 0
     for (const i of queue) {
-      const n = i.line.player.length + lineText(i).length + 12
+      const n = senderName(i.line).length + lineText(i).length + 12
       if (take && size + n > CONTENT_MAX) break
       size += n
       take++
@@ -227,7 +233,7 @@ export function nextPost(queue: Item[], skipped = 0): { post: Post; take: number
   let size = ownLine(first).length
   while (take < queue.length) {
     const next = queue[take]!
-    if (next.line.player !== first.line.player) break
+    if (senderName(next.line) !== senderName(first.line)) break
     size += ownLine(next).length + 1
     if (size > CONTENT_MAX) break
     take++
@@ -324,8 +330,10 @@ export class ChatRelay {
     // Queued at once so lines stay in the order they were said; the head is looked up meanwhile.
     const q = this.queue(server)
     const item: Item = { line, avatar: null }
-    item.ready = this.deps
-      .avatar(server, line.player)
+    // Console chat is from a person, not a player, so it has no head (and a player who happens
+    // to share their name mustn't lend them one).
+    const fromConsole = line.kind === 'chat' && line.console
+    item.ready = (fromConsole ? Promise.resolve(null) : this.deps.avatar(server, line.player))
       .then((url) => (item.avatar = url))
       .catch(() => null)
     q.items.push(item)
