@@ -172,30 +172,9 @@ pub fn action(verb: &str, server: &str, ctx: &Context) -> Result<Value, AgentErr
 
 #[cfg(test)]
 mod tests {
-    use std::sync::{Arc, Mutex};
-
     use super::*;
-    use crate::exec::{Exec, ExecResult};
-
-    /// Answers commands from a table and records what ran.
-    #[derive(Default)]
-    struct Fake {
-        answers: BTreeMap<String, ExecResult>,
-        ran: Arc<Mutex<Vec<String>>>,
-    }
-
-    impl Exec for Fake {
-        fn run(&self, file: &str, args: &[&str]) -> ExecResult {
-            let cmd = std::iter::once(file)
-                .chain(args.iter().copied())
-                .collect::<Vec<_>>()
-                .join(" ");
-            self.ran.lock().unwrap().push(cmd.clone());
-            self.answers.get(&cmd).cloned().unwrap_or_default()
-        }
-    }
-
-    type Ran = Arc<Mutex<Vec<String>>>;
+    use crate::exec::ExecResult;
+    use crate::handlers::testing::{Fake, TempRoot};
 
     fn result(stdout: &str) -> ExecResult {
         ExecResult {
@@ -204,32 +183,18 @@ mod tests {
         }
     }
 
-    fn fake(answers: Vec<(&str, ExecResult)>) -> (Context, Ran) {
-        let ran = Ran::default();
-        let answers = answers
-            .into_iter()
-            .map(|(c, r)| (c.to_string(), r))
-            .collect();
-        let exec = Box::new(Fake {
-            answers,
-            ran: Arc::clone(&ran),
-        });
-        (
-            Context {
-                version: "test".into(),
-                exec,
-                events: None,
-            },
-            ran,
-        )
+    fn fake(answers: Vec<(&str, ExecResult)>) -> (Context, Fake) {
+        let fake = Fake::new(answers);
+        let root = TempRoot::new("service");
+        (fake.context(&root.paths), fake)
     }
 
-    fn ctx(answers: &[(&str, &str)]) -> (Context, Ran) {
+    fn ctx(answers: &[(&str, &str)]) -> (Context, Fake) {
         fake(answers.iter().map(|(c, out)| (*c, result(out))).collect())
     }
 
-    fn ran(ran: &Ran) -> Vec<String> {
-        ran.lock().unwrap().clone()
+    fn ran(fake: &Fake) -> Vec<String> {
+        fake.ran()
     }
 
     const KNOWN: &str = "systemctl show flytower-mc@survival.service --property=LoadState --value";

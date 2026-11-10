@@ -28,9 +28,21 @@ export function auditKind(action: string): AuditKind {
 /** Things Flytower records by itself, with nobody signed in behind them. */
 const BY_FLYTOWER = ['server.crashed', 'server.crash_loop', 'server.unresponsive', 'schedule.run']
 
-/** Who to show for an entry with no user: Flytower for its own, otherwise a removed person. */
-export function auditActor(action: string, user: string | null): string | null {
-  return user ?? (BY_FLYTOWER.includes(action) ? 'Flytower' : null)
+/**
+ * Who to show for an entry: the person; "Name via Discord" for a slash command; Flytower for
+ * its own; otherwise null, for a person who has since been removed.
+ */
+export function auditActor(
+  action: string,
+  user: string | null,
+  detail: Record<string, unknown> | null = null,
+): string | null {
+  if (user) return user
+  if (detail?.via === 'discord') {
+    const name = typeof detail.discordName === 'string' && detail.discordName
+    return `${name || 'Someone'} via Discord`
+  }
+  return BY_FLYTOWER.includes(action) ? 'Flytower' : null
 }
 
 /** Detail keys that never leave the server. */
@@ -151,6 +163,11 @@ export function describeAudit(
       if (d.enabled === false && d.was !== false) return `Turned off player stats on ${t}`
       if (d.enabled === true && d.was === false) return `Turned on player stats on ${t}`
       return `Changed who is left out of player stats on ${t}`
+    case 'server.discord_relay':
+      if (d.on === false) return `Stopped posting ${t}'s chat to Discord`
+      return d.was
+        ? `Changed how ${t}'s chat is posted to Discord`
+        : `Started posting ${t}'s chat to Discord`
     case 'server.public_page':
       if (d.enabled === false) return `Turned off ${t}'s public page`
       return d.was === false ? `Turned on ${t}'s public page` : `Changed ${t}'s public page`
@@ -158,6 +175,8 @@ export function describeAudit(
       return `Stopped ${t}`
     case 'server.restart':
       return `Restarted ${t}`
+    case 'server.say':
+      return `Said “${str(d.message)}” on ${t}`
     case 'server.command':
       return `Ran /${str(d.command).replace(/^\//, '')} on ${t}`
     case 'server.properties':
@@ -210,6 +229,12 @@ export function describeAudit(
       return `Connected the Discord app ${str(d.name)}`
     case 'discord.disconnect':
       return `Disconnected the Discord app ${str(d.name)}`
+    case 'discord.roles':
+      return Array.isArray(d.mappings) && d.mappings.length
+        ? `Changed which Discord roles get Flytower roles (${d.mappings.join('; ')})`
+        : 'Took away access from all Discord roles'
+    case 'discord.refused':
+      return `Tried /${str(d.command)}${t ? ` on ${t}` : ''} without access`
     case 'world.export':
       return `Exported ${t}'s world`
     case 'world.export.delete':
