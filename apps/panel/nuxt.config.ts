@@ -60,6 +60,8 @@ export default defineNuxtConfig({
     importsDir: '/var/lib/flytower/imports',
     /** Where the agent archives deleted servers. */
     archiveDir: '/var/lib/flytower/archive',
+    /** Where the agent installs Java; the panel reads which versions are there. */
+    runtimesDir: '/opt/flytower/runtimes',
     /** Modrinth's API; overridable for a mirror or for tests. */
     modrinthApi: 'https://api.modrinth.com/v2',
     hangarApi: 'https://hangar.papermc.io/api/v1',
@@ -89,6 +91,7 @@ export default defineNuxtConfig({
       exportsDir: '.data/exports',
       importsDir: '.data/imports',
       archiveDir: '.data/archive',
+      runtimesDir: '.data/runtimes',
       agentSocket: '.data/agent.sock',
       setupTokenFile: '.data/setup-token.hash',
       devSetupToken: 'dev-setup-token',
