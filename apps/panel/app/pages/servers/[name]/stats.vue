@@ -1,8 +1,14 @@
 <script setup lang="ts">
-const { server } = useServerContext()
-useHead({ title: () => `Stats · ${server.value?.displayName ?? ''}` })
+// Stats moved onto the Players tab.
+definePageMeta({
+  redirect: (to) => ({
+    path: `/servers/${String(to.params.name)}/players`,
+    query: { ...to.query, view: 'stats' },
+    hash: to.hash,
+  }),
+})
 </script>
 
 <template>
-  <ServerStatsOverview />
+  <div />
 </template>

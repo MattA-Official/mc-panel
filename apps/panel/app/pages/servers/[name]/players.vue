@@ -11,6 +11,23 @@ interface PlayersView {
 type Action = 'whitelist-add' | 'whitelist-remove' | 'op' | 'deop' | 'ban' | 'pardon' | 'kick'
 
 const { server, status } = useServerContext()
+const route = useRoute()
+const router = useRouter()
+
+/** People (who's on, whitelist, operators, bans) or Stats (leaderboards), as ?view=stats. */
+const VIEWS = [
+  { label: 'People', value: 'people', icon: 'i-lucide-users' },
+  { label: 'Stats', value: 'stats', icon: 'i-lucide-trophy' },
+]
+const view = computed({
+  get: () => (route.query.view === 'stats' ? 'stats' : 'people'),
+  set: (v: string) =>
+    router.replace({ query: { ...route.query, view: v === 'stats' ? 'stats' : undefined } }),
+})
+useHead({
+  title: () =>
+    `${view.value === 'stats' ? 'Stats' : 'Players'} · ${server.value?.displayName ?? ''}`,
+})
 const toast = useToast()
 const url = computed(() => `/api/servers/${server.value?.name}/players`)
 const { data, refresh } = await useFetch<PlayersView>(url)
@@ -19,7 +36,7 @@ const { data, refresh } = await useFetch<PlayersView>(url)
 let timer: ReturnType<typeof setInterval> | undefined
 onMounted(() => {
   timer = setInterval(() => {
-    if (status.value === 'active') refresh()
+    if (status.value === 'active' && view.value === 'people') refresh()
   }, 5000)
 })
 onBeforeUnmount(() => clearInterval(timer))
@@ -63,182 +80,198 @@ const isOp = (n: string) => data.value?.ops.some((o) => o.name.toLowerCase() ===
 </script>
 
 <template>
-  <div v-if="data" class="mx-auto w-full max-w-5xl space-y-6">
-    <UAlert
-      v-if="!data.running"
-      color="neutral"
-      variant="subtle"
-      icon="i-lucide-info"
-      title="The server is stopped"
-      description="Changes are saved to its files and take effect when it starts."
+  <div class="mx-auto w-full max-w-5xl space-y-6">
+    <UTabs
+      v-model="view"
+      :items="VIEWS"
+      :content="false"
+      variant="pill"
+      size="sm"
+      class="w-fit"
+      data-e2e="players-view"
     />
-    <UAlert
-      v-if="!data.onlineMode"
-      color="warning"
-      variant="subtle"
-      icon="i-lucide-shield-alert"
-      title="Online mode is off"
-      description="Accounts aren't checked with Mojang, so anyone can join with any name. The whitelist matters more than usual."
-    />
+    <ServerStatsOverview v-if="view === 'stats'" />
+    <div v-else-if="data" class="space-y-6">
+      <UAlert
+        v-if="!data.running"
+        color="neutral"
+        variant="subtle"
+        icon="i-lucide-info"
+        title="The server is stopped"
+        description="Changes are saved to its files and take effect when it starts."
+      />
+      <UAlert
+        v-if="!data.onlineMode"
+        color="warning"
+        variant="subtle"
+        icon="i-lucide-shield-alert"
+        title="Online mode is off"
+        description="Accounts aren't checked with Mojang, so anyone can join with any name. The whitelist matters more than usual."
+      />
 
-    <section v-if="data.running" class="rounded-lg border border-default p-5">
-      <div class="flex items-baseline justify-between">
-        <h2 class="text-base font-semibold">Online now</h2>
-        <span v-if="data.online" class="text-sm text-muted"
-          >{{ data.online.count }} of {{ data.online.max }}</span
-        >
-      </div>
-      <p v-if="!data.online || data.online.players.length === 0" class="mt-3 text-sm text-muted">
-        Nobody's playing right now.
-      </p>
-      <ul v-else class="mt-3 divide-y divide-default">
-        <li
-          v-for="{ name: p, uuid } in data.online.players"
-          :key="p"
-          class="flex items-center gap-3 py-2"
-        >
-          <PlayerHead :uuid="uuid" />
-          <span class="flex-1 font-medium">{{ p }}</span>
-          <UBadge v-if="isOp(p)" label="Operator" size="sm" variant="subtle" />
-          <UButton
-            v-else
-            label="Make operator"
-            size="xs"
-            variant="ghost"
-            color="neutral"
-            :loading="busy === `op:${p}`"
-            @click="act('op', p)"
-          />
-          <UButton
-            label="Kick"
-            size="xs"
-            variant="ghost"
-            color="error"
-            :loading="busy === `kick:${p}`"
-            @click="act('kick', p)"
-          />
-        </li>
-      </ul>
-    </section>
-
-    <div class="grid gap-6 lg:grid-cols-3">
-      <section class="rounded-lg border border-default p-5">
-        <h2 class="text-base font-semibold">Whitelist</h2>
-        <p class="mt-1 text-sm text-muted">
-          {{ data.whitelistEnabled ? 'On: only these players can join.' : 'Off: anyone can join.' }}
-          <NuxtLink :to="`/servers/${server?.name}/settings`" class="text-primary">Change</NuxtLink>
+      <section v-if="data.running" class="rounded-lg border border-default p-5">
+        <div class="flex items-baseline justify-between">
+          <h2 class="text-base font-semibold">Online now</h2>
+          <span v-if="data.online" class="text-sm text-muted"
+            >{{ data.online.count }} of {{ data.online.max }}</span
+          >
+        </div>
+        <p v-if="!data.online || data.online.players.length === 0" class="mt-3 text-sm text-muted">
+          Nobody's playing right now.
         </p>
-        <form class="mt-3 flex gap-2" @submit.prevent="add('whitelist')">
-          <UInput
-            v-model="inputs.whitelist"
-            placeholder="Username"
-            class="flex-1"
-            aria-label="Username to whitelist"
-          />
-          <UButton
-            type="submit"
-            icon="i-lucide-plus"
-            aria-label="Add to whitelist"
-            :loading="busy?.startsWith('whitelist-add')"
-          />
-        </form>
-        <ul class="mt-3 space-y-1">
-          <li v-for="p in data.whitelist" :key="p.uuid" class="flex items-center gap-2 text-sm">
-            <PlayerHead :uuid="p.uuid" />
-            <span class="flex-1">{{ p.name }}</span>
+        <ul v-else class="mt-3 divide-y divide-default">
+          <li
+            v-for="{ name: p, uuid } in data.online.players"
+            :key="p"
+            class="flex items-center gap-3 py-2"
+          >
+            <PlayerHead :uuid="uuid" />
+            <span class="flex-1 font-medium">{{ p }}</span>
+            <UBadge v-if="isOp(p)" label="Operator" size="sm" variant="subtle" />
             <UButton
-              icon="i-lucide-x"
+              v-else
+              label="Make operator"
               size="xs"
               variant="ghost"
               color="neutral"
-              :aria-label="`Remove ${p.name}`"
-              @click="act('whitelist-remove', p.name)"
+              :loading="busy === `op:${p}`"
+              @click="act('op', p)"
             />
-          </li>
-          <li v-if="data.whitelist.length === 0" class="text-sm text-muted">Nobody yet.</li>
-        </ul>
-      </section>
-
-      <section class="rounded-lg border border-default p-5">
-        <h2 class="text-base font-semibold">Operators</h2>
-        <p class="mt-1 text-sm text-muted">Can run commands in game.</p>
-        <form class="mt-3 flex gap-2" @submit.prevent="add('ops')">
-          <UInput
-            v-model="inputs.ops"
-            placeholder="Username"
-            class="flex-1"
-            aria-label="Username to make operator"
-          />
-          <UButton
-            type="submit"
-            icon="i-lucide-plus"
-            aria-label="Make operator"
-            :loading="busy?.startsWith('op:')"
-          />
-        </form>
-        <ul class="mt-3 space-y-1">
-          <li v-for="p in data.ops" :key="p.uuid" class="flex items-center gap-2 text-sm">
-            <PlayerHead :uuid="p.uuid" />
-            <span class="flex-1">{{ p.name }}</span>
             <UButton
-              icon="i-lucide-x"
+              label="Kick"
               size="xs"
               variant="ghost"
-              color="neutral"
-              :aria-label="`Remove operator ${p.name}`"
-              @click="act('deop', p.name)"
+              color="error"
+              :loading="busy === `kick:${p}`"
+              @click="act('kick', p)"
             />
           </li>
-          <li v-if="data.ops.length === 0" class="text-sm text-muted">Nobody yet.</li>
         </ul>
       </section>
 
-      <section class="rounded-lg border border-default p-5">
-        <h2 class="text-base font-semibold">Banned</h2>
-        <p class="mt-1 text-sm text-muted">Can't join at all.</p>
-        <form class="mt-3 space-y-2" @submit.prevent="add('banned')">
-          <div class="flex gap-2">
+      <div class="grid gap-6 lg:grid-cols-3">
+        <section class="rounded-lg border border-default p-5">
+          <h2 class="text-base font-semibold">Whitelist</h2>
+          <p class="mt-1 text-sm text-muted">
+            {{
+              data.whitelistEnabled ? 'On: only these players can join.' : 'Off: anyone can join.'
+            }}
+            <NuxtLink :to="`/servers/${server?.name}/settings`" class="text-primary"
+              >Change</NuxtLink
+            >
+          </p>
+          <form class="mt-3 flex gap-2" @submit.prevent="add('whitelist')">
             <UInput
-              v-model="inputs.banned"
+              v-model="inputs.whitelist"
               placeholder="Username"
               class="flex-1"
-              aria-label="Username to ban"
+              aria-label="Username to whitelist"
             />
             <UButton
               type="submit"
-              icon="i-lucide-ban"
-              color="error"
-              variant="soft"
-              aria-label="Ban"
-              :loading="busy?.startsWith('ban:')"
+              icon="i-lucide-plus"
+              aria-label="Add to whitelist"
+              :loading="busy?.startsWith('whitelist-add')"
             />
-          </div>
-          <UInput
-            v-if="inputs.banned"
-            v-model="inputs.reason"
-            placeholder="Reason (optional)"
-            class="w-full"
-            size="sm"
-          />
-        </form>
-        <ul class="mt-3 space-y-1">
-          <li v-for="p in data.banned" :key="p.uuid" class="flex items-start gap-2 text-sm">
-            <PlayerHead :uuid="p.uuid" />
-            <span class="flex-1">
-              {{ p.name }}
-              <span v-if="p.reason" class="block text-xs text-muted">{{ p.reason }}</span>
-            </span>
+          </form>
+          <ul class="mt-3 space-y-1">
+            <li v-for="p in data.whitelist" :key="p.uuid" class="flex items-center gap-2 text-sm">
+              <PlayerHead :uuid="p.uuid" />
+              <span class="flex-1">{{ p.name }}</span>
+              <UButton
+                icon="i-lucide-x"
+                size="xs"
+                variant="ghost"
+                color="neutral"
+                :aria-label="`Remove ${p.name}`"
+                @click="act('whitelist-remove', p.name)"
+              />
+            </li>
+            <li v-if="data.whitelist.length === 0" class="text-sm text-muted">Nobody yet.</li>
+          </ul>
+        </section>
+
+        <section class="rounded-lg border border-default p-5">
+          <h2 class="text-base font-semibold">Operators</h2>
+          <p class="mt-1 text-sm text-muted">Can run commands in game.</p>
+          <form class="mt-3 flex gap-2" @submit.prevent="add('ops')">
+            <UInput
+              v-model="inputs.ops"
+              placeholder="Username"
+              class="flex-1"
+              aria-label="Username to make operator"
+            />
             <UButton
-              label="Unban"
-              size="xs"
-              variant="ghost"
-              color="neutral"
-              @click="act('pardon', p.name)"
+              type="submit"
+              icon="i-lucide-plus"
+              aria-label="Make operator"
+              :loading="busy?.startsWith('op:')"
             />
-          </li>
-          <li v-if="data.banned.length === 0" class="text-sm text-muted">Nobody.</li>
-        </ul>
-      </section>
+          </form>
+          <ul class="mt-3 space-y-1">
+            <li v-for="p in data.ops" :key="p.uuid" class="flex items-center gap-2 text-sm">
+              <PlayerHead :uuid="p.uuid" />
+              <span class="flex-1">{{ p.name }}</span>
+              <UButton
+                icon="i-lucide-x"
+                size="xs"
+                variant="ghost"
+                color="neutral"
+                :aria-label="`Remove operator ${p.name}`"
+                @click="act('deop', p.name)"
+              />
+            </li>
+            <li v-if="data.ops.length === 0" class="text-sm text-muted">Nobody yet.</li>
+          </ul>
+        </section>
+
+        <section class="rounded-lg border border-default p-5">
+          <h2 class="text-base font-semibold">Banned</h2>
+          <p class="mt-1 text-sm text-muted">Can't join at all.</p>
+          <form class="mt-3 space-y-2" @submit.prevent="add('banned')">
+            <div class="flex gap-2">
+              <UInput
+                v-model="inputs.banned"
+                placeholder="Username"
+                class="flex-1"
+                aria-label="Username to ban"
+              />
+              <UButton
+                type="submit"
+                icon="i-lucide-ban"
+                color="error"
+                variant="soft"
+                aria-label="Ban"
+                :loading="busy?.startsWith('ban:')"
+              />
+            </div>
+            <UInput
+              v-if="inputs.banned"
+              v-model="inputs.reason"
+              placeholder="Reason (optional)"
+              class="w-full"
+              size="sm"
+            />
+          </form>
+          <ul class="mt-3 space-y-1">
+            <li v-for="p in data.banned" :key="p.uuid" class="flex items-start gap-2 text-sm">
+              <PlayerHead :uuid="p.uuid" />
+              <span class="flex-1">
+                {{ p.name }}
+                <span v-if="p.reason" class="block text-xs text-muted">{{ p.reason }}</span>
+              </span>
+              <UButton
+                label="Unban"
+                size="xs"
+                variant="ghost"
+                color="neutral"
+                @click="act('pardon', p.name)"
+              />
+            </li>
+            <li v-if="data.banned.length === 0" class="text-sm text-muted">Nobody.</li>
+          </ul>
+        </section>
+      </div>
     </div>
   </div>
 </template>
