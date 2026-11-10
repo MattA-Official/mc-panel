@@ -1,5 +1,6 @@
 import type { PublicPage } from '#shared/public-page'
 import type { StatsSettings } from '#shared/stats-settings'
+import type { RelayView } from '#shared/discord-relay'
 
 export type ServiceState =
   'active' | 'inactive' | 'activating' | 'deactivating' | 'failed' | 'unknown'
@@ -67,6 +68,8 @@ export interface Server {
   restartWhenUnresponsive: boolean
   publicPage: PublicPage
   stats: StatsSettings
+  /** Game chat to Discord; never the webhook URL. */
+  discordRelay: RelayView
   status: ServiceState
   health: Health
   /** The server's icon, if it has one; the URL changes when the icon does. */
