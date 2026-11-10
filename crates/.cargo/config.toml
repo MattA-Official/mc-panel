@@ -1,0 +1,7 @@
+# Cross-compiling for arm64 from an amd64 machine needs no extra toolchain: musl's C runtime
+# ships with the Rust target, and Rust's own linker can link it.
+[target.aarch64-unknown-linux-musl]
+linker = "rust-lld"
+
+[target.x86_64-unknown-linux-musl]
+linker = "rust-lld"
