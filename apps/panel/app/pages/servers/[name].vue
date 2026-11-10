@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { serverUpdateCount } from '#shared/updates'
+
 const route = useRoute()
 const name = computed(() => String(route.params.name))
 const { data: server, error, refresh } = await useFetch<Server>(() => `/api/servers/${name.value}`)
@@ -35,13 +37,39 @@ async function act(action: 'start' | 'stop' | 'restart') {
 
 provideServerContext({ server, status, health, refresh })
 
-const tabs = computed<{ label: string; icon: string; to: string; exact?: boolean }[]>(() => [
+const liveUpdates = useLiveUpdates()
+const contentUpdates = computed(() => serverUpdateCount(liveUpdates.value, name.value))
+
+const tabs = computed<
+  {
+    label: string
+    icon: string
+    to: string
+    exact?: boolean
+    badge?: { label: string; color: 'info'; variant: 'subtle'; 'aria-label'?: string }
+  }[]
+>(() => [
   { label: 'Console', icon: 'i-lucide-terminal', to: `/servers/${name.value}`, exact: true },
   { label: 'Logs', icon: 'i-lucide-scroll-text', to: `/servers/${name.value}/logs` },
   { label: 'Players', icon: 'i-lucide-users', to: `/servers/${name.value}/players` },
   { label: 'Performance', icon: 'i-lucide-activity', to: `/servers/${name.value}/performance` },
   { label: 'Backups', icon: 'i-lucide-archive', to: `/servers/${name.value}/backups` },
-  { label: 'Content', icon: 'i-lucide-package', to: `/servers/${name.value}/content` },
+  {
+    label: 'Content',
+    icon: 'i-lucide-package',
+    to: `/servers/${name.value}/content`,
+    // How many installed items have an update, from the background check.
+    ...(contentUpdates.value
+      ? {
+          badge: {
+            label: String(contentUpdates.value),
+            color: 'info' as const,
+            variant: 'subtle' as const,
+            'aria-label': `${contentUpdates.value} update${contentUpdates.value === 1 ? '' : 's'} available`,
+          },
+        }
+      : {}),
+  },
   { label: 'World', icon: 'i-lucide-globe', to: `/servers/${name.value}/world` },
   { label: 'Files', icon: 'i-lucide-folder-open', to: `/servers/${name.value}/files` },
   { label: 'Settings', icon: 'i-lucide-sliders-horizontal', to: `/servers/${name.value}/settings` },
