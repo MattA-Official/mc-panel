@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const { server } = useServerContext()
-const past = ref<{ refresh: () => void } | null>(null)
+/** Bumped after a reset, so Past worlds shows the world just kept. */
+const resets = ref(0)
 </script>
 
 <template>
@@ -8,7 +9,7 @@ const past = ref<{ refresh: () => void } | null>(null)
     <WorldPregen />
     <WorldCopy />
     <WorldExports v-if="server" :server="server.name" />
-    <WorldPastWorlds v-if="server" ref="past" :server="server.name" />
-    <WorldReset @reset="past?.refresh()" />
+    <WorldPastWorlds v-if="server" :server="server.name" :version="resets" />
+    <WorldReset @reset="resets++" />
   </div>
 </template>

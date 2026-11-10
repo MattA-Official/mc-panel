@@ -14,7 +14,8 @@ interface PastWorld {
   shares: ShareLink[]
 }
 
-const props = defineProps<{ server: string }>()
+/** Bumped by the World tab after a reset, to fetch the list again. */
+const props = defineProps<{ server: string; version?: number }>()
 const toast = useToast()
 const exportsBase = computed(() => `/api/servers/${props.server}/exports`)
 
@@ -22,7 +23,10 @@ const { data: worlds, refresh } = await useFetch<PastWorld[]>(
   () => `/api/servers/${props.server}/past-worlds`,
   { default: () => [] },
 )
-defineExpose({ refresh })
+watch(
+  () => props.version,
+  () => refresh(),
+)
 
 const sharing = ref<PastWorld | null>(null)
 
