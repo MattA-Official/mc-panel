@@ -1,5 +1,6 @@
 /** Restores a backup over the server. Needs a recent passkey check. */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'backups.restore')
   await requireElevated(event)
   const { user, name, service } = await backupContext(event)
   const { id } = getRouterParams(event)

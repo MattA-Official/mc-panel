@@ -14,6 +14,7 @@ const Body = z.object({
 
 /** Runs a console command over RCON. The reply is also echoed to every open console. */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'console.command')
   const { user } = await requireUserSession(event)
   const { name } = await getValidatedRouterParams(event, Params.parse)
   const { command } = await readValidatedBody(event, Body.parse)

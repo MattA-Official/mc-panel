@@ -4,6 +4,7 @@ const Body = z.object({ ttl: z.enum(['1h', '24h', '7d']) })
 
 /** Makes a share link. The URL is only shown in this response. */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'backups.download')
   const { user, name } = await backupContext(event)
   const id = Number(getRouterParam(event, 'id'))
   const { ttl } = await readValidatedBody(event, Body.parse)

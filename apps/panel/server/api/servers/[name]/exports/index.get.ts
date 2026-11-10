@@ -1,5 +1,6 @@
 /** A server's world exports and their live share links (without tokens). */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'server.view')
   const { name } = await backupContext(event)
   return useExports()
     .list(name)

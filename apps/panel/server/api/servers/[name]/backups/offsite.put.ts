@@ -7,6 +7,7 @@ const Body = z.object({ target: z.number().int().nullable() })
 
 /** Chooses where this server's backups are copied, and copies the ones it already has. */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'server.configure')
   const { user, name, service } = await backupContext(event)
   const { target } = await readValidatedBody(event, Body.parse)
   const offsite = useOffsite()

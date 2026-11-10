@@ -6,7 +6,7 @@ const Params = z.object({ name: z.string().max(40) })
 
 /** The server's icon, as Minecraft reads it. The URL carries a version, so it can be cached. */
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  await requireServerPermission(event, 'server.view')
   const { name } = await getValidatedRouterParams(event, Params.parse)
   findServer(name)
   const found = await downloadPath(serverDir(name), ICON_FILE).catch((err) => {

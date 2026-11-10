@@ -1,5 +1,6 @@
 import type { ContentItem } from '../../shared/spec'
 import type { PublicPage } from '../../shared/public-page'
+import type { Permission } from '../../shared/permissions'
 import { sql } from 'drizzle-orm'
 import {
   blob,
@@ -18,6 +19,12 @@ const createdAt = () => integer('created_at', { mode: 'timestamp_ms' }).notNull(
 export const users = sqliteTable('users', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
+  /** Bumped by "Sign out everywhere": sessions made under an older number stop working. */
+  sessionVersion: integer('session_version').notNull().default(0),
+  /** Light, dark or follow the device, remembered for the person rather than the browser. */
+  theme: text('theme', { enum: ['system', 'light', 'dark'] })
+    .notNull()
+    .default('system'),
   createdAt: createdAt(),
 })
 
@@ -332,3 +339,52 @@ export const schedules = sqliteTable(
   },
   (t) => [index('schedules_server').on(t.server, t.position)],
 )
+
+/**
+ * Named sets of permissions. Built-in roles (owner, admin, operator, viewer) take their
+ * permissions from shared/permissions.ts, so the column only matters for custom roles.
+ */
+export const roles = sqliteTable('roles', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  builtIn: integer('built_in', { mode: 'boolean' }).notNull().default(false),
+  permissions: text('permissions', { mode: 'json' }).$type<Permission[]>().notNull().default([]),
+  createdAt: createdAt(),
+})
+
+/** A person holds a role for one server, or for all servers when `server` is null. */
+export const grants = sqliteTable(
+  'grants',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    roleId: text('role_id')
+      .notNull()
+      .references(() => roles.id, { onDelete: 'cascade' }),
+    server: text('server').references(() => servers.name, { onDelete: 'cascade' }),
+    createdAt: createdAt(),
+  },
+  (t) => [index('grants_user').on(t.userId)],
+)
+
+/**
+ * One-time invite links. Only a SHA-256 of the token is kept (the token is 32 random bytes,
+ * so a slow hash adds nothing). A link is gone once used, revoked or past `expiresAt`.
+ */
+export const invites = sqliteTable('invites', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  tokenHash: text('token_hash').notNull().unique(),
+  roleId: text('role_id')
+    .notNull()
+    .references(() => roles.id, { onDelete: 'cascade' }),
+  server: text('server').references(() => servers.name, { onDelete: 'cascade' }),
+  /** Who it's for, as the inviter wrote it; the person picks their own name when joining. */
+  note: text('note'),
+  createdBy: integer('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: createdAt(),
+  expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+  usedAt: integer('used_at', { mode: 'timestamp_ms' }),
+  usedBy: integer('used_by').references(() => users.id, { onDelete: 'set null' }),
+})

@@ -18,6 +18,7 @@ const Body = z.union([
  * that doesn't check out, or `{ ok: true, plan }`.
  */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'server.configure')
   const { name, specs } = await specContext(event)
   const body = await readValidatedBody(event, Body.parse)
   let spec: ServerSpec

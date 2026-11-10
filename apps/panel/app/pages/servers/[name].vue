@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Permission } from '#shared/permissions'
 import { serverUpdateCount } from '#shared/updates'
 
 const route = useRoute()
@@ -17,6 +18,40 @@ const health = computed<Health>(
 const running = computed(() => status.value === 'active' || status.value === 'activating')
 const busy = ref<null | 'start' | 'stop' | 'restart'>(null)
 const confirming = ref<null | 'stop' | 'restart'>(null)
+
+const can = useCan()
+const canPower = computed(() => can('server.power', name.value))
+
+/** What each tab needs for changes, and what to say when that's missing. */
+const WRITE_NEEDS: Record<string, { permission: Permission; text: string }> = {
+  settings: {
+    permission: 'server.configure',
+    text: "You can see this server's settings but not change them.",
+  },
+  content: {
+    permission: 'server.configure',
+    text: 'You can see what is installed but not change it.',
+  },
+  yaml: { permission: 'server.configure', text: 'You can read the YAML but not apply changes.' },
+  schedules: {
+    permission: 'server.configure',
+    text: 'You can see the schedules but not change or run them.',
+  },
+  players: {
+    permission: 'players.manage',
+    text: 'You can see who plays here but not manage them.',
+  },
+  backups: {
+    permission: 'backups.create',
+    text: 'You can see the backups but not take or manage them.',
+  },
+  world: { permission: 'world.manage', text: 'You can see the world but not change it.' },
+}
+const readOnly = computed(() => {
+  const tab = route.path.split('/')[3]
+  const need = tab ? WRITE_NEEDS[tab] : undefined
+  return need && !can(need.permission, name.value) ? need.text : null
+})
 
 const toast = useToast()
 async function act(action: 'start' | 'stop' | 'restart') {
@@ -49,8 +84,12 @@ const tabs = computed<
     badge?: { label: string; color: 'info'; variant: 'subtle'; 'aria-label'?: string }
   }[]
 >(() => [
-  { label: 'Console', icon: 'i-lucide-terminal', to: `/servers/${name.value}`, exact: true },
-  { label: 'Logs', icon: 'i-lucide-scroll-text', to: `/servers/${name.value}/logs` },
+  ...(can('console.read', name.value)
+    ? [
+        { label: 'Console', icon: 'i-lucide-terminal', to: `/servers/${name.value}`, exact: true },
+        { label: 'Logs', icon: 'i-lucide-scroll-text', to: `/servers/${name.value}/logs` },
+      ]
+    : []),
   { label: 'Players', icon: 'i-lucide-users', to: `/servers/${name.value}/players` },
   { label: 'Performance', icon: 'i-lucide-activity', to: `/servers/${name.value}/performance` },
   { label: 'Backups', icon: 'i-lucide-archive', to: `/servers/${name.value}/backups` },
@@ -72,7 +111,9 @@ const tabs = computed<
       : {}),
   },
   { label: 'World', icon: 'i-lucide-globe', to: `/servers/${name.value}/world` },
-  { label: 'Files', icon: 'i-lucide-folder-open', to: `/servers/${name.value}/files` },
+  ...(can('files.read', name.value)
+    ? [{ label: 'Files', icon: 'i-lucide-folder-open', to: `/servers/${name.value}/files` }]
+    : []),
   { label: 'Settings', icon: 'i-lucide-sliders-horizontal', to: `/servers/${name.value}/settings` },
   { label: 'YAML', icon: 'i-lucide-file-code', to: `/servers/${name.value}/yaml` },
 ])
@@ -126,7 +167,7 @@ const powerMenu = computed(() => [
             <CopyAddress :server="server" />
           </span>
         </template>
-        <template v-if="server" #right>
+        <template v-if="server && canPower" #right>
           <UDropdownMenu :items="powerMenu" :content="{ align: 'end' }" class="sm:hidden">
             <UButton
               label="Power"
@@ -197,7 +238,23 @@ const powerMenu = computed(() => [
         description="It may have been deleted."
         :actions="[{ label: 'All servers', to: '/' }]"
       />
-      <NuxtPage v-else-if="server" />
+      <template v-else-if="server">
+        <UAlert
+          v-if="readOnly"
+          class="mb-4 shrink-0"
+          color="neutral"
+          variant="subtle"
+          icon="i-lucide-eye"
+          title="View only"
+          :description="readOnly"
+          data-e2e="read-only"
+        />
+        <!-- A disabled fieldset disables every button and field inside, so nothing here can be
+             changed without the permission. The server checks every request anyway. -->
+        <fieldset :disabled="!!readOnly" class="contents">
+          <NuxtPage />
+        </fieldset>
+      </template>
       <UModal
         :open="!!confirming"
         :title="confirming === 'stop' ? 'Stop the server?' : 'Restart the server?'"

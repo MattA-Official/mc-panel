@@ -18,6 +18,7 @@ const Body = z.discriminatedUnion('action', [
 
 /** Starts, pauses, continues or cancels Chunky. Returns what Chunky said. */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'world.manage')
   const { user, name, world } = await worldContext(event)
   const body = await readValidatedBody(event, Body.parse)
   const reply = await worldHttp(() =>

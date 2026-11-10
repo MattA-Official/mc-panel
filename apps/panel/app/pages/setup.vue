@@ -2,25 +2,18 @@
 definePageMeta({ layout: 'centered' })
 useHead({ title: 'Set up' })
 
-const { refresh } = useAuthState()
-const { register } = usePasskeys()
-
-type Step = 'token' | 'passkey' | 'codes' | 'confirm'
 const { state } = useAuthState()
-const step = ref<Step>(state.value?.setupVerified ? 'passkey' : 'token')
+const step = ref<'token' | 'enrol'>(state.value?.setupVerified ? 'enrol' : 'token')
 const busy = ref(false)
 const error = ref('')
-
 const token = ref('')
-const name = ref('')
-const codes = ref<string[]>([])
-const confirmCode = ref('')
 
-async function run(fn: () => Promise<void>) {
+async function submitToken() {
   busy.value = true
   error.value = ''
   try {
-    await fn()
+    await $fetch('/api/setup/token', { method: 'POST', body: { token: token.value } })
+    step.value = 'enrol'
   } catch (e) {
     error.value = errorMessage(e)
   } finally {
@@ -28,38 +21,14 @@ async function run(fn: () => Promise<void>) {
   }
 }
 
-const submitToken = () =>
-  run(async () => {
-    await $fetch('/api/setup/token', { method: 'POST', body: { token: token.value } })
-    step.value = 'passkey'
-  })
-
-const createPasskey = () =>
-  run(async () => {
-    const res = await register(name.value.trim() || undefined)
-    codes.value = res.recoveryCodes ?? []
-    step.value = 'codes'
-  })
-
-function downloadCodes() {
-  const text = `Flytower recovery codes for ${location.host}\nEach code works once.\n\n${codes.value.join('\n')}\n`
-  const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }))
-  const a = Object.assign(document.createElement('a'), {
-    href: url,
-    download: 'flytower-recovery-codes.txt',
-  })
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
-const copyCodes = () => navigator.clipboard.writeText(codes.value.join('\n'))
-
-const confirm = () =>
-  run(async () => {
-    await $fetch('/api/setup/confirm', { method: 'POST', body: { code: confirmCode.value } })
-    await refresh()
-    await navigateTo('/')
-  })
+// The installer's setup link carries the token after `#`, so opening it skips typing.
+onMounted(() => {
+  const fromLink = takeLinkToken()
+  if (fromLink && step.value === 'token') {
+    token.value = fromLink
+    void submitToken()
+  }
+})
 </script>
 
 <template>
@@ -67,7 +36,7 @@ const confirm = () =>
     <template v-if="step === 'token'">
       <h1 class="text-lg font-semibold">Set up Flytower</h1>
       <p class="mt-1 text-sm text-muted">
-        Enter the setup token you chose when you installed Flytower.
+        Open the setup link the installer printed, or enter the setup token it showed.
       </p>
       <UForm :state="{ token }" class="mt-6 space-y-4" @submit="submitToken">
         <UFormField label="Setup token" name="token">
@@ -75,67 +44,14 @@ const confirm = () =>
         </UFormField>
         <UButton type="submit" block :loading="busy" :disabled="!token" label="Continue" />
       </UForm>
+      <UAlert v-if="error" class="mt-4" color="error" variant="subtle" :title="error" />
     </template>
 
-    <template v-else-if="step === 'passkey'">
-      <h1 class="text-lg font-semibold">Create your passkey</h1>
-      <p class="mt-1 text-sm text-muted">
-        You'll sign in with this passkey instead of a password. Your device will ask for your
-        fingerprint, face or PIN.
-      </p>
-      <UForm :state="{ name }" class="mt-6 space-y-4" @submit="createPasskey">
-        <UFormField label="Your name" name="name" hint="Optional">
-          <UInput v-model="name" autocomplete="name" class="w-full" />
-        </UFormField>
-        <UButton
-          type="submit"
-          block
-          :loading="busy"
-          icon="i-lucide-fingerprint"
-          label="Create passkey"
-        />
-      </UForm>
-    </template>
-
-    <template v-else-if="step === 'codes'">
-      <h1 class="text-lg font-semibold">Save your recovery codes</h1>
-      <p class="mt-1 text-sm text-muted">
-        If you lose every passkey, one of these codes gets you back in. Each code works once. This
-        is the only time they're shown.
-      </p>
-      <ol class="mt-4 grid grid-cols-2 gap-2 rounded-md bg-elevated p-4 font-mono text-sm">
-        <li v-for="c in codes" :key="c">{{ c }}</li>
-      </ol>
-      <div class="mt-4 flex gap-2">
-        <UButton
-          variant="outline"
-          icon="i-lucide-download"
-          label="Download"
-          @click="downloadCodes"
-        />
-        <UButton variant="outline" icon="i-lucide-copy" label="Copy" @click="copyCodes" />
-      </div>
-      <UButton class="mt-6" block label="I've saved them" @click="step = 'confirm'" />
-    </template>
-
-    <template v-else>
-      <h1 class="text-lg font-semibold">Check you've saved them</h1>
-      <p class="mt-1 text-sm text-muted">Type any one of your recovery codes.</p>
-      <UForm :state="{ confirmCode }" class="mt-6 space-y-4" @submit="confirm">
-        <UFormField label="Recovery code" name="confirmCode">
-          <UInput v-model="confirmCode" autocomplete="off" autofocus class="w-full font-mono" />
-        </UFormField>
-        <UButton
-          type="submit"
-          block
-          :loading="busy"
-          :disabled="!confirmCode"
-          label="Finish setup"
-        />
-        <UButton variant="link" block label="Show the codes again" @click="step = 'codes'" />
-      </UForm>
-    </template>
-
-    <UAlert v-if="error" class="mt-4" color="error" variant="subtle" :title="error" />
+    <EnrolSteps
+      v-else
+      heading="Create your passkey"
+      finish-label="Finish setup"
+      @done="navigateTo('/')"
+    />
   </UCard>
 </template>

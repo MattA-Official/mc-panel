@@ -4,6 +4,7 @@ const Body = z.object({ planId: z.string().regex(/^[a-f0-9]{24}$/) })
 
 /** Applies a plan made a moment ago, as a job. */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'server.configure')
   const { user, name, specs } = await specContext(event)
   const { planId } = await readValidatedBody(event, Body.parse)
   const { jobId } = await specHttp(() => specs.apply(name, planId))

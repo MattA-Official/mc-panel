@@ -7,6 +7,7 @@ const Body = z.union([
 
 /** Opens or closes SSH. Needs a recent passkey check either way. */
 export default defineEventHandler(async (event) => {
+  await requirePermission(event, 'system.manage')
   const { user } = await requireElevated(event)
   const body = await readValidatedBody(event, Body.parse)
   try {

@@ -20,6 +20,7 @@ export default defineEventHandler(async (event) => {
   const user = db.select().from(users).where(eq(users.id, userId)).get()!
   await replaceUserSession(event, {
     user: { id: user.id, name: user.name },
+    sessionVersion: user.sessionVersion,
     mustEnrolPasskey: true,
   })
   db.insert(audit).values({ userId, action: 'auth.recovery_code' }).run()

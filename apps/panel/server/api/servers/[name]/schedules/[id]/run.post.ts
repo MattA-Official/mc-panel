@@ -8,6 +8,7 @@ const Params = z.object({ name: z.string().max(40), id: z.coerce.number().int() 
  * result arrives on the `schedules:<name>` topic and in the activity log.
  */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'server.configure')
   const { user } = await requireUserSession(event)
   const { name, id } = await getValidatedRouterParams(event, Params.parse)
   findServer(name)

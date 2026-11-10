@@ -3,6 +3,7 @@ import { CreateServerInput, JobError } from '../../../jobs/runner'
 
 /** Turns a ready import into a server, through the create-server job. */
 export default defineEventHandler(async (event) => {
+  await requirePermission(event, 'servers.create')
   const { user, imports, id } = await importContext(event)
   const meta = await importHttp(() => imports.get(id))
   if (meta.state !== 'ready' || !meta.detected) {

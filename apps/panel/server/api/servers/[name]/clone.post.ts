@@ -14,6 +14,8 @@ const Body = z.object({
 
 /** Copies a server (optionally without its world) to a new one, through the create job. */
 export default defineEventHandler(async (event) => {
+  await requirePermission(event, 'servers.create')
+  await requireServerPermission(event, 'server.view')
   const { user } = await requireUserSession(event)
   const from = findServer(getRouterParam(event, 'name') ?? '')
   const body = await readValidatedBody(event, Body.parse)
