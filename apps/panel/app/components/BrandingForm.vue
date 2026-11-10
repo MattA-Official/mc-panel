@@ -18,6 +18,7 @@ import {
   normaliseHex,
   pickShades,
   showPoweredBy,
+  type BrandingSettings,
   type FontId,
   type ImageSlot,
   type PublicBranding,
@@ -28,12 +29,25 @@ const withElevation = useElevation()
 const brand = useBrand()
 
 const form = reactive({ ...DEFAULT_BRANDING })
+const hexText = ref(DEFAULT_ACCENT)
+/** What the form last loaded, to tell the person's edits from the saved values. */
+let loaded: BrandingSettings | null = null
+const sameAs = (b: BrandingSettings) =>
+  form.name.trim() === b.name &&
+  form.accent === b.accent &&
+  form.font === b.font &&
+  form.poweredBy === b.poweredBy
+/**
+ * Takes the saved branding into the form, unless someone is part way through editing it:
+ * a change arriving from another tab (or the socket's first snapshot) mustn't wipe typing.
+ */
 function load(b: PublicBranding | null) {
   if (!b) return
-  Object.assign(form, { name: b.name, accent: b.accent, font: b.font, poweredBy: b.poweredBy })
+  if (loaded && !sameAs(loaded)) return
+  loaded = { name: b.name, accent: b.accent, font: b.font, poweredBy: b.poweredBy }
+  Object.assign(form, loaded)
   hexText.value = b.accent
 }
-const hexText = ref(DEFAULT_ACCENT)
 watch(brand, load, { immediate: true })
 
 // The text box takes #abc, abc or #aabbcc; the picker and preview follow once it's valid.
@@ -112,6 +126,7 @@ async function save() {
         body: { ...form, name: form.name.trim() },
       }),
     )
+    loaded = null
     setBrand(b)
     toast.add({ title: 'Branding saved', color: 'success' })
   } catch (err) {
@@ -183,6 +198,7 @@ async function reset() {
     const b = await withElevation(() =>
       $fetch<PublicBranding>('/api/system/branding', { method: 'DELETE' }),
     )
+    loaded = null
     setBrand(b)
     confirmReset.value = false
     toast.add({ title: `Back to ${DEFAULT_NAME}'s own look`, color: 'success' })
@@ -224,7 +240,7 @@ const maxKb = MAX_IMAGE_BYTES / 1024
             data-e2e="branding-name"
           />
         </UFormField>
-        <UFormField label="Display font" description="For titles and server names.">
+        <UFormField label="Display font" help="For titles and server names.">
           <USelect v-model="form.font" :items="fontItems" class="w-full" />
         </UFormField>
       </div>
@@ -240,7 +256,7 @@ const maxKb = MAX_IMAGE_BYTES / 1024
               color="neutral"
               variant="outline"
               aria-label="Choose a colour"
-              class="size-9 p-1"
+              class="size-8 p-1"
             >
               <span class="size-full rounded-sm" :style="{ background: form.accent }" />
             </UButton>
