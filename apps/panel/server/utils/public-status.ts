@@ -3,6 +3,7 @@ import type { PublicPage, PublicStatus } from '../../shared/public-page'
 import { publicStatus } from '../status/page'
 import { withUuids } from '../players'
 import { readLock } from '../spec/lock'
+import { readMapSettings } from '../../shared/map-settings'
 
 type Row = typeof schema.servers.$inferSelect
 
@@ -28,6 +29,15 @@ export async function buildPublicStatus(
     usePacks().peek(row, lock, page.pack.extras)?.path !== null &&
     (page.pack.extras.length > 0 ||
       lock.content.some((i) => i.kind === 'mod' && i.source === 'modrinth'))
+  // Only a map anyone can open: public, with the page on (Discord asks about any server).
+  const hasMap =
+    page.enabled &&
+    readMapSettings(row.map).public &&
+    (
+      await useMap()
+        .status(name)
+        .catch(() => null)
+    )?.ready === true
   return publicStatus({
     row,
     page,
@@ -36,6 +46,7 @@ export async function buildPublicStatus(
     machine,
     motd: props.motd ?? '',
     hasPack,
+    hasMap,
     icon: iconUrl(name)?.replace(`/api/servers/${name}/`, `/api/public/servers/${name}/`) ?? null,
     maxPlayers: Number.isFinite(max) ? max : null,
     withUuids: (names) => withUuids(names, usercache),
