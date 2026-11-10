@@ -2,7 +2,11 @@
 //! "not ported yet" until their stage lands, so the Rust agent can be run against a real panel
 //! without pretending to do work it can't.
 
+mod files;
+pub mod server;
 pub mod service;
+#[cfg(test)]
+pub mod testing;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -12,6 +16,7 @@ use serde_json::{Value, json};
 use crate::envelope::{AgentError, ErrorCode, PROTOCOL_VERSION};
 use crate::events::UnitEvents;
 use crate::exec::Exec;
+use crate::units::Paths;
 use crate::verbs::Params;
 
 /// Everything a handler may touch, from the same environment variables as the TypeScript
@@ -21,6 +26,9 @@ pub struct Context {
     pub exec: Box<dyn Exec>,
     /// Unit changes from the journal; `None` makes `service.wait` tell the panel to poll.
     pub events: Option<Arc<UnitEvents>>,
+    pub paths: Paths,
+    /// The panel's group, which may use the agent and shares server folders.
+    pub panel_group: String,
 }
 
 /// Runs one checked request.
@@ -42,6 +50,12 @@ pub fn handle(params: &Params, ctx: &Context) -> Result<Value, AgentError> {
         Params::ServiceStart(p) => service::action("start", &p.server, ctx),
         Params::ServiceStop(p) => service::action("stop", &p.server, ctx),
         Params::ServiceRestart(p) => service::action("restart", &p.server, ctx),
+        Params::ServerCreate(p) => server::create(&p.name, p.port, p.memory_mb, p.java_major, ctx),
+        Params::ServerConfigure(p) => {
+            server::configure(&p.name, p.memory_mb, p.port, p.java_major, ctx)
+        }
+        Params::ServerPermissions(p) => server::permissions(&p.name, ctx),
+        Params::ServerDelete(p) => server::remove(&p.name, ctx),
         _ => Err(AgentError::new(
             ErrorCode::Failed,
             "not ported to the Rust agent yet; use the TypeScript agent",

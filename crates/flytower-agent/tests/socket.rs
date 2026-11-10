@@ -10,6 +10,7 @@ use flytower_agent::envelope::MAX_LINE_BYTES;
 use flytower_agent::exec::RealExec;
 use flytower_agent::handlers::{Context, handle};
 use flytower_agent::server::{ListenOptions, bind, serve};
+use flytower_agent::units::Paths;
 use serde_json::{Value, json};
 
 #[test]
@@ -30,6 +31,8 @@ fn answers_in_order_over_a_socket() {
         version: "1.2.0-test".into(),
         exec: Box::new(RealExec::default()),
         events: None,
+        paths: Paths::under(&dir),
+        panel_group: "flytower".into(),
     };
     thread::spawn(move || {
         serve(&listener, None, move |line| {
