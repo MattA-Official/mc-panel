@@ -24,12 +24,7 @@ export function auditKind(action: string): AuditKind {
 }
 
 /** Things Flytower records by itself, with nobody signed in behind them. */
-const BY_FLYTOWER = [
-  'server.crashed',
-  'server.crash_loop',
-  'server.unresponsive',
-  'schedule.run',
-]
+const BY_FLYTOWER = ['server.crashed', 'server.crash_loop', 'server.unresponsive', 'schedule.run']
 
 /** Who to show for an entry with no user: Flytower for its own, otherwise a removed person. */
 export function auditActor(action: string, user: string | null): string | null {

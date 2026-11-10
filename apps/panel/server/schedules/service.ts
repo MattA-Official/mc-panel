@@ -140,10 +140,7 @@ export class ScheduleService {
     const old = this.rows(server)
     db.transaction((tx) => {
       if (timezone !== undefined) {
-        tx.update(schema.servers)
-          .set({ timezone })
-          .where(eq(schema.servers.name, server))
-          .run()
+        tx.update(schema.servers).set({ timezone }).where(eq(schema.servers.name, server)).run()
       }
       const left = [...old]
       for (const [position, t] of tasks.entries()) {
@@ -204,7 +201,10 @@ export class ScheduleService {
         outcome = { ok: null, result: "Skipped: the server wasn't running" }
       } else {
         // Waiting for the lock can make a restart late; its countdown then starts now.
-        const late = Math.max(0, this.now() - (at - (row.kind === 'restart' ? leadMs(row.warn) : 0)))
+        const late = Math.max(
+          0,
+          this.now() - (at - (row.kind === 'restart' ? leadMs(row.warn) : 0)),
+        )
         outcome = await this.execute(row, at + late)
       }
     } catch (err) {

@@ -56,7 +56,9 @@ describe('CronTimers', () => {
     const c = fakeClock('2026-07-01T00:00:00Z')
     const timers = new CronTimers(c.clock)
     const fired: string[] = []
-    timers.sync([{ key: 'a', cron: '0 5 * * *', tz: 'UTC', fire: (at) => fired.push(at.toISOString()) }])
+    timers.sync([
+      { key: 'a', cron: '0 5 * * *', tz: 'UTC', fire: (at) => fired.push(at.toISOString()) },
+    ])
     expect(timers.next('a')?.toISOString()).toBe('2026-07-01T05:00:00.000Z')
     c.advance(2 * 86_400_000)
     expect(fired).toEqual(['2026-07-01T05:00:00.000Z', '2026-07-02T05:00:00.000Z'])
@@ -107,7 +109,9 @@ describe('CronTimers', () => {
     const c = fakeClock('2026-01-02T00:00:00Z')
     const timers = new CronTimers(c.clock)
     const fired: string[] = []
-    timers.sync([{ key: 'y', cron: '0 0 1 1 *', tz: 'UTC', fire: (at) => fired.push(at.toISOString()) }])
+    timers.sync([
+      { key: 'y', cron: '0 0 1 1 *', tz: 'UTC', fire: (at) => fired.push(at.toISOString()) },
+    ])
     c.advance(366 * 86_400_000)
     expect(fired).toEqual(['2027-01-01T00:00:00.000Z'])
   })
