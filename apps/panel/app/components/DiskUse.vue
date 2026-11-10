@@ -254,14 +254,14 @@ async function measureNow() {
             </td>
             <td class="py-1.5 text-right whitespace-nowrap">
               <UButton
-                :to="`/servers/${s.server}/settings`"
+                :to="`/servers/${s.server}/settings/maintenance`"
                 label="Details"
                 size="xs"
                 color="neutral"
                 variant="ghost"
               />
               <UButton
-                :to="`/servers/${s.server}/backups`"
+                :to="`/servers/${s.server}/world`"
                 label="Backups"
                 size="xs"
                 color="neutral"

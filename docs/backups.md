@@ -2,14 +2,13 @@
 section: Running servers
 order: 11
 panelRoute:
-  - '/servers/:name/backups'
   - '/servers/:name/world'
   - '/system/storage#off-site-copies'
 ---
 
 # Backups
 
-Everything here is on a server's **Backups** tab.
+Everything here is on a server's **World** tab, which opens on **Backups**.
 
 ## Taking backups
 
@@ -39,7 +38,7 @@ A backup on the same machine won't help if the machine is lost. Flytower can cop
 
 1. Create a bucket with your provider, and an access key that can read, write and delete in it. With R2 and B2, a key limited to that one bucket is best.
 2. **System**, **Off-site storage**, **Add storage**. Enter the endpoint (for example `https://s3.eu-central-003.backblazeb2.com`), region, bucket, an optional folder prefix, and the key. **Test** writes, reads back and deletes a small file.
-3. On each server's Backups tab, choose the storage under **Off-site copies**, or set `backups.offsite` in its [YAML](spec.md#backups). Existing backups are copied, and new ones follow within a minute or two.
+3. On each server's **World**, **Backups**, choose the storage under **Off-site copies**, or set `backups.offsite` in its [YAML](spec.md#backups). Existing backups are copied, and new ones follow within a minute or two.
 
 Each backup shows a cloud icon once its copy is safe. Failed uploads retry by themselves (after 1, 5 and 30 minutes), and **Retry off-site copy** tries again straight away. Deleting a backup, or retention removing it, deletes its copy too. Copies are stored under `<prefix>/<server>/<file>`.
 
@@ -49,11 +48,11 @@ The secret key is encrypted with the panel's app secret (in `/etc/flytower/panel
 
 ## Sharing a world
 
-**World**, **Export world** makes a zip of just the world, ready for single player. **Share** gives a link anyone can download it from, without signing in, for as long as you choose. Revoke a link to stop it working.
+**World**, **Past worlds**, **Export world** makes a zip of just the world, ready for single player. **Share** gives a link anyone can download it from, without signing in, for as long as you choose. Revoke a link to stop it working.
 
 ## Past worlds
 
-Resetting a world (**World**, **Reset the world**) can end a season rather than throw it away. The reset dialog offers to:
+Resetting a world (**World**, **Tools**, **Reset the world**) can end a season rather than throw it away. The reset dialog offers to:
 
 - **Keep the old world as a past world**, under a name you choose (for example "2025–26 world"). Flytower zips the old world, datapacks included, after the server has stopped and before anything is cleared, so it opens in single player exactly as it was. If there isn't room on the disk, the reset stops and nothing changes.
 - **Keep the final backup forever**: the safety backup taken first is marked as kept. It holds the whole server (mods, settings and world), not just the world.

@@ -362,7 +362,7 @@ try {
 
     /** Restores the newest backup through the UI, which also answers the passkey check. */
     const restoreNewest = async (waitFor: string) => {
-      await view.navigate(`${base}/servers/smoke/backups`)
+      await view.navigate(`${base}/servers/smoke/world`)
       await waitForText(view, waitFor, 30_000)
       // Menus open on a real pointer press, so use native clicks here.
       await view.click('[aria-label^="Actions for backup"]')

@@ -1,16 +1,16 @@
 <script setup lang="ts">
 const { server } = useServerContext()
-/** Bumped after a reset, so Past worlds shows the world just kept. */
-const resets = ref(0)
+const base = computed(() => `/servers/${server.value?.name}/world`)
+const sections = computed(() => [
+  { label: 'Backups', icon: 'i-lucide-archive', to: base.value, exact: true },
+  { label: 'Web map', icon: 'i-lucide-map', to: `${base.value}/map` },
+  { label: 'Past worlds', icon: 'i-lucide-history', to: `${base.value}/past` },
+  { label: 'Tools', icon: 'i-lucide-wrench', to: `${base.value}/tools` },
+])
 </script>
 
 <template>
-  <div class="mx-auto w-full max-w-5xl space-y-6">
-    <WorldMap />
-    <WorldPregen />
-    <WorldCopy />
-    <WorldExports v-if="server" :server="server.name" />
-    <WorldPastWorlds v-if="server" :server="server.name" :version="resets" />
-    <WorldReset @reset="resets++" />
-  </div>
+  <SectionLayout :sections="sections" label="World">
+    <NuxtPage />
+  </SectionLayout>
 </template>

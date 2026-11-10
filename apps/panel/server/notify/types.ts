@@ -8,7 +8,7 @@ export interface NotifyEvent {
   title: string
   detail?: string
   severity: Severity
-  /** A panel path to open, like `/servers/survival/backups`. */
+  /** A panel path to open, like `/servers/survival/world`. */
   link?: string | null
 }
 

@@ -92,6 +92,19 @@ export function useLiveHealth() {
   return health
 }
 
+/** Each server's last hour of figures and its memory limit, updated after every sample. */
+export type LiveMetrics = Record<
+  string,
+  { limitMb: number; points: import('#shared/vitals').VitalsPoint[] }
+>
+
+/** Live figures for the servers overview, kept current over the shared socket. */
+export function useLiveMetrics() {
+  const metrics = ref<LiveMetrics>({})
+  useTopic<LiveMetrics>('metrics', (m) => (metrics.value = m))
+  return metrics
+}
+
 export const loaderLabel = (s: Pick<Server, 'loader' | 'mcVersion'>) =>
   `${LOADERS[s.loader]?.label ?? s.loader} ${s.mcVersion}`
 

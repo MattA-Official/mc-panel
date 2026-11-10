@@ -57,7 +57,7 @@ Both answer from the same information as the [public status page](status-page.md
 
 **Which servers show.** Servers with their **public page** turned on, plus any server the caller can see through their [Discord role](#discord-roles). Everything else stays hidden: asking for it answers the same as a server that doesn't exist.
 
-**Leaderboards and stats.** `/leaderboard` and `/stats` use the same figures as the server's [Stats tab](stats.md). They only cover servers whose public page shows leaderboards (which needs the page to show player names, and the server to keep stats). Players left out of stats never appear, and `/stats` never says when someone last played. With more than one such server, pick one with `server`.
+**Leaderboards and stats.** `/leaderboard` and `/stats` use the same figures as the server's [stats](stats.md) on its Players tab. They only cover servers whose public page shows leaderboards (which needs the page to show player names, and the server to keep stats). Players left out of stats never appear, and `/stats` never says when someone last played. With more than one such server, pick one with `server`.
 
 Answers are posted in the channel for everyone to see, except "no such server" and similar, which only the person who asked sees. Player names can never ping anyone.
 
@@ -92,9 +92,9 @@ The card says **Endpoint not set**, with Discord's reason, when Discord couldn't
 Each server can post what players say in game to a Discord channel. This only needs the channel's webhook, not the app.
 
 1. In Discord, open the channel's settings, **Integrations**, **Webhooks**, press **New Webhook** and **Copy Webhook URL**.
-2. In Flytower, open the server, **Settings**, **Discord chat**, paste the URL and press **Turn on**. You're asked for your passkey. **Send a test** posts a line first if you'd like to check.
+2. In Flytower, open the server, **Settings**, **Community**, **Discord chat**, paste the URL and press **Turn on**. You're asked for your passkey. **Send a test** posts a line first if you'd like to check.
 
-Chat (and `/me`) is posted under the player's name with their face as the picture. Joins and leaves are a short coloured line. Turn either off with the switches. Lines come from the server's log the moment Minecraft writes them, including chat that mods like No Chat Reports turn into system messages.
+Chat (and `/me`) is posted under the player's name with their face as the picture. Joins and leaves are posted the same way, in italics (`joined the game`). Everything is plain text, unlike notifications, which use embeds. Turn either off with the switches. Lines come from the server's log the moment Minecraft writes them, including chat that mods like No Chat Reports turn into system messages.
 
 Nothing typed in game can ping anyone: every message has mentions switched off, and Markdown, `@everyone`, `<@…>` and similar show exactly as typed. Links still work but don't get a preview.
 

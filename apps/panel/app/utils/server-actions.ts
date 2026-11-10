@@ -21,21 +21,21 @@ export interface ActionItem {
   [key: string]: unknown
 }
 
-/** Where each part of a server page lives. One place to change when the tabs move (#177). */
+/** Where each part of a server page lives. Kept in step with the tabs (#177). */
 export const serverRoutes = (name: string) => {
   const base = `/servers/${name}`
   return {
     console: base,
-    logs: `${base}/logs`,
+    logs: `${base}?logs=`,
     players: `${base}/players`,
-    backups: `${base}/backups`,
-    backupNow: `${base}/backups?backup=now`,
+    backups: `${base}/world`,
+    backupNow: `${base}/world?backup=now`,
     content: `${base}/content`,
     world: `${base}/world`,
     files: `${base}/files`,
     settings: `${base}/settings`,
-    clone: `${base}/settings?clone=1`,
-    delete: `${base}/settings?delete=1`,
+    clone: `${base}/settings/maintenance?clone=1`,
+    delete: `${base}/settings/maintenance?delete=1`,
   }
 }
 
