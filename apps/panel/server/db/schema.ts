@@ -388,3 +388,39 @@ export const invites = sqliteTable('invites', {
   usedAt: integer('used_at', { mode: 'timestamp_ms' }),
   usedBy: integer('used_by').references(() => users.id, { onDelete: 'set null' }),
 })
+
+/**
+ * Time players spent on each server, one row per visit, from the "joined the game" and "left
+ * the game" lines in the log. `leftAt` is null while they're on. A visit whose end wasn't
+ * seen (the panel was down, or the server crashed) ends at the last minute the metrics saw
+ * anyone on, and says how it ended in `endedBy`.
+ */
+export const playerSessions = sqliteTable(
+  'player_sessions',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    server: text('server').notNull(),
+    uuid: text('uuid').notNull(),
+    /** The name they joined with. */
+    name: text('name').notNull(),
+    joinedAt: integer('joined_at', { mode: 'timestamp_ms' }).notNull(),
+    leftAt: integer('left_at', { mode: 'timestamp_ms' }),
+    endedBy: text('ended_by', { enum: ['left', 'stopped', 'crashed', 'lost', 'rejoined'] }),
+  },
+  (t) => [
+    index('player_sessions_player').on(t.server, t.uuid, t.joinedAt),
+    index('player_sessions_open').on(t.server, t.leftAt),
+  ],
+)
+
+/** Each player's newest name per server, from the log and usercache.json. */
+export const playerNames = sqliteTable(
+  'player_names',
+  {
+    server: text('server').notNull(),
+    uuid: text('uuid').notNull(),
+    name: text('name').notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.server, t.uuid] })],
+)

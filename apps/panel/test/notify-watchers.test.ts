@@ -194,3 +194,22 @@ describe('LogWatcher', () => {
     expect(notes.map((n) => n.title)).toEqual(['Server restarted'])
   })
 })
+
+describe('LogWatcher listeners', () => {
+  it('passes every line to line listeners and events to event listeners', () => {
+    const w = new LogWatcher({ notify: () => {} }, '/nonexistent')
+    const lines: string[] = []
+    const events: string[] = []
+    const offLines = w.listenLines((_s, l) => lines.push(l))
+    w.listen((_s, e) => events.push(e.kind))
+    const uuid =
+      '[12:34:56] [User Authenticator #1/INFO]: UUID of player Steve is 069a79f4-44e9-4726-a5be-fca90e38aaf5'
+    w.lines('survival', [uuid, line('Steve joined the game')])
+    expect(lines).toEqual([uuid, line('Steve joined the game')])
+    expect(events).toEqual(['joined'])
+    offLines()
+    w.lines('survival', [line('Steve left the game')])
+    expect(lines).toHaveLength(2)
+    expect(events).toEqual(['joined', 'left'])
+  })
+})

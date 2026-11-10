@@ -120,6 +120,13 @@
       "when": 1794321183200,
       "tag": "0016_account",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1794325763938,
+      "tag": "0017_player_sessions",
+      "breakpoints": true
     }
   ]
 }
