@@ -1,5 +1,13 @@
 #!/bin/sh
 # Starts the Flytower agent. systemd runs this path rather than Bun itself, so a later
 # release can put a different program here (docs/decisions/0001-rust-and-go.md).
+#
+# The Rust agent ships beside the Bun one and is off by default. To try it, put `rust` in
+# $FLYTOWER_CONFIG_DIR/agent (normally /etc/flytower/agent) and restart flytower-agent;
+# delete the file to go back. The file outlives updates.
 here=$(dirname "$(readlink -f "$0")")
+choice=$(cat "${FLYTOWER_CONFIG_DIR:-/etc/flytower}/agent" 2>/dev/null)
+if [ "$choice" = rust ] && [ -x "$here/flytower-agent-rust" ]; then
+  exec "$here/flytower-agent-rust" "$@"
+fi
 exec "$here/bun" "$here/../agent/agent.js" "$@"
