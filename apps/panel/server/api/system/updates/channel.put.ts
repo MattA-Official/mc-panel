@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { setSetting } from '../../../settings'
 
-const Body = z.object({ channel: z.enum(['stable', 'beta']) })
+const Body = z.object({ channel: z.enum(['stable', 'beta', 'native']) })
 
 /**
  * Chooses which releases are offered. Nothing is installed, so no passkey check here:

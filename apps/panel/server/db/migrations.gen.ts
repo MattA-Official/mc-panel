@@ -67,5 +67,17 @@ export const migrations: { tag: string; sql: string }[] = [
   {
     "tag": "0016_account",
     "sql": "ALTER TABLE `users` ADD `session_version` integer DEFAULT 0 NOT NULL;--> statement-breakpoint\nALTER TABLE `users` ADD `theme` text DEFAULT 'system' NOT NULL;"
+  },
+  {
+    "tag": "0017_player_sessions",
+    "sql": "CREATE TABLE `player_names` (\n\t`server` text NOT NULL,\n\t`uuid` text NOT NULL,\n\t`name` text NOT NULL,\n\t`updated_at` integer NOT NULL,\n\tPRIMARY KEY(`server`, `uuid`)\n);\n--> statement-breakpoint\nCREATE TABLE `player_sessions` (\n\t`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,\n\t`server` text NOT NULL,\n\t`uuid` text NOT NULL,\n\t`name` text NOT NULL,\n\t`joined_at` integer NOT NULL,\n\t`left_at` integer,\n\t`ended_by` text\n);\n--> statement-breakpoint\nCREATE INDEX `player_sessions_player` ON `player_sessions` (`server`,`uuid`,`joined_at`);--> statement-breakpoint\nCREATE INDEX `player_sessions_open` ON `player_sessions` (`server`,`left_at`);"
+  },
+  {
+    "tag": "0018_player_stats",
+    "sql": "CREATE TABLE `player_stats` (\n\t`server` text NOT NULL,\n\t`uuid` text NOT NULL,\n\t`day` text NOT NULL,\n\t`taken_at` integer NOT NULL,\n\t`stats` text NOT NULL,\n\tPRIMARY KEY(`server`, `uuid`, `day`)\n);\n"
+  },
+  {
+    "tag": "0019_stats_settings",
+    "sql": "ALTER TABLE `servers` ADD `stats` text;"
   }
 ]

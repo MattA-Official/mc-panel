@@ -20,6 +20,12 @@ import {
   samePublicPage,
   type PublicPage,
 } from '../../shared/public-page'
+import {
+  describeStats,
+  readStatsSettings,
+  sameStatsSettings,
+  type StatsSettings,
+} from '../../shared/stats-settings'
 import { describeTask, sameTask, toTask, type TaskSpec } from '../../shared/schedules'
 import type { schema } from '../db'
 import { formatBytes } from '../backups/service'
@@ -63,6 +69,8 @@ export interface SettingsChange {
   timezone?: string
   /** The public status page. */
   publicPage?: PublicPage
+  /** Player stats settings. */
+  stats?: StatsSettings
   content: ServerSpec['content']
 }
 
@@ -288,6 +296,20 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
         from,
         // The summary can read the same when only the description changed.
         to: to === from ? `${to}, updated` : to,
+      })
+    }
+  }
+
+  if (spec.stats) {
+    const was = readStatsSettings(row.stats)
+    if (!sameStatsSettings(was, spec.stats)) {
+      settings.stats = spec.stats
+      changes.push({
+        area: 'settings',
+        action: 'set',
+        label: 'Player stats',
+        from: describeStats(was),
+        to: describeStats(spec.stats),
       })
     }
   }

@@ -1,5 +1,6 @@
 import type { ContentItem } from '../../shared/spec'
 import type { PublicPage } from '../../shared/public-page'
+import type { StatsSettings } from '../../shared/stats-settings'
 import type { Permission } from '../../shared/permissions'
 import { sql } from 'drizzle-orm'
 import {
@@ -97,6 +98,8 @@ export const servers = sqliteTable(
     timezone: text('timezone').notNull().default('UTC'),
     /** The public status page's settings; null until it's first set. */
     publicPage: text('public_page', { mode: 'json' }).$type<PublicPage>(),
+    /** Whether player stats are kept and who is left out; null until it's first set (on). */
+    stats: text('stats', { mode: 'json' }).$type<StatsSettings>(),
     createdAt: createdAt(),
   },
   (t) => [
@@ -388,3 +391,58 @@ export const invites = sqliteTable('invites', {
   usedAt: integer('used_at', { mode: 'timestamp_ms' }),
   usedBy: integer('used_by').references(() => users.id, { onDelete: 'set null' }),
 })
+
+/**
+ * Time players spent on each server, one row per visit, from the "joined the game" and "left
+ * the game" lines in the log. `leftAt` is null while they're on. A visit whose end wasn't
+ * seen (the panel was down, or the server crashed) ends at the last minute the metrics saw
+ * anyone on, and says how it ended in `endedBy`.
+ */
+export const playerSessions = sqliteTable(
+  'player_sessions',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    server: text('server').notNull(),
+    uuid: text('uuid').notNull(),
+    /** The name they joined with. */
+    name: text('name').notNull(),
+    joinedAt: integer('joined_at', { mode: 'timestamp_ms' }).notNull(),
+    leftAt: integer('left_at', { mode: 'timestamp_ms' }),
+    endedBy: text('ended_by', { enum: ['left', 'stopped', 'crashed', 'lost', 'rejoined', 'off'] }),
+  },
+  (t) => [
+    index('player_sessions_player').on(t.server, t.uuid, t.joinedAt),
+    index('player_sessions_open').on(t.server, t.leftAt),
+  ],
+)
+
+/** Each player's newest name per server, from the log and usercache.json. */
+export const playerNames = sqliteTable(
+  'player_names',
+  {
+    server: text('server').notNull(),
+    uuid: text('uuid').notNull(),
+    name: text('name').notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.server, t.uuid] })],
+)
+
+/**
+ * A short list of each player's vanilla stats (from the world's stats files), once a day and
+ * only when they changed. Week and month figures are the difference between two rows. Rows
+ * older than 90 days are thinned to the last one in each week.
+ */
+export const playerStats = sqliteTable(
+  'player_stats',
+  {
+    server: text('server').notNull(),
+    uuid: text('uuid').notNull(),
+    /** The day in the server's time zone, as YYYY-MM-DD. */
+    day: text('day').notNull(),
+    /** When the stats file was read. */
+    takenAt: integer('taken_at', { mode: 'timestamp_ms' }).notNull(),
+    stats: text('stats', { mode: 'json' }).$type<Record<string, number>>().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.server, t.uuid, t.day] })],
+)

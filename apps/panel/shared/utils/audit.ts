@@ -8,7 +8,7 @@ export const AUDIT_KINDS = {
   players: 'Players',
   files: 'Files',
   access: 'Sign-ins and access',
-  system: 'Flytower, notifications and branding',
+  system: 'Flytower, notifications, branding and Discord',
 } as const
 export type AuditKind = keyof typeof AUDIT_KINDS
 
@@ -21,7 +21,7 @@ export function auditKind(action: string): AuditKind {
     return 'content'
   }
   if (/^(auth|passkey|recovery|setup|ssh|people|account)\./.test(action)) return 'access'
-  if (/^(update|notify|branding)\./.test(action)) return 'system'
+  if (/^(update|notify|branding|discord)\./.test(action)) return 'system'
   return 'servers'
 }
 
@@ -110,7 +110,9 @@ export function describeAudit(
     case 'update.channel':
       return d.channel === 'beta'
         ? 'Chose to be offered beta releases'
-        : 'Chose stable releases only'
+        : d.channel === 'native'
+          ? 'Chose to be offered native builds'
+          : 'Chose stable releases only'
     case 'branding.update':
       return `Changed the branding${d.name ? ` (${str(d.name)}, ${str(d.accent)})` : ''}`
     case 'branding.reset':
@@ -145,6 +147,10 @@ export function describeAudit(
       return d.restartWhenUnresponsive
         ? `Set ${t} to restart when it stops responding`
         : `Set ${t} not to restart when it stops responding`
+    case 'server.stats':
+      if (d.enabled === false && d.was !== false) return `Turned off player stats on ${t}`
+      if (d.enabled === true && d.was === false) return `Turned on player stats on ${t}`
+      return `Changed who is left out of player stats on ${t}`
     case 'server.public_page':
       if (d.enabled === false) return `Turned off ${t}'s public page`
       return d.was === false ? `Turned on ${t}'s public page` : `Changed ${t}'s public page`
@@ -200,6 +206,10 @@ export function describeAudit(
       return `Changed the notification channel ${str(d.name)}`
     case 'notify.channel.remove':
       return `Removed the notification channel ${str(d.name)}`
+    case 'discord.connect':
+      return `Connected the Discord app ${str(d.name)}`
+    case 'discord.disconnect':
+      return `Disconnected the Discord app ${str(d.name)}`
     case 'world.export':
       return `Exported ${t}'s world`
     case 'world.export.delete':

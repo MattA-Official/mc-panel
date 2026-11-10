@@ -5,7 +5,7 @@
  * (the auth middleware lists them) and check what they need themselves.
  */
 export const ROUTE_PERMISSIONS: Record<string, string> = {
-  // Open: sign-in, setup, the public status page, health and branding.
+  // Open: sign-in, setup, the public status page, health, branding and Discord's endpoint.
   'auth/elevate-options.post.ts': 'signed-in',
   'auth/elevate.post.ts': 'signed-in',
   'auth/login-options.post.ts': 'open',
@@ -26,6 +26,8 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   'branding.get.ts': 'open',
   'health.get.ts': 'open',
   'ws.ts': 'open',
+  // Discord calls it; it checks Discord's signature first.
+  'discord/interactions.post.ts': 'open',
 
   // Anyone signed in: their own account, look-ups, and lists filtered to what they can see.
   'account/index.get.ts': 'signed-in',
@@ -81,6 +83,12 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   'system/branding/index.delete.ts': 'system.manage',
   'system/branding/index.put.ts': 'system.manage',
   'system/disk/refresh.post.ts': 'system.manage',
+  'system/discord/commands.post.ts': 'system.manage',
+  'system/discord/endpoint.post.ts': 'system.manage',
+  'system/discord/index.delete.ts': 'system.manage',
+  'system/discord/index.get.ts': 'system.manage',
+  'system/discord/index.post.ts': 'system.manage',
+  'system/discord/test.post.ts': 'system.manage',
   'system/notify/[id].delete.ts': 'system.manage',
   'system/notify/[id].put.ts': 'system.manage',
   'system/notify/index.get.ts': 'system.manage',
@@ -99,6 +107,10 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   'servers/[name]/dns.get.ts': 'server.view',
   'servers/[name]/metrics.get.ts': 'server.view',
   'servers/[name]/players.get.ts': 'server.view',
+  'servers/[name]/stats/players.get.ts': 'server.view',
+  'servers/[name]/stats/index.get.ts': 'server.view',
+  'servers/[name]/stats/snapshot.post.ts': 'server.configure',
+  'servers/[name]/stats/settings.patch.ts': 'server.configure',
   'servers/[name]/properties.get.ts': 'server.view',
   'servers/[name]/icon.get.ts': 'server.view',
   'servers/[name]/pack.get.ts': 'server.view',

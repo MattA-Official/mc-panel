@@ -3,8 +3,9 @@ import { eq } from 'drizzle-orm'
 import { schema, type DbOrTx } from './db'
 import type { DiskReport } from '../shared/disk'
 import type { BrandingSettings, ImageType } from '../shared/branding'
+import type { DiscordApp } from './discord/service'
 
-export type UpdateChannel = 'stable' | 'beta'
+export type UpdateChannel = 'stable' | 'beta' | 'native'
 
 export interface Settings {
   /** Which releases are offered: stable only, or betas too. Unset until someone chooses. */
@@ -16,6 +17,8 @@ export interface Settings {
   /** Cleaned uploads, base64, with a hash for cache busting. */
   'branding.logo': StoredImage
   'branding.favicon': StoredImage
+  /** The connected Discord app, with its bot token sealed. */
+  'discord.app': DiscordApp
 }
 
 export interface StoredImage {

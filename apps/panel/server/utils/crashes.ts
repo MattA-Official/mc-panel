@@ -14,6 +14,7 @@ export function useCrashes(): CrashMonitor {
     onCrash: (server) => {
       useConsole().forget(server)
       useLogWatcher().crashed(server)
+      void useSessions().crashed(server)
     },
     restart: async (server) => {
       useConsole().forget(server)
