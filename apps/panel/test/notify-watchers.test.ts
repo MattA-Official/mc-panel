@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import { appendFileSync, mkdirSync, mkdtempSync, renameSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { LogWatcher, parseLogLine, RESTART_WINDOW_MS } from '../server/notify/watchers'
+import { LogWatcher, parseLogLine, RESTART_WINDOW_MS, SETTLE_MS } from '../server/notify/watchers'
 import type { NotifyEvent } from '../server/notify/types'
 
 const line = (msg: string) => `[12:34:56] [Server thread/INFO]: ${msg}`
@@ -86,6 +86,34 @@ describe('LogWatcher', () => {
     expect(w.watching()).toEqual([])
     w.stop()
   })
+
+  it('hears a join written straight after the login line', async () => {
+    // Minecraft writes these two lines under a millisecond apart and then often nothing more
+    // for minutes. Bun's watcher can fold the second change into the first, so it's tried a
+    // few times over, each on its own quiet log.
+    for (let i = 0; i < 8; i++) {
+      const { dir, notes, w } = setup()
+      const logs = join(dir, 'survival', 'logs')
+      mkdirSync(logs, { recursive: true })
+      const log = join(logs, 'latest.log')
+      writeFileSync(log, '')
+      w.sync(['survival'])
+      await Bun.sleep(30)
+      appendFileSync(
+        log,
+        `${line('Steve[/203.0.113.7:51234] logged in with entity id 7 at (0.5, 64.0, 0.5)')}\n`,
+      )
+      const t = performance.now()
+      while (performance.now() - t < 0.5) {
+        // The server thread is busy for a moment between the two lines.
+      }
+      await Bun.sleep(0.5)
+      appendFileSync(log, `${line('Steve joined the game')}\n`)
+      await until(() => notes.length === 1, SETTLE_MS * 4)
+      expect(notes.map((n) => n.title)).toEqual(['Steve joined'])
+      w.stop()
+    }
+  }, 15_000)
 
   it('picks up a server that has never run once its logs folder appears', async () => {
     const { dir, notes, w } = setup()
