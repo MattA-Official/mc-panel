@@ -86,6 +86,13 @@ if (values.bun) {
 }
 await chmod(bunTarget, 0o755)
 
+// Stable entry points: systemd and the agent start these, never Bun directly, so a later
+// release can swap what's behind them (docs/decisions/0001-rust-and-go.md).
+for (const wrapper of ['flytower-agent', 'flytower-updater']) {
+  await cp(join(repo, 'packages/agent/bin', wrapper), join(stage, 'bin', wrapper))
+  await chmod(join(stage, 'bin', wrapper), 0o755)
+}
+
 await cp(join(repo, 'installer/install.sh'), join(stage, 'install.sh'))
 await chmod(join(stage, 'install.sh'), 0o755)
 await Bun.write(join(stage, 'VERSION'), `${version}\n`)
