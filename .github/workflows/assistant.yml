@@ -82,7 +82,7 @@ jobs:
           claude_args: >-
             --model claude-sonnet-5-5
             --max-turns 40
-            --allowedTools "Bash(gh:*),Bash(.github/assistant/gh-projects:*),Read,Glob,Grep"
+            --allowedTools "Bash(gh:*),Bash(.github/assistant/gh-projects:*),Read,Write,Glob,Grep"
             --disallowedTools "Bash(git push:*),Bash(git commit:*)"
             --append-system-prompt "Before doing anything else, read .github/assistant/INSTRUCTIONS.md and follow it."
 
