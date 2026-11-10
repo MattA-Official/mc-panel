@@ -39,5 +39,9 @@ export const migrations: { tag: string; sql: string }[] = [
   {
     "tag": "0009_crash_events",
     "sql": "CREATE TABLE `server_events` (\n\t`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,\n\t`server` text NOT NULL,\n\t`at` integer DEFAULT (unixepoch() * 1000) NOT NULL,\n\t`kind` text NOT NULL,\n\t`cause` text,\n\t`result` text,\n\t`exit_status` integer,\n\t`crash_report` text,\n\t`log_tail` text,\n\t`dismissed_at` integer\n);\n--> statement-breakpoint\nCREATE INDEX `server_events_server_at` ON `server_events` (`server`,`at`);--> statement-breakpoint\nALTER TABLE `servers` ADD `restart_when_unresponsive` integer DEFAULT false NOT NULL;--> statement-breakpoint\n-- Channels that already take problem alerts take crash alerts too, as new channels do.\nUPDATE `notify_channels` SET `events` = (\n\tSELECT json_group_array(`value`) FROM (\n\t\tSELECT `value` FROM json_each(`notify_channels`.`events`)\n\t\tUNION SELECT 'server.crashed'\n\t\tUNION SELECT 'server.crash_loop'\n\t\tUNION SELECT 'server.unresponsive'\n\t)\n) WHERE EXISTS (\n\tSELECT 1 FROM json_each(`notify_channels`.`events`)\n\tWHERE `value` IN ('backup.failed', 'offsite.failed', 'disk.full')\n);\n"
+  },
+  {
+    "tag": "0010_update_status",
+    "sql": "CREATE TABLE `update_status` (\n\t`scope` text NOT NULL,\n\t`subject` text NOT NULL,\n\t`summary` text,\n\t`checked_at` integer,\n\t`last_error` text,\n\t`error_at` integer,\n\tPRIMARY KEY(`scope`, `subject`)\n);\n"
   }
 ]
