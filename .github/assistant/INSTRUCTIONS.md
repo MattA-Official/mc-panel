@@ -31,6 +31,11 @@ with Matt's `PROJECTS_TOKEN` (classic, `repo` and `project` scopes), because the
 own token can't reach a board owned by a user account. If it says `PROJECTS_TOKEN` isn't
 set, report that rather than retrying.
 
+GraphQL queries are full of braces, which the shell check refuses inline. Write each query
+to a file under `.assistant/` in the workspace with the Write tool, then pass it with
+`-F query=@.assistant/<name>.graphql`. Batch related mutations into one query with aliases.
+The workspace is thrown away after the run and nothing is committed.
+
 Never print, echo or write either token anywhere.
 
 ## House rules
