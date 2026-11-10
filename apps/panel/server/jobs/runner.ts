@@ -2,7 +2,7 @@ import { chmod, readFile, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
-import type { ServerSpec } from '../../shared/spec'
+import { isSecretProperty, type ServerSpec } from '../../shared/spec'
 import { ServerName, type Params, type Result, type Verb } from '@flytower/protocol'
 import {
   downloadVerified,
@@ -21,9 +21,9 @@ import {
   type JobEvent,
 } from '../../shared/utils/jobs'
 import { moveBack, moveIn, type ImportSource } from '../imports/move'
-import { parseProperties, setProperties, stringifyProperties } from '../properties'
+import { parseProperties, setProperties, stringifyProperties, toRecord } from '../properties'
 import { Bus } from './bus'
-import { defaultProperties, EULA, randomPassword } from './properties'
+import { defaultProperties, EULA, randomPassword, randomSecret } from './properties'
 
 export type AgentCall = <V extends Verb>(
   verb: V,
@@ -321,10 +321,18 @@ export class JobRunner {
       const existing = source
         ? await readFile(join(dir, 'server.properties'), 'utf8').catch(() => null)
         : null
-      let properties =
-        existing !== null
-          ? stringifyProperties(setProperties(parseProperties(existing), managed))
-          : defaultProperties({ port, rconPort, rconPassword, motd: input.displayName })
+      // A clone gets its own secrets (such as the management server's), never a copy of the
+      // original's. An import keeps them, since it's the same server moving in.
+      const doc = existing !== null ? parseProperties(existing) : null
+      const fresh: Record<string, string> = {}
+      if (doc && prepared) {
+        for (const key of Object.keys(toRecord(doc))) {
+          if (isSecretProperty(key) && !(key in managed)) fresh[key] = randomSecret()
+        }
+      }
+      let properties = doc
+        ? stringifyProperties(setProperties(doc, { ...managed, ...fresh }))
+        : defaultProperties({ port, rconPort, rconPassword, motd: input.displayName })
       if (extras.properties && Object.keys(extras.properties).length) {
         properties = stringifyProperties(
           setProperties(parseProperties(properties), extras.properties),

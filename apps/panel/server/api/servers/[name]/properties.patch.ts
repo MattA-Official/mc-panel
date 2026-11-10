@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { schema } from '../../../db'
-import { MANAGED_KEYS } from '../../../properties'
+import { refuseManagedEdits, withoutSecrets } from '../../../properties'
 
 const Params = z.object({ name: z.string().max(40) })
 const Body = z.object({
@@ -18,13 +18,8 @@ export default defineEventHandler(async (event) => {
   const { name } = await getValidatedRouterParams(event, Params.parse)
   const { values } = await readValidatedBody(event, Body.parse)
   findServer(name)
-  const managed = Object.keys(values).filter((k) => MANAGED_KEYS.has(k))
-  if (managed.length) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: `${managed.join(', ')} ${managed.length > 1 ? 'are' : 'is'} managed by Flytower.`,
-    })
-  }
+  const refused = refuseManagedEdits(Object.keys(values))
+  if (refused) throw createError({ statusCode: 400, statusMessage: refused })
   await writeProperties(name, values)
   useDb()
     .insert(schema.audit)
@@ -35,7 +30,5 @@ export default defineEventHandler(async (event) => {
       detail: { keys: Object.keys(values) },
     })
     .run()
-  const fresh = await readProperties(name)
-  delete fresh['rcon.password']
-  return { values: fresh }
+  return { values: withoutSecrets(await readProperties(name)) }
 })

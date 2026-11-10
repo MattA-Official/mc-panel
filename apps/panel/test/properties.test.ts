@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'bun:test'
-import { parseProperties, setProperties, stringifyProperties, toRecord } from '../server/properties'
+import {
+  parseProperties,
+  refuseManagedEdits,
+  setProperties,
+  stringifyProperties,
+  toRecord,
+  withoutSecrets,
+} from '../server/properties'
 
 const SAMPLE = `#Minecraft server properties
 #Mon Nov 09 13:07:31 UTC 2026
@@ -53,5 +60,33 @@ describe('properties', () => {
     expect(stringifyProperties(setProperties(parseProperties(crlf), { b: '3' }))).toBe(
       'a=1\r\nb=3\r\n',
     )
+  })
+})
+
+describe('secrets in the properties API', () => {
+  const ON_DISK =
+    'motd=Hi\nrcon.password=rconpw\nmanagement-server-enabled=true\nmanagement-server-secret=mgmtsecret\n'
+
+  it('GET leaves every secret out', () => {
+    const values = withoutSecrets(toRecord(parseProperties(ON_DISK)))
+    expect(values).toEqual({ motd: 'Hi', 'management-server-enabled': 'true' })
+    expect(JSON.stringify(values)).not.toContain('secret=')
+  })
+
+  it('PATCH refuses secrets and managed keys, and allows the rest', () => {
+    expect(refuseManagedEdits(['motd', 'management-server-enabled'])).toBeNull()
+    expect(refuseManagedEdits(['management-server-secret'])).toBe(
+      'management-server-secret is managed by Flytower.',
+    )
+    expect(refuseManagedEdits(['rcon.port', 'a-new-secret'])).toBe(
+      'rcon.port, a-new-secret are managed by Flytower.',
+    )
+  })
+
+  it('editing other properties keeps the secret on disk', () => {
+    const out = stringifyProperties(setProperties(parseProperties(ON_DISK), { motd: 'Bye' }))
+    expect(out).toContain('management-server-secret=mgmtsecret\n')
+    expect(out).toContain('rcon.password=rconpw\n')
+    expect(out).toContain('motd=Bye\n')
   })
 })
