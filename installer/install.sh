@@ -25,6 +25,7 @@ domain=""
 version="latest"
 pr=""
 beta=0
+native=0
 tarball=""
 setup_token=""
 with_caddy=1
@@ -43,6 +44,8 @@ Usage: install.sh --domain <host> [options]
   --domain <host>       The panel's address, e.g. panel.example.com. Its DNS must point here.
   --version <x.y.z>     Install this release instead of the latest stable one.
   --beta                Install the newest release, betas included.
+  --native              Install the newest native build: Flytower with parts rewritten in
+                        Rust and Go. For test servers only.
   --tarball <file>      Install from a release tarball already on this machine.
   --pr <number>         Install the test build of that pull request (for testing, not for
                         real servers). It's signed like a release.
@@ -59,6 +62,7 @@ while [[ $# -gt 0 ]]; do
     --tarball) tarball="${2:-}"; shift 2 ;;
     --pr) pr="${2:-}"; shift 2 ;;
     --beta) beta=1; shift ;;
+    --native) native=1; shift ;;
     --setup-token) setup_token="${2:-}"; shift 2 ;;
     --no-caddy) with_caddy=0; shift ;;
     --no-firewall) with_firewall=0; shift ;;
@@ -110,7 +114,11 @@ if [[ -z "$tarball" ]]; then
     say "Downloading the test build of pull request $pr ($arch)"
   else
     if [[ "$version" == latest ]]; then
-      if [[ "$beta" == 1 ]]; then
+      if [[ "$native" == 1 ]]; then
+        # Native builds have their own native-<version> tags (docs/decisions/0001-rust-and-go.md).
+        version="$(curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=30" |
+          sed -n 's/.*"tag_name": *"native-\([^"]*\)".*/\1/p' | head -n1)"
+      elif [[ "$beta" == 1 ]]; then
         # The newest v-tagged release, betas included; test builds (pr-*) are skipped.
         version="$(curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=30" |
           sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p' | head -n1)"
@@ -121,7 +129,11 @@ if [[ -z "$tarball" ]]; then
       fi
       [[ -n "$version" ]] || die "couldn't find the latest release"
     fi
-    base="https://github.com/$REPO/releases/download/v$version"
+    if [[ "$version" =~ -(.+\.)?native\.[0-9]+$ ]]; then
+      base="https://github.com/$REPO/releases/download/native-$version"
+    else
+      base="https://github.com/$REPO/releases/download/v$version"
+    fi
     name="flytower-$version-linux-$arch.tar.gz"
     say "Downloading Flytower $version ($arch)"
     curl -fsSL -o "$work/SHA256SUMS" "$base/SHA256SUMS"
@@ -206,6 +218,14 @@ umask 022
 
 # ---------------------------------------------------------------- systemd
 
+# Newer releases start the agent through a stable wrapper (bin/flytower-agent), so a
+# later release can swap what's behind it. Older releases only have Bun and agent.js.
+if [[ -x "$PREFIX/current/bin/flytower-agent" ]]; then
+  agent_exec="ExecStart=$PREFIX/current/bin/flytower-agent"
+else
+  agent_exec="ExecStart=$bun $PREFIX/current/agent/agent.js"
+fi
+
 cat >"$SYSTEMD_DIR/flytower-agent.service" <<EOF
 # Managed by Flytower. Changes are overwritten.
 [Unit]
@@ -214,7 +234,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-ExecStart=$PREFIX/current/bin/bun $PREFIX/current/agent/agent.js
+$agent_exec
 Environment=FLYTOWER_VERSION=$version
 Environment=FLYTOWER_PANEL_GROUP=flytower
 Restart=always
@@ -289,9 +309,25 @@ if [[ $with_caddy -eq 1 ]]; then
       reverse_proxy 127.0.0.1:$PANEL_PORT
     }"
   fi
+  # The panel's own domain, then any server hostname whose public status page is on: Caddy
+  # asks the panel before getting a certificate for a name it hasn't seen (on-demand TLS).
   cat >"$caddyfile" <<EOF
 # Managed by Flytower. Re-running the installer rewrites this file.
+{
+	on_demand_tls {
+		ask http://127.0.0.1:$PANEL_PORT/api/public/tls-ask
+	}
+}
+
 $domain {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:$PANEL_PORT
+}
+
+https:// {
+	tls {
+		on_demand
+	}
 	encode zstd gzip
 	reverse_proxy 127.0.0.1:$PANEL_PORT
 }
@@ -317,10 +353,15 @@ if [[ -z "$setup_token" ]]; then
   # 20 characters from an alphabet without look-alikes.
   setup_token="$(tr -dc 'ABCDEFGHJKMNPQRSTVWXYZ23456789' </dev/urandom | head -c 20)"
 fi
+# The panel may still be starting from an earlier restart, and it imports and deletes this file
+# as soon as it sees it. So write it under another name, set its owner and mode, then move it
+# into place in one step.
+token_tmp="$(mktemp "$STATE_DIR/.setup-token.XXXXXX")"
 FLYTOWER_TOKEN="$setup_token" "$bun" -e \
-  "await Bun.write('$STATE_DIR/setup-token.hash', await Bun.password.hash(process.env.FLYTOWER_TOKEN, 'argon2id'))"
-chown flytower:flytower "$STATE_DIR/setup-token.hash"
-chmod 0600 "$STATE_DIR/setup-token.hash"
+  "await Bun.write('$token_tmp', await Bun.password.hash(process.env.FLYTOWER_TOKEN, 'argon2id'))"
+chown flytower:flytower "$token_tmp"
+chmod 0600 "$token_tmp"
+mv -f "$token_tmp" "$STATE_DIR/setup-token.hash"
 # The panel picks the token up at boot.
 systemctl restart flytower-panel.service
 
@@ -334,14 +375,19 @@ done
 curl -fsS "http://127.0.0.1:$PANEL_PORT/api/health" >/dev/null ||
   die "the panel didn't start; see: journalctl -u flytower-panel -n 50"
 
+# A token you chose yourself may hold characters a link can't.
+token_url="$(FLYTOWER_TOKEN="$setup_token" "$bun" -e 'process.stdout.write(encodeURIComponent(process.env.FLYTOWER_TOKEN))')"
+
 cat <<EOF
 
   Flytower $version is installed.
 
-  Open        https://$domain
+  Set up      https://$domain/setup#token=$token_url
   Setup token $setup_token
 
-  The token works once, within 24 hours. If you've already finished setup, ignore it.
+  Open the link to start, or open https://$domain and type the token if the link won't open
+  where you are. Either works once, within 24 hours. If you've already finished setup,
+  ignore them.
   Lost it? Run this installer again for a new one.
 
 EOF

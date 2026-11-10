@@ -39,5 +39,45 @@ export const migrations: { tag: string; sql: string }[] = [
   {
     "tag": "0009_crash_events",
     "sql": "CREATE TABLE `server_events` (\n\t`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,\n\t`server` text NOT NULL,\n\t`at` integer DEFAULT (unixepoch() * 1000) NOT NULL,\n\t`kind` text NOT NULL,\n\t`cause` text,\n\t`result` text,\n\t`exit_status` integer,\n\t`crash_report` text,\n\t`log_tail` text,\n\t`dismissed_at` integer\n);\n--> statement-breakpoint\nCREATE INDEX `server_events_server_at` ON `server_events` (`server`,`at`);--> statement-breakpoint\nALTER TABLE `servers` ADD `restart_when_unresponsive` integer DEFAULT false NOT NULL;--> statement-breakpoint\n-- Channels that already take problem alerts take crash alerts too, as new channels do.\nUPDATE `notify_channels` SET `events` = (\n\tSELECT json_group_array(`value`) FROM (\n\t\tSELECT `value` FROM json_each(`notify_channels`.`events`)\n\t\tUNION SELECT 'server.crashed'\n\t\tUNION SELECT 'server.crash_loop'\n\t\tUNION SELECT 'server.unresponsive'\n\t)\n) WHERE EXISTS (\n\tSELECT 1 FROM json_each(`notify_channels`.`events`)\n\tWHERE `value` IN ('backup.failed', 'offsite.failed', 'disk.full')\n);\n"
+  },
+  {
+    "tag": "0010_update_status",
+    "sql": "CREATE TABLE `update_status` (\n\t`scope` text NOT NULL,\n\t`subject` text NOT NULL,\n\t`summary` text,\n\t`checked_at` integer,\n\t`last_error` text,\n\t`error_at` integer,\n\tPRIMARY KEY(`scope`, `subject`)\n);\n"
+  },
+  {
+    "tag": "0011_scheduled_tasks",
+    "sql": "CREATE TABLE `schedules` (\n\t`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,\n\t`server` text NOT NULL,\n\t`position` integer DEFAULT 0 NOT NULL,\n\t`kind` text NOT NULL,\n\t`cron` text NOT NULL,\n\t`text` text,\n\t`warn` text DEFAULT '[]' NOT NULL,\n\t`skip_when_empty` integer DEFAULT true NOT NULL,\n\t`last_run_at` integer,\n\t`last_ok` integer,\n\t`last_result` text,\n\t`last_reply` text,\n\t`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL\n);\n--> statement-breakpoint\nCREATE INDEX `schedules_server` ON `schedules` (`server`,`position`);--> statement-breakpoint\nALTER TABLE `servers` ADD `timezone` text DEFAULT 'UTC' NOT NULL;--> statement-breakpoint\n-- Channels that already take problem alerts hear about failed scheduled tasks too, as new channels do.\nUPDATE `notify_channels` SET `events` = (\n\tSELECT json_group_array(`value`) FROM (\n\t\tSELECT `value` FROM json_each(`notify_channels`.`events`)\n\t\tUNION SELECT 'schedule.failed'\n\t)\n) WHERE EXISTS (\n\tSELECT 1 FROM json_each(`notify_channels`.`events`)\n\tWHERE `value` IN ('backup.failed', 'offsite.failed', 'disk.full')\n);\n"
+  },
+  {
+    "tag": "0012_past_worlds",
+    "sql": "ALTER TABLE `backups` ADD `kept` integer DEFAULT false NOT NULL;--> statement-breakpoint\nALTER TABLE `exports` ADD `name` text;"
+  },
+  {
+    "tag": "0013_public_page",
+    "sql": "ALTER TABLE `servers` ADD `public_page` text;"
+  },
+  {
+    "tag": "0014_roles",
+    "sql": "CREATE TABLE `grants` (\n\t`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,\n\t`user_id` integer NOT NULL,\n\t`role_id` text NOT NULL,\n\t`server` text,\n\t`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,\n\tFOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade,\n\tFOREIGN KEY (`role_id`) REFERENCES `roles`(`id`) ON UPDATE no action ON DELETE cascade,\n\tFOREIGN KEY (`server`) REFERENCES `servers`(`name`) ON UPDATE no action ON DELETE cascade\n);\n--> statement-breakpoint\nCREATE INDEX `grants_user` ON `grants` (`user_id`);--> statement-breakpoint\nCREATE TABLE `roles` (\n\t`id` text PRIMARY KEY NOT NULL,\n\t`name` text NOT NULL,\n\t`built_in` integer DEFAULT false NOT NULL,\n\t`permissions` text DEFAULT '[]' NOT NULL,\n\t`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL\n);\n--> statement-breakpoint\nINSERT INTO `roles` (`id`, `name`, `built_in`) VALUES ('owner', 'Owner', 1), ('admin', 'Admin', 1), ('operator', 'Operator', 1), ('viewer', 'Viewer', 1);\n--> statement-breakpoint\nINSERT INTO `grants` (`user_id`, `role_id`, `server`) SELECT `id`, 'owner', NULL FROM `users`;\n"
+  },
+  {
+    "tag": "0015_invites",
+    "sql": "CREATE TABLE `invites` (\n\t`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,\n\t`token_hash` text NOT NULL,\n\t`role_id` text NOT NULL,\n\t`server` text,\n\t`note` text,\n\t`created_by` integer,\n\t`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,\n\t`expires_at` integer NOT NULL,\n\t`used_at` integer,\n\t`used_by` integer,\n\tFOREIGN KEY (`role_id`) REFERENCES `roles`(`id`) ON UPDATE no action ON DELETE cascade,\n\tFOREIGN KEY (`server`) REFERENCES `servers`(`name`) ON UPDATE no action ON DELETE cascade,\n\tFOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null,\n\tFOREIGN KEY (`used_by`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null\n);\n--> statement-breakpoint\nCREATE UNIQUE INDEX `invites_token_hash_unique` ON `invites` (`token_hash`);"
+  },
+  {
+    "tag": "0016_account",
+    "sql": "ALTER TABLE `users` ADD `session_version` integer DEFAULT 0 NOT NULL;--> statement-breakpoint\nALTER TABLE `users` ADD `theme` text DEFAULT 'system' NOT NULL;"
+  },
+  {
+    "tag": "0017_player_sessions",
+    "sql": "CREATE TABLE `player_names` (\n\t`server` text NOT NULL,\n\t`uuid` text NOT NULL,\n\t`name` text NOT NULL,\n\t`updated_at` integer NOT NULL,\n\tPRIMARY KEY(`server`, `uuid`)\n);\n--> statement-breakpoint\nCREATE TABLE `player_sessions` (\n\t`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,\n\t`server` text NOT NULL,\n\t`uuid` text NOT NULL,\n\t`name` text NOT NULL,\n\t`joined_at` integer NOT NULL,\n\t`left_at` integer,\n\t`ended_by` text\n);\n--> statement-breakpoint\nCREATE INDEX `player_sessions_player` ON `player_sessions` (`server`,`uuid`,`joined_at`);--> statement-breakpoint\nCREATE INDEX `player_sessions_open` ON `player_sessions` (`server`,`left_at`);"
+  },
+  {
+    "tag": "0018_player_stats",
+    "sql": "CREATE TABLE `player_stats` (\n\t`server` text NOT NULL,\n\t`uuid` text NOT NULL,\n\t`day` text NOT NULL,\n\t`taken_at` integer NOT NULL,\n\t`stats` text NOT NULL,\n\tPRIMARY KEY(`server`, `uuid`, `day`)\n);\n"
+  },
+  {
+    "tag": "0019_stats_settings",
+    "sql": "ALTER TABLE `servers` ADD `stats` text;"
   }
 ]

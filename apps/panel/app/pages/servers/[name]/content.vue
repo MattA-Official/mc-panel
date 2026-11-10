@@ -32,6 +32,7 @@ interface Hit {
   iconUrl: string | null
   downloads: number
   kind: Kind
+  serverSide: 'required' | 'optional' | 'unsupported' | 'unknown'
   installed: boolean
 }
 interface Update {
@@ -49,11 +50,30 @@ const {
   data: updates,
   refresh: refreshUpdates,
   status: updatesStatus,
+  error: updatesError,
 } = await useFetch<{ updates: Update[] }>(() => `/api/servers/${name.value}/content/updates`, {
   server: false,
   lazy: true,
 })
-const updateFor = (title: string) => updates.value?.updates.find((u) => u.label === title)
+// The background check's last result, shown until (or if) the fresh check above answers.
+const live = useLiveUpdates()
+const stored = computed(() => live.value?.servers[name.value])
+const updateList = computed<Update[]>(
+  () => updates.value?.updates ?? stored.value?.content?.summary?.updates ?? [],
+)
+const updateFor = (title: string) => updateList.value.find((u) => u.label === title)
+const checkFailed = computed(() => {
+  if (updatesStatus.value === 'pending' || updates.value) return null
+  const e = updatesError.value ? errorMessage(updatesError.value) : stored.value?.content?.error
+  return e ? e.replace(/\.$/, '') : null
+})
+const lastChecked = computed(() => stored.value?.content?.checkedAt ?? null)
+/** A newer Minecraft, mentioned only: changing version stays a choice in Settings. */
+const minecraft = computed(() => {
+  const m = stored.value?.minecraft?.summary
+  return m?.newest && m.current === server.value?.mcVersion ? m : null
+})
+const missingOpen = ref(false)
 
 const KIND_LABEL: Record<Kind, string> = { mod: 'Mod', plugin: 'Plugin', datapack: 'Datapack' }
 
@@ -121,6 +141,11 @@ const searchError = ref('')
 let timer: ReturnType<typeof setTimeout> | undefined
 
 const source = ref<'modrinth' | 'hangar'>('modrinth')
+/** Client-only mods usually do nothing on a server, but some server mods need one. */
+const clientOnly = ref(false)
+const canShowClientOnly = computed(
+  () => kind.value !== 'datapack' && sourceName.value === 'Modrinth',
+)
 const sourceItems = [
   { label: 'Modrinth', value: 'modrinth' },
   { label: 'Hangar', value: 'hangar' },
@@ -147,6 +172,7 @@ async function search() {
           kind: kind.value,
           q: query.value,
           source: kind.value === 'plugin' ? source.value : 'modrinth',
+          clientOnly: canShowClientOnly.value && clientOnly.value ? 'true' : 'false',
         },
       },
     )
@@ -159,7 +185,7 @@ async function search() {
     searching.value = false
   }
 }
-watch([query, kind, source], () => {
+watch([query, kind, source, clientOnly], () => {
   clearTimeout(timer)
   timer = setTimeout(search, 350)
 })
@@ -278,8 +304,8 @@ const pendingText = computed(() => {
       </p>
       <div class="flex gap-2">
         <UButton
-          v-if="updates?.updates.length"
-          :label="`Update ${updates.updates.length}`"
+          v-if="updateList.length"
+          :label="`Update ${updateList.length}`"
           icon="i-lucide-arrow-up-circle"
           color="neutral"
           variant="outline"
@@ -381,6 +407,53 @@ const pendingText = computed(() => {
       "
     />
     <p v-if="updatesStatus === 'pending'" class="text-xs text-dimmed">Checking for updates…</p>
+    <p v-else-if="checkFailed" class="text-xs text-dimmed" data-e2e="content-check-failed">
+      Couldn't check for updates: {{ checkFailed }}.
+      <template v-if="lastChecked"
+        >Showing what was found {{ formatDateTime(lastChecked) }}.</template
+      >
+    </p>
+
+    <div
+      v-if="minecraft"
+      class="rounded-md border border-default px-4 py-3 text-sm"
+      data-e2e="minecraft-update"
+    >
+      <p v-if="minecraft.ready === minecraft.newest">
+        <UIcon name="i-lucide-info" class="mr-1 size-4 align-text-bottom text-info" />
+        Minecraft {{ minecraft.newest }} is out, and everything installed has a build for it.
+        <NuxtLink :to="`/servers/${name}/settings`" class="text-primary underline">
+          Change the version in Settings</NuxtLink
+        >
+        when you're ready.
+      </p>
+      <template v-else>
+        <p>
+          <UIcon name="i-lucide-info" class="mr-1 size-4 align-text-bottom text-info" />
+          Minecraft {{ minecraft.newest }} is out, but not everything installed has a build for it
+          yet.
+          <template v-if="minecraft.ready">
+            Minecraft {{ minecraft.ready }} is ready, from
+            <NuxtLink :to="`/servers/${name}/settings`" class="text-primary underline">
+              Settings</NuxtLink
+            >.
+          </template>
+        </p>
+        <UButton
+          v-if="minecraft.missing.length"
+          class="mt-1 -ml-2.5"
+          size="xs"
+          color="neutral"
+          variant="link"
+          :trailing-icon="missingOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+          :label="missingOpen ? 'Hide what is missing' : 'What is missing'"
+          @click="missingOpen = !missingOpen"
+        />
+        <ul v-if="missingOpen" class="mt-1 list-disc space-y-0.5 pl-5 text-xs text-muted">
+          <li v-for="m in minecraft.missing" :key="m">{{ m }}</li>
+        </ul>
+      </template>
+    </div>
 
     <section v-if="data?.unmanaged.length" class="space-y-2">
       <h2 class="text-sm font-semibold">Added by hand</h2>
@@ -420,6 +493,13 @@ const pendingText = computed(() => {
             :loading="searching"
             autofocus
           />
+          <USwitch
+            v-if="canShowClientOnly"
+            v-model="clientOnly"
+            size="sm"
+            label="Show client-only"
+            description="Modrinth marks these as running only on players' computers. Add one only if a server mod needs it."
+          />
           <UAlert v-if="searchError" color="error" variant="subtle" :title="searchError" />
           <ul class="divide-y divide-default">
             <li v-for="h in hits" :key="h.projectId" class="flex items-start gap-3 py-3">
@@ -435,6 +515,14 @@ const pendingText = computed(() => {
                 <p class="font-medium">
                   {{ h.title }}
                   <span class="text-xs font-normal text-dimmed">by {{ h.author }}</span>
+                  <UBadge
+                    v-if="h.serverSide === 'unsupported'"
+                    color="warning"
+                    variant="subtle"
+                    size="sm"
+                    label="Client-only"
+                    class="ml-1 align-middle"
+                  />
                 </p>
                 <p class="line-clamp-2 text-sm text-muted">{{ h.description }}</p>
                 <p class="text-xs text-dimmed">{{ count(h.downloads) }} downloads</p>

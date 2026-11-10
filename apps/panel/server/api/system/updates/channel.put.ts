@@ -1,13 +1,14 @@
 import { z } from 'zod'
 import { setSetting } from '../../../settings'
 
-const Body = z.object({ channel: z.enum(['stable', 'beta']) })
+const Body = z.object({ channel: z.enum(['stable', 'beta', 'native']) })
 
 /**
  * Chooses which releases are offered. Nothing is installed, so no passkey check here:
  * installing an update still asks for one.
  */
 export default defineEventHandler(async (event) => {
+  await requirePermission(event, 'system.manage')
   const { user } = await requireUserSession(event)
   const { channel } = await readValidatedBody(event, Body.parse)
   setSetting(useDb(), 'update.channel', channel)

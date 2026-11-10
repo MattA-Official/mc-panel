@@ -20,6 +20,7 @@ import {
 import { listZip, unzip } from '../unzip'
 import { SPEC_STEPS, type JobEvent } from '../../shared/utils/jobs'
 import type { ServerSpec } from '../../shared/spec'
+import type { TaskSpec } from '../../shared/schedules'
 import { schema, type Db } from '../db'
 import { JobError, type AgentCall, type JobTracker } from '../jobs/runner'
 import type { BackupService } from '../backups/service'
@@ -54,6 +55,13 @@ export interface SpecDeps {
   writeProperties: (name: string, changes: Record<string, string>) => Promise<void>
   /** Called after backup settings change. */
   schedulesChanged?: () => void
+  /** Called after player stats settings change, to stop recording or forget players. */
+  statsChanged?: (name: string, before: unknown) => void
+  /** Scheduled tasks: read for plans and specs, replaced by apply. */
+  tasks?: {
+    tasks(name: string): TaskSpec[]
+    replace(name: string, tasks: TaskSpec[], timezone?: string): void
+  }
   /** Off-site storage, for specs that name it. */
   offsiteTargets?: () => { id: number; name: string }[]
   /** Called after a server's off-site storage changes, to copy its existing backups. */
@@ -166,7 +174,14 @@ export class SpecService {
     const props = await this.deps.readProperties(name)
     const lock = await readLock(this.deps.serverDir(name))
     return new Bun.CryptoHasher('sha256')
-      .update(JSON.stringify({ row: { ...row, createdAt: null }, props, lock: lock.content }))
+      .update(
+        JSON.stringify({
+          row: { ...row, createdAt: null },
+          props,
+          lock: lock.content,
+          tasks: this.deps.tasks?.tasks(name) ?? [],
+        }),
+      )
       .digest('hex')
   }
 
@@ -176,6 +191,7 @@ export class SpecService {
       this.row(name),
       await this.deps.readProperties(name),
       this.deps.offsiteTargets?.(),
+      this.deps.tasks?.tasks(name),
     )
   }
 
@@ -236,6 +252,7 @@ export class SpecService {
       hangar: this.deps.hangar,
       loaders: this.deps.loaders,
       offsiteTargets: this.deps.offsiteTargets?.(),
+      tasks: this.deps.tasks?.tasks(name),
       memoryProblem: (memoryMb) => {
         const { jobs } = this.deps
         if (!jobs.memoryUsers || !jobs.totalMemoryMb) return null
@@ -423,11 +440,18 @@ export class SpecService {
         ...(s.restartWhenUnresponsive !== undefined
           ? { restartWhenUnresponsive: s.restartWhenUnresponsive }
           : {}),
+        ...(s.publicPage ? { publicPage: s.publicPage } : {}),
+        ...(s.stats ? { stats: s.stats } : {}),
         content: s.content,
       })
       .where(eq(schema.servers.name, name))
       .run()
     if (s.backups) this.deps.schedulesChanged?.()
+    if (s.stats) this.deps.statsChanged?.(name, row.stats)
+    if (s.schedules || s.timezone !== undefined) {
+      const tasks = this.deps.tasks
+      tasks?.replace(name, s.schedules ?? tasks.tasks(name), s.timezone)
+    }
     if (s.offsiteTarget) this.deps.offsiteChanged?.(name)
   }
 }

@@ -4,7 +4,7 @@ const { server } = useServerContext()
 const toast = useToast()
 
 type Field =
-  | { key: string; label: string; type: 'text'; help?: string }
+  | { key: string; label: string; type: 'motd'; help?: string }
   | { key: string; label: string; type: 'number'; min: number; max: number; help?: string }
   | { key: string; label: string; type: 'bool'; help?: string }
   | { key: string; label: string; type: 'select'; options: string[]; help?: string }
@@ -13,8 +13,8 @@ const FIELDS: Field[] = [
   {
     key: 'motd',
     label: 'Message of the day',
-    type: 'text',
-    help: 'Shown in the multiplayer list.',
+    type: 'motd',
+    help: 'Shown under the server in the multiplayer list. Select text and pick a colour or style, or turn on Show codes to type § codes.',
   },
   {
     key: 'difficulty',
@@ -175,15 +175,26 @@ const discard = () => (draft.value = { ...base.value })
   <section class="rounded-lg border border-default p-5">
     <h2 class="text-base font-semibold">Game settings</h2>
     <p v-if="!data" class="mt-4 text-sm text-muted">Loading…</p>
-    <div v-else class="mt-4 grid gap-x-6 gap-y-5 sm:grid-cols-2">
+    <ServerIcon
+      v-if="data"
+      class="mt-4 border-b border-default pb-5"
+      :motd="draft.motd ?? ''"
+      :max-players="numbers['max-players']!.value"
+    />
+    <div v-if="data" class="mt-5 grid gap-x-6 gap-y-5 sm:grid-cols-2">
       <template v-for="f in FIELDS" :key="f.key">
         <UFormField
-          v-if="f.type === 'text'"
+          v-if="f.type === 'motd'"
           :label="f.label"
           :description="f.help"
           class="sm:col-span-2"
         >
-          <UInput v-model="draft[f.key]" class="w-full" />
+          <MotdEditor
+            v-model="draft[f.key]!"
+            :name="server?.displayName ?? server?.name ?? 'Minecraft Server'"
+            :max-players="numbers['max-players']!.value"
+            :icon="server?.icon"
+          />
         </UFormField>
         <UFormField v-else-if="f.type === 'select'" :label="f.label" :description="f.help">
           <USelect v-model="draft[f.key]" :items="f.options" class="w-full capitalize" />

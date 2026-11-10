@@ -2,7 +2,7 @@
 /** Updating Flytower itself, and going back. Minecraft servers keep running throughout. */
 interface Status {
   current: string
-  channel: 'stable' | 'beta'
+  channel: 'stable' | 'beta' | 'native'
   installed: string[]
   last: {
     state: 'running' | 'succeeded' | 'rolled-back' | 'failed'
@@ -18,6 +18,7 @@ interface Status {
     url: string
     publishedAt: string
     prerelease: boolean
+    native?: boolean
   } | null
   checkError: string | null
 }
@@ -31,6 +32,8 @@ const working = ref<string | null>(null)
 async function check() {
   checking.value = true
   try {
+    // Everything else (content, Minecraft, Java) is checked again in the background too.
+    void $fetch('/api/updates/check', { method: 'POST' }).catch(() => {})
     data.value = await $fetch<Status>('/api/system/updates', { query: { check: true } })
   } finally {
     checking.value = false
@@ -43,6 +46,12 @@ const channels = [
     value: 'beta',
     label: 'Beta',
     description: 'Also betas, to try new features early. They may have rough edges.',
+  },
+  {
+    value: 'native',
+    label: 'Native',
+    description:
+      'Test builds of the Rust and Go rewrite of the system helper. For test servers only.',
   },
 ]
 const savingChannel = ref(false)
@@ -137,7 +146,7 @@ const when = (at: string) => formatDateTime(at)
           @click="check"
         />
       </div>
-      <p v-if="data.checkError" class="text-warning">{{ data.checkError }}</p>
+      <p v-if="data.checkError" class="text-xs text-muted">{{ data.checkError }}</p>
 
       <URadioGroup
         :model-value="data.channel"
@@ -161,7 +170,12 @@ const when = (at: string) => formatDateTime(at)
             <ULink :to="data.latest.url" target="_blank" class="font-medium text-primary">
               What's new in {{ data.latest.version }}
             </ULink>
-            <UBadge v-if="data.latest.prerelease" label="Beta" color="warning" variant="subtle" />
+            <UBadge
+              v-if="data.latest.prerelease"
+              :label="data.latest.native ? 'Native' : 'Beta'"
+              color="warning"
+              variant="subtle"
+            />
           </div>
           <UButton
             :label="`Update to ${data.latest.version}`"
@@ -172,7 +186,11 @@ const when = (at: string) => formatDateTime(at)
           />
         </div>
         <MarkdownNotes :source="data.latest.notes" class="max-h-64 overflow-auto" />
-        <p v-if="data.latest.prerelease" class="text-xs text-warning">
+        <p v-if="data.latest.native" class="text-xs text-warning">
+          This is a native test build, with parts of Flytower rewritten in Rust and Go. Use it on a
+          test server: going back to a beta afterwards means going back to a version you had before.
+        </p>
+        <p v-else-if="data.latest.prerelease" class="text-xs text-warning">
           This is a beta, for trying new features before they're released. Take a backup of anything
           you care about first; you can go back afterwards.
         </p>

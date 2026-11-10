@@ -3,7 +3,8 @@ import { readdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'bun:test'
-import { createArchive, extractArchive } from '../server/backups/archive'
+import { createArchive, extractArchive, isExcluded, skippedFiles } from '../server/backups/archive'
+import { describeSkipped, folderBytes } from '../server/backups/service'
 import { toPrune, weekKey } from '../server/backups/retention'
 
 describe('archive', () => {
@@ -49,6 +50,82 @@ describe('archive', () => {
       'Archiving failed',
     )
     expect(await readdir(base)).toEqual(['bad.tar.zst'])
+  })
+})
+
+describe('archive skips', () => {
+  const tree = () => {
+    const base = mkdtempSync(join(tmpdir(), 'ft-arch-'))
+    const src = join(base, 'src')
+    mkdirSync(join(src, 'config', 'spark', 'tmp'), { recursive: true })
+    mkdirSync(join(src, 'world'))
+    writeFileSync(join(src, 'config', 'spark', 'tmp', 'spark-1-profile-data.jfr.tmp'), 'x')
+    writeFileSync(join(src, 'config', 'spark', 'config.json'), '{}')
+    writeFileSync(join(src, 'world', 'level123.dat.tmp'), 'half')
+    writeFileSync(join(src, 'world', 'level.dat'), 'whole')
+    return { base, src }
+  }
+
+  it('leaves out spark scratch files and temp files', async () => {
+    const { base, src } = tree()
+    const dest = join(base, 'b.tar.zst')
+    const { skipped } = await createArchive(src, dest)
+    expect(skipped).toEqual([])
+    const out = join(base, 'out')
+    mkdirSync(out)
+    await extractArchive(dest, out)
+    expect(await readdir(join(out, 'config', 'spark'))).toEqual(['config.json'])
+    expect(await readdir(join(out, 'world'))).toEqual(['level.dat'])
+    expect(await folderBytes(src)).toBe('{}'.length + 'whole'.length)
+  })
+
+  it('knows what is excluded', () => {
+    expect(isExcluded('logs')).toBe(true)
+    expect(isExcluded('config/spark/tmp')).toBe(true)
+    expect(isExcluded('world/level.dat_old.tmp')).toBe(true)
+    expect(isExcluded('world/logs')).toBe(false)
+    expect(isExcluded('config/spark')).toBe(false)
+    expect(isExcluded('world/level.dat')).toBe(false)
+  })
+
+  // Root can read anything, so this only means something as an ordinary user (as in CI).
+  it.skipIf(process.getuid?.() === 0)(
+    'backs up the rest when a file cannot be read, and says which',
+    async () => {
+      const { base, src } = tree()
+      writeFileSync(join(src, 'config', 'private.jfr'), 'secret')
+      chmodSync(join(src, 'config', 'private.jfr'), 0o000)
+      const dest = join(base, 'b.tar.zst')
+      const { skipped } = await createArchive(src, dest)
+      expect(skipped).toEqual(['config/private.jfr (Permission denied)'])
+      const out = join(base, 'out')
+      mkdirSync(out)
+      await extractArchive(dest, out)
+      expect(readFileSync(join(out, 'world', 'level.dat'), 'utf8')).toBe('whole')
+    },
+  )
+
+  it("reads tar's warnings about files it left out", () => {
+    const stderr = [
+      'tar: ./config/spark/a.jfr: Warning: Cannot open: Permission denied',
+      'tar: ./world/gone.mca: File removed before we read it',
+      'tar: ./world/region: file changed as we read it',
+      '',
+    ].join('\n')
+    expect(skippedFiles(stderr)).toEqual([
+      'config/spark/a.jfr (Permission denied)',
+      'world/gone.mca',
+    ])
+  })
+
+  it('describes skipped files briefly', () => {
+    expect(describeSkipped([])).toBe('')
+    expect(describeSkipped(['a (Permission denied)'])).toBe(
+      " Left out 1 file Flytower couldn't read: a (Permission denied).",
+    )
+    expect(describeSkipped(['a', 'b', 'c', 'd', 'e'])).toBe(
+      " Left out 5 files Flytower couldn't read: a, b, c and 2 more.",
+    )
   })
 })
 

@@ -14,6 +14,8 @@ const Body = z.object({
 
 /** Copies a server (optionally without its world) to a new one, through the create job. */
 export default defineEventHandler(async (event) => {
+  await requirePermission(event, 'servers.create')
+  await requireServerPermission(event, 'server.view')
   const { user } = await requireUserSession(event)
   const from = findServer(getRouterParam(event, 'name') ?? '')
   const body = await readValidatedBody(event, Body.parse)
@@ -45,7 +47,12 @@ export default defineEventHandler(async (event) => {
         },
       },
     )
-    void done.then(() => syncBackupSchedules())
+    // The copy runs the same scheduled tasks, in the same time zone.
+    const tasks = useSchedules().tasks(from.name)
+    void done.then((job) => {
+      syncBackupSchedules()
+      if (job.state === 'succeeded') useSchedules().replace(body.name, tasks, from.timezone)
+    })
     audit(user.id, 'server.clone', body.name, { from: from.name, withWorld: body.withWorld })
     setResponseStatus(event, 202)
     return { jobId }

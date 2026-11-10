@@ -1,3 +1,11 @@
+---
+section: Running servers
+order: 17
+panelRoute:
+  - '/servers/:name/yaml'
+  - '/servers/from-yaml'
+---
+
 # Server YAML reference
 
 Every server can be written as one YAML document, its **spec**. The **YAML** tab shows a server's spec and lets you edit it. **New server**, **From YAML** makes a server from one. Changes go through a [plan](first-server.md#plans) like any other.
@@ -33,6 +41,13 @@ backups:
   timezone: Europe/London
   keep: { last: 6, daily: 7, weekly: 4 }
   offsite: B2
+timezone: Europe/London
+schedules:
+  - restart: '0 5 * * *'
+  - command: save-all
+    cron: '*/30 * * * *'
+  - announce: 'The server restarts at 5am'
+    cron: '0 22 * * *'
 ```
 
 ## Fields
@@ -69,7 +84,19 @@ The address players use, such as `survival.example.com`. `null` clears it; left 
 
 ### `properties`
 
-Values for `server.properties`: strings, numbers or booleans. Anything left out keeps its current value. Values equal to Minecraft's defaults are left out when Flytower writes a spec. `server-port`, `enable-rcon`, `rcon.port` and `rcon.password` are managed by Flytower and can't be set here.
+Values for `server.properties`: strings, numbers or booleans. Anything left out keeps its current value. Values equal to Minecraft's defaults are left out when Flytower writes a spec. Some keys can't be set here:
+
+- `server-port`, `enable-rcon` and `rcon.port` are managed by Flytower. Set the port with `port`.
+- Secrets are hidden: `rcon.password`, `management-server-secret`, and any other key ending in `secret` or `password` (such as `-secret` or `.password`). They're never written into a spec or shown in the Settings form, and editing other properties or applying a spec keeps whatever secret is on disk. A cloned server gets fresh secrets of its own. To change one by hand, edit `server.properties` in the **Files** tab.
+
+`motd` is the message of the day, shown under the server in the multiplayer list. It can have two lines and Minecraft's `§` formatting codes: colours `§0` to `§f`, `§l` bold, `§o` italic, `§n` underline, `§m` strikethrough, `§k` obfuscated and `§r` to reset. In YAML, use double quotes so `\n` starts the second line:
+
+```yaml
+properties:
+  motd: "§6§lNew Theatre §r§7Survival\n§bOpen to members"
+```
+
+The editor in **Settings**, **Game settings** writes the same string, so you rarely need to type codes by hand. Hex colours aren't supported, because vanilla only reads the 16 colours from `server.properties`.
 
 ### `content`
 
@@ -102,6 +129,49 @@ What Flytower does when the server gets stuck. Left out, the current setting sta
 | Field                     | Meaning                                                                                                                                             |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `restartWhenUnresponsive` | `true` to restart the server once when its console hasn't answered for five minutes. Defaults to `false`. See [Crashes](crashes.md#not-responding). |
+
+### `public`
+
+The server's [public status page](status-page.md). Left out, the current settings stay.
+
+| Field          | Meaning                                                                                                               |
+| -------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `enabled`      | `true` to turn the page on at `/s/<name>`. Defaults to `false`.                                                       |
+| `description`  | A few lines about the server, up to 500 characters, shown as plain text with line breaks.                             |
+| `show.players` | `count` (the default) shows how many are online, `names` shows their heads and names, `none` shows nothing.           |
+| `show.version` | `false` to hide the Minecraft version and loader. Defaults to `true`.                                                 |
+| `pack.enabled` | `false` to stop offering the players' [modpack](status-page.md#modpack-for-players). Defaults to `true`; Fabric only. |
+| `pack.extras`  | Client-only extras for the modpack: a list of `modrinth: <slug>`, each with an optional exact `version`.              |
+
+```yaml
+public:
+  enabled: true
+  description: |
+    Survival for New Theatre members.
+    Season 3 started in September.
+  show:
+    players: names
+  pack:
+    extras:
+      - modrinth: iris
+      - modrinth: complementary-reimagined
+```
+
+### `timezone`
+
+The time zone the server's [scheduled tasks](schedules.md) run in, such as `Europe/London`. Left out, it stays (UTC to begin with). Backups have their own, under `backups`.
+
+### `schedules`
+
+Restarts, console commands and announcements the server runs by itself. See [Scheduled tasks](schedules.md). When present, the whole list is replaced (tasks that haven't changed keep their last run). Left out, the current tasks stay; write `schedules: []` to remove them all. Each item is one of:
+
+| Item                                                 | Meaning                                                                                                                                                                                                                          |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `restart: '0 5 * * *'`                               | Restart at these times. `warn` lists when to warn players beforehand, like `[15m, 5m, 1m, 10s]` (the default), up to `2h`; `[]` for none. `skipWarningsWhenEmpty` (default `true`) restarts straight away when nobody is online. |
+| `command: save-all`<br>`cron: '*/30 * * * *'`        | Run a console command, without the slash. It can't be `stop`; use a restart instead.                                                                                                                                             |
+| `announce: 'Restart at 5am'`<br>`cron: '0 22 * * *'` | Show a line in everyone's chat, in gold or the brand colour. At most 256 characters.                                                                                                                                             |
+
+Applying changed schedules never restarts the server. The plan lists tasks added and removed under **Schedules**.
 
 ## Errors
 

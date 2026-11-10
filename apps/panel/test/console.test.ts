@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync } from 'node:fs'
+import { appendFileSync, mkdirSync, mkdtempSync } from 'node:fs'
 import { appendFile, rename, truncate, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -61,6 +61,31 @@ describe('LogTailer', () => {
     await tailer.tick()
     expect(seen).toEqual(['yesterday', 'today, first line', 'second'])
     tailer.stop()
+  })
+
+  it('reads again when asked while a read is running', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ft-tail-'))
+    const path = join(dir, 'latest.log')
+    await writeFile(path, '')
+    const seen: string[] = []
+    let first = true
+    const tailer = new LogTailer(
+      path,
+      (l) => {
+        seen.push(...l)
+        if (!first) return
+        first = false
+        // The server writes the next line while this read is still going, and the watcher
+        // asks for another read before this one has finished.
+        appendFileSync(path, 'joined\n')
+        void tailer.tick()
+      },
+      { pollMs: 0 },
+    )
+    await tailer.start()
+    await appendFile(path, 'logged in\n')
+    await tailer.tick()
+    expect(seen).toEqual(['logged in', 'joined'])
   })
 
   it('seeds only the tail of a big log, without a cut line', async () => {

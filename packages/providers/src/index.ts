@@ -6,6 +6,16 @@ import type { Fetch, LoaderId, LoaderProvider } from './types.ts'
 export * from './types.ts'
 export { downloadVerified } from './download.ts'
 export { dashed, lookupPlayer, offlineUuid, PLAYER_NAME, type PlayerProfile } from './players.ts'
+export {
+  DEFAULT_SKINS,
+  defaultSkin,
+  fetchSkinHash,
+  fetchTexture,
+  isMojangUuid,
+  isPng,
+  skinHash,
+  uuidHex,
+} from './skins.ts'
 
 /** The built-in, trusted loader providers. */
 export function createLoaders(
@@ -35,3 +45,11 @@ export {
   type VtCategory,
   type VtPack,
 } from './vanillatweaks.ts'
+export {
+  CLIENT_KINDS,
+  modrinthPack,
+  type ClientKind,
+  type ModrinthPack,
+  type PackFile,
+  type PackProject,
+} from './modrinth-pack.ts'

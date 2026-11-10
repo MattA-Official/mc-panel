@@ -11,6 +11,7 @@ import {
   type SpecIssue,
 } from '../../shared/spec'
 import { nextRun } from '../backups/scheduler'
+import { scheduleProblems } from '../schedules/validate'
 
 export type ParsedSpec = { ok: true; spec: ServerSpec } | { ok: false; issues: SpecIssue[] }
 
@@ -125,6 +126,9 @@ export function parseSpec(text: string): ParsedSpec {
       const path = ['backups', msg.startsWith('Unknown time zone') ? 'timezone' : 'schedule']
       issues.push({ path: issuePath(path), message: msg, line: lineOf(text, path) })
     }
+  }
+  for (const p of scheduleProblems(spec.schedules ?? [], spec.timezone)) {
+    issues.push({ path: issuePath(p.path), message: p.message, line: lineOf(text, p.path) })
   }
   return issues.length ? { ok: false, issues } : { ok: true, spec }
 }

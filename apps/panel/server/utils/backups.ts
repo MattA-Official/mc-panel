@@ -40,6 +40,7 @@ export function useBackups(): BackupService {
     stopped: (name) => useConsole().forget(name),
     offsite: useOffsite(),
     notifier: useNotify(),
+    diskPercent: () => diskFullness().percent,
   })
   return service
 }

@@ -20,6 +20,7 @@ import { SpecService } from '../server/spec/apply'
 import { writeZip } from '../server/zip'
 import { LOCK_FILE, readLock } from '../server/spec/lock'
 import { parseProperties, stringifyProperties, setProperties, toRecord } from '../server/properties'
+import type { TaskSpec } from '../shared/schedules'
 
 const sha512 = (s: string) => new Bun.CryptoHasher('sha512').update(s).digest('hex')
 
@@ -33,6 +34,7 @@ const CATALOGUE: Record<
     kind?: 'mod' | 'plugin' | 'datapack'
     /** Versions for Minecraft other than 26.3. */
     other?: Record<string, string[]>
+    clientOnly?: boolean
   }
 > = {
   lithium: {
@@ -44,6 +46,7 @@ const CATALOGUE: Record<
   'fabric-api': { title: 'Fabric API', versions: ['0.100'] },
   terralith: { title: 'Terralith', versions: ['2.5'], kind: 'datapack' },
   essentials: { title: 'EssentialsX', versions: ['2.21'], kind: 'plugin' },
+  voxy: { title: 'Voxy', versions: ['0.2'], clientOnly: true },
 }
 
 function fakeModrinth(opts: { badHash?: string } = {}): ContentProvider {
@@ -67,6 +70,7 @@ function fakeModrinth(opts: { badHash?: string } = {}): ContentProvider {
       size: 100,
       dependencies: (p.deps ?? []).map((d) => ({ projectId: `id-${d}`, versionId: null })),
       incompatible: [],
+      ...(p.clientOnly ? { clientOnly: true } : {}),
     }
   }
   return {
@@ -192,6 +196,7 @@ function setup(
 
   let state = opts.running ? 'active' : 'inactive'
   const calls: string[] = []
+  const statsChanges: { name: string; before: unknown }[] = []
   const agent = (async (verb: Verb, params: unknown) => {
     calls.push(verb === 'server.configure' ? `${verb} ${JSON.stringify(params)}` : verb)
     if (verb === 'service.status') return { active: state, since: null }
@@ -209,6 +214,7 @@ function setup(
   })
   let locked = false
   const snapshots: string[] = []
+  const scheduled: { tasks: TaskSpec[]; timezone: string } = { tasks: [], timezone: 'UTC' }
   const propsPath = join(dir, 'server.properties')
   const service = new SpecService({
     db,
@@ -247,6 +253,14 @@ function setup(
       { id: 2, name: 'R2' },
     ],
     offsiteChanged: (n) => calls.push(`offsite ${n}`),
+    statsChanged: (name, before) => statsChanges.push({ name, before }),
+    tasks: {
+      tasks: () => scheduled.tasks,
+      replace: (_n, tasks, timezone) => {
+        scheduled.tasks = tasks
+        if (timezone) scheduled.timezone = timezone
+      },
+    },
     sleep: async () => {},
   })
   const spec = (extra: Partial<ServerSpecInput> = {}) =>
@@ -255,7 +269,7 @@ function setup(
       loader: { type: opts.loader ?? 'fabric', minecraft: '26.3' },
       ...extra,
     })
-  return { db, dir, service, calls, snapshots, spec }
+  return { db, dir, service, calls, snapshots, spec, scheduled, statsChanges }
 }
 
 describe('plan', () => {
@@ -343,6 +357,32 @@ describe('plan', () => {
     expect((await service.plan('survival', spec())).changes).toEqual([])
   })
 
+  it('changes player stats settings and says what was there before', async () => {
+    const { service, spec, db, statsChanges } = setup()
+    const leaveOut = [{ uuid: '069a79f4-44e9-4726-a5be-fca90e38aaf5', name: 'Steve' }]
+    const plan = await service.plan('survival', spec({ stats: { leaveOut } }))
+    expect(plan.changes).toEqual([
+      {
+        area: 'settings',
+        action: 'set',
+        label: 'Player stats',
+        from: 'On',
+        to: 'On, 1 player left out',
+      },
+    ])
+    expect(plan.restart).toBe(false)
+    await (
+      await service.apply('survival', plan.id)
+    ).done
+    expect(
+      db.select().from(schema.servers).where(eq(schema.servers.name, 'survival')).get()?.stats,
+    ).toEqual({ enabled: true, leaveOut })
+    expect(statsChanges).toEqual([{ name: 'survival', before: null }])
+    expect((await service.currentSpec('survival')).stats).toEqual({ enabled: true, leaveOut })
+    // Left out, it stays.
+    expect((await service.plan('survival', spec())).changes).toEqual([])
+  })
+
   it('sets off-site storage by name, and refuses one that does not exist', async () => {
     const { service, spec, db, calls } = setup()
     const set = await service.plan('survival', spec({ backups: { offsite: 'b2' } }))
@@ -414,6 +454,21 @@ describe('plan', () => {
     const plan = await service.plan('survival', spec({ content: [{ modrinth: 'lithium' }] }))
     expect(plan.unmanaged).toEqual(['mods/lithium-0.19.jar', 'mods/other.jar'])
     expect(plan.problems[0]).toContain('added by hand')
+  })
+})
+
+describe('client-only content', () => {
+  it('plans and installs a client-only mod with a warning, and locks it', async () => {
+    const { service, spec, dir } = setup()
+    const plan = await service.plan('survival', spec({ content: [{ modrinth: 'voxy' }] }))
+    expect(plan.problems).toEqual([])
+    expect(plan.warnings).toEqual([
+      "Modrinth marks Voxy as client-only. It's installed because you asked for it; remove it if the server won't start.",
+    ])
+    const { done } = await service.apply('survival', plan.id)
+    expect(await done).toMatchObject({ state: 'succeeded' })
+    expect(existsSync(join(dir, 'mods', 'voxy-0.2.jar'))).toBe(true)
+    expect((await readLock(dir)).content.map((l) => l.slug)).toEqual(['voxy'])
   })
 })
 
@@ -520,6 +575,38 @@ describe('apply', () => {
     expect(props).toContain('motd=Hi')
     const row = db.select().from(schema.servers).where(eq(schema.servers.name, 'survival')).get()!
     expect(row).toMatchObject({ memoryMb: 6144, port: 25570 })
+  })
+
+  it('plans and applies scheduled tasks without a restart', async () => {
+    const { service, spec, calls, scheduled } = setup({ running: true })
+    scheduled.tasks = [
+      { kind: 'command', cron: '*/30 * * * *', text: 'save-all', warn: [], skipWhenEmpty: false },
+    ]
+    const plan = await service.plan(
+      'survival',
+      spec({ timezone: 'Europe/London', schedules: [{ restart: '0 5 * * *', warn: ['1m'] }] }),
+    )
+    expect(plan.changes.filter((c) => c.area === 'schedules')).toEqual([
+      { area: 'schedules', action: 'set', label: 'Time zone', from: 'UTC', to: 'Europe/London' },
+      { area: 'schedules', action: 'add', label: 'Restart (0 5 * * *), warning 1m' },
+      { area: 'schedules', action: 'remove', label: 'Run "save-all" (*/30 * * * *)' },
+    ])
+    expect(plan.restart).toBe(false)
+    expect(await (await service.apply('survival', plan.id)).done).toMatchObject({
+      state: 'succeeded',
+    })
+    expect(calls).not.toContain('service.stop')
+    expect(scheduled).toEqual({
+      timezone: 'Europe/London',
+      tasks: [{ kind: 'restart', cron: '0 5 * * *', text: null, warn: [60], skipWhenEmpty: true }],
+    })
+    // The YAML tab shows them, and leaving them out changes nothing.
+    const current = await service.currentSpec('survival')
+    expect(current.schedules).toEqual([
+      { restart: '0 5 * * *', warn: ['1m'], skipWarningsWhenEmpty: true },
+    ])
+    const same = await service.plan('survival', spec({ properties: {} }))
+    expect(same.changes).toEqual([])
   })
 
   it('refuses a stale, unknown or blocked plan', async () => {

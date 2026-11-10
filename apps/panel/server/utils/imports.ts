@@ -9,6 +9,10 @@ export function useImports(): ImportService {
   service ??= new ImportService({
     importsDir: config.importsDir,
     archiveDir: config.archiveDir,
+    pastWorldPath: (id) => {
+      const exports = useExports()
+      return exports.path(exports.pastWorld(id))
+    },
     jobs: useJobs(),
   })
   return service

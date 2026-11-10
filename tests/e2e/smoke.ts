@@ -72,6 +72,40 @@ try {
   }
 
   {
+    // Branding: a name and colour saved on System reach the theme, the title and sign-in page.
+    await view.navigate(`${base}/system/branding`)
+    await waitForText(view, 'Name, colour and font', 30_000)
+    await fill(
+      view,
+      '[data-e2e=branding-name] input, input[data-e2e=branding-name]',
+      'Smoke Theatre',
+    )
+    await fill(view, '[data-e2e=branding-accent] input, input[data-e2e=branding-accent]', '#2f6fd0')
+    await clickButton(view, 'Save')
+    await until(
+      'the branding saved',
+      async () =>
+        (await api<{ name: string }>(view, '/api/branding')).body?.name === 'Smoke Theatre',
+      30_000,
+      500,
+    )
+    const css = await (await fetch(`${base}/branding/theme.css`)).text()
+    if (!css.includes('--ui-color-primary-500')) throw new Error(`theme not applied: ${css}`)
+    await until('the title to follow the name', () =>
+      view.evaluate<boolean>(`document.title.endsWith('Smoke Theatre')`),
+    )
+    await shot('branding')
+    const reset = await api<{ isDefault: boolean }>(view, '/api/system/branding', {
+      method: 'DELETE',
+    })
+    if (!reset.body?.isDefault) throw new Error(`branding not reset: ${reset.status}`)
+    if ((await (await fetch(`${base}/branding/theme.css`)).text()) !== '') {
+      throw new Error('theme left behind after a reset')
+    }
+    step('branding saved through the UI, applied to the theme and title, and reset')
+  }
+
+  {
     // Notifications: a JSON webhook channel added through the form gets one signed test POST.
     const got: { signature: string | null; body: string }[] = []
     using receiver = Bun.serve({
@@ -196,6 +230,69 @@ try {
       throw new Error(`dismiss failed: ${JSON.stringify(dismissed.body)}`)
     step(`a killed server was noticed (${crash.cause}) and restarted by systemd`)
 
+    // Scheduled tasks: a restart with one 10-second warning, run with Run now. It warns,
+    // restarts the normal way (not a crash), and the console answers again afterwards.
+    {
+      type Task = { id: number; running: boolean; lastOk: boolean | null; lastResult: string }
+      const saved = await api<{ tasks: Task[] }>(view, '/api/servers/smoke/schedules', {
+        method: 'PUT',
+        body: {
+          timezone: 'Europe/London',
+          schedules: [
+            { restart: '0 5 * * *', warn: ['10s'], skipWarningsWhenEmpty: false },
+            { command: 'seed', cron: '0 4 * * *' },
+          ],
+        },
+      })
+      if (saved.status !== 200) throw new Error(`saving schedules: ${JSON.stringify(saved.body)}`)
+      const [restartTask, seedTask] = saved.body.tasks
+      const seedRun = await api(view, `/api/servers/smoke/schedules/${seedTask!.id}/run`, {
+        body: {},
+      })
+      if (seedRun.status !== 200) throw new Error(`run now: ${JSON.stringify(seedRun.body)}`)
+      const ran = await api(view, `/api/servers/smoke/schedules/${restartTask!.id}/run`, {
+        body: {},
+      })
+      if (ran.status !== 200) throw new Error(`run now: ${JSON.stringify(ran.body)}`)
+      const done = await until(
+        'the scheduled restart to finish',
+        async () => {
+          const r = await api<{ tasks: Task[] }>(view, '/api/servers/smoke/schedules')
+          const t = r.body.tasks.find((x) => x.id === restartTask!.id)
+          return t && !t.running && t.lastResult ? t : null
+        },
+        4 * 60_000,
+        2000,
+      )
+      if (done.lastOk !== true) throw new Error(`scheduled restart: ${done.lastResult}`)
+      const seed = (
+        await api<{ tasks: (Task & { lastReply: string })[] }>(view, '/api/servers/smoke/schedules')
+      ).body.tasks.find((x) => x.id === seedTask!.id)
+      if (!/Seed/.test(seed?.lastReply ?? '')) {
+        throw new Error(`the command's reply wasn't kept: ${JSON.stringify(seed)}`)
+      }
+      await until(
+        'the console to answer after the scheduled restart',
+        async () => {
+          const r = await api<{ reply: string }>(view, '/api/servers/smoke/command', {
+            body: { command: 'list' },
+          })
+          return r.status === 200 && /players online/.test(r.body.reply) ? true : null
+        },
+        5 * 60_000,
+        3000,
+      )
+      const health = await api<{ health: Health }>(view, '/api/servers/smoke')
+      if (health.body.health.crash) {
+        throw new Error(`the scheduled restart counted as a crash: ${JSON.stringify(health.body)}`)
+      }
+      await api(view, '/api/servers/smoke/schedules', {
+        method: 'PUT',
+        body: { timezone: 'Europe/London', schedules: [] },
+      })
+      step(`scheduled restart with a 10-second warning: ${done.lastResult}`)
+    }
+
     // Backups: a block placed before the backup survives a change and a restore.
     const rcon = async (command: string) => {
       const r = await api<{ reply: string }>(view, '/api/servers/smoke/command', {
@@ -216,6 +313,25 @@ try {
     if (backup.status !== 200) throw new Error(`backup failed: ${JSON.stringify(backup.body)}`)
     await waitForJob(backup.body.jobId, 'the backup job', 5 * 60_000)
     step('backed up a running server')
+
+    {
+      // Disk use: the finished backup has the server measured again, backups and all.
+      const disk = await until('the server to be measured', async () => {
+        const r = await api<{
+          percent: number | null
+          servers: { server: string; bytes: number; groups: { world: number; backups: number } }[]
+        }>(view, '/api/system/disk')
+        const s = r.body.servers.find((x) => x.server === 'smoke')
+        return s && s.groups.world > 0 && s.groups.backups > 0 ? { ...r.body, s } : null
+      })
+      await view.navigate(`${base}/system`)
+      await waitForText(view, 'Largest part')
+      await waitForText(view, 'Smoke')
+      await shot('2c-disk-use')
+      step(
+        `disk ${disk.percent}% full; smoke measured at ${Math.round(disk.s.bytes / 1024 / 1024)} MB`,
+      )
+    }
 
     await rcon('setblock 0 100 0 minecraft:air')
     if (await goldIsThere()) throw new Error('the gold block should be gone before restoring')

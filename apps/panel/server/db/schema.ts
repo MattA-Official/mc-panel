@@ -1,4 +1,7 @@
 import type { ContentItem } from '../../shared/spec'
+import type { PublicPage } from '../../shared/public-page'
+import type { StatsSettings } from '../../shared/stats-settings'
+import type { Permission } from '../../shared/permissions'
 import { sql } from 'drizzle-orm'
 import {
   blob,
@@ -17,6 +20,12 @@ const createdAt = () => integer('created_at', { mode: 'timestamp_ms' }).notNull(
 export const users = sqliteTable('users', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
+  /** Bumped by "Sign out everywhere": sessions made under an older number stop working. */
+  sessionVersion: integer('session_version').notNull().default(0),
+  /** Light, dark or follow the device, remembered for the person rather than the browser. */
+  theme: text('theme', { enum: ['system', 'light', 'dark'] })
+    .notNull()
+    .default('system'),
   createdAt: createdAt(),
 })
 
@@ -85,6 +94,12 @@ export const servers = sqliteTable(
     restartWhenUnresponsive: integer('restart_when_unresponsive', { mode: 'boolean' })
       .notNull()
       .default(false),
+    /** IANA time zone the server's scheduled tasks are read in. */
+    timezone: text('timezone').notNull().default('UTC'),
+    /** The public status page's settings; null until it's first set. */
+    publicPage: text('public_page', { mode: 'json' }).$type<PublicPage>(),
+    /** Whether player stats are kept and who is left out; null until it's first set (on). */
+    stats: text('stats', { mode: 'json' }).$type<StatsSettings>(),
     createdAt: createdAt(),
   },
   (t) => [
@@ -104,6 +119,8 @@ export const backups = sqliteTable(
     bytes: integer('bytes').notNull(),
     kind: text('kind', { enum: ['manual', 'scheduled', 'safety'] }).notNull(),
     note: text('note'),
+    /** Kept forever: pruning never deletes it, e.g. the last backup before a world reset. */
+    kept: integer('kept', { mode: 'boolean' }).notNull().default(false),
     createdAt: createdAt(),
     /** The off-site copy: null when the server has no target. */
     offsiteState: text('offsite_state', { enum: ['pending', 'uploading', 'done', 'failed'] }),
@@ -122,7 +139,10 @@ export const exports = sqliteTable('exports', {
   file: text('file').notNull(),
   bytes: integer('bytes').notNull(),
   createdAt: createdAt(),
+  /** Ignored for past worlds, which never expire. */
   expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+  /** Set for a past world: the old world kept when the world was reset. */
+  name: text('name'),
 })
 
 export const shares = sqliteTable(
@@ -274,4 +294,155 @@ export const serverEvents = sqliteTable(
     dismissedAt: integer('dismissed_at', { mode: 'timestamp_ms' }),
   },
   (t) => [index('server_events_server_at').on(t.server, t.at)],
+)
+
+/**
+ * What the background update check last found, per thing checked: `('flytower', '*')`,
+ * `('content', <server>)`, `('minecraft', <server>)` or `('java', <major>)`. A failed check
+ * sets only the error, so the last good result (and its badge) stays.
+ */
+export const updateStatus = sqliteTable(
+  'update_status',
+  {
+    scope: text('scope', { enum: ['flytower', 'content', 'minecraft', 'java'] }).notNull(),
+    subject: text('subject').notNull(),
+    /** The last good result; its shape depends on the scope. */
+    summary: text('summary', { mode: 'json' }).$type<unknown>(),
+    checkedAt: integer('checked_at', { mode: 'timestamp_ms' }),
+    lastError: text('last_error'),
+    errorAt: integer('error_at', { mode: 'timestamp_ms' }),
+  },
+  (t) => [primaryKey({ columns: [t.scope, t.subject] })],
+)
+
+/**
+ * Restarts, console commands and announcements a server runs on a schedule, in its own time
+ * zone (servers.timezone). The spec's `schedules` list, in order, plus each task's last run.
+ */
+export const schedules = sqliteTable(
+  'schedules',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    server: text('server').notNull(),
+    position: integer('position').notNull().default(0),
+    kind: text('kind', { enum: ['restart', 'command', 'announce'] }).notNull(),
+    cron: text('cron').notNull(),
+    /** The command or announcement; null for a restart. */
+    text: text('text'),
+    /** Seconds before a restart to warn players, longest first. */
+    warn: text('warn', { mode: 'json' }).$type<number[]>().notNull().default([]),
+    skipWhenEmpty: integer('skip_when_empty', { mode: 'boolean' }).notNull().default(true),
+    lastRunAt: integer('last_run_at', { mode: 'timestamp_ms' }),
+    lastOk: integer('last_ok', { mode: 'boolean' }),
+    /** What happened, like "Restarted in 41s" or "Skipped: the server wasn't running". */
+    lastResult: text('last_result'),
+    /** A command's reply. */
+    lastReply: text('last_reply'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('schedules_server').on(t.server, t.position)],
+)
+
+/**
+ * Named sets of permissions. Built-in roles (owner, admin, operator, viewer) take their
+ * permissions from shared/permissions.ts, so the column only matters for custom roles.
+ */
+export const roles = sqliteTable('roles', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  builtIn: integer('built_in', { mode: 'boolean' }).notNull().default(false),
+  permissions: text('permissions', { mode: 'json' }).$type<Permission[]>().notNull().default([]),
+  createdAt: createdAt(),
+})
+
+/** A person holds a role for one server, or for all servers when `server` is null. */
+export const grants = sqliteTable(
+  'grants',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    roleId: text('role_id')
+      .notNull()
+      .references(() => roles.id, { onDelete: 'cascade' }),
+    server: text('server').references(() => servers.name, { onDelete: 'cascade' }),
+    createdAt: createdAt(),
+  },
+  (t) => [index('grants_user').on(t.userId)],
+)
+
+/**
+ * One-time invite links. Only a SHA-256 of the token is kept (the token is 32 random bytes,
+ * so a slow hash adds nothing). A link is gone once used, revoked or past `expiresAt`.
+ */
+export const invites = sqliteTable('invites', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  tokenHash: text('token_hash').notNull().unique(),
+  roleId: text('role_id')
+    .notNull()
+    .references(() => roles.id, { onDelete: 'cascade' }),
+  server: text('server').references(() => servers.name, { onDelete: 'cascade' }),
+  /** Who it's for, as the inviter wrote it; the person picks their own name when joining. */
+  note: text('note'),
+  createdBy: integer('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: createdAt(),
+  expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+  usedAt: integer('used_at', { mode: 'timestamp_ms' }),
+  usedBy: integer('used_by').references(() => users.id, { onDelete: 'set null' }),
+})
+
+/**
+ * Time players spent on each server, one row per visit, from the "joined the game" and "left
+ * the game" lines in the log. `leftAt` is null while they're on. A visit whose end wasn't
+ * seen (the panel was down, or the server crashed) ends at the last minute the metrics saw
+ * anyone on, and says how it ended in `endedBy`.
+ */
+export const playerSessions = sqliteTable(
+  'player_sessions',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    server: text('server').notNull(),
+    uuid: text('uuid').notNull(),
+    /** The name they joined with. */
+    name: text('name').notNull(),
+    joinedAt: integer('joined_at', { mode: 'timestamp_ms' }).notNull(),
+    leftAt: integer('left_at', { mode: 'timestamp_ms' }),
+    endedBy: text('ended_by', { enum: ['left', 'stopped', 'crashed', 'lost', 'rejoined', 'off'] }),
+  },
+  (t) => [
+    index('player_sessions_player').on(t.server, t.uuid, t.joinedAt),
+    index('player_sessions_open').on(t.server, t.leftAt),
+  ],
+)
+
+/** Each player's newest name per server, from the log and usercache.json. */
+export const playerNames = sqliteTable(
+  'player_names',
+  {
+    server: text('server').notNull(),
+    uuid: text('uuid').notNull(),
+    name: text('name').notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.server, t.uuid] })],
+)
+
+/**
+ * A short list of each player's vanilla stats (from the world's stats files), once a day and
+ * only when they changed. Week and month figures are the difference between two rows. Rows
+ * older than 90 days are thinned to the last one in each week.
+ */
+export const playerStats = sqliteTable(
+  'player_stats',
+  {
+    server: text('server').notNull(),
+    uuid: text('uuid').notNull(),
+    /** The day in the server's time zone, as YYYY-MM-DD. */
+    day: text('day').notNull(),
+    /** When the stats file was read. */
+    takenAt: integer('taken_at', { mode: 'timestamp_ms' }).notNull(),
+    stats: text('stats', { mode: 'json' }).$type<Record<string, number>>().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.server, t.uuid, t.day] })],
 )

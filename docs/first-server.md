@@ -1,3 +1,15 @@
+---
+section: Getting started
+order: 3
+panelRoute:
+  - '/'
+  - '/servers/new'
+  - '/servers/import'
+  - '/servers/:name'
+  - '/servers/:name/**'
+  - '/servers/:name/settings#the-servers-tabs'
+---
+
 # Your first server
 
 ## Create it
@@ -36,6 +48,15 @@ Players connect to your VPS's address, with `:port` if it isn't 25565. To give e
 | Files       | The server folder: edit, upload, rename, delete.                                                                  |
 | Settings    | Name, `server.properties`, memory, port, address, Minecraft version and loader, cloning, and deleting the server. |
 | YAML        | The whole server as one [spec](spec.md), to edit or download.                                                     |
+
+## How it looks in the server list
+
+**Settings**, **Game settings** has the server's entry in Minecraft's multiplayer list.
+
+- **Server icon**: **Upload** a PNG, JPEG or WebP picture (up to 10 MB), drag and zoom to crop it square, and save. Flytower scales it to the 64×64 `server-icon.png` Minecraft reads, keeping only the image itself (nothing else from the file, such as its metadata). **Remove** goes back to the default. Clones keep the icon. It isn't part of the [spec](spec.md), since a spec can't carry a picture.
+- **Message of the day**: two lines, with colours and formatting from the toolbar, or `§` codes with **Show codes**. See [`properties`](spec.md#properties).
+
+A preview shows the whole entry as it'll look, and warns when a line is too long. Minecraft reads both when the server starts, so they show after the next restart.
 
 ## Plans
 

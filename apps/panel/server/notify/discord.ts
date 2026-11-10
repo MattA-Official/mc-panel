@@ -1,4 +1,4 @@
-/** Discord: an embed in Flytower's colours, posted to a channel webhook. */
+/** Discord: an embed in Flytower's colours, posted to a channel webhook under the install's name. */
 import type { Severity } from '../../shared/notify'
 import { DeliveryError, postJson, type Message, type Sender } from './types'
 
@@ -23,16 +23,19 @@ export function escapeMarkdown(s: string): string {
 }
 
 export function discordPayload(msg: Message) {
+  const name = msg.from?.name ?? 'Flytower'
   const embed: Record<string, unknown> = {
     title: msg.title.slice(0, 256),
     color: COLOURS[msg.severity],
     timestamp: msg.at.toISOString(),
-    footer: { text: msg.serverDisplayName ? `Flytower · ${msg.serverDisplayName}` : 'Flytower' },
+    footer: { text: msg.serverDisplayName ? `${name} · ${msg.serverDisplayName}` : name },
   }
   if (msg.detail) embed.description = escapeMarkdown(msg.detail).slice(0, 4000)
   if (msg.url) embed.url = msg.url
   return {
-    username: 'Flytower',
+    // Discord refuses webhook names that mention it (or its old bot, Clyde).
+    username: /discord|clyde/i.test(name) ? 'Flytower' : name.slice(0, 80),
+    ...(msg.from?.avatarUrl && { avatar_url: msg.from.avatarUrl }),
     embeds: [embed],
     // Player names and log text must never ping anyone.
     allowed_mentions: { parse: [] },

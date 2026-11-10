@@ -1,5 +1,8 @@
 /** Builds a server's spec from what the panel knows: its database row and server.properties. */
-import { MANAGED_PROPERTIES, type ServerSpec } from '../../shared/spec'
+import { isManagedProperty, type ServerSpec } from '../../shared/spec'
+import { readPublicPage } from '../../shared/public-page'
+import { isDefaultStats, readStatsSettings } from '../../shared/stats-settings'
+import { ScheduleItem, toItem, type TaskSpec } from '../../shared/schedules'
 import type { schema } from '../db'
 
 type ServerRow = typeof schema.servers.$inferSelect
@@ -81,10 +84,13 @@ export function specFromServer(
   props: Record<string, string>,
   /** Off-site storage names by id, to name the server's choice. */
   targets: { id: number; name: string }[] = [],
+  /** The server's scheduled tasks, in order. */
+  tasks: TaskSpec[] = [],
 ): ServerSpec {
   const properties: ServerSpec['properties'] = {}
   for (const [key, value] of Object.entries(props).sort(([a], [b]) => a.localeCompare(b))) {
-    if (MANAGED_PROPERTIES.includes(key)) continue
+    // Managed keys belong to Flytower, and secrets must never reach a shared spec.
+    if (isManagedProperty(key)) continue
     // `level-type` is stored escaped by some versions and not others.
     const def = PROPERTY_DEFAULTS[key]
     if (def !== undefined && (value === def || value === def.replace(/\\:/g, ':'))) continue
@@ -112,5 +118,11 @@ export function specFromServer(
         : {}),
     },
     ...(row.restartWhenUnresponsive ? { recovery: { restartWhenUnresponsive: true } } : {}),
+    timezone: row.timezone,
+    ...(row.publicPage ? { public: readPublicPage(row.publicPage) } : {}),
+    ...(!isDefaultStats(readStatsSettings(row.stats))
+      ? { stats: readStatsSettings(row.stats) }
+      : {}),
+    ...(tasks.length ? { schedules: tasks.map((t) => ScheduleItem.parse(toItem(t))) } : {}),
   }
 }

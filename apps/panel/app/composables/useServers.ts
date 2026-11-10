@@ -1,3 +1,6 @@
+import type { PublicPage } from '#shared/public-page'
+import type { StatsSettings } from '#shared/stats-settings'
+
 export type ServiceState =
   'active' | 'inactive' | 'activating' | 'deactivating' | 'failed' | 'unknown'
 
@@ -62,8 +65,12 @@ export interface Server {
   hostname: string | null
   createdAt: string
   restartWhenUnresponsive: boolean
+  publicPage: PublicPage
+  stats: StatsSettings
   status: ServiceState
   health: Health
+  /** The server's icon, if it has one; the URL changes when the icon does. */
+  icon: string | null
 }
 
 /** Live systemd states for every server, kept current over the shared socket. */

@@ -2,6 +2,7 @@ import { nextRun } from '../../../../backups/scheduler'
 
 /** Backups for a server, its schedule and whether something is running now. */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'server.view')
   const { name, service } = await backupContext(event)
   const server = findServer(name)
   const backups = await service.list(name)
@@ -19,6 +20,7 @@ export default defineEventHandler(async (event) => {
         bytes: b.bytes,
         kind: b.kind,
         note: b.note,
+        kept: b.kept,
         createdAt: b.createdAt,
         local: await Bun.file(service.path(b)).exists(),
         offsite: b.offsiteState

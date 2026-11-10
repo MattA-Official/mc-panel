@@ -149,6 +149,7 @@ export function modrinthProvider(
   }
 
   function toResolved(p: Project, v: Version, kind: ContentKind): ResolvedContent {
+    const clientOnly = kind !== 'datapack' && p.server_side === 'unsupported'
     const file = v.files.find((f) => f.primary) ?? v.files[0]
     if (!file) throw new ProviderError(`${p.title} ${v.version_number} has no file to download.`)
     if (!file.hashes.sha512) {
@@ -175,6 +176,7 @@ export function modrinthProvider(
       incompatible: v.dependencies
         .filter((d) => d.dependency_type === 'incompatible' && d.project_id)
         .map((d) => d.project_id!),
+      ...(clientOnly ? { clientOnly } : {}),
     }
   }
 
@@ -182,15 +184,16 @@ export function modrinthProvider(
     id: 'modrinth',
     name: 'Modrinth',
 
-    async search(query, { kind, target, limit = 20, offset = 0 }) {
+    async search(query, { kind, target, limit = 20, offset = 0, clientOnly = false }) {
+      const sided = kind !== 'datapack' && !clientOnly
       const facets: string[][] = [
         // Modrinth files most plugins as mods that run on plugin platforms.
         kind === 'plugin' ? ['project_type:plugin', 'project_type:mod'] : [`project_type:${kind}`],
         [`versions:${target.minecraft}`],
         ...(kind === 'mod' ? [[`categories:${target.loader}`]] : []),
         ...(kind === 'plugin' ? [PLUGIN_LOADERS.map((l) => `categories:${l}`)] : []),
-        // Client-only mods do nothing on a server.
-        ...(kind !== 'datapack' ? [['server_side:required', 'server_side:optional']] : []),
+        // Client-only mods usually do nothing on a server, so they're left out unless asked for.
+        ...(sided ? [['server_side:required', 'server_side:optional']] : []),
       ]
       const q = new URLSearchParams({
         query: query.slice(0, 100),
@@ -201,7 +204,7 @@ export function modrinthProvider(
       })
       const res = await get<SearchResponse>(`/search?${q}`)
       const hits = (res?.hits ?? [])
-        .filter((h) => h.server_side !== 'unsupported')
+        .filter((h) => !sided || h.server_side !== 'unsupported')
         .map((h): ContentHit => ({
           source: 'modrinth',
           projectId: h.project_id,
@@ -213,7 +216,9 @@ export function modrinthProvider(
           downloads: h.downloads,
           kind,
           serverSide:
-            h.server_side === 'required' || h.server_side === 'optional'
+            h.server_side === 'required' ||
+            h.server_side === 'optional' ||
+            (h.server_side === 'unsupported' && kind !== 'datapack')
               ? h.server_side
               : 'unknown',
         }))
@@ -233,9 +238,6 @@ export function modrinthProvider(
 
     async resolve(ref: ContentRef, target: ContentTarget): Promise<ResolvedContent> {
       const p = await project(ref.project)
-      if (p.server_side === 'unsupported') {
-        throw new ProviderError(`${p.title} only runs on players' computers, not on a server.`)
-      }
       const kind = kindOf(p, ref.kind, target)
       if (ref.version) {
         // An exact version: by id, or by version number among this project's versions.

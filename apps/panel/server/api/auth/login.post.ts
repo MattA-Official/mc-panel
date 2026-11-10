@@ -23,6 +23,7 @@ export default defineEventHandler(async (event) => {
     // Signing in with a passkey proves presence, so start elevated.
     await replaceUserSession(event, {
       user: { id: user.id, name: user.name },
+      sessionVersion: user.sessionVersion,
       elevatedUntil: Date.now() + ELEVATION_MS,
     })
     db.insert(audit).values({ userId: user.id, action: 'auth.login' }).run()

@@ -8,7 +8,7 @@ export const AUDIT_KINDS = {
   players: 'Players',
   files: 'Files',
   access: 'Sign-ins and access',
-  system: 'Flytower and notifications',
+  system: 'Flytower, notifications, branding and Discord',
 } as const
 export type AuditKind = keyof typeof AUDIT_KINDS
 
@@ -17,14 +17,16 @@ export function auditKind(action: string): AuditKind {
   if (action.startsWith('world.')) return 'world'
   if (action.startsWith('players.')) return 'players'
   if (action.startsWith('files.')) return 'files'
-  if (action === 'server.apply' || action === 'server.properties') return 'content'
-  if (/^(auth|passkey|recovery|setup|ssh)\./.test(action)) return 'access'
-  if (action.startsWith('update.') || action.startsWith('notify.')) return 'system'
+  if (action === 'server.apply' || action === 'server.properties' || action === 'server.icon') {
+    return 'content'
+  }
+  if (/^(auth|passkey|recovery|setup|ssh|people|account)\./.test(action)) return 'access'
+  if (/^(update|notify|branding|discord)\./.test(action)) return 'system'
   return 'servers'
 }
 
 /** Things Flytower records by itself, with nobody signed in behind them. */
-const BY_FLYTOWER = ['server.crashed', 'server.crash_loop', 'server.unresponsive']
+const BY_FLYTOWER = ['server.crashed', 'server.crash_loop', 'server.unresponsive', 'schedule.run']
 
 /** Who to show for an entry with no user: Flytower for its own, otherwise a removed person. */
 export function auditActor(action: string, user: string | null): string | null {
@@ -43,6 +45,19 @@ export function safeDetail(detail: Record<string, unknown> | null): Record<strin
   return out
 }
 
+const ROLE_NAMES: Record<string, string> = {
+  owner: 'Owner',
+  admin: 'Admin',
+  operator: 'Operator',
+  viewer: 'Viewer',
+}
+
+/** "Operator on survival", "Admin on all servers". */
+function roleText(d: Record<string, unknown>): string {
+  const role = d.roleName ? String(d.roleName) : (ROLE_NAMES[String(d.role)] ?? 'a role')
+  return `${role} on ${d.server ? String(d.server) : 'all servers'}`
+}
+
 const str = (v: unknown) => (v === undefined || v === null ? '' : String(v))
 
 /** A short sentence, without the person (shown alongside). */
@@ -58,8 +73,26 @@ export function describeAudit(
       return 'Signed in with a passkey'
     case 'auth.recovery_code':
       return 'Signed in with a recovery code'
+    case 'account.renamed':
+      return `Changed their name from ${str(d.from)} to ${str(d.to)}`
+    case 'auth.signed_out_everywhere':
+      return 'Signed out everywhere else'
     case 'setup.completed':
       return 'Set up Flytower'
+    case 'people.invited':
+      return `Made an invite link${d.person ? ` for ${str(d.person)}` : ''} (${roleText(d)})`
+    case 'people.invite_revoked':
+      return `Cancelled an invite link${d.person ? ` for ${str(d.person)}` : ''}`
+    case 'people.joined':
+      return `Joined as ${roleText(d)}`
+    case 'people.changed':
+      return `Changed what ${str(d.person)} can do`
+    case 'people.removed':
+      return `Removed ${str(d.person)}`
+    case 'people.role_saved':
+      return `${d.created ? 'Made' : 'Changed'} the ${str(d.name)} role`
+    case 'people.role_deleted':
+      return `Deleted the ${str(d.name)} role`
     case 'passkey.added':
       return `Added a passkey${d.nickname ? ` (${str(d.nickname)})` : ''}`
     case 'passkey.removed':
@@ -77,7 +110,21 @@ export function describeAudit(
     case 'update.channel':
       return d.channel === 'beta'
         ? 'Chose to be offered beta releases'
-        : 'Chose stable releases only'
+        : d.channel === 'native'
+          ? 'Chose to be offered native builds'
+          : 'Chose stable releases only'
+    case 'branding.update':
+      return `Changed the branding${d.name ? ` (${str(d.name)}, ${str(d.accent)})` : ''}`
+    case 'branding.reset':
+      return "Reset the branding to Flytower's own"
+    case 'branding.logo':
+      return 'Uploaded a new logo'
+    case 'branding.favicon':
+      return 'Uploaded a new favicon'
+    case 'branding.logo.remove':
+      return 'Removed the logo'
+    case 'branding.favicon.remove':
+      return 'Removed the favicon'
     case 'server.create':
       return `Created ${t}${d.from === 'spec' ? ' from YAML' : ''}`
     case 'server.import':
@@ -100,6 +147,13 @@ export function describeAudit(
       return d.restartWhenUnresponsive
         ? `Set ${t} to restart when it stops responding`
         : `Set ${t} not to restart when it stops responding`
+    case 'server.stats':
+      if (d.enabled === false && d.was !== false) return `Turned off player stats on ${t}`
+      if (d.enabled === true && d.was === false) return `Turned on player stats on ${t}`
+      return `Changed who is left out of player stats on ${t}`
+    case 'server.public_page':
+      if (d.enabled === false) return `Turned off ${t}'s public page`
+      return d.was === false ? `Turned on ${t}'s public page` : `Changed ${t}'s public page`
     case 'server.stop':
       return `Stopped ${t}`
     case 'server.restart':
@@ -108,6 +162,8 @@ export function describeAudit(
       return `Ran /${str(d.command).replace(/^\//, '')} on ${t}`
     case 'server.properties':
       return `Changed ${t}'s settings${Array.isArray(d.keys) ? ` (${d.keys.join(', ')})` : ''}`
+    case 'server.icon':
+      return d.removed ? `Removed ${t}'s icon` : `Changed ${t}'s icon`
     case 'server.resources': {
       const bits = [
         d.memoryMb ? `memory ${Number(d.memoryMb) / 1024} GB` : '',
@@ -130,6 +186,12 @@ export function describeAudit(
       return `Restored a backup of ${t}`
     case 'backup.schedule':
       return `Changed ${t}'s backup schedule`
+    case 'schedule.update':
+      return `Changed ${t}'s scheduled tasks`
+    case 'schedule.cancel':
+      return `Called off a scheduled restart of ${t}`
+    case 'schedule.run':
+      return `${t}: ${str(d.task)}. ${str(d.result)}`
     case 'backup.offsite':
       return d.target
         ? `Started copying ${t}'s backups to ${str(d.target)}`
@@ -144,6 +206,10 @@ export function describeAudit(
       return `Changed the notification channel ${str(d.name)}`
     case 'notify.channel.remove':
       return `Removed the notification channel ${str(d.name)}`
+    case 'discord.connect':
+      return `Connected the Discord app ${str(d.name)}`
+    case 'discord.disconnect':
+      return `Disconnected the Discord app ${str(d.name)}`
     case 'world.export':
       return `Exported ${t}'s world`
     case 'world.export.delete':

@@ -8,6 +8,7 @@ const Params = z.object({
 
 /** Start, stop or restart a server. All reversible, so a normal session is enough. */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'server.power')
   const { user } = await requireUserSession(event)
   const { name, action } = await getValidatedRouterParams(event, Params.parse)
   findServer(name)

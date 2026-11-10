@@ -1,13 +1,38 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+let builtServer = false
+
 export default defineNuxtConfig({
   compatibilityDate: '2026-11-01',
   ssr: false,
-  modules: ['@nuxt/ui', 'nuxt-auth-utils'],
+  // The docs/ folder, shared with the website: link handling and help routing.
+  extends: ['../../packages/docs-layer'],
+  modules: ['@nuxt/ui', '@nuxt/content', 'nuxt-auth-utils'],
+  content: {
+    build: {
+      markdown: {
+        toc: { depth: 3 },
+        highlight: {
+          theme: { default: 'github-light', dark: 'github-dark' },
+          langs: ['sh', 'bash', 'yaml', 'json', 'ts', 'ini'],
+        },
+      },
+    },
+    // Help is read in the browser from a bundled copy of the docs, so the server's copy only
+    // answers the odd fallback query. Keep it in memory: the install folder isn't writable.
+    database: { type: 'sqlite', filename: ':memory:' },
+    experimental: { sqliteConnector: 'bun' },
+    watch: { enabled: false },
+  },
   css: ['~/assets/css/main.css'],
   colorMode: { preference: 'dark', fallback: 'dark' },
   app: {
     head: {
-      link: [{ rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
+      link: [
+        // Branding: an uploaded favicon (or Flytower's), and the brand's colours and font as a
+        // stylesheet, so they apply before the first paint instead of flashing amber.
+        { rel: 'icon', href: '/branding/favicon' },
+        { rel: 'stylesheet', href: '/branding/theme.css' },
+      ],
     },
   },
   // Fonts come from @fontsource imports in main.css; stop @nuxt/fonts fetching from the web.
@@ -24,6 +49,10 @@ export default defineNuxtConfig({
   // Bundle the icons we use into the client; the panel never fetches icons at runtime.
   icon: { provider: 'none', clientBundle: { scan: true } },
   routeRules: {
+    // Moved out of System in 1.2.0.
+    '/system/account': { redirect: '/account' },
+    '/system/people': { redirect: '/access' },
+    '/people': { redirect: '/access' },
     // The panel loads nothing from other sites except content icons (Modrinth, Hangar).
     '/**': {
       headers: {
@@ -60,6 +89,12 @@ export default defineNuxtConfig({
     importsDir: '/var/lib/flytower/imports',
     /** Where the agent archives deleted servers. */
     archiveDir: '/var/lib/flytower/archive',
+    /** Player skins from Mojang, cached for drawing heads. */
+    skinsDir: '/var/lib/flytower/skins',
+    /** Players' modpacks for public pages, rebuilt when a server's content changes. */
+    packsDir: '/var/lib/flytower/packs',
+    /** Where the agent installs Java; the panel reads which versions are there. */
+    runtimesDir: '/opt/flytower/runtimes',
     /** Modrinth's API; overridable for a mirror or for tests. */
     modrinthApi: 'https://api.modrinth.com/v2',
     hangarApi: 'https://hangar.papermc.io/api/v1',
@@ -89,10 +124,35 @@ export default defineNuxtConfig({
       exportsDir: '.data/exports',
       importsDir: '.data/imports',
       archiveDir: '.data/archive',
+      skinsDir: '.data/skins',
+      packsDir: '.data/packs',
+      runtimesDir: '.data/runtimes',
       agentSocket: '.data/agent.sock',
       setupTokenFile: '.data/setup-token.hash',
       devSetupToken: 'dev-setup-token',
     },
   },
   typescript: { strict: true },
+  hooks: {
+    // With @nuxt/content under Bun, `nuxt build` finishes but the process never exits (nothing
+    // shows as open; a promise in the build never settles). Once Nitro has compiled the server
+    // and Nuxt has closed, end the process with whatever exit code it has. Prepare and
+    // typecheck never compile Nitro, so they're untouched.
+    // Nuxt Content asks Nitro to prerender each collection's dump, which boots the server
+    // app (and opens the panel's database) at build time. The dump has a server route anyway,
+    // so serve it from there instead.
+    'nitro:config': (config) => {
+      for (const [route, rules] of Object.entries(config.routeRules ?? {})) {
+        if (route.startsWith('/__nuxt_content/')) delete rules.prerender
+      }
+    },
+    'nitro:init': (nitro) => {
+      nitro.hooks.hook('compiled', () => {
+        builtServer = true
+      })
+    },
+    close: () => {
+      if (builtServer) setTimeout(() => process.exit(), 1000).unref()
+    },
+  },
 })

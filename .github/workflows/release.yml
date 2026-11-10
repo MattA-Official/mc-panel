@@ -9,6 +9,9 @@ on:
       version:
         description: Version to release, e.g. 0.1.0
         required: true
+      ref:
+        description: Tag, branch or commit to release, e.g. v1.1.0-beta.6 (default the branch above)
+        required: false
 
 permissions:
   contents: read
@@ -22,36 +25,70 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: package.json
 
       - name: Work out the tag
         env:
           INPUT_VERSION: ${{ inputs.version }}
+          INPUT_REF: ${{ inputs.ref }}
         run: |
+          # Release summaries and the notes script come from the branch this runs on, so an
+          # older commit can be released with a summary written after it.
+          cp -r .github/release-notes "$RUNNER_TEMP/release-notes"
+          cp scripts/release-notes.ts "$RUNNER_TEMP/release-notes.ts"
+          sha="$GITHUB_SHA"
           if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
-            tag="v${INPUT_VERSION#v}"
-            [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "bad version $tag"; exit 1; }
+            version="${INPUT_VERSION#v}"
+            [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "bad version $version"; exit 1; }
+            # Native builds (the native branch, docs/decisions/0001-rust-and-go.md) get their own
+            # tag, which panels on the Stable and Beta channels never look at. Beta panels offer
+            # every v-tagged pre-release, so the native branch must never publish a v tag.
+            # Native versions add a counter to the release they go with: 1.2.0-beta.2.native.1.
+            if [[ "$version" =~ -(.+\.)?native\.[0-9]+$ ]]; then
+              tag="native-$version"
+            elif [[ "$GITHUB_REF_NAME" == native ]]; then
+              echo "::error::the native branch only releases native builds, like 1.2.0-beta.2.native.1"; exit 1
+            else
+              tag="v$version"
+            fi
             if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then echo "$tag already exists"; exit 1; fi
-            git tag "$tag" "$GITHUB_SHA"
+            if [[ -n "$INPUT_REF" ]]; then
+              sha="$(git rev-parse -q --verify "$INPUT_REF^{commit}" || git rev-parse -q --verify "origin/$INPUT_REF^{commit}")" ||
+                { echo "::error::no tag, branch or commit called $INPUT_REF"; exit 1; }
+              git checkout -q --detach "$sha"
+            fi
+            git tag "$tag" "$sha"
           else
             tag="$GITHUB_REF_NAME"
           fi
           echo "TAG=$tag" >> "$GITHUB_ENV"
+          version="${tag#native-}"
+          echo "VERSION=${version#v}" >> "$GITHUB_ENV"
+          echo "TARGET_SHA=$sha" >> "$GITHUB_ENV"
+          # A stable release older than the newest stable one mustn't become "Latest".
+          newest="$(git tag -l 'v*' | grep -v -- - | sort -V | tail -n1)"
+          if [[ "$tag" != *-* && "$newest" != "$tag" ]]; then echo "NOT_LATEST=1" >> "$GITHUB_ENV"; fi
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - name: Rust toolchain (pinned in crates/rust-toolchain.toml)
+        run: cd crates && rustup toolchain install && rustc --version
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
 
       - run: bun install --frozen-lockfile
       - run: bun run lint
       - run: bun run typecheck
       - run: bun test
-      - run: shellcheck installer/*.sh
+      - run: shellcheck installer/*.sh packages/agent/bin/*
 
       - name: Build panel
         run: bun run build
 
       - name: Package
         run: |
-          version="${TAG#v}"
+          version="$VERSION"
           bun scripts/package.ts --version "$version" --arch amd64 --out dist
           bun scripts/package.ts --version "$version" --arch arm64 --out dist
           cp installer/install.sh dist/install.sh
@@ -86,17 +123,21 @@ jobs:
           rm sig.bin
 
       - name: Release notes
-        run: bun scripts/release-notes.ts "$TAG" > dist/NOTES.md
+        run: |
+          mkdir -p .github/release-notes
+          cp "$RUNNER_TEMP"/release-notes/*.md .github/release-notes/
+          bun "$RUNNER_TEMP/release-notes.ts" "$TAG" > dist/NOTES.md
 
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          version="${TAG#v}"
+          version="$VERSION"
           flags=()
           # Everything before 1.0 is a pre-release.
           if [[ "$version" == 0.* || "$version" == *-* ]]; then flags+=(--prerelease); fi
-          gh release create "$TAG" "${flags[@]}" --target "$GITHUB_SHA" \
+          if [[ -n "${NOT_LATEST:-}" ]]; then flags+=(--latest=false); fi
+          gh release create "$TAG" "${flags[@]}" --target "$TARGET_SHA" \
             --title "Flytower $version" \
             --notes-file dist/NOTES.md \
             dist/flytower-*.tar.gz dist/install.sh dist/SHA256SUMS dist/SHA256SUMS.sig

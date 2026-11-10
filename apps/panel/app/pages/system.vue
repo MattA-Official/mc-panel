@@ -1,28 +1,63 @@
 <script setup lang="ts">
-/** System is split into sections, so health, updates, storage, alerts and sign-in each get a page. */
-const sections = [
+import { can } from '#shared/permissions'
+import { systemUpdateCount } from '#shared/updates'
+
+const updates = useLiveUpdates()
+const { state } = useAuthState()
+const allowed = (p: 'system.manage') => (state.value?.access ? can(state.value.access, p) : false)
+/** System is split into sections, so health, updates, storage, alerts, integrations, branding and SSH each get a page. */
+interface Section {
+  label: string
+  icon: string
+  to: string
+  exact?: boolean
+  badge?: { label: string; color: 'info'; variant: 'subtle' }
+}
+const sections = computed<Section[]>(() => [
   { label: 'Overview', icon: 'i-lucide-gauge', to: '/system', exact: true },
-  { label: 'Updates', icon: 'i-lucide-arrow-up-circle', to: '/system/updates' },
+  ...(allowed('system.manage') ? systemSections.value : []),
+])
+/** Install-wide pages, for people who manage Flytower itself. */
+const systemSections = computed<Section[]>(() => [
+  {
+    label: 'Updates',
+    icon: 'i-lucide-arrow-up-circle',
+    to: '/system/updates',
+    ...(systemUpdateCount(updates.value)
+      ? {
+          badge: {
+            label: String(systemUpdateCount(updates.value)),
+            color: 'info' as const,
+            variant: 'subtle' as const,
+          },
+        }
+      : {}),
+  },
   { label: 'Off-site storage', icon: 'i-lucide-cloud', to: '/system/storage' },
   { label: 'Notifications', icon: 'i-lucide-bell', to: '/system/notifications' },
-  { label: 'Account and security', icon: 'i-lucide-shield', to: '/system/account' },
-]
+  { label: 'Integrations', icon: 'i-lucide-blocks', to: '/system/integrations' },
+  { label: 'Branding', icon: 'i-lucide-palette', to: '/system/branding' },
+  { label: 'SSH', icon: 'i-lucide-terminal-square', to: '/system/ssh' },
+])
 const route = useRoute()
 const current = computed(
   () =>
-    [...sections]
+    [...sections.value]
       .reverse()
-      .find((s) => (s.exact ? route.path === s.to : route.path.startsWith(s.to))) ?? sections[0]!,
+      .find((s) => (s.exact ? route.path === s.to : route.path.startsWith(s.to))) ??
+    sections.value[0]!,
 )
 const menu = computed(() => [
-  sections.map((s) => ({ ...s, type: 'link' as const, active: s.to === current.value.to })),
+  sections.value.map((s) => ({ ...s, type: 'link' as const, active: s.to === current.value.to })),
 ])
 </script>
 
 <template>
   <UDashboardPanel id="system">
     <template #header>
-      <UDashboardNavbar title="System" />
+      <UDashboardNavbar title="System">
+        <template #right><HelpButton /></template>
+      </UDashboardNavbar>
       <UDashboardToolbar>
         <UNavigationMenu :items="sections" highlight class="-mx-1 hidden flex-1 lg:flex" />
         <UDropdownMenu :items="menu" :content="{ align: 'start' }" class="lg:hidden">

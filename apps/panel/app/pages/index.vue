@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { serverUpdateCount } from '#shared/updates'
+
 useHead({ title: 'Servers' })
 const { data: health } = await useFetch('/api/health')
 const { data: servers } = await useFetch<Server[]>('/api/servers', { default: () => [] })
@@ -6,8 +8,11 @@ const live = useLiveStatuses()
 const statusOf = (s: Server) => live.value[s.name] ?? s.status
 const liveHealth = useLiveHealth()
 const healthOf = (s: Server) => liveHealth.value[s.name] ?? s.health
+const updates = useLiveUpdates()
+const updatesOf = (s: Server) => serverUpdateCount(updates.value, s.name)
 const when = (iso: string) =>
   new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+const can = useCan()
 </script>
 
 <template>
@@ -15,7 +20,13 @@ const when = (iso: string) =>
     <template #header>
       <UDashboardNavbar title="Servers">
         <template #right>
-          <UButton icon="i-lucide-plus" label="New server" to="/servers/new" />
+          <HelpButton />
+          <UButton
+            v-if="can('servers.create')"
+            icon="i-lucide-plus"
+            label="New server"
+            to="/servers/new"
+          />
         </template>
       </UDashboardNavbar>
     </template>
@@ -58,6 +69,19 @@ const when = (iso: string) =>
                     role="img"
                     :aria-label="`Crashed ${when(healthOf(s).crash!.at)}`"
                     data-e2e="crash-dot"
+                  />
+                </UTooltip>
+                <UTooltip
+                  v-if="updatesOf(s)"
+                  :text="`${updatesOf(s)} update${updatesOf(s) === 1 ? '' : 's'} for installed content`"
+                >
+                  <UBadge
+                    color="info"
+                    variant="subtle"
+                    icon="i-lucide-arrow-up-circle"
+                    :label="String(updatesOf(s))"
+                    :aria-label="`${updatesOf(s)} update${updatesOf(s) === 1 ? '' : 's'} available`"
+                    data-e2e="update-badge"
                   />
                 </UTooltip>
                 <StatusBadge :status="statusOf(s)" :condition="healthOf(s).condition" />

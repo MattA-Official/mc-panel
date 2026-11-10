@@ -11,6 +11,7 @@ import { copyFolder } from '../clone'
 import { schema, type Db } from '../db'
 import { JobError, type AgentCall, type JobTracker } from '../jobs/runner'
 import type { BackupService } from '../backups/service'
+import type { ExportService } from '../backups/exports'
 import { readLock } from '../spec/lock'
 import { levelNameOf } from '../spec/apply'
 import {
@@ -32,6 +33,7 @@ export interface WorldDeps {
     waitActive(name: string): Promise<void>
   }
   backups: Pick<BackupService, 'lock' | 'snapshot' | 'withSavesPaused' | 'ensureSpace'>
+  exports: Pick<ExportService, 'keepWorld'>
   rcon: (name: string, command: string, timeoutMs?: number) => Promise<string>
   readProperties: (name: string) => Promise<Record<string, string>>
   writeProperties: (name: string, changes: Record<string, string>) => Promise<void>
@@ -49,6 +51,13 @@ export type PregenAction = 'pause' | 'continue' | 'cancel'
 
 /** keep: the same seed; random: a new one; anything else: that seed. */
 export type SeedChoice = { keep: true } | { random: true } | { seed: string }
+
+export interface ResetOptions {
+  /** Keep the old world as a past world with this name. */
+  pastWorld?: string | null
+  /** Mark the backup taken first as kept, so retention never deletes it. */
+  keepBackup?: boolean
+}
 
 export class WorldService {
   private sleep: (ms: number) => Promise<void>
@@ -120,15 +129,26 @@ export class WorldService {
   }
 
   /** Starts a world reset job. The caller has already checked a passkey. */
-  reset(name: string, seed: SeedChoice): { jobId: number; done: Promise<JobEvent> } {
+  reset(
+    name: string,
+    seed: SeedChoice,
+    opts: ResetOptions = {},
+  ): { jobId: number; done: Promise<JobEvent> } {
     this.row(name)
     if ('seed' in seed && (!seed.seed.trim() || seed.seed.length > 64)) {
       throw new WorldError('A seed is 1 to 64 characters.')
     }
+    const pastWorld = opts.pastWorld?.trim() ? opts.pastWorld : null
     const release = this.deps.backups.lock(name)
     const job = this.deps.jobs.track('world.reset', name, WORLD_RESET_STEPS)
-    const done = this.runReset(name, seed, job)
-      .then(() => job.succeed('The world was reset. The old one is in Backups.'))
+    const done = this.runReset(name, seed, { pastWorld, keepBackup: !!opts.keepBackup }, job)
+      .then((kept) =>
+        job.succeed(
+          kept
+            ? `The world was reset. The old one is kept as "${kept}" in Past worlds.`
+            : 'The world was reset. The old one is in Backups.',
+        ),
+      )
       .catch((err) => job.fail(err))
       .finally(release)
     return { jobId: job.id, done }
@@ -147,23 +167,47 @@ export class WorldService {
     throw new WorldError('The server took too long to stop.')
   }
 
-  private async runReset(name: string, seed: SeedChoice, job: JobTracker) {
+  /** Returns the past world's name, if one was kept. */
+  private async runReset(
+    name: string,
+    seed: SeedChoice,
+    opts: { pastWorld: string | null; keepBackup: boolean },
+    job: JobTracker,
+  ): Promise<string | null> {
     const dir = this.deps.serverDir(name)
     const props = await this.deps.readProperties(name)
     const level = levelNameOf(props)
     const wasRunning = await this.isRunning(name)
+    const world = join(dir, level)
 
-    job.step(0, 'A copy of the world as it is now')
-    await this.deps.backups.snapshot(name, 'Before resetting the world')
+    job.step(0, opts.keepBackup ? 'Kept forever' : 'A copy of the world as it is now')
+    await this.deps.backups.snapshot(
+      name,
+      opts.pastWorld
+        ? `Before resetting the world (${opts.pastWorld})`
+        : 'Before resetting the world',
+      { kept: opts.keepBackup },
+    )
 
     if (wasRunning) {
       job.step(1)
       await this.stop(name)
     }
 
-    job.step(2)
     await this.deps.agent('server.permissions', { name }, { timeoutMs: 120_000 })
-    const world = join(dir, level)
+    let kept: string | null = null
+    if (opts.pastWorld && (await stat(join(world, 'level.dat')).catch(() => null))) {
+      job.step(2, opts.pastWorld)
+      try {
+        kept = (await this.deps.exports.keepWorld(name, world, opts.pastWorld)).name
+      } catch (err) {
+        // Nothing has been cleared yet, so put things back as they were.
+        if (wasRunning) await this.deps.agent('service.start', { server: name }).catch(() => {})
+        throw err
+      }
+    }
+
+    job.step(3)
     const old = join(dir, `.flytower-old-world`)
     await rm(old, { recursive: true, force: true })
     if (await stat(world).catch(() => null)) {
@@ -177,15 +221,16 @@ export class WorldService {
       await rm(old, { recursive: true, force: true })
     }
 
-    job.step(3)
+    job.step(4)
     if ('random' in seed) await this.deps.writeProperties(name, { 'level-seed': '' })
     else if ('seed' in seed) await this.deps.writeProperties(name, { 'level-seed': seed.seed })
 
     if (wasRunning) {
-      job.step(4, 'Generating the new world')
+      job.step(5, 'Generating the new world')
       await this.deps.agent('service.start', { server: name })
       await this.deps.jobs.waitActive(name)
     }
+    return kept
   }
 
   /**

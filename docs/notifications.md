@@ -1,3 +1,11 @@
+---
+section: Running servers
+order: 16
+since: '1.1.0'
+panelRoute:
+  - '/system/notifications'
+---
+
 # Notifications
 
 Flytower can tell you when something needs attention, so you don't have to watch the panel. It sends to a **Discord** channel, to your phone through **ntfy**, or to anything else as a signed **JSON webhook**.
@@ -6,21 +14,22 @@ Set them up on **System**, **Notifications**. Each place Flytower sends to is a 
 
 ## What you can hear about
 
-| Group    | Event                                            | When                                                                                                        |
-| -------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| Problems | A server crashed                                 | As it happens (Flytower follows systemd), with the cause. "Back up" follows once it's running.              |
-| Problems | A server kept crashing and was left stopped      | After three crashes in ten minutes. See [Crashes](crashes.md#crash-loops).                                  |
-| Problems | A server stopped responding                      | Its console hasn't answered for five minutes. "Responding again" follows when it does.                      |
-| Problems | A backup failed                                  | A manual or scheduled backup fails. A "working again" message follows the next good backup.                 |
-| Problems | Copying a backup off-site failed                 | An off-site copy fails twice in a row (one blip that the retry fixes stays quiet), and when it works again. |
-| Problems | The disk is nearly full                          | Once at 85%, once more at 95%, and "back to normal" when it drops below 80%.                                |
-| Updates  | A new version of Flytower is out                 | Once per new version on your update channel (betas only on Beta). Flytower checks every six hours.          |
-| Updates  | Updates for installed mods, plugins or datapacks | Once per server per new set of updates, from the same check as the Content tab.                             |
-| Activity | A server started or stopped                      | The moment players can join, and the moment it starts shutting down, however it happened.                   |
-| Activity | A server restarted from the panel                | "Restarting" when you press **Restart**, then "Restarted" once players can join again.                      |
-| Activity | A player joined or left                          | The moment it happens.                                                                                      |
+| Group    | Event                                               | When                                                                                                                                |
+| -------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Problems | A server crashed                                    | As it happens (Flytower follows systemd), with the cause. "Back up" follows once it's running.                                      |
+| Problems | A server kept crashing and was left stopped         | After three crashes in ten minutes. See [Crashes](crashes.md#crash-loops).                                                          |
+| Problems | A server stopped responding                         | Its console hasn't answered for five minutes. "Responding again" follows when it does.                                              |
+| Problems | A backup failed                                     | A manual or scheduled backup fails. A "working again" message follows the next good backup.                                         |
+| Problems | Copying a backup off-site failed                    | An off-site copy fails twice in a row (one blip that the retry fixes stays quiet), and when it works again.                         |
+| Problems | A scheduled restart, command or announcement failed | It failed, or was skipped because a backup or change ran for ten minutes. See [Scheduled tasks](schedules.md#when-a-task-cant-run). |
+| Problems | The disk is nearly full                             | Once at 85%, once more at 95%, and "back to normal" when it drops below 80%.                                                        |
+| Updates  | A new version of Flytower is out                    | Once per new version on your update channel (betas only on Beta). Flytower checks every six hours.                                  |
+| Updates  | Updates for installed mods, plugins or datapacks    | Once per server per new set of updates, from the same check as the Content tab.                                                     |
+| Activity | A server started or stopped                         | The moment players can join, and the moment it starts shutting down, however it happened.                                           |
+| Activity | A server restarted from the panel                   | "Restarting" when you press **Restart**, then "Restarted" once players can join again.                                              |
+| Activity | A player joined or left                             | The moment it happens.                                                                                                              |
 
-New channels start with the problems and updates ticked, and the activity left off. Channels made before crash alerts existed get them ticked if they already had any problem ticked.
+New channels start with the problems and updates ticked, and the activity left off. Channels made before crash alerts and scheduled-task alerts existed get them ticked if they already had any problem ticked.
 
 **How activity is noticed.** Flytower reads each server's own log (`logs/latest.log`) and Linux tells it the moment a line is written, so nothing is checked on a timer and no mod or plugin is needed. "Server started" means the log said `Done (…)! For help, type "help"`, which is when players can actually join. "Server stopping" means it said `Stopping the server`. A restart from the panel sends "Restarting" and "Restarted" instead of a stop and a start. Chat can't fake any of these: a player typing "Steve joined the game" doesn't count. Crashes come from systemd's journal instead, since a crashed server may not get to write anything; see [Crashes](crashes.md).
 

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { DEFAULT_MEMORY_MB } from '../../../shared/spec'
+import { toTask } from '../../../shared/schedules'
 import { JobError } from '../../jobs/runner'
 import { parseSpec } from '../../spec/yaml'
 
@@ -10,10 +11,11 @@ const Body = z.object({
 
 /**
  * Creates a server from a pasted spec: the same job as the form, with the spec's
- * properties, backup settings and content list carried over. Content is installed
+ * properties, backup settings, schedules, public page and content list carried over. Content is installed
  * afterwards through a plan the person can review.
  */
 export default defineEventHandler(async (event) => {
+  await requirePermission(event, 'servers.create')
   const { user } = await requireUserSession(event)
   const body = await readValidatedBody(event, Body.parse)
   const parsed = parseSpec(body.yaml)
@@ -40,9 +42,16 @@ export default defineEventHandler(async (event) => {
         content: spec.content,
         hostname: spec.hostname ?? null,
         recovery: spec.recovery,
+        publicPage: spec.public,
+        stats: spec.stats,
       },
     )
-    void done.then(() => syncBackupSchedules())
+    void done.then((job) => {
+      syncBackupSchedules()
+      if (job.state === 'succeeded' && (spec.schedules?.length || spec.timezone)) {
+        useSchedules().replace(spec.name, (spec.schedules ?? []).map(toTask), spec.timezone)
+      }
+    })
     audit(user.id, 'server.create', spec.name, { from: 'spec' })
     setResponseStatus(event, 202)
     return { ok: true as const, jobId, hasContent: spec.content.length > 0 }

@@ -1,3 +1,10 @@
+---
+section: Looking after the machine
+order: 22
+panelRoute:
+  - '/system/updates'
+---
+
 # Updating Flytower
 
 ## From the panel
@@ -24,6 +31,12 @@ Choosing Stable again while you're running a beta doesn't take you backwards: yo
 
 If you install a beta with the installer and never choose a channel, Flytower assumes Beta.
 
+## Native builds
+
+The **Native** channel is for trying Flytower with parts rewritten in Rust and Go, such as the system helper. These builds come from a separate `native` branch. Each one is numbered after the release it goes with, plus a counter: `1.2.0-beta.2.native.1` goes with 1.2.0-beta.2, and `1.2.0-native.1` goes with 1.2.0. Beta and Stable never offer them, and Native offers only them, so a native install stays native until you choose another channel.
+
+Use native builds on a test server. Leaving them means using **Go back to** for a version you had before, or reinstalling. To start on one, install with `--native`, or choose **Native** under **System, Updates**.
+
 ## Releases are signed
 
 Each release's `SHA256SUMS` is signed with Flytower's Ed25519 release key. The installer and the updater both check the signature before installing anything, using the public key built into them. A download that doesn't match is refused.
@@ -43,6 +56,31 @@ Every release is tested upgrading from each earlier one, including the database,
 
 Flytower updates itself, not your servers. Minecraft versions change only when you choose (Settings, **Version**), and mods and plugins only when you update them. See [Content](content.md#updates). Java is installed per server as each Minecraft version needs it.
 
+## Update badges
+
+Flytower looks for updates in the background, so you don't have to remember to press **Check now**. It never installs anything by itself; it only tells you.
+
+| What                     | Where it shows                                                                  | Compared with                                                                               |
+| ------------------------ | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Flytower                 | A count on **System** in the sidebar and on **Updates**; a banner on **System** | The newest release on your [update channel](#stable-or-beta)                                |
+| Mods, plugins, datapacks | A count on the server's card and on its **Content** tab                         | Newer builds for the server's Minecraft version, the same as the Content tab                |
+| Minecraft                | A note on the **Content** tab                                                   | The newest release the loader supports, and whether everything installed has a build for it |
+| Java                     | **System**, **Updates**, under **Java**                                         | Adoptium's newest Temurin build for the same Java version                                   |
+
+**When.** Every six hours, at a minute and hour picked when the panel starts, so installs don't all ask Modrinth and GitHub at once. Opening the panel checks again if the last check is over an hour old, and **Check now** on **System**, **Updates** checks everything straight away. Badges update by themselves in open tabs as results arrive.
+
+**A newer Minecraft is only mentioned.** Upgrading a world can't be undone without a backup, so Flytower never notifies about it or offers it as an update. The Content tab says when one is out, and either that everything installed is ready for it, or which items don't have a build yet (and, if there is one, the newest version that everything is ready for). Change version from Settings, **Version** when you're ready.
+
+**When a check fails**, for example because Modrinth or GitHub is down, the last good result and its badge stay, and a quiet line says the check failed. Nothing is sent to notification channels, and the next good check clears the message.
+
+**Notifications.** The same check feeds the **A new version of Flytower is out** and **Updates for installed mods, plugins or datapacks** notifications: one message per new version, not one per check. See [Notifications](notifications.md).
+
+**Java** shows each Java version Flytower has installed, which servers use it, and whether Adoptium has a newer build. Installing the newer build from the panel isn't there yet; until then servers keep running on the build they have.
+
 ## Publishing a beta
 
 For maintainers: run the **Release** workflow with a version like `1.1.0-beta.1`. Any version with a `-suffix` is published as a GitHub pre-release, which only Beta installs are offered. Number betas `beta.1`, `beta.2` and so on; `beta.10` correctly comes after `beta.9`.
+
+## Publishing a native build
+
+For maintainers: merge `main` into `native`, then run the **Release** workflow on the `native` branch with the version of the release it goes with plus `.native.N`, such as `1.2.0-beta.2.native.1`. For a stable release, use `-native.N`, such as `1.2.0-native.1`. Native builds are published alongside each release from `main`, and in between when native work is worth trying. They're tagged `native-<version>` rather than `v…`, because Beta panels offer every `v`-tagged pre-release and older panels never look at other tags. The workflow refuses any other version on the `native` branch. Write the summary in `.github/release-notes/<version>.md` as usual.

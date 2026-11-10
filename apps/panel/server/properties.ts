@@ -11,8 +11,26 @@ export interface PropertiesDoc {
   newline: string
 }
 
+import { isManagedProperty, isSecretProperty, MANAGED_PROPERTIES } from '../shared/spec'
+
 /** Keys Flytower manages itself; edit them through their own settings. */
-export const MANAGED_KEYS = new Set(['server-port', 'enable-rcon', 'rcon.port', 'rcon.password'])
+export const MANAGED_KEYS = new Set(MANAGED_PROPERTIES)
+
+/** server.properties as the browser may see it: every secret left out. */
+export function withoutSecrets(values: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(values).filter(([k]) => !isSecretProperty(k)))
+}
+
+/**
+ * Why an edit from the Settings form can't be saved, or null if it can. Secrets count as
+ * managed: the form never sees them, so it can't change them either, and whatever is on disk
+ * stays. The Files tab is the way to edit one by hand.
+ */
+export function refuseManagedEdits(keys: string[]): string | null {
+  const managed = keys.filter(isManagedProperty)
+  if (!managed.length) return null
+  return `${managed.join(', ')} ${managed.length > 1 ? 'are' : 'is'} managed by Flytower.`
+}
 
 export function parseProperties(text: string): PropertiesDoc {
   const newline = text.includes('\r\n') ? '\r\n' : '\n'

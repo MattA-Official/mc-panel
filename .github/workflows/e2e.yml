@@ -1,10 +1,31 @@
 name: E2E
 
+# Runs after each merge to main that touches the product, and on demand for a branch.
+# Changes that only touch project housekeeping (release notes, the board and Assistant
+# workflows, testing notes) don't run it: they can't change what gets installed.
 on:
   push:
     branches: [main]
-    tags: ['v*']
+    paths-ignore:
+      - '.github/release-notes/**'
+      - '.github/assistant/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/workflows/assistant.yml'
+      - '.github/workflows/board.yml'
+      - '.github/workflows/ci.yml'
+      - '.github/workflows/pr-build.yml'
+      - '.github/workflows/release-notes.yml'
+      - 'scripts/board-sync*.ts'
+      - 'scripts/release-notes.ts'
+      - 'docs/testing/**'
+      - 'README.md'
+      - 'LICENSE'
   workflow_dispatch:
+    inputs:
+      all_upgrades:
+        description: Test upgrades from every published release, not just the newest of each minor version
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -22,6 +43,11 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: package.json
+      - name: Rust toolchain (pinned in crates/rust-toolchain.toml)
+        run: cd crates && rustup toolchain install && rustc --version
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
       - run: bun install --frozen-lockfile
       - run: bun run build
       - name: Throwaway signing key (never the real one)
@@ -164,10 +190,17 @@ jobs:
       - id: list
         env:
           GH_TOKEN: ${{ github.token }}
+          ALL: ${{ inputs.all_upgrades && 'all' || '' }}
         # Releases only (v-tags, betas included); pull request test builds (pr-*) aren't upgrade sources.
+        # By default, the newest release of each minor version (0.5.0, 1.0.1, 1.1.0-beta.5...):
+        # every schema and config generation still gets an upgrade, without one job per beta.
+        # The API lists newest first, and group_by keeps that order within each group.
         run: |
           versions="$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
-            --jq '[.[] | select(.draft | not) | .tag_name | select(startswith("v")) | ltrimstr("v")]' | jq -sc 'add')"
+            --jq '[.[] | select(.draft | not) | .tag_name | select(startswith("v")) | ltrimstr("v")]' | jq -sc 'add // []')"
+          if [ "$ALL" != all ]; then
+            versions="$(jq -c 'group_by(split(".")[0:2]) | map(.[0])' <<<"$versions")"
+          fi
           echo "versions=$versions" >> "$GITHUB_OUTPUT"
           echo "$versions"
 
@@ -186,6 +219,11 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: package.json
+      - name: Rust toolchain (pinned in crates/rust-toolchain.toml)
+        run: cd crates && rustup toolchain install && rustc --version
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
       - run: bun install --frozen-lockfile
       - run: bun run build
       - run: bun scripts/package.ts --version 0.0.0-e2e --arch amd64 --out dist

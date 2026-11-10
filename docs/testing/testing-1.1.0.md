@@ -1,0 +1,140 @@
+# Testing 1.1.0
+
+1.1 is about hearing when something needs attention, and fixing more of it without you. Each feature is tested on its own pull request build first; this page collects the checks.
+
+## Installing a pull request's test build
+
+Every pull request is built and signed like a release, under the tag `pr-<number>`. Install it on a **spare VPS** (or upgrade one you're testing on) with:
+
+```sh
+curl -fsSL https://github.com/MattA-Official/mc-panel/releases/download/pr-<number>/install.sh \
+  | sudo bash -s -- --pr <number> --domain panel.example.com
+```
+
+It installs over what's there and keeps your data and sign-in, like any re-run of the installer. **System** then shows a version like `1.1.0-pr.70.3`. Test builds are never offered as updates, and **Go back to** on **System**, **Updates** returns to the release you had before. A test build is deleted when its pull request closes.
+
+## 1. Notifications
+
+You need a Discord server where you can make a webhook, and optionally the [ntfy](https://ntfy.sh) app on your phone. See [Notifications](../notifications.md) for the setup steps.
+
+- [ ] **System**, **Notifications**, **Add channel**: Discord, paste a webhook URL. **Send test** posts an embed in the channel that links back to the panel.
+- [ ] A made-up Discord address (or a deleted webhook) gives a clear error on **Send test**.
+- [ ] **Add** asks for your passkey (unless you confirmed one in the last five minutes). The channel is listed with a masked address, and **Activity** shows it was added.
+- [ ] Tick **A server started** and **A server stopped**, then stop and start a server, including quickly one after the other. "Server stopping" arrives as soon as you press Stop, and "Server started" as soon as the console says `Done`, each named after the server. It works the same with the panel closed, or when the server is stopped from the console with `stop`.
+- [ ] Tick **A server restarted from the panel** and press **Restart**. "Server restarting" arrives straight away and "Server restarted" once it's back, with no separate stop and start messages.
+- [ ] Tick **A player joined** and **A player left**, then join and leave the server. The messages arrive straight away. A player name with underscores shows correctly, nobody gets pinged, and typing "Steve joined the game" in chat sends nothing.
+- [ ] Break a backup on purpose, if you can (for example, a server whose folder you've made unreadable, or a nearly full disk), and check the "backup failed" message, then "Backups are working again" after a good one. A second failure within 30 minutes isn't sent again.
+- [ ] Optional: an ntfy channel (`https://ntfy.sh/<a long random topic>`). **Send test** arrives on your phone, and tapping it opens the panel.
+- [ ] Optional: a JSON webhook to something like [webhook.site](https://webhook.site), with a generated signing secret. The body matches [the docs](../notifications.md#json-webhook) and has an `X-Flytower-Signature` header.
+- [ ] **Edit** a channel: change its events or servers without retyping the address. The send button on the list still works.
+- [ ] **Remove** asks for your passkey and the channel stops getting messages.
+- [ ] Point a channel at a broken address (edit it with a deleted webhook URL), stop a server, and see the error shown under the channel on System. Fix it and **Send test** clears the error.
+
+## 2. Crash detection
+
+You need a test server you don't mind crashing. SSH in (System, **SSH access**) for the first few checks, or use the console tricks below. See [Crashes](../crashes.md).
+
+- [ ] Kill the server's Java process: `sudo pkill -KILL -u mc-<name>`. Within a couple of seconds the badge reads **Restarting after a crash**, and the Console tab shows a banner: "Crashed at …", "It was killed by SIGKILL. It will be restarted in a moment."
+- [ ] About 15 seconds later it starts again by itself. The badge goes back to **Running**, the banner stays (now saying it was restarted), and a red dot marks it on the servers list.
+- [ ] A "Server crashed" notification arrives (if a channel has it ticked), then "Server is back up".
+- [ ] **Activity** lists "<name> crashed. It was killed by SIGKILL." by **Flytower**.
+- [ ] **Logs**, **Crashes** lists the crash, then "Back to normal". **The log before it** shows the last lines of the old log.
+- [ ] A real Minecraft crash report, if you can cause one: for example, upload a Fabric mod built for a different Minecraft version into `mods/` with the Files tab and start the server. The banner's cause becomes "Minecraft crashed: …" and **Open crash report** opens the file in the Files tab. (This also checks how 26.3 names its crash reports. Remove the mod afterwards.)
+- [ ] Close the banner with its ✕. It stays closed after a reload, and the red dot goes.
+- [ ] **Crash loop**: kill it three times in a row, each time once it's back up. After the third, it stays stopped, the badge reads **Crash-looping**, a "Server keeps crashing" notification arrives, and the banner says to start it again once fixed. **Start** works first time, and "Server is running again" follows.
+- [ ] **Stop**, **Restart**, applying a change from the Content tab and a backup restore never count as crashes.
+- [ ] Typing `stop` in the console stops the server normally, with no crash recorded and no automatic restart.
+- [ ] **Not responding**: freeze the server with `sudo pkill -STOP -u mc-<name>` (this pauses Java without stopping it). After five minutes the badge reads **Not responding** and a notification arrives. `sudo pkill -CONT -u mc-<name>` brings it back, and within a minute it's **Running** again with a "responding again" notification.
+- [ ] Turn on **Settings**, **Crashes**, **Restart it when it stops responding**, freeze it again, and check it's restarted once after five minutes, and that Activity says so. The YAML tab now shows `recovery: restartWhenUnresponsive: true`.
+- [ ] After updating an existing install to this build, `systemctl cat flytower-mc@<name>` shows `StartLimitBurst=3` without the servers having been restarted by the update.
+
+## Update badges
+
+See [Update badges](../updating.md#update-badges). The checks below are easiest on a test server with a few mods pinned to old versions: in its YAML, give a mod an older `version:` (for example `lithium` with a version from a month ago) and apply it.
+
+- [ ] Open the panel after installing this build. Within a minute the server with the old mod shows a blue number on its card on **Servers**, and the same number on its **Content** tab. Nothing was installed.
+- [ ] The **Content** tab marks that mod with "… available", and **Update** clears the badge on the card and the tab once applied.
+- [ ] On the Beta channel with an older beta installed, **System** in the sidebar and **Updates** show a count, and **System**, **Overview** shows "Flytower … is available" with a link to **Updates**. Updating clears it.
+- [ ] **System**, **Updates**, **Java** lists each installed Java, which servers use it, and either "Up to date" or a newer build.
+- [ ] If a newer Minecraft than your server's is out, the **Content** tab says so, and either that everything is ready for it or lists what's missing under **What is missing**. No notification is sent for it.
+- [ ] With a notification channel that has **Updates for installed mods, plugins or datapacks** ticked, one message arrives for the old mod. Pressing **Check now** on **System**, **Updates** a few times doesn't send it again.
+- [ ] Leave the panel open: badges change by themselves after **Check now**, without reloading.
+- [ ] Optional, a source being down: on the test box, `echo '0.0.0.0 api.modrinth.com' | sudo tee -a /etc/hosts`, then **Check now**. The badge stays, and the **Content** tab says quietly that it couldn't check, with when the shown result is from. Remove the line from `/etc/hosts` and **Check now** clears the message.
+
+## Reporting feedback
+
+Open an issue with the **[Feedback](https://github.com/MattA-Official/mc-panel/issues/new?template=feedback.yml)** template, or comment on the pull request you're testing.
+
+## UI pass
+
+Check these on a computer and on a phone.
+
+- [ ] **Servers** on a phone: every card fits the screen, with its status and memory showing.
+- [ ] A server with a hostname: the **Address** card on **Console** shows the hostname, the same as the header.
+- [ ] Dates and times look the same on every page (Logs, Files, Backups, Activity, passkeys), in your own locale.
+- [ ] **System**, **Updates**: release notes show as headings, lists and links, not Markdown.
+- [ ] **Content** with mods in the spec that aren't installed: the notice names them and reads naturally.
+- [ ] Every server tab is the same width, and card headings look the same everywhere.
+- [ ] Disabled buttons (for example **Create server** before the EULA is ticked) look grey, not a duller amber.
+- [ ] On a phone, the server header shows the full name (or "…"), the status sits next to the tab menu, and **Power** offers Start, Restart or Stop. The tab menu lists every tab.
+- [ ] **Settings**: change something and a bar with **Discard** and **Save** stays at the bottom while you scroll.
+- [ ] **System** has five sections: Overview, Updates, Off-site storage, Notifications, and Account and security. Links from notifications and from a server's **Backups** tab land on the right one.
+- [ ] **World** now holds **Export world**, next to Copy and Reset.
+
+## Backups with files Flytower can't read
+
+On a server running spark (or any server, using the steps below):
+
+- [ ] Start a spark profile in the console with `spark profiler start`, then **Back up now** while it runs. The backup finishes, and its job says nothing about skipped files: spark's `config/spark/tmp` folder is left out. Stop the profile with `spark profiler stop`.
+- [ ] SSH in and make a file only the server can read: `sudo -u mc-<name> sh -c 'echo x > /srv/flytower/servers/<name>/private.txt && chmod 600 /srv/flytower/servers/<name>/private.txt'`. **Back up now** finishes, and its job ends with "Left out 1 file Flytower couldn't read: private.txt (Permission denied)." Delete the file afterwards.
+- [ ] A file ending in `.tmp` anywhere in the server folder isn't in the backup (download it and look, or restore it on a test server).
+
+## Hidden secrets
+
+On a 26.3 server (or any Minecraft version from 1.21.9 on):
+
+- [ ] In **Files**, open `server.properties` and set `management-server-enabled=true`. Restart the server so Minecraft writes a `management-server-secret`.
+- [ ] The **YAML** tab and **Download spec** don't contain `management-server-secret` or `rcon.password`.
+- [ ] **Settings**, server.properties: neither secret is listed. Change the MOTD and save; in **Files**, `management-server-secret` still has the same value.
+- [ ] In the **YAML** tab, add `management-server-secret: abc` under `properties:`. The plan is refused with "management-server-secret is a secret, so it's managed by Flytower" on that line.
+- [ ] **Clone** the server. In the clone's **Files** tab, `management-server-secret` is 40 letters and digits and different from the original's.
+- [ ] **Activity** shows the property change and the clone without any secret in their details.
+
+## Disk use
+
+See [Disk space](../disk.md). To try the warnings without filling a real disk, use a spare VPS and make a large file over SSH, for example `sudo fallocate -l 20G /var/tmp/filler`, sized to take the disk past 85% and then 95% (**System** shows how full it is). Delete it afterwards with `sudo rm /var/tmp/filler`.
+
+- [ ] **System**, **Overview**, **Disk**: the bar shows each server in its own colour, then everything else, then free space. Hovering shows each part's size, and the figures add up to roughly what `df -h /srv` says.
+- [ ] The table lists each server's size and its largest part. **Details** opens its Settings tab and **Backups** its Backups tab.
+- [ ] A server's **Settings** tab has a **Disk use** card with World, Backups, World exports, Logs, Mods and Other. A server with a custom `level-name` counts that folder as its world.
+- [ ] **Back up now**, then reload System: the server's Backups figure has gone up without pressing **Measure now**.
+- [ ] **Measure now** shows a spinner while it measures, then the new time.
+- [ ] Restart Flytower (`sudo systemctl restart flytower-panel`): the figures are still there straight away.
+- [ ] Past 85%: System shows a warning, and a channel with **The disk is nearly full** ticked gets one message.
+- [ ] Past 95%: a red banner shows on every page, with a link to System. A second message arrives.
+- [ ] Past 95%, set a backup schedule a minute or two away: the job says "Skipped: the disk is …% full", nothing is archived, and a channel with **A backup failed** ticked hears "A scheduled backup was skipped".
+- [ ] Past 95%, **Back up now** shows a warning and the button reads **Back up anyway**.
+- [ ] Delete the filler: the banner goes on the next page you open, and "Disk space is back to normal" arrives once it's below 80%.
+- [ ] On a phone, the banner, the bar and the table fit the screen.
+
+## Scheduled tasks
+
+On a test server you can join. See [Scheduled tasks](../schedules.md).
+
+- [ ] **Schedules** (next to **Backups**), **Add task**: a **Restart** every day at a time a few minutes from now, with warnings `2m, 1m, 10s`. The form shows the next three runs, and the list shows it with its next run.
+- [ ] Set the time zone at the bottom to yours (say `Europe/London`), and check the next run still reads as your local time.
+- [ ] Stay in the game. At each warning, "Server restarting in 2 minutes" (and so on) appears in gold in chat, and the last 10 seconds also show "Restarting" in the middle of the screen. Then you're disconnected, and you can rejoin about a minute later.
+- [ ] The task's result reads like "Restarted in 41s (3 warnings)". The badge never said **Restarting after a crash**, and nothing was added under **Logs**, **Crashes**.
+- [ ] **Activity** lists the run, credited to **Flytower**.
+- [ ] Leave the game, tick **Restart straight away when nobody is online**, and press **Run now** on the restart, then confirm. With nobody online it restarts at once, and the result says "nobody was online, so no countdown".
+- [ ] Join again, press **Run now** on the restart (it asks first), then **Call off** during the countdown. Chat says "The restart has been called off", the server doesn't restart, and the result says it was cancelled.
+- [ ] Add a **Command** task, `seed`, every few minutes. Once it has run (or after **Run now**), point at its result to see the reply with the seed.
+- [ ] A command of `stop`, or one starting with `/`, is refused with a message saying why.
+- [ ] Add an **Announcement**. It appears in gold in chat when it runs.
+- [ ] Start **Back up now** on a big world and straight away **Run now** on the command task. It waits for the backup to finish, then runs. (And **Back up now** during a restart's countdown says the server is busy.)
+- [ ] **Stop** the server and **Run now** a task: it's skipped with "Skipped: the server wasn't running", and no notification is sent.
+- [ ] Tick **A scheduled restart, command or announcement failed** on a channel. Make a task fail (for example, freeze the server with `sudo pkill -STOP -u mc-<name>` and run the command task; unfreeze with `-CONT` afterwards), and check the notification arrives and links to the **Schedules** tab.
+- [ ] The **YAML** tab shows `timezone:` and `schedules:`. Edit a task there (say, change a restart's time), **Review changes**: the plan lists the old one removed and the new one added under **Schedules**, with no restart. Apply, and the **Schedules** tab shows the change. Tasks that weren't touched keep their last result.
+- [ ] **New server**, **From YAML** with a `schedules:` list: the new server starts with those tasks.
+- [ ] **Clone** a server with tasks: the copy has the same tasks and time zone.
+- [ ] After updating an existing install to this build, the backup schedule's preview on **Backups** shows times in its own time zone (it used to read the expression in the machine's zone).

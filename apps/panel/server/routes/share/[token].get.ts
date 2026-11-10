@@ -20,5 +20,8 @@ export default defineEventHandler((event) => {
     .from(schema.servers)
     .where(eq(schema.servers.name, row.server))
     .get()
-  return zipResponse(exports.path(row), `${server?.displayName ?? row.server} world.zip`)
+  return zipResponse(
+    exports.path(row),
+    row.name ? `${row.name}.zip` : `${server?.displayName ?? row.server} world.zip`,
+  )
 })

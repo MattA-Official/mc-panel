@@ -7,7 +7,8 @@ import { AgentError, type Verb } from '@flytower/protocol'
 import type { Fetch, LoaderProvider, ResolvedServer } from '@flytower/providers'
 import { openDb, schema } from '../server/db'
 import { Bus } from '../server/jobs/bus'
-import { defaultProperties } from '../server/jobs/properties'
+import { defaultProperties, randomSecret } from '../server/jobs/properties'
+import { parseProperties, toRecord } from '../server/properties'
 import { JobRunner, lowestFree, type AgentCall, type JobEvent } from '../server/jobs/runner'
 
 const JAR = 'pretend jar'
@@ -148,7 +149,10 @@ describe('create-server job', () => {
       prepare: async () => {
         mkdirSync(join(staging, 'copy', 'mods'), { recursive: true })
         writeFileSync(join(staging, 'copy', 'mods', 'lithium.jar'), 'mod')
-        writeFileSync(join(staging, 'copy', 'server.properties'), 'motd=Original\nserver-port=1\n')
+        writeFileSync(
+          join(staging, 'copy', 'server.properties'),
+          'motd=Original\nserver-port=1\nmanagement-server-enabled=true\nmanagement-server-secret=OriginalSecret\n',
+        )
         return { root: join(staging, 'copy'), kind: 'server' }
       },
       discard: async () => void (discarded = true),
@@ -158,6 +162,10 @@ describe('create-server job', () => {
     const props = await readFile(join(root, 'server.properties'), 'utf8')
     expect(props).toContain('motd=Original')
     expect(props).toContain('server-port=25565')
+    // The clone gets a secret of its own, in the shape Minecraft wants.
+    expect(props).not.toContain('OriginalSecret')
+    expect(props).toMatch(/^management-server-secret=[A-Za-z0-9]{40}$/m)
+    expect(props).toContain('management-server-enabled=true')
     expect(discarded).toBe(true)
   })
 
@@ -235,9 +243,16 @@ describe('helpers', () => {
     expect(lowestFree(25565, new Set([25565, 25566, 25568]))).toBe(25567)
   })
 
-  it('escapes the motd', () => {
-    const p = defaultProperties({ port: 1, rconPort: 2, rconPassword: 'x', motd: 'Café\nTwo' })
-    expect(p).toContain('motd=Caf\\u00e9 Two')
+  it('escapes the motd, keeping its second line', () => {
+    const p = defaultProperties({ port: 1, rconPort: 2, rconPassword: 'x', motd: '§6Café\nTwo' })
+    expect(p).toContain('motd=\\u00a76Caf\\u00e9\\nTwo')
+    expect(toRecord(parseProperties(p))['motd']).toBe('§6Café\nTwo')
+  })
+
+  it('makes fresh secrets of 40 letters and digits', () => {
+    const a = randomSecret()
+    expect(a).toMatch(/^[A-Za-z0-9]{40}$/)
+    expect(randomSecret()).not.toBe(a)
   })
 })
 
@@ -251,7 +266,7 @@ describe('import', () => {
     writeFileSync(join(src, 'smp', 'level.dat'), 'world')
     writeFileSync(
       join(src, 'server.properties'),
-      '#mine\nlevel-name=smp\nmotd=Old motd\nrcon.password=leaked\n',
+      '#mine\nlevel-name=smp\nmotd=Old motd\nrcon.password=leaked\nmanagement-server-secret=KeptSecret\n',
     )
     writeFileSync(join(src, 'fabric-server-launch.jar'), 'old launcher')
     writeFileSync(join(src, 'whitelist.json'), '[]')
@@ -271,6 +286,8 @@ describe('import', () => {
     expect(props).toContain('#mine\nlevel-name=smp\nmotd=Old motd\n')
     expect(props).toContain('server-port=25565')
     expect(props).not.toContain('leaked')
+    // An import is the same server moving in, so its own secrets stay.
+    expect(props).toContain('management-server-secret=KeptSecret')
     expect(await readFile(join(root, 'server.jar'), 'utf8')).toBe(JAR)
     // Left behind in staging: the old jar and caches.
     expect(readdirSync(src).sort()).toEqual(['fabric-server-launch.jar', 'libraries'])

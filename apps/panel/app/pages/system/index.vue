@@ -1,9 +1,22 @@
 <script setup lang="ts">
 useHead({ title: 'System' })
 const { data: health, refresh } = await useFetch('/api/health')
+const updates = useLiveUpdates()
+const can = useCan()
+const flytower = computed(() => updates.value?.flytower?.summary?.latest ?? null)
 </script>
 
 <template>
+  <UAlert
+    v-if="flytower && can('system.manage')"
+    color="info"
+    variant="subtle"
+    icon="i-lucide-arrow-up-circle"
+    :title="`Flytower ${flytower.version}${flytower.prerelease ? ' (beta)' : ''} is available`"
+    description="Updating takes a minute and keeps your servers running."
+    :actions="[{ label: 'See what\'s new', variant: 'outline', to: '/system/updates' }]"
+    data-e2e="flytower-update-banner"
+  />
   <UCard v-if="health">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
@@ -34,5 +47,8 @@ const { data: health, refresh } = await useFetch('/api/health')
   </UCard>
   <UCard>
     <MemoryBudget detailed />
+  </UCard>
+  <UCard>
+    <DiskUse />
   </UCard>
 </template>

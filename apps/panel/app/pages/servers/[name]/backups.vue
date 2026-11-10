@@ -7,6 +7,7 @@ interface BackupRow {
   bytes: number
   kind: 'manual' | 'scheduled' | 'safety'
   note: string | null
+  kept: boolean
   createdAt: string
   local: boolean
   offsite: {
@@ -86,8 +87,10 @@ function onFinished(e: JobEvent) {
   refreshServer()
 }
 
-// Back up now
+// Back up now. On a nearly full disk, say so first: a backup could fill it.
+const { data: disk, refresh: refreshDisk } = useDiskStatus()
 const noteOpen = ref(false)
+watch(noteOpen, (open) => open && void refreshDisk())
 const note = ref('')
 async function backupNow() {
   noteOpen.value = false
@@ -120,6 +123,23 @@ async function restore() {
     job.value = { id: jobId, title: `Restoring ${when(b.createdAt)}`, steps: RESTORE_STEPS }
   } catch (err) {
     toast.add({ title: "Couldn't restore", description: errorMessage(err), color: 'error' })
+  }
+}
+
+// Keep forever
+async function setKept(b: BackupRow, kept: boolean) {
+  try {
+    await $fetch(`/api/servers/${name.value}/backups/${b.id}` as string, {
+      method: 'PATCH',
+      body: { kept },
+    })
+    toast.add({
+      title: kept ? 'Kept forever' : 'Retention can delete it again',
+      color: 'success',
+    })
+    refresh()
+  } catch (err) {
+    toast.add({ title: "Couldn't change it", description: errorMessage(err), color: 'error' })
   }
 }
 
@@ -187,6 +207,13 @@ function menu(b: BackupRow) {
         disabled: running.value,
         onSelect: () => (restoring.value = b),
       },
+      b.kept
+        ? {
+            label: 'Stop keeping forever',
+            icon: 'i-lucide-lock-open',
+            onSelect: () => setKept(b, false),
+          }
+        : { label: 'Keep forever', icon: 'i-lucide-lock', onSelect: () => setKept(b, true) },
     ],
     [
       {
@@ -253,6 +280,15 @@ function menu(b: BackupRow) {
                   variant="subtle"
                   size="sm"
                 />
+                <UTooltip v-if="b.kept" text="Kept forever: retention never deletes it">
+                  <UBadge
+                    label="Kept"
+                    icon="i-lucide-lock"
+                    color="success"
+                    variant="subtle"
+                    size="sm"
+                  />
+                </UTooltip>
                 <UTooltip v-if="offsiteBadge(b)" :text="offsiteBadge(b)!.label">
                   <UIcon
                     :name="offsiteBadge(b)!.icon"
@@ -308,12 +344,26 @@ function menu(b: BackupRow) {
           <p class="mt-3 text-sm text-muted">
             Players can stay on. Autosave pauses while the world is copied.
           </p>
+          <UAlert
+            v-if="disk?.level === 'urgent'"
+            class="mt-3"
+            color="error"
+            variant="subtle"
+            icon="i-lucide-hard-drive"
+            :title="`The disk is ${Math.round(disk.percent ?? 0)}% full`"
+            description="A backup needs room, and if the disk fills up the server can corrupt its world while saving. Delete old backups or exports first if you can."
+          />
         </form>
       </template>
       <template #footer>
         <div class="flex w-full justify-end gap-2">
           <UButton label="Cancel" color="neutral" variant="ghost" @click="noteOpen = false" />
-          <UButton label="Back up" icon="i-lucide-archive" @click="backupNow" />
+          <UButton
+            :label="disk?.level === 'urgent' ? 'Back up anyway' : 'Back up'"
+            :color="disk?.level === 'urgent' ? 'error' : 'primary'"
+            icon="i-lucide-archive"
+            @click="backupNow"
+          />
         </div>
       </template>
     </UModal>

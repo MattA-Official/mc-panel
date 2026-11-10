@@ -1,0 +1,38 @@
+name: Board
+
+# Keeps the Status column of the Flytower Projects board in step with issues and pull
+# requests, as each one opens, closes, merges or changes milestone. The rules are in
+# scripts/board-sync.ts. Needs the PROJECTS_TOKEN secret (classic token, `repo` and
+# `project` scopes), since the workflow token can't reach a board owned by a user account.
+on:
+  issues:
+    types: [opened, closed, reopened, milestoned, demilestoned]
+  pull_request:
+    types: [opened, reopened, closed]
+  milestone:
+    types: [created, edited, closed, opened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One sync at a time; each one reads the whole board, so a queued run catches up on
+# everything that happened before it.
+concurrency:
+  group: board-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    # Pull requests from forks don't get secrets.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun scripts/board-sync.ts
+        env:
+          PROJECTS_TOKEN: ${{ secrets.PROJECTS_TOKEN }}

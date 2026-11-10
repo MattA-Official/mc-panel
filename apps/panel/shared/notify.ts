@@ -39,6 +39,11 @@ export const EVENT_KINDS = {
     label: 'A server stopped responding',
     perServer: true,
   },
+  'schedule.failed': {
+    group: 'problems',
+    label: 'A scheduled restart, command or announcement failed',
+    perServer: true,
+  },
   'disk.full': { group: 'problems', label: 'The disk is nearly full (85% and 95%)' },
   'update.flytower': { group: 'updates', label: 'A new version of Flytower is out' },
   'update.content': {

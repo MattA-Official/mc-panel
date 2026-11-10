@@ -1,7 +1,12 @@
+import type { Access } from '#shared/permissions'
+
 export interface AuthState {
   needsSetup: boolean
   setupVerified: boolean
   user: { id: number; name: string } | null
+  /** What this person can do; null when signed out. */
+  access: Access | null
+  theme: 'system' | 'light' | 'dark'
   mustEnrolPasskey: boolean
   elevated: boolean
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 export interface PlanChange {
-  area: 'content' | 'settings' | 'properties' | 'backups'
+  area: 'content' | 'settings' | 'properties' | 'backups' | 'schedules'
   action: 'add' | 'update' | 'remove' | 'reinstall' | 'set'
   label: string
   from?: string
@@ -12,6 +12,8 @@ export interface PlanView {
   server: string
   changes: PlanChange[]
   problems: string[]
+  /** Older plans kept from before warnings existed may not have them. */
+  warnings?: string[]
   restart: boolean
   backup: boolean
   downloadBytes: number
@@ -26,6 +28,7 @@ const AREAS = [
   { key: 'settings', title: 'Settings' },
   { key: 'properties', title: 'server.properties' },
   { key: 'backups', title: 'Backups' },
+  { key: 'schedules', title: 'Schedules' },
 ] as const
 
 const groups = computed(() =>
@@ -52,6 +55,14 @@ const ACTIONS = {
       variant="subtle"
       icon="i-lucide-octagon-alert"
       :title="p"
+    />
+    <UAlert
+      v-for="w in plan.warnings ?? []"
+      :key="w"
+      color="warning"
+      variant="subtle"
+      icon="i-lucide-triangle-alert"
+      :title="w"
     />
 
     <p v-if="!plan.changes.length && !plan.problems.length" class="text-sm text-muted">

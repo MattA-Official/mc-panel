@@ -11,7 +11,13 @@ import { JobRunner, type AgentCall } from '../server/jobs/runner'
 import type { NotifyEvent } from '../server/notify/types'
 
 function setup(
-  opts: { running?: boolean; free?: number; saveReply?: string; rconDownFor?: number } = {},
+  opts: {
+    running?: boolean
+    free?: number
+    saveReply?: string
+    rconDownFor?: number
+    diskPercent?: number
+  } = {},
 ) {
   const notes: NotifyEvent[] = []
   const db = openDb(':memory:')
@@ -74,6 +80,7 @@ function setup(
     },
     now: () => new Date((clock += 60_000)),
     freeBytes: async () => opts.free ?? 1e12,
+    diskPercent: () => opts.diskPercent ?? null,
     sleep: async () => {},
     notifier: {
       notify: (e) => notes.push(e),
@@ -140,6 +147,28 @@ describe('backups', () => {
     expect(calls.some((c) => c.startsWith('rcon'))).toBe(false)
   })
 
+  it('skips scheduled backups when the disk is 95% full, but not manual ones', async () => {
+    const { service, calls, notes } = setup({ running: true, diskPercent: 96.2 })
+    const skipped = await service.backup('survival', 'scheduled').done
+    expect(skipped.state).toBe('failed')
+    expect(skipped.message).toStartWith('Skipped: the disk is 96% full')
+    // Nothing was touched: saving was never paused.
+    expect(calls.some((c) => c.startsWith('rcon'))).toBe(false)
+    expect(notes).toEqual([
+      expect.objectContaining({
+        kind: 'backup.failed',
+        title: 'A scheduled backup was skipped',
+        detail: expect.stringContaining('96% full'),
+      }),
+    ])
+    expect((await service.backup('survival', 'manual').done).state).toBe('succeeded')
+  })
+
+  it('runs scheduled backups as normal below 95%', async () => {
+    const { service } = setup({ diskPercent: 94.9 })
+    expect((await service.backup('survival', 'scheduled').done).state).toBe('succeeded')
+  })
+
   it('allows one operation per server at a time', async () => {
     const { service } = setup()
     const first = service.backup('survival', 'manual')
@@ -154,6 +183,29 @@ describe('backups', () => {
     await service.backup('survival', 'manual').done
     const kinds = (await service.list('survival')).map((b) => b.kind)
     expect(kinds).toEqual(['manual', 'scheduled', 'scheduled'])
+  })
+
+  it('never prunes kept backups, and they leave room for other safety copies', async () => {
+    const { service } = setup()
+    const kept = await service.snapshot('survival', 'Before resetting the world', { kept: true })
+    for (let i = 0; i < 4; i++) await service.snapshot('survival', `safety ${i}`)
+    let rows = await service.list('survival')
+    expect(rows.find((b) => b.id === kept.id)?.kept).toBe(true)
+    expect(rows.filter((b) => !b.kept)).toHaveLength(3)
+
+    const scheduled = await service.backup('survival', 'scheduled').done
+    expect(scheduled.state).toBe('succeeded')
+    const first = (await service.list('survival')).find((b) => b.kind === 'scheduled')!
+    service.setKept('survival', first.id, true)
+    for (let i = 0; i < 3; i++) await service.backup('survival', 'scheduled').done
+    rows = await service.list('survival')
+    expect(rows.filter((b) => b.kind === 'scheduled')).toHaveLength(3)
+    expect(rows.some((b) => b.id === first.id)).toBe(true)
+
+    // Let go, retention deletes it on the next prune.
+    service.setKept('survival', first.id, false)
+    await service.prune('survival')
+    expect((await service.list('survival')).some((b) => b.id === first.id)).toBe(false)
   })
 
   it('adopts stray files and forgets missing ones', async () => {

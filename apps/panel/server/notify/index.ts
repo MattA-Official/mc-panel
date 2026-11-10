@@ -45,6 +45,7 @@ export const QUIET_MS: Partial<Record<EventKind, number>> = {
   'server.crashed': 10 * 60_000,
   'server.crash_loop': 30 * 60_000,
   'server.unresponsive': 30 * 60_000,
+  'schedule.failed': 30 * 60_000,
 }
 
 /** Disk warnings: at 85% and 95%, and back to normal below 80%. */
@@ -62,6 +63,8 @@ export interface NotifyDeps {
   origin: () => string | null
   /** A server's display name, or null if there's no such server. */
   displayName: (server: string) => string | null
+  /** The install's name and logo (a PNG path, if any), from its branding. */
+  brand?: () => { name: string; pngLogo: string | null }
   now?: () => Date
   /** Delays between delivery attempts; tests shorten them. */
   retryMs?: number[]
@@ -417,13 +420,20 @@ export class NotifyService {
   // ---------------------------------------------------------------- delivery
 
   private message(e: NotifyEvent): Message {
-    const origin = this.deps.origin()
+    const origin = this.deps.origin()?.replace(/\/$/, '') ?? null
+    const brand = this.deps.brand?.()
     return {
       ...e,
       id: crypto.randomUUID(),
       at: this.now(),
       serverDisplayName: e.server ? (this.deps.displayName(e.server) ?? e.server) : null,
-      url: origin && e.link ? `${origin.replace(/\/$/, '')}${e.link}` : null,
+      url: origin && e.link ? `${origin}${e.link}` : null,
+      ...(brand && {
+        from: {
+          name: brand.name,
+          avatarUrl: origin && brand.pngLogo ? `${origin}${brand.pngLogo}` : null,
+        },
+      }),
     }
   }
 

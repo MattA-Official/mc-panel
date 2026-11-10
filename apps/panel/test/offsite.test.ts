@@ -92,9 +92,11 @@ const input = {
 
 describe('sealer', () => {
   it('round-trips, and refuses under another key', async () => {
-    const sealed = await seal.seal('shh')
-    expect(sealed).not.toContain('shh')
-    expect(await seal.unseal(sealed)).toBe('shh')
+    // Spaces and "!" never appear in base64, so random ciphertext can't contain this by chance
+    // the way it occasionally contained a bare "shh".
+    const sealed = await seal.seal('shh secret!')
+    expect(sealed).not.toContain('shh secret!')
+    expect(await seal.unseal(sealed)).toBe('shh secret!')
     await expect(sealer(async () => 'cd'.repeat(32)).unseal(sealed)).rejects.toThrow(
       'app secret may have changed',
     )

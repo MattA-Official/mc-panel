@@ -4,6 +4,7 @@ const Body = z.object({ from: z.string().max(40) })
 
 /** Copies another server's world over this one's, after a backup. Needs a recent passkey check. */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'world.manage')
   await requireElevated(event)
   const { user, name, world } = await worldContext(event)
   const { from } = await readValidatedBody(event, Body.parse)

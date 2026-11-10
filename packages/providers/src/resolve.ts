@@ -18,6 +18,8 @@ export interface ResolvedSet {
   items: (ResolvedContent & { requiredBy: string[] })[]
   /** Problems that should stop an apply. */
   problems: string[]
+  /** Things to know that don't stop an apply, like client-only items. */
+  warnings: string[]
 }
 
 const MAX_ITEMS = 500
@@ -141,5 +143,22 @@ export async function resolveAll(
     if (clash) problems.push(`${item.title} and ${clash} use the same file name.`)
     names.set(key, item.title)
   }
-  return { items, problems }
+  const warnings: string[] = []
+  for (const item of items) {
+    if (!item.clientOnly) continue
+    const source = item.source === 'modrinth' ? 'Modrinth' : 'Its source'
+    warnings.push(
+      asked.has(item.projectId) || !item.requiredBy.length
+        ? `${source} marks ${item.title} as client-only. It's installed because you asked for it; remove it if the server won't start.`
+        : `${source} marks ${item.title} as client-only. It's installed because ${listOf(item.requiredBy)} ${item.requiredBy.length === 1 ? 'needs' : 'need'} it; remove ${listOf(item.requiredBy)} if the server won't start.`,
+    )
+  }
+  return { items, problems, warnings }
+}
+
+/** "A", "A and B", "A, B and C". */
+function listOf(names: string[]) {
+  return names.length < 2
+    ? (names[0] ?? '')
+    : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
 }

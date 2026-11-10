@@ -1,12 +1,29 @@
+import { loadAccess } from '../auth/access'
 import { needsSetup } from '../auth/setup-token'
 
-const ALWAYS_OPEN = new Set(['/api/health', '/api/auth/state', '/api/auth/logout'])
+const ALWAYS_OPEN = new Set([
+  '/api/health',
+  '/api/auth/state',
+  '/api/auth/logout',
+  // The sign-in, setup and status pages show the install's name and logo.
+  '/api/branding',
+  // Discord calls this; it checks Discord's signature before doing anything.
+  '/api/discord/interactions',
+])
+/** Public status pages; each route checks that the server's page is on. */
+const PUBLIC_PREFIX = '/api/public/'
 const SETUP_ROUTES = new Set([
   '/api/setup/token',
   '/api/passkeys/register-options',
   '/api/passkeys/register',
 ])
-const SIGN_IN_ROUTES = new Set(['/api/auth/login-options', '/api/auth/login', '/api/auth/recovery'])
+const SIGN_IN_ROUTES = new Set([
+  '/api/auth/login-options',
+  '/api/auth/login',
+  '/api/auth/recovery',
+  // Opening an invite link.
+  '/api/join',
+])
 const ENROL_ROUTES = new Set(['/api/passkeys/register-options', '/api/passkeys/register'])
 
 /**
@@ -17,6 +34,7 @@ const ENROL_ROUTES = new Set(['/api/passkeys/register-options', '/api/passkeys/r
 export default defineEventHandler(async (event) => {
   const path = getRequestURL(event).pathname
   if (!path.startsWith('/api/') || path.startsWith('/api/_') || ALWAYS_OPEN.has(path)) return
+  if (path.startsWith(PUBLIC_PREFIX)) return
 
   if (needsSetup(useDb())) {
     if (SETUP_ROUTES.has(path)) return
@@ -25,7 +43,16 @@ export default defineEventHandler(async (event) => {
   if (SIGN_IN_ROUTES.has(path)) return
 
   const session = await getUserSession(event)
+  // Someone who opened a valid invite link may create the passkey they'll join with.
+  if (!session.user && session.inviteId !== undefined && ENROL_ROUTES.has(path)) return
   if (!session.user) throw createError({ statusCode: 401, statusMessage: 'Sign in first.' })
+  // Someone removed since signing in is signed out at once, whatever their cookie says.
+  const access = loadAccess(useDb(), session.user.id, session.sessionVersion)
+  if (!access) {
+    await clearUserSession(event)
+    throw createError({ statusCode: 401, statusMessage: 'Sign in first.' })
+  }
+  event.context.access = access
   if (session.mustEnrolPasskey && !ENROL_ROUTES.has(path)) {
     throw createError({ statusCode: 403, statusMessage: 'Add a new passkey first.' })
   }

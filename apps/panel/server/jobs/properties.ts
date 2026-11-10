@@ -1,3 +1,5 @@
+import { escapeValue } from '../properties'
+
 export interface PropertiesInput {
   port: number
   rconPort: number
@@ -29,17 +31,26 @@ export function defaultProperties(p: PropertiesInput): string {
   )
 }
 
-/** Java properties escaping for a single-line value. */
-function escapeValue(value: string): string {
-  return value
-    .replace(/\\/g, '\\\\')
-    .replace(/[\r\n]+/g, ' ')
-    .replace(/[^\x20-\x7e]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`)
-}
-
 /** 24 random bytes as base64url: long enough, and safe in a properties file. */
 export const randomPassword = () =>
   Buffer.from(crypto.getRandomValues(new Uint8Array(24))).toString('base64url')
+
+const ALPHANUMERIC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+
+/**
+ * A fresh secret for a cloned server: 40 letters and digits, the shape Minecraft wants for
+ * `management-server-secret`. Bytes of 248 and up are thrown away so every character is
+ * equally likely.
+ */
+export function randomSecret(length = 40): string {
+  let out = ''
+  while (out.length < length) {
+    for (const b of crypto.getRandomValues(new Uint8Array(length * 2))) {
+      if (b < 248 && out.length < length) out += ALPHANUMERIC[b % 62]
+    }
+  }
+  return out
+}
 
 export const EULA = (acceptedAt: Date) =>
   `# Accepted in Flytower at ${acceptedAt.toISOString()} (https://aka.ms/MinecraftEULA)\neula=true\n`

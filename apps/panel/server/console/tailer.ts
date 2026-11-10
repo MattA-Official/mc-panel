@@ -17,6 +17,8 @@ export class LogTailer {
   private partial = ''
   private timer: ReturnType<typeof setInterval> | null = null
   private reading: Promise<void> | null = null
+  /** Asked to read while a read was running, so read once more after it. */
+  private again = false
   private decoder = new TextDecoder()
 
   constructor(
@@ -36,9 +38,23 @@ export class LogTailer {
     this.timer = null
   }
 
-  /** Reads anything new. Exposed for tests; overlapping calls share one read. */
+  /**
+   * Reads anything new. A call made while a read is running doesn't start a second one, but
+   * it does make that read look again once it's done: the file may have grown after the
+   * running read checked its size. Minecraft writes "logged in" and "joined the game" a
+   * moment apart, so without this the join could sit unread until the next line.
+   */
   tick(): Promise<void> {
-    this.reading ??= this.read().finally(() => (this.reading = null))
+    if (this.reading) {
+      this.again = true
+      return this.reading
+    }
+    this.reading = (async () => {
+      do {
+        this.again = false
+        await this.read()
+      } while (this.again)
+    })().finally(() => (this.reading = null))
     return this.reading
   }
 

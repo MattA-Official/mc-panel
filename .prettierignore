@@ -6,3 +6,4 @@ bun.lock
 **/migrations/meta
 **/migrations.gen.ts
 **/.wrangler
+protocol/schema.json

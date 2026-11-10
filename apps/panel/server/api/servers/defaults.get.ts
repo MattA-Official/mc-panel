@@ -3,7 +3,8 @@ import { lowestFree } from '../../jobs/runner'
 import { maxHeapFor, memoryBudget } from '../../memory'
 
 /** Sensible starting values for the wizard on this machine, and the memory budget. */
-export default defineEventHandler(() => {
+export default defineEventHandler(async (event) => {
+  await requirePermission(event, 'servers.create')
   const rows = useDb().select().from(schema.servers).all()
   const used = new Set(rows.flatMap((r) => [r.port, r.rconPort]))
   const jobs = useJobs()

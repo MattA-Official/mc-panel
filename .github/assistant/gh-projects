@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Runs gh as Matt, with the PROJECTS_TOKEN secret, for the Projects board. The Claude Code
+# action sets GH_TOKEN to its own token for every command, and that token can't reach
+# Projects owned by a user account, so board commands go through this instead.
+set -euo pipefail
+if [[ -z "${PROJECTS_TOKEN:-}" ]]; then
+  echo "PROJECTS_TOKEN isn't set, so the Projects board can't be reached." >&2
+  exit 1
+fi
+GH_TOKEN="$PROJECTS_TOKEN" exec gh "$@"

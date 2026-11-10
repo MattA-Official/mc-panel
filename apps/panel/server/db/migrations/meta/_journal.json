@@ -71,6 +71,76 @@
       "when": 1794265890352,
       "tag": "0009_crash_events",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1794311690250,
+      "tag": "0010_update_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1794312669625,
+      "tag": "0011_scheduled_tasks",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1794313895940,
+      "tag": "0012_past_worlds",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1794315939940,
+      "tag": "0013_public_page",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1794318871601,
+      "tag": "0014_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1794319395560,
+      "tag": "0015_invites",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1794321183200,
+      "tag": "0016_account",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1794325763938,
+      "tag": "0017_player_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1794326024685,
+      "tag": "0018_player_stats",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1794326235042,
+      "tag": "0019_stats_settings",
+      "breakpoints": true
     }
   ]
 }

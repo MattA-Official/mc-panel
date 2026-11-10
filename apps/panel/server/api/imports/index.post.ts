@@ -7,6 +7,7 @@ const Body = z.object({
 
 /** Starts an import. For uploads, `size` is the file's size and chunks follow. */
 export default defineEventHandler(async (event) => {
+  await requirePermission(event, 'servers.create')
   const { imports } = await importContext(event)
   const { label, size } = await readValidatedBody(event, Body.parse)
   return importHttp(() => imports.start(label, size))

@@ -4,11 +4,31 @@
  * holds only the schema and pure helpers; YAML parsing lives in server/spec.
  */
 import { z } from 'zod'
+import { Schedules, toItem, toTask } from './schedules'
+import { PublicPage, compactPublicPage } from './public-page'
+import { StatsSettings, isDefaultStats } from './stats-settings'
 
 export const SPEC_SCHEMA_PATH = '/schema/server-v1.json'
 
 /** Keys Flytower manages itself; edit them through their own settings. */
 export const MANAGED_PROPERTIES = ['server-port', 'enable-rcon', 'rcon.port', 'rcon.password']
+
+/** Secrets Minecraft keeps in server.properties that Flytower knows by name. */
+export const SECRET_PROPERTIES = ['rcon.password', 'management-server-secret']
+
+/**
+ * True for a property that holds a credential. Besides the known ones, any key ending in
+ * `secret` or `password` counts, so a secret added by a later Minecraft version is hidden
+ * from the start. Secrets never go into a spec, the properties API or a clone; the Files
+ * tab still shows server.properties as it is.
+ */
+export function isSecretProperty(key: string): boolean {
+  return SECRET_PROPERTIES.includes(key) || /(^|[.-])(secret|password)$/i.test(key)
+}
+
+/** True for a property a spec or the Settings form can't set. */
+export const isManagedProperty = (key: string) =>
+  MANAGED_PROPERTIES.includes(key) || isSecretProperty(key)
 
 export const MIN_MEMORY_MB = 1024
 export const MAX_MEMORY_MB = 65536
@@ -93,14 +113,16 @@ const Properties = z
   )
   .superRefine((props, ctx) => {
     for (const key of Object.keys(props)) {
-      if (MANAGED_PROPERTIES.includes(key)) {
+      if (isManagedProperty(key)) {
         ctx.addIssue({
           code: 'custom',
           path: [key],
           message:
             key === 'server-port'
               ? 'Set the port with "port", not in properties.'
-              : `${key} is managed by Flytower.`,
+              : isSecretProperty(key)
+                ? `${key} is a secret, so it's managed by Flytower and never kept in a spec.`
+                : `${key} is managed by Flytower.`,
         })
       }
     }
@@ -261,6 +283,22 @@ export const ServerSpec = z
     recovery: Recovery.optional().describe(
       'What Flytower does when the server gets stuck. Left out, the current settings stay.',
     ),
+    schedules: Schedules.optional(),
+    public: PublicPage.optional().describe(
+      'The public status page. Left out, the current settings stay.',
+    ),
+    stats: StatsSettings.optional().describe(
+      'Player stats and who is left out of them. Left out, the current settings stay.',
+    ),
+    timezone: z
+      .string()
+      .trim()
+      .min(1)
+      .max(60)
+      .optional()
+      .describe(
+        'The time zone schedules are read in, like Europe/London. Left out, it stays (UTC at first).',
+      ),
   })
   .strict()
   .describe('A Flytower server.')
@@ -292,6 +330,17 @@ export function compactSpec(spec: ServerSpec): ServerSpecInput {
   if (Object.keys(spec.properties).length) out.properties = spec.properties
   if (spec.content.length) out.content = spec.content
   if (spec.recovery?.restartWhenUnresponsive) out.recovery = { restartWhenUnresponsive: true }
+  if (spec.timezone && spec.timezone !== 'UTC') out.timezone = spec.timezone
+  if (spec.schedules?.length) out.schedules = spec.schedules.map((s) => toItem(toTask(s)))
+  const publicPage = spec.public && compactPublicPage(spec.public)
+  if (publicPage) out.public = publicPage
+  if (spec.stats && !isDefaultStats(spec.stats)) {
+    out.stats = spec.stats.enabled
+      ? { leaveOut: spec.stats.leaveOut }
+      : spec.stats.leaveOut.length
+        ? { enabled: false, leaveOut: spec.stats.leaveOut }
+        : { enabled: false }
+  }
   const b = spec.backups
   if (!b) return out as ServerSpecInput
   const keepDefault = b.keep.last === 6 && b.keep.daily === 7 && b.keep.weekly === 4

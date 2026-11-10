@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import { appendFileSync, mkdirSync, mkdtempSync, renameSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { LogWatcher, parseLogLine, RESTART_WINDOW_MS } from '../server/notify/watchers'
+import { LogWatcher, parseLogLine, RESTART_WINDOW_MS, SETTLE_MS } from '../server/notify/watchers'
 import type { NotifyEvent } from '../server/notify/types'
 
 const line = (msg: string) => `[12:34:56] [Server thread/INFO]: ${msg}`
@@ -29,6 +29,25 @@ describe('parseLogLine', () => {
     })
   })
 
+  it('reads joins and leaves that 26.x logs as system chat', () => {
+    // From a real Fabric 26.3 log, with the player and address changed.
+    expect(
+      parseLogLine('[15:38:20] [Server thread/INFO]: System chat: Steve_99 joined the game'),
+    ).toEqual({ kind: 'joined', player: 'Steve_99' })
+    expect(
+      parseLogLine('[15:52:41] [Server thread/INFO]: System chat: Steve_99 left the game'),
+    ).toEqual({ kind: 'left', player: 'Steve_99' })
+    // The lines around a join aren't events.
+    for (const other of [
+      '[15:38:18] [User Authenticator #1/INFO]: UUID of player Steve_99 is 3bbf6122-ed37-4c57-950b-6b79de291547',
+      '[15:38:20] [Server thread/INFO]: Steve_99[/203.0.113.7:57797] logged in with entity id 76 at (2149.6, 69.5, -743.4)',
+      '[15:38:21] [Server thread/INFO]: Player Steve_99 registered for VSS LOD request processing (caps=15)',
+      '[15:37:13] [Server thread/INFO]: Server empty for 60 seconds, pausing',
+    ]) {
+      expect(parseLogLine(other)).toBeNull()
+    }
+  })
+
   it('reads the server being ready and stopping', () => {
     expect(parseLogLine(line('Done (12.345s)! For help, type "help"'))).toEqual({ kind: 'ready' })
     expect(parseLogLine('[12:34:56 INFO]: Done (3,21s)! For help, type "help" or "?"')).toEqual({
@@ -44,6 +63,8 @@ describe('parseLogLine', () => {
     expect(parseLogLine(line('Steve joined the game!'))).toBeNull()
     expect(parseLogLine(line('[Server] Stopping the server'))).toBeNull()
     expect(parseLogLine(line('<Bob> Done (1s)! For help, type "help"'))).toBeNull()
+    expect(parseLogLine(line('System chat: <Bob> Steve joined the game'))).toBeNull()
+    expect(parseLogLine(line('System chat: [Server] Steve left the game'))).toBeNull()
   })
 })
 
@@ -86,6 +107,34 @@ describe('LogWatcher', () => {
     expect(w.watching()).toEqual([])
     w.stop()
   })
+
+  it('hears a join written straight after the login line', async () => {
+    // Minecraft writes these two lines under a millisecond apart and then often nothing more
+    // for minutes. Bun's watcher can fold the second change into the first, so it's tried a
+    // few times over, each on its own quiet log.
+    for (let i = 0; i < 8; i++) {
+      const { dir, notes, w } = setup()
+      const logs = join(dir, 'survival', 'logs')
+      mkdirSync(logs, { recursive: true })
+      const log = join(logs, 'latest.log')
+      writeFileSync(log, '')
+      w.sync(['survival'])
+      await Bun.sleep(30)
+      appendFileSync(
+        log,
+        `${line('Steve[/203.0.113.7:51234] logged in with entity id 7 at (0.5, 64.0, 0.5)')}\n`,
+      )
+      const t = performance.now()
+      while (performance.now() - t < 0.5) {
+        // The server thread is busy for a moment between the two lines.
+      }
+      await Bun.sleep(0.5)
+      appendFileSync(log, `${line('Steve joined the game')}\n`)
+      await until(() => notes.length === 1, SETTLE_MS * 4)
+      expect(notes.map((n) => n.title)).toEqual(['Steve joined'])
+      w.stop()
+    }
+  }, 15_000)
 
   it('picks up a server that has never run once its logs folder appears', async () => {
     const { dir, notes, w } = setup()
@@ -143,5 +192,24 @@ describe('LogWatcher', () => {
     w.restartPressed('survival', false)
     w.lines('survival', [line('Stopping the server'), line('Done (5s)! For help, type "help"')])
     expect(notes.map((n) => n.title)).toEqual(['Server restarted'])
+  })
+})
+
+describe('LogWatcher listeners', () => {
+  it('passes every line to line listeners and events to event listeners', () => {
+    const w = new LogWatcher({ notify: () => {} }, '/nonexistent')
+    const lines: string[] = []
+    const events: string[] = []
+    const offLines = w.listenLines((_s, l) => lines.push(l))
+    w.listen((_s, e) => events.push(e.kind))
+    const uuid =
+      '[12:34:56] [User Authenticator #1/INFO]: UUID of player Steve is 069a79f4-44e9-4726-a5be-fca90e38aaf5'
+    w.lines('survival', [uuid, line('Steve joined the game')])
+    expect(lines).toEqual([uuid, line('Steve joined the game')])
+    expect(events).toEqual(['joined'])
+    offLines()
+    w.lines('survival', [line('Steve left the game')])
+    expect(lines).toHaveLength(2)
+    expect(events).toEqual(['joined', 'left'])
   })
 })
