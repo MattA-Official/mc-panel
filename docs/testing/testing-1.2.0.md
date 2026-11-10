@@ -174,3 +174,14 @@ On a server with a hostname whose A record points at the VPS, on a box where the
 2. Change your name. The sidebar, Access and Activity show the new name.
 3. Under **Appearance**, pick **Light**, then sign in on another browser: it's light there too. The sun and moon button in the sidebar saves your choice as well.
 4. Sign in on a second browser, then choose **Sign out everywhere else** on the first. The second is signed out on its next click; the first stays signed in.
+
+## Help in the panel
+
+1. **Help** is in the sidebar. It opens the overview with every page listed on the left, grouped into Getting started, Running servers and Looking after the machine, and the page's headings on the right. Both stay put as you scroll.
+2. Click through a few pages. Links between pages stay in Help, and **Previous** and **Next** at the bottom follow the order on the left.
+3. On **Servers**, press the **?** at the top right. **Your first server** opens in a panel on the right without leaving the page. Click a link inside it (Addresses and DNS): the panel shows that page instead. **Open full page** takes you to it in Help.
+4. Try the **?** on a server's Backups, Content, Schedules and Logs tabs, and on System's Updates, Notifications and Branding. Each opens the page about that screen.
+5. On **System**, **Off-site storage**, click **Learn more**. The help panel opens at **Off-site copies**. There are more next to Memory budget (Servers), Backups' keep settings, and a server's Address, Public page, Crashes and Version settings.
+6. Press **Ctrl+K** (**⌘K** on a Mac), or **Search** in the sidebar, and type "crash loop". Results come from the docs and jump to the heading. "Go to System" and the other pages are there too.
+7. On a phone: Help has a **Pages** button for the list, and the headings fold away under **On this page**.
+8. In the browser's developer tools (Network), Help and search load nothing from other sites: the docs come with the panel.
