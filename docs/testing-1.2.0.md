@@ -143,3 +143,13 @@ On a server with a hostname whose A record points at the VPS, on a box where the
 - [ ] `https://<hostname>/login` and `https://<hostname>/servers/<name>` say "Not found". The panel's own domain still works as before.
 - [ ] Turn the public page off: `https://<hostname>` is "Not found". `curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:3000/api/public/tls-ask?domain=<hostname>'` on the box gives 404, and 200 once it's back on.
 - [ ] `https://made-up-name.<your domain>` (if you have a wildcard record) never gets a certificate: the browser shows a TLS error, and Caddy's log (`journalctl -u caddy`) says the ask was refused.
+
+## Roles (groundwork)
+
+The first part of roles adds permissions behind the scenes. Nothing looks different yet: everyone who could sign in before is now an **Owner**, who can do everything.
+
+1. Update an existing install. Sign in and check that every page and action works as before: start and stop, console, files, backups, settings, System pages and Activity.
+2. Set up a fresh install. The person who finishes setup is the Owner, and everything works.
+3. Leave a tab open on a server's console while you test. Live output and server status keep updating.
+
+Inviting people and choosing their role arrive in the next part.
