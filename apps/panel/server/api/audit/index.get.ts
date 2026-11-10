@@ -1,5 +1,6 @@
 import { and, desc, eq, lt } from 'drizzle-orm'
 import { z } from 'zod'
+import { can } from '../../../shared/permissions'
 import { schema } from '../../db'
 
 const Query = z.object({
@@ -11,7 +12,10 @@ const Query = z.object({
 
 /** Who did what, newest first, as sentences. Details with secrets in them are left out. */
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  const { access } = await requireSignedIn(event)
+  // Without activity.all, a person sees entries about the servers they can see.
+  const visible = (target: string | null) =>
+    can(access, 'activity.all') || (target !== null && can(access, 'server.view', target))
   const q = await getValidatedQuery(event, Query.parse)
   const a = schema.audit
   const read = (before?: number) =>
@@ -39,7 +43,9 @@ export default defineEventHandler(async (event) => {
   let before = q.before
   for (;;) {
     const batch = read(before)
-    found.push(...batch.filter((r) => !q.kind || auditKind(r.action) === q.kind))
+    found.push(
+      ...batch.filter((r) => visible(r.target) && (!q.kind || auditKind(r.action) === q.kind)),
+    )
     if (found.length > q.limit || batch.length < 500) break
     before = batch.at(-1)!.id
   }

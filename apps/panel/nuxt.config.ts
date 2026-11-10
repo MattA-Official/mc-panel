@@ -29,6 +29,10 @@ export default defineNuxtConfig({
   // Bundle the icons we use into the client; the panel never fetches icons at runtime.
   icon: { provider: 'none', clientBundle: { scan: true } },
   routeRules: {
+    // Moved out of System in 1.2.0.
+    '/system/account': { redirect: '/account' },
+    '/system/people': { redirect: '/access' },
+    '/people': { redirect: '/access' },
     // The panel loads nothing from other sites except content icons (Modrinth, Hangar).
     '/**': {
       headers: {

@@ -13,6 +13,7 @@ const Body = z.object({
 
 /** Sets the backup schedule and retention. */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'server.configure')
   const { user, name } = await backupContext(event)
   const body = await readValidatedBody(event, Body.parse)
   const cron = body.cron || null

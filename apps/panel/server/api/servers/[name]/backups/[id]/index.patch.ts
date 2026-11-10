@@ -4,6 +4,7 @@ const Body = z.object({ kept: z.boolean() })
 
 /** Keeps a backup forever, or lets retention delete it again. */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'backups.create')
   const { user, name, service } = await backupContext(event)
   const id = Number(getRouterParam(event, 'id'))
   const { kept } = await readValidatedBody(event, Body.parse)

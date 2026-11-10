@@ -11,6 +11,7 @@ const Body = z.object({ confirm: z.string() })
  * the folder before removing anything, so a mistake can still be undone.
  */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'server.delete')
   const { user } = await requireElevated(event)
   const { name } = await getValidatedRouterParams(event, Params.parse)
   const { confirm } = await readValidatedBody(event, Body.parse)

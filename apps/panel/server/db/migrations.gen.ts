@@ -55,5 +55,17 @@ export const migrations: { tag: string; sql: string }[] = [
   {
     "tag": "0013_public_page",
     "sql": "ALTER TABLE `servers` ADD `public_page` text;"
+  },
+  {
+    "tag": "0014_roles",
+    "sql": "CREATE TABLE `grants` (\n\t`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,\n\t`user_id` integer NOT NULL,\n\t`role_id` text NOT NULL,\n\t`server` text,\n\t`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,\n\tFOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade,\n\tFOREIGN KEY (`role_id`) REFERENCES `roles`(`id`) ON UPDATE no action ON DELETE cascade,\n\tFOREIGN KEY (`server`) REFERENCES `servers`(`name`) ON UPDATE no action ON DELETE cascade\n);\n--> statement-breakpoint\nCREATE INDEX `grants_user` ON `grants` (`user_id`);--> statement-breakpoint\nCREATE TABLE `roles` (\n\t`id` text PRIMARY KEY NOT NULL,\n\t`name` text NOT NULL,\n\t`built_in` integer DEFAULT false NOT NULL,\n\t`permissions` text DEFAULT '[]' NOT NULL,\n\t`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL\n);\n--> statement-breakpoint\nINSERT INTO `roles` (`id`, `name`, `built_in`) VALUES ('owner', 'Owner', 1), ('admin', 'Admin', 1), ('operator', 'Operator', 1), ('viewer', 'Viewer', 1);\n--> statement-breakpoint\nINSERT INTO `grants` (`user_id`, `role_id`, `server`) SELECT `id`, 'owner', NULL FROM `users`;\n"
+  },
+  {
+    "tag": "0015_invites",
+    "sql": "CREATE TABLE `invites` (\n\t`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,\n\t`token_hash` text NOT NULL,\n\t`role_id` text NOT NULL,\n\t`server` text,\n\t`note` text,\n\t`created_by` integer,\n\t`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,\n\t`expires_at` integer NOT NULL,\n\t`used_at` integer,\n\t`used_by` integer,\n\tFOREIGN KEY (`role_id`) REFERENCES `roles`(`id`) ON UPDATE no action ON DELETE cascade,\n\tFOREIGN KEY (`server`) REFERENCES `servers`(`name`) ON UPDATE no action ON DELETE cascade,\n\tFOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null,\n\tFOREIGN KEY (`used_by`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null\n);\n--> statement-breakpoint\nCREATE UNIQUE INDEX `invites_token_hash_unique` ON `invites` (`token_hash`);"
+  },
+  {
+    "tag": "0016_account",
+    "sql": "ALTER TABLE `users` ADD `session_version` integer DEFAULT 0 NOT NULL;--> statement-breakpoint\nALTER TABLE `users` ADD `theme` text DEFAULT 'system' NOT NULL;"
   }
 ]

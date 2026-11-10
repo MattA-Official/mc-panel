@@ -1,3 +1,4 @@
+import { loadAccess } from '../auth/access'
 import { needsSetup } from '../auth/setup-token'
 
 const ALWAYS_OPEN = new Set([
@@ -14,7 +15,13 @@ const SETUP_ROUTES = new Set([
   '/api/passkeys/register-options',
   '/api/passkeys/register',
 ])
-const SIGN_IN_ROUTES = new Set(['/api/auth/login-options', '/api/auth/login', '/api/auth/recovery'])
+const SIGN_IN_ROUTES = new Set([
+  '/api/auth/login-options',
+  '/api/auth/login',
+  '/api/auth/recovery',
+  // Opening an invite link.
+  '/api/join',
+])
 const ENROL_ROUTES = new Set(['/api/passkeys/register-options', '/api/passkeys/register'])
 
 /**
@@ -34,7 +41,16 @@ export default defineEventHandler(async (event) => {
   if (SIGN_IN_ROUTES.has(path)) return
 
   const session = await getUserSession(event)
+  // Someone who opened a valid invite link may create the passkey they'll join with.
+  if (!session.user && session.inviteId !== undefined && ENROL_ROUTES.has(path)) return
   if (!session.user) throw createError({ statusCode: 401, statusMessage: 'Sign in first.' })
+  // Someone removed since signing in is signed out at once, whatever their cookie says.
+  const access = loadAccess(useDb(), session.user.id, session.sessionVersion)
+  if (!access) {
+    await clearUserSession(event)
+    throw createError({ statusCode: 401, statusMessage: 'Sign in first.' })
+  }
+  event.context.access = access
   if (session.mustEnrolPasskey && !ENROL_ROUTES.has(path)) {
     throw createError({ statusCode: 403, statusMessage: 'Add a new passkey first.' })
   }

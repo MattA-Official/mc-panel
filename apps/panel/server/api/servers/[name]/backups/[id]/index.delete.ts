@@ -1,5 +1,6 @@
 /** Deletes one backup, and its off-site copy. Can't be undone, so it needs a passkey check. */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'backups.delete')
   await requireElevated(event)
   const { user, name, service } = await backupContext(event)
   const { id } = getRouterParams(event)

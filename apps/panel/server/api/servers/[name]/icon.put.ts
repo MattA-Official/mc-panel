@@ -4,6 +4,7 @@ import { schema } from '../../../db'
 
 /** Sets the server's icon. The body is a 64×64 PNG, cropped and scaled in the browser. */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'server.configure')
   const ctx = await fileContext(event)
   const length = Number(getRequestHeader(event, 'content-length') ?? 0)
   if (length > MAX_ICON_BYTES) {

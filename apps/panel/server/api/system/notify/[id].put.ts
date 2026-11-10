@@ -5,6 +5,7 @@ const Params = z.object({ id: z.coerce.number().int() })
 
 /** Changes a channel. Leave the address or secret out to keep the saved one. */
 export default defineEventHandler(async (event) => {
+  await requirePermission(event, 'system.manage')
   const { user } = await requireElevated(event)
   const { id } = await getValidatedRouterParams(event, Params.parse)
   const body = await readValidatedBody(event, ChannelPatch.parse)

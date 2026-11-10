@@ -4,7 +4,7 @@ const Params = z.object({ name: z.string().max(40), id: z.coerce.number().int().
 
 /** Hides a crash's banner, and any older ones. */
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  await requireServerPermission(event, 'server.power')
   const { name, id } = await getValidatedRouterParams(event, Params.parse)
   findServer(name)
   if (!useCrashes().dismiss(name, id)) {

@@ -2,7 +2,7 @@ import { schema } from '../../db'
 
 /** Every server's past worlds, which a new server can start from. */
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  await requirePermission(event, 'servers.create')
   const servers = new Map(
     useDb()
       .select({ name: schema.servers.name, displayName: schema.servers.displayName })

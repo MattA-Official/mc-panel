@@ -7,7 +7,7 @@ const Params = z.object({ name: z.string().max(40) })
 
 /** The server as a spec, in YAML and parsed. */
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  await requireServerPermission(event, 'server.view')
   const { name } = await getValidatedRouterParams(event, Params.parse)
   const spec = specFromServer(
     findServer(name),

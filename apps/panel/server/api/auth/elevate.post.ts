@@ -10,6 +10,7 @@ const Body = z.object({
 
 /** Re-confirm with a passkey before a destructive action. */
 export default defineEventHandler(async (event) => {
+  await requireSignedIn(event)
   const session = await requireUserSession(event)
   const body = await readValidatedBody(event, Body.parse)
   try {
