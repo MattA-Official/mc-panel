@@ -3,12 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'bun:test'
 import { DEFAULT_SKINS, offlineUuid, uuidHex, type Fetch } from '@flytower/providers'
-import {
-  isFresh,
-  LOOKUPS_PER_MINUTE,
-  PROFILE_TTL_MS,
-  SkinCache,
-} from '../server/skins/cache'
+import { isFresh, LOOKUPS_PER_MINUTE, PROFILE_TTL_MS, SkinCache } from '../server/skins/cache'
 
 const NOTCH = '069a79f444e94726a5befca90e38aaf5'
 const HASH = '292009a4925b58f02c77dadc3ecef07ea4c7472f64e0fdc32ce5522489362680'
