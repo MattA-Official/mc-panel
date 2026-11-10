@@ -199,6 +199,17 @@ export class BackupService {
     }
   }
 
+  /** Keeps a backup forever, or lets retention delete it again. */
+  setKept(server: string, id: number, kept: boolean): Backup {
+    this.get(server, id)
+    return this.deps.db
+      .update(schema.backups)
+      .set({ kept })
+      .where(eq(schema.backups.id, id))
+      .returning()
+      .get()!
+  }
+
   /** Starts a backup job; refuses at once if the server is already busy. */
   backup(
     server: string,
@@ -248,7 +259,10 @@ export class BackupService {
     return { jobId: job.id, done }
   }
 
-  /** Deletes scheduled backups outside the server's retention, and old safety copies. */
+  /**
+   * Deletes scheduled backups outside the server's retention, and old safety copies. Kept
+   * backups are never deleted, and don't count towards either.
+   */
   async prune(server: string): Promise<Backup[]> {
     const { db } = this.deps
     const settings = db
@@ -261,7 +275,7 @@ export class BackupService {
       .where(eq(schema.servers.name, server))
       .get()
     if (!settings) return []
-    const all = await this.list(server)
+    const all = (await this.list(server)).filter((b) => !b.kept)
     const gone = [
       ...toPrune(
         all.filter((b) => b.kind === 'scheduled'),
@@ -292,7 +306,7 @@ export class BackupService {
   }
 
   /** Archives the folder into a new backup file and records it. */
-  private async archive(server: string, kind: BackupKind, note: string | null) {
+  private async archive(server: string, kind: BackupKind, note: string | null, kept = false) {
     const dir = this.folder(server)
     await mkdir(dir, { recursive: true, mode: 0o750 })
     // Names have one-second resolution; two backups in the same second take the next free one.
@@ -310,7 +324,7 @@ export class BackupService {
     }
     const row = this.deps.db
       .insert(schema.backups)
-      .values({ server, file, bytes, kind, note, createdAt })
+      .values({ server, file, bytes, kind, note, createdAt, kept })
       .returning()
       .get()
     this.deps.offsite?.queue(row)
@@ -377,14 +391,14 @@ export class BackupService {
 
   /**
    * A safety backup taken inside another job that already holds the server's lock, e.g.
-   * before applying a spec. Saving is paused around it as usual.
+   * before applying a spec. Saving is paused around it as usual. A kept one is never pruned.
    */
-  async snapshot(server: string, note: string): Promise<Backup> {
+  async snapshot(server: string, note: string, opts: { kept?: boolean } = {}): Promise<Backup> {
     await this.checkSpace(server)
     const row = await this.withSavesPaused(
       server,
       () => {},
-      () => this.archive(server, 'safety', note),
+      () => this.archive(server, 'safety', note, opts.kept),
     )
     await this.prune(server).catch((err) =>
       console.error(`[flytower] pruning backups for ${server} failed`, err),
