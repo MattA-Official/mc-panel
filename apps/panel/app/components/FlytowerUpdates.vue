@@ -114,8 +114,7 @@ async function install(version: string, rollback = false) {
   }
 }
 
-const when = (at: string) =>
-  new Date(at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+const when = (at: string) => formatDateTime(at)
 </script>
 
 <template>
@@ -171,9 +170,7 @@ const when = (at: string) =>
             @click="install(data.latest.version)"
           />
         </div>
-        <pre class="max-h-48 overflow-auto whitespace-pre-wrap text-xs text-muted">{{
-          data.latest.notes
-        }}</pre>
+        <MarkdownNotes :source="data.latest.notes" class="max-h-64 overflow-auto" />
         <p v-if="data.latest.prerelease" class="text-xs text-warning">
           This is a beta, for trying new features before they're released. Take a backup of anything
           you care about first; you can go back afterwards.
