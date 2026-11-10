@@ -4,7 +4,8 @@ import { RelayInput } from '../../../../../shared/discord-relay'
 const Params = z.object({ name: z.string().max(40) })
 
 /**
- * Turns on (or changes) posting the server's chat, joins and leaves to a Discord channel. It
+ * Turns on (or changes) posting the server's chat, joins, leaves, deaths and advancements to a
+ * Discord channel. It
  * sends what players say off the machine, so it needs a fresh passkey check.
  */
 export default defineEventHandler(async (event) => {
@@ -22,6 +23,8 @@ export default defineEventHandler(async (event) => {
     newUrl: !!body.url,
     chat: view.chat,
     joins: view.joins,
+    deaths: view.deaths,
+    advancements: view.advancements,
   })
   return view
 })

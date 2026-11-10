@@ -386,6 +386,33 @@ describe('player positions', () => {
     expect(asked.length).toBe(6)
   })
 
+  it('asks for the dimension again only after a while or a long jump', async () => {
+    const asked: string[] = []
+    let x = 0
+    let dimension = 'minecraft:overworld'
+    const positions = new PlayerPositions({
+      online: async () => [{ name: 'Steve', uuid: null }],
+      rcon: async (_server, command) => {
+        asked.push(command.split(' ').at(-1)!)
+        return command.endsWith('Pos')
+          ? `Steve has the following entity data: [${x}.0d, 64.0d, 0.0d]`
+          : `Steve has the following entity data: "${dimension}"`
+      },
+      ttlMs: 0,
+      dimensionMs: 60_000,
+    })
+    await positions.get('survival')
+    x = 10
+    await positions.get('survival')
+    expect(asked).toEqual(['Pos', 'Dimension', 'Pos'])
+    // Through a portal: far away, and somewhere else.
+    x = 2000
+    dimension = 'minecraft:the_nether'
+    const [steve] = await positions.get('survival')
+    expect(asked.slice(3)).toEqual(['Pos', 'Dimension'])
+    expect(steve).toMatchObject({ x: 2000, dimension: 'minecraft:the_nether' })
+  })
+
   it('gives nobody when the server cannot be asked', async () => {
     const positions = new PlayerPositions({
       online: async () => {

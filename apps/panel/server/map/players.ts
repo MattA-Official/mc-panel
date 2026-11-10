@@ -1,7 +1,8 @@
 /**
  * Where online players are, for the web map. Asked over RCON with the game's own `data`
  * command, so it works on vanilla too, and only while someone has the map open: answers are
- * kept for a few seconds and shared between everyone viewing.
+ * kept for a second and shared between everyone viewing. Each player's dimension is asked
+ * for less often, since it rarely changes: again after a while, or when they jump far.
  */
 
 export interface MapPlayer {
@@ -37,17 +38,24 @@ export interface PositionDeps {
   rcon: (server: string, command: string) => Promise<string>
   /** How long an answer is kept. */
   ttlMs?: number
+  /** How long a player's dimension is trusted before it's asked for again. */
+  dimensionMs?: number
 }
+
+/** Further than this between answers means a portal or teleport: ask the dimension again. */
+const JUMP = 64
 
 /** Positions per server, asked for at most once every few seconds. */
 export class PlayerPositions {
   private cache = new Map<string, { at: number; players: Promise<MapPlayer[]> }>()
+  /** Per server, then per player: the last answer and when the dimension was asked. */
+  private known = new Map<string, Map<string, { player: MapPlayer; dimensionAt: number }>>()
 
   constructor(private deps: PositionDeps) {}
 
   get(server: string): Promise<MapPlayer[]> {
     const hit = this.cache.get(server)
-    const ttl = this.deps.ttlMs ?? 3000
+    const ttl = this.deps.ttlMs ?? 1000
     if (hit && Date.now() - hit.at < ttl) return hit.players
     const players = this.ask(server).catch(() => [] as MapPlayer[])
     this.cache.set(server, { at: Date.now(), players })
@@ -56,21 +64,34 @@ export class PlayerPositions {
 
   forget(server: string) {
     this.cache.delete(server)
+    this.known.delete(server)
   }
 
   private async ask(server: string): Promise<MapPlayer[]> {
     const online = await this.deps.online(server)
+    const before = this.known.get(server) ?? new Map()
+    const after = new Map<string, { player: MapPlayer; dimensionAt: number }>()
     const out: MapPlayer[] = []
     // One player at a time: RCON answers in order anyway, and this keeps the server calm.
     for (const p of online) {
       if (!/^[A-Za-z0-9_]{1,16}$/.test(p.name)) continue
       const pos = parsePos(await this.deps.rcon(server, `data get entity ${p.name} Pos`))
       if (!pos) continue
-      const dimension =
-        parseDimension(await this.deps.rcon(server, `data get entity ${p.name} Dimension`)) ??
-        'minecraft:overworld'
-      out.push({ name: p.name, uuid: p.uuid, dimension, x: pos[0], y: pos[1], z: pos[2] })
+      const last = before.get(p.name)
+      const now = Date.now()
+      const fresh =
+        last &&
+        now - last.dimensionAt < (this.deps.dimensionMs ?? 10_000) &&
+        Math.hypot(pos[0] - last.player.x, pos[2] - last.player.z) <= JUMP
+      const dimension = fresh
+        ? last.player.dimension
+        : (parseDimension(await this.deps.rcon(server, `data get entity ${p.name} Dimension`)) ??
+          'minecraft:overworld')
+      const player = { name: p.name, uuid: p.uuid, dimension, x: pos[0], y: pos[1], z: pos[2] }
+      after.set(p.name, { player, dimensionAt: fresh ? last.dimensionAt : now })
+      out.push(player)
     }
+    this.known.set(server, after)
     return out
   }
 }

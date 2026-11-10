@@ -52,7 +52,9 @@ You need a Discord channel you can add webhooks to and a running Fabric or Paper
 - [ ] Say something: it appears under your name with your face. Say `**bold** @everyone <@1> # big https://example.com`: it shows exactly as typed, nobody is pinged, and the link works without a preview.
 - [ ] `/me waves` appears in italics.
 - [ ] Send ten lines quickly (or paste them): they all arrive, joined into fewer messages, in order.
+- [ ] Die (fall from a height): "_fell from a high place_" appears under your name. Make an advancement (craft a stone pickaxe): "_has made the advancement [Stone Age]_".
 - [ ] Turn **Chat** off and save: chat stops, joins and leaves still post. Turn **Joins and leaves** off: they stop too.
+- [ ] Turn **Deaths** and **Advancements** off and save: those stop, chat still posts.
 - [ ] Delete the webhook in Discord, then say something: the card says **Stopped** with Discord's reason. Paste a new webhook and save: chat posts again.
 - [ ] **Turn off**: nothing more is posted, and the card is back to empty.
 

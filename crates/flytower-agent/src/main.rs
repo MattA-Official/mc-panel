@@ -6,6 +6,7 @@ use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Duration;
 
+use flytower_agent::caddy;
 use flytower_agent::dispatch::dispatch;
 use flytower_agent::events::{Journal, UnitEvents};
 use flytower_agent::exec::{Exec, RealExec};
@@ -77,6 +78,11 @@ fn main() -> ExitCode {
         Ok(true) => println!("pointed the agent unit at bin/flytower-agent"),
         Ok(false) => {}
         Err(e) => eprintln!("updating the agent unit failed: {}", e.message),
+    }
+    match caddy::refresh_caddyfile(&ctx) {
+        Ok(true) => println!("added server hostnames to the Caddyfile"),
+        Ok(false) => {}
+        Err(e) => eprintln!("updating the Caddyfile failed: {e}"),
     }
     serve(&listener, Some(gid), move |line| {
         // stdout goes to the journal; one JSON line per request.
