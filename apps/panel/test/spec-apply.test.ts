@@ -197,6 +197,7 @@ function setup(
   let state = opts.running ? 'active' : 'inactive'
   const calls: string[] = []
   const statsChanges: { name: string; before: unknown }[] = []
+  const mapSyncs: string[] = []
   const agent = (async (verb: Verb, params: unknown) => {
     calls.push(verb === 'server.configure' ? `${verb} ${JSON.stringify(params)}` : verb)
     if (verb === 'service.status') return { active: state, since: null }
@@ -254,6 +255,7 @@ function setup(
     ],
     offsiteChanged: (n) => calls.push(`offsite ${n}`),
     statsChanged: (name, before) => statsChanges.push({ name, before }),
+    mapChanged: async (name) => void mapSyncs.push(name),
     tasks: {
       tasks: () => scheduled.tasks,
       replace: (_n, tasks, timezone) => {
@@ -269,7 +271,7 @@ function setup(
       loader: { type: opts.loader ?? 'fabric', minecraft: '26.3' },
       ...extra,
     })
-  return { db, dir, service, calls, snapshots, spec, scheduled, statsChanges }
+  return { db, dir, service, calls, snapshots, spec, scheduled, statsChanges, mapSyncs }
 }
 
 describe('plan', () => {
@@ -380,6 +382,30 @@ describe('plan', () => {
     expect(statsChanges).toEqual([{ name: 'survival', before: null }])
     expect((await service.currentSpec('survival')).stats).toEqual({ enabled: true, leaveOut })
     // Left out, it stays.
+    expect((await service.plan('survival', spec())).changes).toEqual([])
+  })
+
+  it('changes map settings and brings the map config in line', async () => {
+    const { service, spec, db, mapSyncs } = setup()
+    const plan = await service.plan('survival', spec({ map: { public: true } }))
+    expect(plan.changes).toEqual([
+      {
+        area: 'settings',
+        action: 'set',
+        label: 'Web map',
+        from: 'Signed-in people, with players',
+        to: 'Anyone, with players',
+      },
+    ])
+    expect(plan.restart).toBe(false)
+    await (
+      await service.apply('survival', plan.id)
+    ).done
+    expect(
+      db.select().from(schema.servers).where(eq(schema.servers.name, 'survival')).get()?.map,
+    ).toEqual({ public: true, players: true })
+    expect(mapSyncs).toEqual(['survival'])
+    expect((await service.currentSpec('survival')).map).toEqual({ public: true, players: true })
     expect((await service.plan('survival', spec())).changes).toEqual([])
   })
 

@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { Schedules, toItem, toTask } from './schedules'
 import { PublicPage, compactPublicPage } from './public-page'
 import { StatsSettings, isDefaultStats } from './stats-settings'
+import { MapSettings, compactMap } from './map-settings'
 
 export const SPEC_SCHEMA_PATH = '/schema/server-v1.json'
 
@@ -290,6 +291,7 @@ export const ServerSpec = z
     stats: StatsSettings.optional().describe(
       'Player stats and who is left out of them. Left out, the current settings stay.',
     ),
+    map: MapSettings.optional(),
     timezone: z
       .string()
       .trim()
@@ -341,6 +343,8 @@ export function compactSpec(spec: ServerSpec): ServerSpecInput {
         ? { enabled: false, leaveOut: spec.stats.leaveOut }
         : { enabled: false }
   }
+  const map = spec.map && compactMap(spec.map)
+  if (map) out.map = map
   const b = spec.backups
   if (!b) return out as ServerSpecInput
   const keepDefault = b.keep.last === 6 && b.keep.daily === 7 && b.keep.weekly === 4

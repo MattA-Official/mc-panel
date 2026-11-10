@@ -57,6 +57,11 @@ export interface SpecDeps {
   schedulesChanged?: () => void
   /** Called after player stats settings change, to stop recording or forget players. */
   statsChanged?: (name: string, before: unknown) => void
+  /**
+   * Called after content or map settings are saved, so the map's own config matches them.
+   * The server is stopped at this point when the change needs a restart.
+   */
+  mapChanged?: (name: string) => Promise<void>
   /** Scheduled tasks: read for plans and specs, replaced by apply. */
   tasks?: {
     tasks(name: string): TaskSpec[]
@@ -442,12 +447,14 @@ export class SpecService {
           : {}),
         ...(s.publicPage ? { publicPage: s.publicPage } : {}),
         ...(s.stats ? { stats: s.stats } : {}),
+        ...(s.map ? { map: s.map } : {}),
         content: s.content,
       })
       .where(eq(schema.servers.name, name))
       .run()
     if (s.backups) this.deps.schedulesChanged?.()
     if (s.stats) this.deps.statsChanged?.(name, row.stats)
+    await this.deps.mapChanged?.(name)
     if (s.schedules || s.timezone !== undefined) {
       const tasks = this.deps.tasks
       tasks?.replace(name, s.schedules ?? tasks.tasks(name), s.timezone)
