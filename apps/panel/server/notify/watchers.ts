@@ -41,6 +41,14 @@ export function parseLogLine(line: string): LogEvent | null {
   return a ? { kind: a[2] === 'joined' ? 'joined' : 'left', player: a[1]! } : null
 }
 
+/**
+ * After each change, the log is read once more this long afterwards. Bun's file watcher can
+ * fold a second change into the first when they come within about a millisecond, and
+ * Minecraft writes "logged in" and "joined the game" that close together, so without the
+ * second look the join would wait for whatever the server logs next.
+ */
+export const SETTLE_MS = 250
+
 /** A restart that hasn't come back within this long is forgotten. */
 export const RESTART_WINDOW_MS = 15 * 60_000
 
@@ -49,6 +57,7 @@ interface Followed {
   watchers: FSWatcher[]
   logsWatched: boolean
   ready: boolean
+  settle: ReturnType<typeof setTimeout> | null
 }
 
 /** Follows every server's log through inotify and reports what happens in it. */
@@ -129,10 +138,17 @@ export class LogWatcher {
       watchers: [],
       logsWatched: false,
       ready: false,
+      settle: null,
     }
     this.followed.set(server, f)
     const changed = () => {
-      if (f.ready) void f.tailer.tick()
+      if (!f.ready) return
+      void f.tailer.tick()
+      if (f.settle) clearTimeout(f.settle)
+      f.settle = setTimeout(() => {
+        f.settle = null
+        void f.tailer.tick()
+      }, SETTLE_MS)
     }
     const watchLogs = () => {
       if (f.logsWatched) return
@@ -172,6 +188,7 @@ export class LogWatcher {
     const f = this.followed.get(server)
     if (!f) return
     for (const w of f.watchers) w.close()
+    if (f.settle) clearTimeout(f.settle)
     f.tailer.stop()
     this.followed.delete(server)
     this.restarting.delete(server)
