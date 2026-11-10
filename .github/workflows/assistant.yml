@@ -14,8 +14,8 @@ name: Assistant
 #                            subscription token wins when both are set.
 #   PROJECTS_TOKEN           optional. A classic personal access token with the `repo`
 #                            and `project` scopes, needed for the user-owned Projects
-#                            board. Without it, gh uses this workflow's own token, which
-#                            can edit releases, issues and pull requests but not the board.
+#                            board, used through .github/assistant/gh-projects. Plain gh
+#                            uses this workflow's own token for releases, issues and PRs.
 on:
   issue_comment:
     types: [created]
@@ -66,7 +66,9 @@ jobs:
       - id: assistant
         uses: anthropics/claude-code-action@v1
         env:
-          GH_TOKEN: ${{ secrets.PROJECTS_TOKEN || github.token }}
+          # The action points GH_TOKEN at its own token, so the board token travels under
+          # its own name and .github/assistant/gh-projects uses it.
+          PROJECTS_TOKEN: ${{ secrets.PROJECTS_TOKEN }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           anthropic_api_key: ${{ !secrets.CLAUDE_CODE_OAUTH_TOKEN && secrets.ANTHROPIC_API_KEY || '' }}
@@ -80,7 +82,7 @@ jobs:
           claude_args: >-
             --model claude-sonnet-5-5
             --max-turns 40
-            --allowedTools "Bash(gh:*),Read,Glob,Grep"
+            --allowedTools "Bash(gh:*),Bash(.github/assistant/gh-projects:*),Read,Glob,Grep"
             --disallowedTools "Bash(git push:*),Bash(git commit:*)"
             --append-system-prompt "Before doing anything else, read .github/assistant/INSTRUCTIONS.md and follow it."
 
