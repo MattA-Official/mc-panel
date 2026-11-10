@@ -100,6 +100,8 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   'servers/[name]/metrics.get.ts': 'server.view',
   'servers/[name]/players.get.ts': 'server.view',
   'servers/[name]/stats/players.get.ts': 'server.view',
+  'servers/[name]/stats/index.get.ts': 'server.view',
+  'servers/[name]/stats/snapshot.post.ts': 'server.configure',
   'servers/[name]/properties.get.ts': 'server.view',
   'servers/[name]/icon.get.ts': 'server.view',
   'servers/[name]/pack.get.ts': 'server.view',
