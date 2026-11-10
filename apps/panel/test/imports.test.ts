@@ -11,7 +11,9 @@ import { levelDat } from './helpers/level-dat'
 
 const body = (b: Uint8Array) => new Response(b).body!
 
-function setup(opts: { free?: number; fetch?: typeof fetch } = {}) {
+function setup(
+  opts: { free?: number; fetch?: typeof fetch; pastWorlds?: Record<number, string> } = {},
+) {
   const base = mkdtempSync(join(tmpdir(), 'ft-imp-'))
   const db = openDb(':memory:')
   const jobs = new JobRunner({
@@ -24,6 +26,11 @@ function setup(opts: { free?: number; fetch?: typeof fetch } = {}) {
   const service = new ImportService({
     importsDir: join(base, 'imports'),
     archiveDir: join(base, 'archive'),
+    pastWorldPath: (id) => {
+      const path = opts.pastWorlds?.[id]
+      if (!path) throw new Error('No such past world.')
+      return path
+    },
     jobs,
     fetch: opts.fetch,
     now: () => clock,
@@ -141,6 +148,31 @@ describe('imports', () => {
     const paper = await service.start(name, null)
     const failed = (await service.unpack(paper.id, { archive: name }).done) as { message: string }
     expect(failed.message).toContain('Paper')
+  })
+
+  it('starts from a past world, and says when it has gone', async () => {
+    const base = mkdtempSync(join(tmpdir(), 'ft-imp-past-'))
+    const src = join(base, 'season')
+    mkdirSync(join(src, 'datapacks'), { recursive: true })
+    writeFileSync(join(src, 'level.dat'), levelDat('26.3'))
+    const zip = join(base, 'survival-past-world.zip')
+    await writeZip(await entriesFor(src, 'Season one'), zip)
+    const { service } = setup({ pastWorlds: { 7: zip, 8: join(base, 'missing.zip') } })
+    const meta = await service.start('Season one', null)
+    expect((await service.unpack(meta.id, { pastWorld: 7 }).done) as object).toMatchObject({
+      state: 'succeeded',
+    })
+    expect((await service.get(meta.id)).detected).toMatchObject({
+      kind: 'world',
+      mcVersion: '26.3',
+    })
+    expect(await Bun.file(zip).exists()).toBe(true)
+
+    for (const id of [8, 9]) {
+      const gone = await service.start('Gone', null)
+      const failed = (await service.unpack(gone.id, { pastWorld: id }).done) as { message: string }
+      expect(failed.message).toBe('That past world has gone.')
+    }
   })
 
   it('drops links from uploads and sweeps old imports', async () => {
