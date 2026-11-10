@@ -28,10 +28,10 @@ Last, press **Add to a Discord server** and pick the server. The app only needs 
 
 ## Commands
 
-| Command             | Answers                                                                                           |
-| ------------------- | ------------------------------------------------------------------------------------------------- |
-| `/status [server]`  | Whether the server is online, starting or offline, its address, how many are on, and its version. |
-| `/players [server]` | Who's on right now.                                                                               |
+| Command             | Answers                                                                                                                                               |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/status [server]`  | Whether the server is online, starting or offline, its address, how many are on, its version, and a link to its [web map](map.md) when that's public. |
+| `/players [server]` | Who's on right now.                                                                                                                                   |
 
 Leave out `server` to get every server at once; as you type it, Discord suggests the servers you can see.
 

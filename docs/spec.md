@@ -157,6 +157,22 @@ public:
       - modrinth: complementary-reimagined
 ```
 
+### `map`
+
+The server's [web map](map.md). Left out, the current settings stay.
+
+| Field     | Meaning                                                                                                                                      |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled` | `true` to draw a web map of the world. Defaults to `false`.                                                                                  |
+| `public`  | `true` to let anyone open the map without signing in. Needs the public page on. Defaults to `false`: only people who can see the server can. |
+| `players` | `false` to hide where players are. Defaults to `true`.                                                                                       |
+
+```yaml
+map:
+  enabled: true
+  public: true
+```
+
 ### `timezone`
 
 The time zone the server's [scheduled tasks](schedules.md) run in, such as `Europe/London`. Left out, it stays (UTC to begin with). Backups have their own, under `backups`.

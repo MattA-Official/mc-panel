@@ -27,6 +27,7 @@ These pages are also in the panel itself, for the version you have installed: **
 - [Crashes](crashes.md): crash reports, crash loops, and servers that stop responding.
 - [Notifications](notifications.md): Discord, ntfy and JSON webhooks for crashes, failed backups, a filling disk, updates and players.
 - [Discord app](discord.md): slash commands like `/status` and `/players` in your Discord server.
+- [Web map](map.md): a map of the world in the browser, drawn by Flytower, with players on it.
 - [Server YAML reference](spec.md): every field of a server spec.
 
 ## Looking after the machine
