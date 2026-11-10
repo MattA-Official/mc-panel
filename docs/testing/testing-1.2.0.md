@@ -27,7 +27,7 @@ On any server where you can join with a real (online-mode) account, and ideally 
 
 ## Client-only mods
 
-On a Fabric test server. See [Client-only mods](content.md#client-only-mods).
+On a Fabric test server. See [Client-only mods](../content.md#client-only-mods).
 
 - [ ] **Content**, **Add content**, **Mods**: search `voxy`. Nothing client-only shows (Voxy itself is missing) until you turn on **Show client-only**; then Voxy appears with a **Client-only** badge.
 - [ ] The switch isn't there on **Datapacks**, or on **Plugins** with **Hangar** picked.
@@ -56,7 +56,7 @@ On a server with a world you don't mind resetting, ideally with a datapack or tw
 
 ## Branding
 
-On **System**, **Branding**. See [Branding](branding.md). Have an SVG and a PNG logo to hand; your society's will do.
+On **System**, **Branding**. See [Branding](../branding.md). Have an SVG and a PNG logo to hand; your society's will do.
 
 - [ ] Before changing anything, the panel looks exactly as it did: amber, Big Shoulders, the batten logo, no "Powered by" line.
 - [ ] Change the name and pick a colour (try your real brand colour, then something awkward like a pale yellow or a dark navy). The shade strip and the light and dark previews update as you type, each showing a contrast ratio of 4.5:1 or more.

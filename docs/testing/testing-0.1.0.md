@@ -6,7 +6,7 @@ Allow about 30 minutes.
 
 ## 1. Install
 
-Follow [Option A in the install guide](install.md#option-a-hetzner-cloud-no-ssh-at-all), using a spare subdomain for the panel.
+Follow [Option A in the install guide](../install.md#option-a-hetzner-cloud-no-ssh-at-all), using a spare subdomain for the panel.
 
 - [ ] The panel loads over HTTPS at your domain.
 - [ ] A wrong setup token is refused; the right one moves you on.

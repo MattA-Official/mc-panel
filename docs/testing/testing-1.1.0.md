@@ -15,7 +15,7 @@ It installs over what's there and keeps your data and sign-in, like any re-run o
 
 ## 1. Notifications
 
-You need a Discord server where you can make a webhook, and optionally the [ntfy](https://ntfy.sh) app on your phone. See [Notifications](notifications.md) for the setup steps.
+You need a Discord server where you can make a webhook, and optionally the [ntfy](https://ntfy.sh) app on your phone. See [Notifications](../notifications.md) for the setup steps.
 
 - [ ] **System**, **Notifications**, **Add channel**: Discord, paste a webhook URL. **Send test** posts an embed in the channel that links back to the panel.
 - [ ] A made-up Discord address (or a deleted webhook) gives a clear error on **Send test**.
@@ -25,14 +25,14 @@ You need a Discord server where you can make a webhook, and optionally the [ntfy
 - [ ] Tick **A player joined** and **A player left**, then join and leave the server. The messages arrive straight away. A player name with underscores shows correctly, nobody gets pinged, and typing "Steve joined the game" in chat sends nothing.
 - [ ] Break a backup on purpose, if you can (for example, a server whose folder you've made unreadable, or a nearly full disk), and check the "backup failed" message, then "Backups are working again" after a good one. A second failure within 30 minutes isn't sent again.
 - [ ] Optional: an ntfy channel (`https://ntfy.sh/<a long random topic>`). **Send test** arrives on your phone, and tapping it opens the panel.
-- [ ] Optional: a JSON webhook to something like [webhook.site](https://webhook.site), with a generated signing secret. The body matches [the docs](notifications.md#json-webhook) and has an `X-Flytower-Signature` header.
+- [ ] Optional: a JSON webhook to something like [webhook.site](https://webhook.site), with a generated signing secret. The body matches [the docs](../notifications.md#json-webhook) and has an `X-Flytower-Signature` header.
 - [ ] **Edit** a channel: change its events or servers without retyping the address. The send button on the list still works.
 - [ ] **Remove** asks for your passkey and the channel stops getting messages.
 - [ ] Point a channel at a broken address (edit it with a deleted webhook URL), stop a server, and see the error shown under the channel on System. Fix it and **Send test** clears the error.
 
 ## 2. Crash detection
 
-You need a test server you don't mind crashing. SSH in (System, **SSH access**) for the first few checks, or use the console tricks below. See [Crashes](crashes.md).
+You need a test server you don't mind crashing. SSH in (System, **SSH access**) for the first few checks, or use the console tricks below. See [Crashes](../crashes.md).
 
 - [ ] Kill the server's Java process: `sudo pkill -KILL -u mc-<name>`. Within a couple of seconds the badge reads **Restarting after a crash**, and the Console tab shows a banner: "Crashed at …", "It was killed by SIGKILL. It will be restarted in a moment."
 - [ ] About 15 seconds later it starts again by itself. The badge goes back to **Running**, the banner stays (now saying it was restarted), and a red dot marks it on the servers list.
@@ -50,7 +50,7 @@ You need a test server you don't mind crashing. SSH in (System, **SSH access**) 
 
 ## Update badges
 
-See [Update badges](updating.md#update-badges). The checks below are easiest on a test server with a few mods pinned to old versions: in its YAML, give a mod an older `version:` (for example `lithium` with a version from a month ago) and apply it.
+See [Update badges](../updating.md#update-badges). The checks below are easiest on a test server with a few mods pinned to old versions: in its YAML, give a mod an older `version:` (for example `lithium` with a version from a month ago) and apply it.
 
 - [ ] Open the panel after installing this build. Within a minute the server with the old mod shows a blue number on its card on **Servers**, and the same number on its **Content** tab. Nothing was installed.
 - [ ] The **Content** tab marks that mod with "… available", and **Update** clears the badge on the card and the tab once applied.
@@ -102,7 +102,7 @@ On a 26.3 server (or any Minecraft version from 1.21.9 on):
 
 ## Disk use
 
-See [Disk space](disk.md). To try the warnings without filling a real disk, use a spare VPS and make a large file over SSH, for example `sudo fallocate -l 20G /var/tmp/filler`, sized to take the disk past 85% and then 95% (**System** shows how full it is). Delete it afterwards with `sudo rm /var/tmp/filler`.
+See [Disk space](../disk.md). To try the warnings without filling a real disk, use a spare VPS and make a large file over SSH, for example `sudo fallocate -l 20G /var/tmp/filler`, sized to take the disk past 85% and then 95% (**System** shows how full it is). Delete it afterwards with `sudo rm /var/tmp/filler`.
 
 - [ ] **System**, **Overview**, **Disk**: the bar shows each server in its own colour, then everything else, then free space. Hovering shows each part's size, and the figures add up to roughly what `df -h /srv` says.
 - [ ] The table lists each server's size and its largest part. **Details** opens its Settings tab and **Backups** its Backups tab.
@@ -119,7 +119,7 @@ See [Disk space](disk.md). To try the warnings without filling a real disk, use 
 
 ## Scheduled tasks
 
-On a test server you can join. See [Scheduled tasks](schedules.md).
+On a test server you can join. See [Scheduled tasks](../schedules.md).
 
 - [ ] **Schedules** (next to **Backups**), **Add task**: a **Restart** every day at a time a few minutes from now, with warnings `2m, 1m, 10s`. The form shows the next three runs, and the list shows it with its next run.
 - [ ] Set the time zone at the bottom to yours (say `Europe/London`), and check the next run still reads as your local time.
