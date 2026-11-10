@@ -113,6 +113,8 @@ describe('making chat safe for Discord', () => {
       { author: { name: 'Steve joined the game', icon_url: 'https://h' }, color: 0x1f7a4f },
     ])
     expect(p.allowed_mentions).toEqual({ parse: [] })
+    // Suppressing embeds would hide the line itself.
+    expect(p.flags).toBeUndefined()
   })
 })
 

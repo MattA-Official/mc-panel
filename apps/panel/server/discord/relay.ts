@@ -94,7 +94,8 @@ export interface Post {
   content?: string
   embeds?: { author: { name: string; icon_url?: string }; color: number }[]
   allowed_mentions: { parse: [] }
-  flags: number
+  /** SUPPRESS_EMBEDS for text messages; never with `embeds`, which it would hide. */
+  flags?: number
 }
 
 /** A queued line with what it needs to be posted. */
@@ -137,7 +138,7 @@ export function chatPost(items: Item[]): Post {
   }
 }
 
-/** Joins and leaves: one short coloured line each with the player's head, up to 10 a message. */
+/** Joins and leaves: one short coloured line each (an embed, so link previews can't be off) with the player's head, up to 10 a message. */
 export function activityPost(items: Item[]): Post {
   return {
     embeds: items.slice(0, 10).map((i) => ({
@@ -148,7 +149,7 @@ export function activityPost(items: Item[]): Post {
       color: i.line.kind === 'joined' ? JOIN_COLOUR : LEAVE_COLOUR,
     })),
     allowed_mentions: { parse: [] },
-    flags: SUPPRESS_EMBEDS,
+    // No SUPPRESS_EMBEDS here: it hides the message's own embeds too, so the line would be blank.
   }
 }
 
