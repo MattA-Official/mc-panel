@@ -1,6 +1,7 @@
 <script setup lang="ts">
-const { productName } = useAppConfig()
-useHead({ titleTemplate: (t) => (t ? `${t} · ${productName}` : productName) })
+const name = useBrandName()
+await callOnce('brand', loadBrand)
+useHead({ titleTemplate: (t) => (t ? `${t} · ${name.value}` : name.value) })
 </script>
 
 <template>

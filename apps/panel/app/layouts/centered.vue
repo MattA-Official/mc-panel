@@ -1,11 +1,18 @@
 <script setup lang="ts">
-const { productName } = useAppConfig()
+import { showPoweredBy } from '#shared/branding'
+
+const productName = useBrandName()
+const brand = useBrand()
 </script>
 
 <template>
   <main class="min-h-dvh flex flex-col items-center justify-center gap-8 p-4">
     <div class="flex items-center gap-3">
-      <img src="/flytower-mark.svg" alt="" class="size-10" />
+      <img
+        :src="brand?.logo ?? '/flytower-mark.svg'"
+        alt=""
+        class="h-10 w-auto max-w-40 object-contain"
+      />
       <span class="font-display text-4xl font-extrabold uppercase tracking-wide">{{
         productName
       }}</span>
@@ -13,5 +20,8 @@ const { productName } = useAppConfig()
     <div class="w-full max-w-md">
       <slot />
     </div>
+    <p v-if="brand && showPoweredBy(brand)" class="text-xs text-dimmed" data-e2e="powered-by">
+      Powered by Flytower
+    </p>
   </main>
 </template>
