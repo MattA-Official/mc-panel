@@ -46,3 +46,7 @@ bun run --filter @flytower/panel dev   # terminal 2, then open http://localhost:
 ```
 
 Roadmap, milestones and issues are tracked on GitHub.
+
+## Licence
+
+Flytower is free software under the [GNU Affero General Public License v3.0](LICENSE). You can use, change and share it. If you run a changed version for other people over a network, you must offer them its source.
