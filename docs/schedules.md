@@ -1,3 +1,11 @@
+---
+section: Running servers
+order: 14
+since: '1.1.0'
+panelRoute:
+  - '/servers/:name/schedules'
+---
+
 # Scheduled tasks
 
 Each server can run things by itself on a schedule: a restart with a countdown in-game, a console command, or an announcement in everyone's chat. For example, restart at 5am every day, warning players 15, 5 and 1 minutes and 10 seconds beforehand.

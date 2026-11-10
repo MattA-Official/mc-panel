@@ -1,3 +1,10 @@
+---
+section: Looking after the machine
+order: 22
+panelRoute:
+  - '/system/updates'
+---
+
 # Updating Flytower
 
 ## From the panel

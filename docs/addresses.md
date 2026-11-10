@@ -1,3 +1,8 @@
+---
+section: Running servers
+order: 12
+---
+
 # Addresses and DNS
 
 By default players connect to your VPS's IP address, with a port for every server after the first. A **hostname** per server lets them type `survival.example.com` instead, with no port.
