@@ -20,7 +20,7 @@ export function auditKind(action: string): AuditKind {
   if (action === 'server.apply' || action === 'server.properties' || action === 'server.icon') {
     return 'content'
   }
-  if (/^(auth|passkey|recovery|setup|ssh|people)\./.test(action)) return 'access'
+  if (/^(auth|passkey|recovery|setup|ssh|people|account)\./.test(action)) return 'access'
   if (/^(update|notify|branding)\./.test(action)) return 'system'
   return 'servers'
 }
@@ -73,6 +73,10 @@ export function describeAudit(
       return 'Signed in with a passkey'
     case 'auth.recovery_code':
       return 'Signed in with a recovery code'
+    case 'account.renamed':
+      return `Changed their name from ${str(d.from)} to ${str(d.to)}`
+    case 'auth.signed_out_everywhere':
+      return 'Signed out everywhere else'
     case 'setup.completed':
       return 'Set up Flytower'
     case 'people.invited':
