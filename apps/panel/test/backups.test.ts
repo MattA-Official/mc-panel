@@ -134,7 +134,7 @@ describe('backups', () => {
         severity: 'critical',
         title: 'A scheduled backup failed',
         detail: expect.stringContaining("didn't confirm the save"),
-        link: '/servers/survival/world',
+        link: '/servers/survival/world#backups',
       }),
     ])
   })

@@ -28,7 +28,7 @@ test('page jumps work anywhere; tab jumps only on a server', () => {
   expect(jumpTarget(jump('g-f'), null)).toBeNull()
   expect(jumpTarget(jump('g-c'), 'survival')).toBe('/servers/survival')
   expect(jumpTarget(jump('g-p'), 'survival')).toBe('/servers/survival/players')
-  expect(jumpTarget(jump('g-b'), 'survival')).toBe('/servers/survival/world')
+  expect(jumpTarget(jump('g-b'), 'survival')).toBe('/servers/survival/world#backups')
   expect(jumpTarget(jump('g-n'), 'survival')).toBe('/servers/survival/content')
   expect(jumpTarget(jump('g-t'), 'survival')).toBe('/servers/survival/settings')
   expect(jumpTarget(jump('g-m'), 'survival')).toBe('/servers/survival/settings/yaml')
