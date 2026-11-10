@@ -2,8 +2,9 @@ import type { Peer } from 'crossws'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { schema } from '../db'
+import { ON_OPEN_AFTER_MS } from '../update-checks'
 
-const Topic = z.string().regex(/^(job:\d+|servers|health|console:[a-z][a-z0-9-]{1,30})$/)
+const Topic = z.string().regex(/^(job:\d+|servers|health|updates|console:[a-z][a-z0-9-]{1,30})$/)
 const ClientMessage = z.discriminatedUnion('type', [
   z.object({ type: z.literal('subscribe'), topic: Topic }),
   z.object({ type: z.literal('unsubscribe'), topic: z.string().max(64) }),
@@ -30,6 +31,12 @@ function attach(topic: string, emit: (data: unknown) => void): () => void {
         .map((r) => r.name),
     )
   }
+  if (topic === 'updates') {
+    // Opening the panel checks again if the last check is over an hour old.
+    const off = useUpdates().watch(emit)
+    useUpdates().maybeCheck(ON_OPEN_AFTER_MS)
+    return off
+  }
   if (topic.startsWith('console:')) {
     const name = topic.slice('console:'.length)
     const exists = useDb()
@@ -47,7 +54,7 @@ function attach(topic: string, emit: (data: unknown) => void): () => void {
 
 /**
  * One authenticated socket per tab. The browser subscribes to topics (`job:<id>`,
- * `servers`, `health`, `console:<name>`) and gets `{ topic, data }` messages back.
+ * `servers`, `health`, `updates`, `console:<name>`) and gets `{ topic, data }` messages back.
  */
 export default defineWebSocketHandler({
   async upgrade(request) {

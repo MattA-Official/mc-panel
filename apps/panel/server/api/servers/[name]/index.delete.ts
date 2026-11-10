@@ -40,6 +40,7 @@ export default defineEventHandler(async (event) => {
   db.delete(schema.servers).where(eq(schema.servers.name, name)).run()
   forgetMetrics(db, name)
   forgetNotifyServer(name)
+  useUpdates().forget(name)
   syncBackupSchedules()
   await useExports().removeAll(name)
   db.insert(schema.audit)
