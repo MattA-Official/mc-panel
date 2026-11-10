@@ -53,7 +53,7 @@ A server with a hostname (and its A record pointing at the VPS, which players ne
 
 Caddy gets a certificate for the hostname the first time someone opens it, after asking the panel that the name belongs to a server whose public page is on, so nobody can make your box request certificates for other names. Turning the page off stops new certificates; the address then shows "Not found".
 
-Installs from before 1.2 need the installer re-run once (with the same `--domain`) to add this to Caddy's configuration. `/s/<name>` on the panel's domain works without it. If you manage Caddy yourself (`--no-caddy`), add this to your Caddyfile:
+Installs from before 1.2 get this added to Caddy's configuration by the system helper the first time it starts after an update, so the hostname starts working on its own. The old file is kept as `/etc/caddy/Caddyfile.before-hostnames`. If it's still not working, check `journalctl -u flytower-agent` for "updating the Caddyfile failed". `/s/<name>` on the panel's domain works either way. If you manage Caddy yourself (`--no-caddy`), Flytower leaves your Caddyfile alone, so add this to it:
 
 ```
 {

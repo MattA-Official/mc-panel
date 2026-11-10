@@ -19,7 +19,7 @@ rm /etc/flytower/agent
 systemctl restart flytower-agent
 ```
 
-The choice survives updates. A release without the Rust agent ignores it and starts the Bun one.
+The choice survives updates, and it covers the updater too: with it on, updates and **Go back to** are run by the Rust updater. A release without the Rust versions ignores it and uses the Bun ones.
 
 ## Checks
 
@@ -32,7 +32,7 @@ With the Rust agent on:
 - [ ] Change a server's memory and port in **Settings**, then restart it. Both take effect.
 - [ ] **System**, **SSH**: open SSH for 5 minutes, check you can connect, then let it close by itself. Restart the agent while it's open and check it still closes on time.
 - [ ] Delete a test server. Its folder is archived under `/var/lib/flytower/archive`.
-- [ ] **System**, **Updates**: update to a newer build, then use **Go back to**. Both work, and the agent stays on Rust afterwards.
+- [ ] **System**, **Updates**: update to a newer build, then use **Go back to**. Both work, the agent stays on Rust afterwards, and `journalctl -u 'flytower-update-*'` shows the updater's result as one JSON line.
 - [ ] Switch back to Bun, and check everything above still works with nothing left over.
 
 If anything goes wrong, switch back to Bun and send `journalctl -u flytower-agent -n 100`.

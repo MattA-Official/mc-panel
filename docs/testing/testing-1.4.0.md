@@ -64,3 +64,18 @@ Click somewhere blank on the page first so no field has focus.
 - [ ] With a dialog or menu open, letters do nothing behind it.
 - [ ] Ctrl + K: on a server, its tab rows show their shortcuts (Backups G B). The palette lists **Keyboard shortcuts**.
 - [ ] **Your account → This browser → Use single-key shortcuts** off: letters, **?**, **/**, **[** and **]** do nothing, but Ctrl + K and Ctrl + S still work. Another browser is unaffected. Turn it back on.
+
+## Console autocomplete
+
+On a running Fabric server, open the **Console**.
+
+- [ ] The first time a console opens for a Minecraft version, vanilla commands appear after 10 to 30 seconds (the panel runs the game's own command report once and keeps it). Until then, and on later visits straight away, commands from `help` complete.
+- [ ] Type `gi`: **give** is suggested, with `give <targets> <item> [<count>]` under the list.
+- [ ] `give ` suggests online players and `@p`, `@r`, `@s`, `@a`. `give <you> dia` suggests diamond items, and a greyed-out ending shows in the box.
+- [ ] **Tab** fills in the highlighted suggestion; Tab again moves to the next, **Shift+Tab** back. **→** takes the greyed-out ending. **Escape** closes the list.
+- [ ] **Up** and **Down** move in the list while it's open, and walk your command history when it's closed. Walking history doesn't open the list.
+- [ ] `effect give @a ` lists effects, `gamemode ` the four game modes, `execute as @a run tp ` completes again after `run`.
+- [ ] A mod command (`spark`, `chunky`) completes by name and shows its usage.
+- [ ] A player who joins shows up in player suggestions without reloading. After a restart with a new mod, its command appears.
+- [ ] On a phone, suggestions are a row of buttons above the box, and tapping one fills it in.
+- [ ] Signed in as a Viewer: no command box and no suggestions.

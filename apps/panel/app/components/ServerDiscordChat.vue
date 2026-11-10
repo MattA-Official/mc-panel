@@ -10,12 +10,16 @@ const relay = computed(() => server.value?.discordRelay)
 const url = ref('')
 const chat = ref(true)
 const joins = ref(true)
+const deaths = ref(true)
+const advancements = ref(true)
 watch(
   relay,
   (r) => {
     if (!r) return
     chat.value = r.chat
     joins.value = r.joins
+    deaths.value = r.deaths
+    advancements.value = r.advancements
   },
   { immediate: true },
 )
@@ -24,7 +28,10 @@ const dirty = computed(
   () =>
     !!url.value.trim() ||
     (!!relay.value?.configured &&
-      (chat.value !== relay.value.chat || joins.value !== relay.value.joins)),
+      (chat.value !== relay.value.chat ||
+        joins.value !== relay.value.joins ||
+        deaths.value !== relay.value.deaths ||
+        advancements.value !== relay.value.advancements)),
 )
 
 const saving = ref(false)
@@ -45,6 +52,8 @@ async function save() {
           ...(url.value.trim() && { url: url.value.trim() }),
           chat: chat.value,
           joins: joins.value,
+          deaths: deaths.value,
+          advancements: advancements.value,
         },
       }),
     )
@@ -108,7 +117,8 @@ const when = (ms: number | null) => (ms ? new Date(ms).toLocaleString() : '')
         <h2 class="font-display text-lg tracking-wide uppercase">Discord chat</h2>
         <p class="mt-1 text-sm text-muted">
           Posts what players say in game to a Discord channel, under their name with their face as
-          the picture, and when they join and leave. Nothing they type can ping anyone.
+          the picture, and when they join, leave, die or make an advancement. Nothing they type can
+          ping anyone.
         </p>
       </div>
       <UBadge
@@ -173,6 +183,18 @@ const when = (ms: number | null) => (ms ? new Date(ms).toLocaleString() : '')
         label="Joins and leaves"
         description="A short line when someone joins or leaves."
         data-e2e="discord-chat-joins"
+      />
+      <USwitch
+        v-model="deaths"
+        label="Deaths"
+        description="Minecraft's own death message, like “was slain by Zombie”."
+        data-e2e="discord-chat-deaths"
+      />
+      <USwitch
+        v-model="advancements"
+        label="Advancements"
+        description="When someone makes an advancement, reaches a goal or completes a challenge."
+        data-e2e="discord-chat-advancements"
       />
     </div>
 
