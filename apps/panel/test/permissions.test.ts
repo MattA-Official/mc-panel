@@ -205,3 +205,19 @@ describe('access from the database', () => {
     expect(loadAccess(db, id)!.servers.survival).toEqual(['server.view'])
   })
 })
+
+test('update findings only name the servers a person can see', async () => {
+  const { visibleUpdates } = await import('../server/utils/access')
+  const snap = {
+    checking: false,
+    lastRunAt: null,
+    flytower: null,
+    java: [],
+    servers: {
+      survival: { content: null, minecraft: null },
+      creative: { content: null, minecraft: null },
+    },
+  }
+  const a = foldGrants([{ permissions: BUILT_IN_ROLES.viewer.permissions, server: 'survival' }])
+  expect(Object.keys(visibleUpdates(snap, a).servers)).toEqual(['survival'])
+})
