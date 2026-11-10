@@ -22,7 +22,6 @@ export interface BoardDef {
   /** Snapshot keys (see STAT_KEYS) added together for the figure. */
   stats: string[]
   unit: StatUnit
-  icon: string
 }
 
 export const BOARDS = [
@@ -31,29 +30,25 @@ export const BOARDS = [
     label: 'Playtime',
     stats: ['play_time'],
     unit: 'time',
-    icon: 'i-lucide-clock',
   },
-  { key: 'deaths', label: 'Deaths', stats: ['deaths'], unit: 'count', icon: 'i-lucide-skull' },
+  { key: 'deaths', label: 'Deaths', stats: ['deaths'], unit: 'count' },
   {
     key: 'mob_kills',
     label: 'Mob kills',
     stats: ['mob_kills'],
     unit: 'count',
-    icon: 'i-lucide-sword',
   },
   {
     key: 'distance',
     label: 'Distance travelled',
     stats: ['walk_cm', 'sprint_cm', 'swim_cm', 'fly_cm', 'boat_cm', 'horse_cm', 'minecart_cm'],
     unit: 'distance',
-    icon: 'i-lucide-footprints',
   },
   {
     key: 'blocks_mined',
     label: 'Blocks mined',
     stats: ['blocks_mined'],
     unit: 'count',
-    icon: 'i-lucide-pickaxe',
   },
 ] as const satisfies readonly BoardDef[]
 

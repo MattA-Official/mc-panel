@@ -5,11 +5,10 @@ import { formatStat, type Board } from '#shared/leaderboards'
 const props = withDefaults(
   defineProps<{
     board: Board
-    icon?: string
     /** The skin URL for a player, for pages that can't use the signed-in skin route. */
     skin?: (uuid: string) => string | undefined
   }>(),
-  { icon: undefined, skin: undefined },
+  { skin: undefined },
 )
 
 const MEDALS = ['text-amber-400', 'text-slate-300', 'text-orange-400']
@@ -23,7 +22,7 @@ const medal = (rank: number) => MEDALS[rank - 1] ?? 'text-muted'
     :aria-label="props.board.label"
   >
     <h3 class="flex items-center gap-2 text-sm font-semibold">
-      <UIcon v-if="props.icon" :name="props.icon" class="size-4 text-muted" />
+      <BoardIcon :board="props.board.key" class="size-4 text-muted" />
       {{ props.board.label }}
     </h3>
     <p v-if="!props.board.entries.length" class="mt-3 text-sm text-muted">Nobody yet.</p>

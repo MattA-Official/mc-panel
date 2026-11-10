@@ -20,7 +20,6 @@ const { data, refresh, status } = await useFetch<StatsOverview>(url, {
   immediate: !!server.value,
 })
 
-const icons = Object.fromEntries(BOARDS.map((b) => [b.key, b.icon]))
 const units = Object.fromEntries(BOARDS.map((b) => [b.key, b.unit]))
 
 const search = ref('')
@@ -138,7 +137,7 @@ const sinceLabel = computed(() =>
         class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
         :class="{ 'opacity-60': status === 'pending' }"
       >
-        <LeaderboardList v-for="b in data.boards" :key="b.key" :board="b" :icon="icons[b.key]" />
+        <LeaderboardList v-for="b in data.boards" :key="b.key" :board="b" />
       </div>
 
       <section class="space-y-3">
@@ -189,10 +188,12 @@ const sinceLabel = computed(() =>
                 </p>
               </div>
             </div>
-            <dl class="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
-              <div v-for="b in BOARDS" :key="b.key" class="flex items-center gap-1.5">
-                <UIcon :name="icons[b.key]!" class="size-3.5 shrink-0 text-muted" />
-                <dt class="sr-only">{{ b.label }}</dt>
+            <dl class="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+              <div v-for="b in BOARDS" :key="b.key" class="min-w-0">
+                <dt class="flex items-center gap-1 truncate text-muted">
+                  <BoardIcon :board="b.key" class="size-3.5 shrink-0" />
+                  {{ b.label }}
+                </dt>
                 <dd class="truncate font-mono tabular-nums">
                   {{ formatStat(units[b.key]!, p.stats[b.key]) }}
                 </dd>
