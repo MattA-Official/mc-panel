@@ -29,6 +29,8 @@ export interface CommandOption {
   required?: boolean
   /** Ask the command for choices as the person types. */
   autocomplete?: boolean
+  /** A fixed list to pick from (up to 25). Not with autocomplete. */
+  choices?: Choice[]
 }
 
 export type OptionValue = string | number | boolean
@@ -111,6 +113,7 @@ export class CommandRegistry {
           description: o.description,
           required: o.required ?? false,
           ...(o.autocomplete && { autocomplete: true }),
+          ...(o.choices?.length && { choices: o.choices.slice(0, 25) }),
         })),
         // Usable in servers and DMs with the app; the app can't do anything private yet.
         contexts: [0, 1],
