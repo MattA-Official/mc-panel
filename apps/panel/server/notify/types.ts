@@ -18,6 +18,8 @@ export interface Message extends NotifyEvent {
   at: Date
   serverDisplayName: string | null
   url: string | null
+  /** Who it's from: the install's name, and its logo's address if Discord can show it. */
+  from?: { name: string; avatarUrl: string | null }
 }
 
 export interface Destination {
