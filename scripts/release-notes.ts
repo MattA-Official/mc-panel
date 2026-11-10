@@ -36,7 +36,9 @@ function parse(raw: string): Commit[] {
     .flatMap((record) => {
       const [hash = '', subjectLine = '', body = ''] = record.split('\x1f')
       if (/^Merge (branch|pull request|remote-tracking)/.test(subjectLine)) return []
-      const issues = [...new Set([...body.matchAll(/(?:Closes|Fixes|Refs) #(\d+)/gi)].map((x) => x[1]!))]
+      const issues = [
+        ...new Set([...body.matchAll(/(?:Closes|Fixes|Refs) #(\d+)/gi)].map((x) => x[1]!)),
+      ]
       const squashed = [...body.matchAll(/^\* (\w+(?:\([^)]+\))?!?: .+)$/gm)].map((x) => x[1]!)
       const lines = squashed.length ? squashed : [subjectLine]
       return lines.map((line) => {
