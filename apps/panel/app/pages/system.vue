@@ -5,7 +5,7 @@ import { systemUpdateCount } from '#shared/updates'
 const updates = useLiveUpdates()
 const { state } = useAuthState()
 const allowed = (p: 'system.manage') => (state.value?.access ? can(state.value.access, p) : false)
-/** System is split into sections, so health, updates, storage, alerts, branding and SSH each get a page. */
+/** System is split into sections, so health, updates, storage, alerts, integrations, branding and SSH each get a page. */
 interface Section {
   label: string
   icon: string
@@ -35,6 +35,7 @@ const systemSections = computed<Section[]>(() => [
   },
   { label: 'Off-site storage', icon: 'i-lucide-cloud', to: '/system/storage' },
   { label: 'Notifications', icon: 'i-lucide-bell', to: '/system/notifications' },
+  { label: 'Integrations', icon: 'i-lucide-blocks', to: '/system/integrations' },
   { label: 'Branding', icon: 'i-lucide-palette', to: '/system/branding' },
   { label: 'SSH', icon: 'i-lucide-terminal-square', to: '/system/ssh' },
 ])
