@@ -70,6 +70,10 @@ https:// {
 }
 ```
 
+## Web map
+
+When the server's [web map](map.md) is on and set so **Anyone can open it**, the page has an **Open the map** button once the map has been drawn. Turning the public page off makes the map private again.
+
 ## How it stays light
 
 Visitors never reach the Minecraft server. Who's online comes from the "joined the game" and "left the game" lines in the server's log, which Flytower already follows for [notifications](notifications.md). When the panel starts, it asks the console once who's already on. Whether the server is up comes from systemd, as everywhere else in the panel.

@@ -27,6 +27,8 @@ export interface PageInput {
   icon: string | null
   /** Whether the server has anything for players to install (Modrinth mods or extras). */
   hasPack: boolean
+  /** Whether the server's web map is on, public and drawn. */
+  hasMap: boolean
   /** `motd` from server.properties. */
   motd: string
   /** `max-players` from server.properties, when it's a number. */
@@ -73,6 +75,7 @@ export function publicStatus(input: PageInput): PublicStatus {
             filename: packFilename(row.displayName),
           }
         : null,
+    map: input.hasMap ? { url: `/s/${encodeURIComponent(row.name)}/map/` } : null,
     leaderboard: showsLeaderboard(page, input.statsEnabled),
     version: page.show.version
       ? { minecraft: row.mcVersion, loader: LOADERS[row.loader] ?? row.loader }

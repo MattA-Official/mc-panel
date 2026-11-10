@@ -25,6 +25,7 @@ Each server's **Settings** tab has a **Disk use** card that splits the server in
 | World exports            | Zips made with **World**, **Export world**                                                      |
 | Logs and crash reports   | `logs` and `crash-reports`                                                                      |
 | Mods, plugins and config | `mods`, `plugins` and `config`                                                                  |
+| Web map                  | The server's [web map](map.md), kept in `/var/lib/flytower/maps/servers/<name>`                 |
 | Other                    | Everything else, such as the server jar and its libraries                                       |
 
 Sizes are what files really take up on the disk. Symbolic links aren't followed, and a file linked twice is counted once.

@@ -158,6 +158,21 @@ const playersLine = computed(() => {
       />
     </section>
 
+    <section v-if="data.map" class="rounded-lg border border-default p-5" data-e2e="status-map">
+      <h2 class="font-semibold">Map</h2>
+      <p class="mt-1 text-sm text-muted">
+        A map of the world, drawn as people explore, showing where everyone is right now.
+      </p>
+      <UButton
+        class="mt-3"
+        :href="data.map.url"
+        external
+        icon="i-lucide-map"
+        label="Open the map"
+        data-e2e="status-map-open"
+      />
+    </section>
+
     <section
       v-if="data.players && playersLine"
       class="rounded-lg border border-default p-5"

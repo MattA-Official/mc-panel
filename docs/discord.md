@@ -28,12 +28,12 @@ Last, press **Add to a Discord server** and pick the server. The app only needs 
 
 ## Commands
 
-| Command                                 | Answers                                                                                                           |
-| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `/status [server]`                      | Whether the server is online, starting or offline, its address, how many are on, and its version.                 |
-| `/players [server]`                     | Who's on right now.                                                                                               |
-| `/leaderboard [stat] [period] [server]` | The top players for playtime, deaths, mob kills, distance or blocks mined, for all time, this month or this week. |
-| `/stats <player> [server]`              | One player's figures for all time, and what they added this week.                                                 |
+| Command                                 | Answers                                                                                                                                               |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/status [server]`                      | Whether the server is online, starting or offline, its address, how many are on, its version, and a link to its [web map](map.md) when that's public. |
+| `/players [server]`                     | Who's on right now.                                                                                                                                   |
+| `/leaderboard [stat] [period] [server]` | The top players for playtime, deaths, mob kills, distance or blocks mined, for all time, this month or this week.                                     |
+| `/stats <player> [server]`              | One player's figures for all time, and what they added this week.                                                                                     |
 
 ### Staff commands
 
