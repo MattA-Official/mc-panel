@@ -19,7 +19,8 @@ const updates = useLiveUpdates()
 const can = useCan()
 const systemUpdates = computed(() => (can('system.manage') ? systemUpdateCount(updates.value) : 0))
 
-// The person's saved appearance follows them to every device.
+// The person's saved appearance follows them to every device, and any change here
+// (the sidebar button or Appearance on Your account) is saved for them.
 const colorMode = useColorMode()
 watch(
   () => state.value?.theme,
@@ -28,11 +29,16 @@ watch(
   },
   { immediate: true },
 )
-async function toggleTheme() {
-  const theme = colorMode.value === 'dark' ? 'light' : 'dark'
-  colorMode.preference = theme
-  await $fetch('/api/account', { method: 'PATCH', body: { theme } }).catch(() => {})
-  await refresh()
+watch(
+  () => colorMode.preference,
+  async (theme) => {
+    if (!state.value?.user || theme === state.value.theme) return
+    await $fetch('/api/account', { method: 'PATCH', body: { theme } }).catch(() => {})
+    await refresh()
+  },
+)
+function toggleTheme() {
+  colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark'
 }
 
 // A change to what this person can do shows when they come back to the tab.
@@ -46,7 +52,7 @@ onMounted(() => document.addEventListener('visibilitychange', onVisible))
 onBeforeUnmount(() => document.removeEventListener('visibilitychange', onVisible))
 const items = computed<NavigationMenuItem[]>(() => [
   { label: 'Servers', icon: 'i-lucide-server', to: '/' },
-  ...(can('people.manage') ? [{ label: 'People', icon: 'i-lucide-users', to: '/people' }] : []),
+  ...(can('people.manage') ? [{ label: 'Access', icon: 'i-lucide-users', to: '/access' }] : []),
   { label: 'Activity', icon: 'i-lucide-history', to: '/activity' },
   {
     label: 'System',
