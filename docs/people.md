@@ -59,3 +59,9 @@ On **Access**, **People**, choose the pencil to change someone's roles, or the r
 The last Owner can't be removed or given a smaller role. Make someone else an Owner first.
 
 Everything here is recorded under **Activity**, in **Sign-ins and access**.
+
+## One server's access
+
+A server's **Settings** has an **Access** section for people who manage people, or who have **Manage who has access** on that server. It lists everyone who can reach the server: roles they have on it, and roles they have on all servers (those are changed on **Access**). From there you can change someone's roles on this server, add someone who isn't on it yet, and make or cancel invite links for it.
+
+**Manage who has access** suits someone who runs one server, like an event server, and brings in their own helpers. They can only give roles they could have on that server themselves, and can't touch other servers or anyone's roles for all servers. Admin doesn't include it; give it with a custom role. Changes are in the server's **Activity**.
