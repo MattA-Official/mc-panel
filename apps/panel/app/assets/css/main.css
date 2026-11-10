@@ -87,3 +87,11 @@
 .tabular {
   font-variant-numeric: tabular-nums;
 }
+
+/* A disabled button reads as unavailable, not as a dimmer brand colour that still looks
+   clickable. Loading buttons are disabled too, but keep their colour while they spin. */
+button[data-slot='base']:disabled:not(:has(.animate-spin)),
+a[data-slot='base'][aria-disabled='true'] {
+  filter: grayscale(1);
+  opacity: 0.45;
+}

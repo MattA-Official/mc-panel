@@ -69,7 +69,7 @@ async function review() {
 
 <template>
   <section v-if="server" class="rounded-lg border border-default p-5">
-    <h2 class="font-display text-lg tracking-wide uppercase">Version</h2>
+    <h2 class="text-base font-semibold">Version</h2>
     <p class="mt-1 text-sm text-muted">
       Upgrading takes a backup first. The world is upgraded when the server starts, and can only go
       back by restoring that backup.

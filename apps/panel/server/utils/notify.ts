@@ -100,10 +100,10 @@ export async function checkUpdatesForNotify() {
             ? `Flytower ${newer.version}${newer.prerelease ? ' (beta)' : ''} is out`
             : 'Flytower is up to date',
           detail: newer
-            ? `You're on ${current}. Update from System, Flytower, which takes a minute and keeps your servers running.`
+            ? `You're on ${current}. Update from System, Updates, which takes a minute and keeps your servers running.`
             : undefined,
           severity: 'info',
-          link: '/system',
+          link: '/system/updates',
         },
         newer?.version ?? '',
       )

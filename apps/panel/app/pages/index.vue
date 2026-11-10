@@ -33,12 +33,12 @@ const statusOf = (s: Server) => live.value[s.name] ?? s.status
       />
       <template v-else>
         <MemoryBudget class="mb-6 max-w-md" />
-        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <NuxtLink
             v-for="s in servers"
             :key="s.name"
             :to="`/servers/${s.name}`"
-            class="group rounded-lg border border-default bg-elevated/40 p-4 transition-colors hover:border-primary/60"
+            class="group min-w-0 rounded-lg border border-default bg-elevated/40 p-4 transition-colors hover:border-primary/60"
           >
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">

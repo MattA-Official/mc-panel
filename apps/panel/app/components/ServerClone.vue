@@ -64,7 +64,7 @@ async function clone() {
   <section v-if="server" class="rounded-lg border border-default p-5">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <h2 class="font-display text-lg tracking-wide uppercase">Clone</h2>
+        <h2 class="text-base font-semibold">Clone</h2>
         <p class="mt-1 max-w-lg text-sm text-muted">
           A new server with the same mods, datapacks and settings, and a copy of the world if you
           like. Handy for trying something out without touching this one. It's fine while this
@@ -94,10 +94,14 @@ async function clone() {
           @finished="finished = $event"
         />
         <div v-else class="space-y-4">
-          <UFormField label="Display name">
+          <UFormField label="Name" description="What players and you will call it.">
             <UInput v-model="form.displayName" class="w-full" />
           </UFormField>
-          <UFormField label="Folder name" :error="nameError">
+          <UFormField
+            label="Short name"
+            description="Used for the folder and system user."
+            :error="nameError"
+          >
             <UInput v-model="form.name" class="w-full font-mono" data-e2e="clone-name" />
           </UFormField>
           <UFormField

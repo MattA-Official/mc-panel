@@ -114,12 +114,11 @@ async function install(version: string, rollback = false) {
   }
 }
 
-const when = (at: string) =>
-  new Date(at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+const when = (at: string) => formatDateTime(at)
 </script>
 
 <template>
-  <UCard v-if="data" class="max-w-xl" data-e2e="updates">
+  <UCard v-if="data" data-e2e="updates">
     <div class="space-y-4 text-sm">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
@@ -146,6 +145,7 @@ const when = (at: string) =>
         legend="Update channel"
         orientation="horizontal"
         variant="card"
+        :ui="{ fieldset: 'grid gap-2 sm:auto-cols-fr sm:grid-flow-col', item: 'w-full' }"
         :disabled="savingChannel || !!working"
         data-e2e="update-channel"
         @update:model-value="(v) => setChannel(v as Status['channel'])"
@@ -171,9 +171,7 @@ const when = (at: string) =>
             @click="install(data.latest.version)"
           />
         </div>
-        <pre class="max-h-48 overflow-auto whitespace-pre-wrap text-xs text-muted">{{
-          data.latest.notes
-        }}</pre>
+        <MarkdownNotes :source="data.latest.notes" class="max-h-64 overflow-auto" />
         <p v-if="data.latest.prerelease" class="text-xs text-warning">
           This is a beta, for trying new features before they're released. Take a backup of anything
           you care about first; you can go back afterwards.

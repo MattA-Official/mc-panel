@@ -47,8 +47,7 @@ function size(n: number) {
   if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)} MB`
   return `${(n / 1024 ** 3).toFixed(2)} GB`
 }
-const when = (ms: number) =>
-  new Date(ms).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+const when = (ms: number) => formatDateTime(ms)
 const icon = (e: Entry) =>
   e.type === 'dir'
     ? 'i-lucide-folder'
@@ -246,10 +245,9 @@ function onDrop(e: DragEvent) {
         icon="i-lucide-folder-plus"
         color="neutral"
         variant="outline"
-        size="sm"
         @click="newFolder = ''"
       />
-      <UButton label="Upload" icon="i-lucide-upload" size="sm" @click="fileInput?.click()" />
+      <UButton label="Upload" icon="i-lucide-upload" @click="fileInput?.click()" />
       <input
         ref="fileInput"
         type="file"

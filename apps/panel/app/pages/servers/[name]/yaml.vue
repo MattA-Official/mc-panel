@@ -140,7 +140,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div v-if="server" class="mx-auto w-full max-w-4xl space-y-4">
+  <div v-if="server" class="mx-auto w-full max-w-5xl space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <p class="text-sm text-muted">
         The whole server as one document. Edit it, review what would change, then apply.
@@ -157,7 +157,6 @@ onMounted(() => {
           icon="i-lucide-refresh-cw"
           color="neutral"
           variant="outline"
-          size="sm"
           :ui="{ label: 'sr-only sm:not-sr-only' }"
           :loading="planning"
           :disabled="dirty"
@@ -168,7 +167,6 @@ onMounted(() => {
           icon="i-lucide-download"
           color="neutral"
           variant="outline"
-          size="sm"
           :ui="{ label: 'sr-only sm:not-sr-only' }"
           @click="download"
         />
