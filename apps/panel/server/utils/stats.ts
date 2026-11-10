@@ -6,6 +6,8 @@ import { parseList } from '../players'
 import { schema } from '../db'
 import { eq } from 'drizzle-orm'
 import { readStatsSettings, type StatsSettings } from '../../shared/stats-settings'
+import type { Period, StatsOverview } from '../../shared/leaderboards'
+import { buildBoards, buildCards, periodStart } from '../stats/leaderboards'
 
 /** A server's player stats settings, with defaults filled in. */
 export function statsSettings(server: string): StatsSettings {
@@ -152,5 +154,60 @@ export async function takeStatsSnapshots() {
     } catch (err) {
       console.error(`[flytower] stats snapshot for ${name} failed`, err)
     }
+  }
+}
+
+/** A server's time zone, UTC when it isn't set. */
+function serverTimezone(server: string): string {
+  return (
+    useDb()
+      .select({ tz: schema.servers.timezone })
+      .from(schema.servers)
+      .where(eq(schema.servers.name, server))
+      .get()?.tz ?? 'UTC'
+  )
+}
+
+/** Names by UUID from usercache.json, for players with stats but no sessions. */
+async function userCacheNames(server: string): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  const cache = await readUserCache(server).catch(() => null)
+  if (!Array.isArray(cache)) return out
+  for (const e of cache as { name?: unknown; uuid?: unknown }[]) {
+    if (typeof e?.name === 'string' && typeof e.uuid === 'string')
+      out.set(e.uuid.toLowerCase(), e.name)
+  }
+  return out
+}
+
+/**
+ * The leaderboards and player cards for a period. Left-out players never appear, whatever
+ * is in the tables.
+ */
+export async function statsOverview(
+  server: string,
+  period: Period,
+  opts: { limit?: number; cards?: boolean } = {},
+): Promise<StatsOverview> {
+  const settings = statsSettings(server)
+  const leftOut = new Set(settings.leaveOut.map((p) => p.uuid))
+  const since = periodStart(period, serverTimezone(server), Date.now())
+  const snap = useStatsSnapshot()
+  const totals = snap.totals(server, since)
+  await useSessions().idle()
+  const sessions = useSessions().summary(server)
+  const fromSessions = new Map(sessions.map((s) => [s.uuid, s.name]))
+  const fromCache = await userCacheNames(server)
+  const nameOf = (uuid: string) => {
+    const n = fromSessions.get(uuid)
+    return n && n !== uuid ? n : (fromCache.get(uuid) ?? uuid)
+  }
+  return {
+    enabled: settings.enabled,
+    period,
+    since: since ?? null,
+    updatedAt: snap.lastTaken(server),
+    boards: buildBoards(totals, nameOf, leftOut, opts.limit ?? 10),
+    players: opts.cards === false ? [] : buildCards(totals, sessions, nameOf, leftOut),
   }
 }

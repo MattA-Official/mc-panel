@@ -235,6 +235,17 @@ export class StatsSnapshot {
       })
   }
 
+  /** When the newest snapshot on a server was read, or null before the first one. */
+  lastTaken(server: string): number | null {
+    const p = schema.playerStats
+    const row = this.deps.db
+      .select({ at: sql<number | null>`max(${p.takenAt})` })
+      .from(p)
+      .where(eq(p.server, server))
+      .get()
+    return row?.at != null ? Number(row.at) : null
+  }
+
   /** Deletes a player's rows (left out of stats) or a whole server's (deleted). */
   forget(server: string, uuid?: string) {
     const p = schema.playerStats
