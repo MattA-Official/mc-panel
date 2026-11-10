@@ -49,6 +49,18 @@ Players connect to your VPS's address, with `:port` if it isn't 25565. To give e
 | Settings    | Name, `server.properties`, memory, port, address, Minecraft version and loader, cloning, and deleting the server. |
 | YAML        | The whole server as one [spec](spec.md), to edit or download.                                                     |
 
+## Typing commands in the console
+
+The console suggests as you type: command names first, then what comes next, such as online players and `@a`/`@p` for a player, item and block ids for `give` and `setblock`, effects, sounds, game modes and coordinates. A line under the suggestions shows the command's shape, like `give <targets> <item> [<count>]`.
+
+- **Tab** fills in the highlighted suggestion; press it again to go through the others, and **Shift+Tab** to go back. Type a space to move on to the next part.
+- **Up** and **Down** move through the suggestions while they're open, and through your earlier commands when they're not. **Escape** closes them, and **→** at the end of the line takes the greyed-out suggestion.
+- On a phone, suggestions are a row of buttons above the box.
+
+Flytower gets the vanilla commands from the game itself: the first time a console opens for a Minecraft version, it downloads that version's server from Mojang and runs its built-in command report (in the background, at low priority, with the Java the server already uses), then keeps the result. Until that's done, and if it can't be done, you still get the commands from the server's `help`. Mods' and plugins' commands come from `help` too, so they complete by name and show their usage; their arguments don't. They're read again each time the server starts.
+
+Only people who can send commands get suggestions.
+
 ## How it looks in the server list
 
 **Settings**, **Game settings** has the server's entry in Minecraft's multiplayer list.
