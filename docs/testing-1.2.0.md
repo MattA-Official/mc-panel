@@ -111,7 +111,7 @@ On a running server, ideally one you can join with a real account and a friend's
 
 ### Modpack for players
 
-On a Fabric server with a few Modrinth mods (Fabric API, Lithium, and something server-only such as Chunky), with the public page on.
+On a Fabric server with a few Modrinth mods (Fabric API, Lithium, and ideally one Modrinth marks as server-only), with the public page on.
 
 - [ ] **Settings**, **Public page**: **What players get** lists the server's mods that run on players' computers. **Left out** names any server-only mod or non-Modrinth file, with why.
 - [ ] Add `iris` and `complementary-reimagined` as extras and save. The list gains Iris, the shader pack and Sodium "(needed by Iris)".
