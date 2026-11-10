@@ -58,6 +58,11 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: package.json
+      - name: Rust toolchain (pinned in crates/rust-toolchain.toml)
+        run: cd crates && rustup toolchain install && rustc --version
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
 
       - run: bun install --frozen-lockfile
       - run: bun run lint
