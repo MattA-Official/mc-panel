@@ -1,4 +1,5 @@
 /** Turning audit rows into sentences, and grouping their actions for filtering. */
+import { humanBytes } from './format'
 
 export const AUDIT_KINDS = {
   servers: 'Servers',
@@ -21,7 +22,7 @@ export function auditKind(action: string): AuditKind {
     return 'content'
   }
   if (/^(auth|passkey|recovery|setup|ssh|people|account)\./.test(action)) return 'access'
-  if (/^(update|notify|branding|discord)\./.test(action)) return 'system'
+  if (/^(update|notify|branding|discord|disk)\./.test(action)) return 'system'
   return 'servers'
 }
 
@@ -115,6 +116,13 @@ export function describeAudit(
       return `Opened SSH${d.minutes ? ` for ${str(d.minutes)} minutes` : ''}`
     case 'ssh.close':
       return 'Closed SSH'
+    case 'disk.clean': {
+      const n = typeof d.freedBytes === 'number' ? d.freedBytes : null
+      const freed = n === null ? '' : n > 0 ? `, freeing ${humanBytes(n)}` : ', which freed nothing'
+      if (d.action === 'journal') return `Shrank the system journal to ${str(d.maxMb)} MB${freed}`
+      if (d.action === 'apt') return `Cleared the package cache${freed}`
+      return `Removed old Flytower versions${freed}`
+    }
     case 'update.install':
       return `Updated Flytower to ${str(d.version)}`
     case 'update.rollback':

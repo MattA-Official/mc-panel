@@ -43,6 +43,9 @@ const replies: Record<string, (args: string) => string> = {
   'save-on': () => 'Automatic saving is now enabled',
   'save-all': () => 'Saving the game (this may take a moment!)\nSaved the game',
   say: () => '',
+  // No feedback, like the real thing, unless nobody matches.
+  tellraw: (a) =>
+    a.startsWith('@') || online.includes(a.split(' ')[0] ?? '') ? '' : 'No player was found',
   // Like the real thing: one usage per command, joined with no line breaks. spark and chunky
   // stand in for mods' commands.
   help: () =>

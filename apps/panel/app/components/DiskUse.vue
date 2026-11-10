@@ -1,9 +1,18 @@
 <script setup lang="ts">
 /**
- * Where the disk has gone: one bar split by server, then the rest of the system, then free
- * space, and a table of each server's share. Figures come from the background walk.
+ * Where the disk has gone: one bar split by server, then the rest of the machine in parts,
+ * then free space, and a table of each server's share and each part. Figures come from the
+ * background walk. Parts that can be cleaned up have a button for it.
  */
-import { DISK_GROUPS, DISK_URGENT, DISK_WARN } from '~~/shared/disk'
+import {
+  CLEAN_UPS,
+  DISK_GROUPS,
+  DISK_URGENT,
+  DISK_WARN,
+  SYSTEM_PARTS,
+  type CleanUp,
+  type SystemPart,
+} from '~~/shared/disk'
 
 const { data, refresh } = useDiskStatus()
 const toast = useToast()
@@ -51,16 +60,74 @@ const segments = computed<Segment[]>(() => {
       swatch: 'disk-shared',
     })
   }
+  for (const p of parts.value) {
+    if (p.key === 'os') continue
+    out.push({ key: `+${p.key}`, label: p.label, bytes: p.bytes, swatch: p.swatch })
+  }
   const counted = out.reduce((a, s) => a + s.bytes, 0)
-  const system = Math.max(0, d.usedMb * MB - counted)
   out.push({
     key: '+system',
-    label: 'System and other files',
-    bytes: system,
+    label: d.system ? 'Operating system and everything else' : 'System and other files',
+    bytes: Math.max(0, d.usedMb * MB - counted),
     swatch: 'disk-system',
   })
   return out
 })
+
+interface Part {
+  key: SystemPart | 'os'
+  label: string
+  bytes: number
+  swatch: string
+  cleanUp: CleanUp | null
+}
+
+/** The rest of the machine, in parts, when the agent could measure it. */
+const parts = computed<Part[]>(() => {
+  const d = data.value
+  if (!d?.system) return []
+  const keys = Object.keys(SYSTEM_PARTS) as SystemPart[]
+  const out: Part[] = keys.map((key, i) => ({
+    key,
+    label: SYSTEM_PARTS[key],
+    bytes: d.system![key],
+    swatch: `disk-n${i + 1}`,
+    cleanUp:
+      (Object.entries(CLEAN_UPS) as [CleanUp, { part: SystemPart }][]).find(
+        ([, c]) => c.part === key,
+      )?.[0] ?? null,
+  }))
+  if (d.usedMb != null) {
+    const servers = (d.servers ?? []).reduce((a, s) => a + s.bytes, 0)
+    const shared = (d.shared?.imports ?? 0) + (d.shared?.archive ?? 0)
+    const known = out.reduce((a, p) => a + p.bytes, 0)
+    out.push({
+      key: 'os',
+      label: 'Operating system and everything else',
+      bytes: Math.max(0, d.usedMb * MB - servers - shared - known),
+      swatch: 'disk-system',
+      cleanUp: null,
+    })
+  }
+  return out
+})
+
+/** What a part's clean-up would free, to show beside its button. */
+const freeable = (c: CleanUp) => {
+  const s = data.value?.system
+  if (!s) return 0
+  return c === 'journal' ? s.journal : c === 'apt' ? s.aptCache : s.oldReleases
+}
+
+const cleaning = ref<CleanUp | null>(null)
+const cleanOpen = computed({
+  get: () => cleaning.value !== null,
+  set: (v) => {
+    if (!v) cleaning.value = null
+  },
+})
+const can = useCan()
+const canManage = computed(() => can('system.manage'))
 
 const totalBytes = computed(() => (data.value?.totalMb ?? 0) * MB)
 const width = (bytes: number) =>
@@ -84,6 +151,12 @@ const largest = (groups: Record<keyof typeof DISK_GROUPS, number>) => {
     .filter(([, n]) => n > 0)
     .sort((a, b) => b[1] - a[1])
   return g ? `${DISK_GROUPS[g[0]]}, ${humanBytes(g[1])}` : '—'
+}
+
+/** The panel re-measures after a clean-up; reload once that's had a moment. */
+async function refreshAfterCleanUp() {
+  await refresh()
+  setTimeout(() => void refresh(), 3000)
 }
 
 const measuring = ref(false)
@@ -205,7 +278,44 @@ async function measureNow() {
               Uploads waiting to be imported, and deleted servers kept so they can be restored
             </td>
           </tr>
-          <tr v-if="!servers.length">
+          <tr v-if="parts.length">
+            <th colspan="4" class="pt-4 pb-1.5 text-left text-xs font-medium text-muted">
+              The rest of the machine
+            </th>
+          </tr>
+          <tr v-for="p in parts" :key="p.key" data-e2e="disk-part">
+            <td class="py-1.5 pe-4">
+              <span class="flex items-center gap-1.5">
+                <span :class="['size-2.5 shrink-0 rounded-sm', p.swatch]" />
+                {{ p.label }}
+              </span>
+            </td>
+            <td class="py-1.5 pe-4 text-right whitespace-nowrap tabular-nums">
+              {{ humanBytes(p.bytes) }}
+            </td>
+            <td class="hidden py-1.5 pe-4 text-muted sm:table-cell">
+              <template v-if="p.cleanUp && freeable(p.cleanUp) > 0">
+                {{
+                  p.cleanUp === 'journal'
+                    ? `The journal uses ${humanBytes(freeable(p.cleanUp))}`
+                    : `${humanBytes(freeable(p.cleanUp))} can be freed`
+                }}
+              </template>
+            </td>
+            <td class="py-1.5 text-right whitespace-nowrap">
+              <UButton
+                v-if="p.cleanUp && canManage"
+                label="Clean up"
+                icon="i-lucide-brush-cleaning"
+                size="xs"
+                color="neutral"
+                variant="ghost"
+                :data-e2e="`clean-up-${p.cleanUp}`"
+                @click="cleaning = p.cleanUp"
+              />
+            </td>
+          </tr>
+          <tr v-if="!servers.length && !parts.length">
             <td colspan="4" class="py-3 text-center text-muted">
               {{ data.measuring ? 'Measuring…' : 'No servers measured yet.' }}
             </td>
@@ -232,6 +342,14 @@ async function measureNow() {
         @click="measureNow"
       />
     </div>
+
+    <DiskCleanUp
+      v-if="cleaning && data.system"
+      v-model:open="cleanOpen"
+      :action="cleaning"
+      :system="data.system"
+      @done="refreshAfterCleanUp"
+    />
   </div>
 </template>
 
@@ -263,6 +381,19 @@ async function measureNow() {
 }
 .disk-system {
   background: var(--ui-text-muted);
+}
+/* The rest of the machine: neutral steps, so servers keep the colours. */
+.disk-n1 {
+  background: color-mix(in oklab, var(--ui-text-muted) 82%, transparent);
+}
+.disk-n2 {
+  background: color-mix(in oklab, var(--ui-text-muted) 64%, transparent);
+}
+.disk-n3 {
+  background: color-mix(in oklab, var(--ui-text-muted) 48%, transparent);
+}
+.disk-n4 {
+  background: color-mix(in oklab, var(--ui-text-muted) 34%, transparent);
 }
 .dark .disk-s1 {
   background: #3987e5;

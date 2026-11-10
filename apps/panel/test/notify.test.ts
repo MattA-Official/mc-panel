@@ -294,6 +294,21 @@ describe('sending', () => {
     ])
   })
 
+  it('carries over a disk warning sent before it was kept per machine', async () => {
+    const { svc, calls } = setup()
+    await channel(svc)
+    const old = svc as unknown as {
+      setState: (key: string, v: { sentAt: Date; open: boolean; value: string }) => void
+    }
+    old.setState('disk.full:*', { sentAt: new Date(), open: true, value: '85' })
+    svc.disk(88, 100)
+    await svc.idle()
+    expect(calls).toHaveLength(0)
+    svc.disk(96, 100)
+    await svc.idle()
+    expect(calls).toHaveLength(1)
+  })
+
   it('offers each update once', async () => {
     const { svc, calls } = setup()
     await channel(svc)

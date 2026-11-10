@@ -22,6 +22,20 @@ describe('audit', () => {
     expect(describeAudit('something.new', 's', null)).toBe('something.new on s')
   })
 
+  it('describes clean ups with what they freed', () => {
+    const MB = 1024 * 1024
+    expect(
+      describeAudit('disk.clean', null, { action: 'journal', maxMb: 200, freedBytes: 300 * MB }),
+    ).toBe('Shrank the system journal to 200 MB, freeing 300.0 MB')
+    expect(describeAudit('disk.clean', null, { action: 'apt', freedBytes: 0 })).toBe(
+      'Cleared the package cache, which freed nothing',
+    )
+    expect(
+      describeAudit('disk.clean', null, { action: 'releases', freedBytes: 2 * 1024 * MB }),
+    ).toBe('Removed old Flytower versions, freeing 2.00 GB')
+    expect(auditKind('disk.clean')).toBe('system')
+  })
+
   it('groups actions into kinds', () => {
     expect(auditKind('server.apply')).toBe('content')
     expect(auditKind('ssh.open')).toBe('access')

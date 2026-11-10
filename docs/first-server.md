@@ -67,6 +67,10 @@ Flytower gets the vanilla commands from the game itself: the first time a consol
 
 Only people who can send commands get suggestions.
 
+### Talking to players
+
+`say`, `me` and `msg` (or `tell` and `w`) from the console show under your name rather than the game's "Rcon": `say hello` shows `[Server] Your name: hello` to everyone, with the tag in your [brand colour](branding.md), and `msg Steve hi` reaches only Steve as "[Server] Your name whispers to you: hi". The message is plain text, so formatting codes are taken out and `@p` in it isn't swapped for a name. A scheduled command task shows as `[Server]` alone. If the server posts game chat to Discord, `say` and `me` go there too, under `[Server] Your name`; whispers don't.
+
 ## How it looks in the server list
 
 **Settings**, **General**, **Game settings** has the server's entry in Minecraft's multiplayer list.

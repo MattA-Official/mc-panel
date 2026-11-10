@@ -24,6 +24,9 @@ export function useDiskUsage(): DiskUsage {
     levelName: async (name) => (await readProperties(name))['level-name'] ?? null,
     load: () => getSetting(useDb(), 'disk.usage') ?? null,
     save: (report) => setSetting(useDb(), 'disk.usage', report),
+    // A big world can take a while to walk, even in Rust.
+    agent: (servers, system) =>
+      agent('disk.usage', { servers, system }, { timeoutMs: 10 * 60_000 }),
   })
   return usage
 }
