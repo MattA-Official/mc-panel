@@ -26,13 +26,14 @@ exactly how that works, so you always know when money is involved.
 
 - **An "Advertise here" placeholder.** At launch there is no advertising network and no paid advert.
   The advertising position shows a placeholder that links to information for advertisers.
-- **Referral links** to some hosting providers, labelled as described below.
+- **No referral links yet.** When pages that suggest hosting providers are added, some of their links
+  will be referral links, labelled as described below.
 - **Sponsor recognition**, in sections labelled as sponsors. See the
   [Sponsorship and donations terms](/legal/sponsorship).
 
 ## Referral links
 
-Some links to hosting providers, such as virtual private server (VPS) companies, are referral links,
+Some links to hosting providers, such as virtual private server (VPS) companies, may be referral links,
 also known as affiliate links. If you sign up after following one, Matt may receive a commission or
 account credit from the provider. It costs you nothing extra, and some referral links give you a
 discount or free credit as well.

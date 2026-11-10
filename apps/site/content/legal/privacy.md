@@ -42,11 +42,11 @@ Flytower and have a question about your data, ask whoever runs that server. See
 
 ### When you visit the website
 
-| Data                                                                                               | Why we use it                                                           | Lawful basis                                             |
-| -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------- |
-| IP address, browser and device details, the page requested, and the date and time                  | To deliver the site to you, keep it secure, and block abuse and attacks | Legitimate interests (running a secure, reliable site)   |
-| Aggregate analytics: page viewed, referring site, browser and device type, country, and page speed | To understand which pages are read and how well the site performs       | Legitimate interests (improving the site and its docs)   |
-| Your light or dark theme choice, kept in your own browser                                          | To show the site the way you chose                                      | Not sent to us. It is a preference you asked us to keep. |
+| Data                                                                                               | Why we use it                                                           | Lawful basis                                               |
+| -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------- |
+| IP address, browser and device details, the page requested, and the date and time                  | To deliver the site to you, keep it secure, and block abuse and attacks | Legitimate interests (running a secure, reliable site)     |
+| Aggregate analytics: page viewed, referring site, browser and device type, country, and page speed | To understand which pages are read and how well the site performs       | Legitimate interests (improving the site and its docs)     |
+| Your theme choice and any analytics opt-out, kept in your own browser                              | To show the site the way you chose and respect your opt-out             | Not sent to us. They are preferences you asked us to keep. |
 
 The website is hosted on Cloudflare. Every request passes through Cloudflare's network, which processes
 your IP address and request details on our behalf in order to serve the page and protect the site. We
@@ -56,17 +56,27 @@ Analytics are provided by Cloudflare Web Analytics. It does not use cookies, doe
 your device, and does not fingerprint you or follow you across other websites. We only see totals, such
 as how many people read a page. We cannot see what any one visitor did.
 
-**Opting out of analytics.** You can object to analytics at any time and it will not affect how the
-site works for you. **[TODO: the website needs an analytics switch on this page, and should honour the
-Global Privacy Control signal. Describe the switch here once it exists.]**
+**Opting out of analytics.** You can object to analytics at any time, and it will not affect how the
+site works for you. Use this switch:
+
+::analytics-opt-out
+::
+
+Your choice is remembered in your browser. If your browser sends a
+[Global Privacy Control](https://globalprivacycontrol.org/) signal, analytics are switched off for you
+automatically and the analytics script is never loaded.
 
 ### Cookies and similar technologies
 
 The website sets no cookies, so there is no cookie banner.
 
-The only thing it stores on your device is your theme choice (light, dark or system), which is kept in
-your browser's local storage so the site looks the same on your next visit. It is never sent to us. You
-can remove it by clearing site data in your browser.
+It stores two small preferences in your browser's local storage, and only if you set them:
+
+- your theme choice (light, dark or system), so the site looks the same on your next visit;
+- your choice to opt out of analytics, so that the opt-out is remembered.
+
+Neither is sent to us, and neither is used to identify or track you. You can remove them by clearing
+site data in your browser. If you clear the analytics opt-out, you will need to set it again.
 
 If you follow a link to another service, such as GitHub, Ko-fi, Discord or a hosting provider, that
 service may set its own cookies under its own policy.
@@ -120,7 +130,7 @@ from your configuration.
 
 ### Referral links
 
-Some links to hosting providers are referral links. They are always labelled. If you follow one, the
+Some links to hosting providers may be referral links. They are always labelled. If you follow one, the
 provider learns that you came from Flytower, and may set its own cookies on its own site. If you sign
 up, we may receive a commission or account credit. Providers tell us that a referral happened and what
 it earned. They do not normally tell us who you are. See the
