@@ -346,6 +346,10 @@ mod tests {
             now: Arc::new(move || {
                 std::time::UNIX_EPOCH + Duration::from_millis(c.load(Ordering::SeqCst))
             }),
+            fetch: Arc::new(crate::fetch::Curl {
+                exec: Arc::new(ufw.clone()),
+            }),
+            arch: std::env::consts::ARCH.into(),
             events: None,
             paths: Paths {
                 ..root.paths.clone()

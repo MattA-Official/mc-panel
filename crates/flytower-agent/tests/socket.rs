@@ -8,7 +8,8 @@ use std::thread;
 
 use flytower_agent::dispatch::dispatch;
 use flytower_agent::envelope::MAX_LINE_BYTES;
-use flytower_agent::exec::RealExec;
+use flytower_agent::exec::{Exec, RealExec};
+use flytower_agent::fetch::Curl;
 use flytower_agent::handlers::{Context, handle, system_clock};
 use flytower_agent::server::{ListenOptions, bind, serve};
 use flytower_agent::units::Paths;
@@ -28,10 +29,15 @@ fn answers_in_order_over_a_socket() {
         .mode();
     assert_eq!(mode & 0o777, 0o660);
 
+    let exec: Arc<dyn Exec> = Arc::new(RealExec::default());
     let ctx = Context {
         version: "1.2.0-test".into(),
-        exec: Arc::new(RealExec::default()),
+        exec: Arc::clone(&exec),
         now: system_clock(),
+        fetch: Arc::new(Curl {
+            exec: Arc::clone(&exec),
+        }),
+        arch: std::env::consts::ARCH.into(),
         events: None,
         paths: Paths::under(&dir),
         panel_group: "flytower".into(),

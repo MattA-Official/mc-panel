@@ -8,7 +8,8 @@ use std::time::Duration;
 
 use flytower_agent::dispatch::dispatch;
 use flytower_agent::events::{Journal, UnitEvents};
-use flytower_agent::exec::RealExec;
+use flytower_agent::exec::{Exec, RealExec};
+use flytower_agent::fetch::Curl;
 use flytower_agent::handlers::{Context, handle, server, ssh, system_clock};
 use flytower_agent::server::{ListenOptions, bind, group_id, serve};
 use flytower_agent::units::Paths;
@@ -22,12 +23,17 @@ fn main() -> ExitCode {
         eprintln!("flytower-agent must run as root");
         return ExitCode::FAILURE;
     }
+    let exec: Arc<dyn Exec> = Arc::new(RealExec::default());
     let events = UnitEvents::new(Arc::new(Journal::default()), Duration::from_secs(5));
     events.start();
     let ctx = Context {
         version: env("FLYTOWER_VERSION", "0.0.0-dev"),
-        exec: Arc::new(RealExec::default()),
+        exec: Arc::clone(&exec),
         now: system_clock(),
+        fetch: Arc::new(Curl {
+            exec: Arc::clone(&exec),
+        }),
+        arch: std::env::consts::ARCH.into(),
         events: Some(events),
         paths: Paths::from_env(),
         panel_group: env("FLYTOWER_PANEL_GROUP", "flytower"),
