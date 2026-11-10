@@ -10,8 +10,9 @@ export const NATIVE_MENU_SELECTOR =
 /** How long a finger has to stay down to open a menu. */
 export const LONG_PRESS_MS = 500
 
-/** The per-browser off switch, in localStorage. */
+/** The per-browser off switches, in localStorage. */
 export const RIGHT_CLICK_KEY = 'flytower:right-click-menus'
+export const SHORTCUTS_KEY = 'flytower:keyboard-shortcuts'
 
 interface ContextEvent {
   shiftKey: boolean
@@ -54,11 +55,14 @@ export function wantsBrowserMenu(
 export const isMenuKey = (e: { key: string; shiftKey: boolean }) =>
   e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')
 
-/** Reads the off switch. Anything but an explicit "off" keeps the menus on. */
-export function rightClickEnabled(storage: Pick<Storage, 'getItem'> | null): boolean {
+/** Reads an off switch. Anything but an explicit "off" keeps the feature on. */
+export function switchEnabled(storage: Pick<Storage, 'getItem'> | null, key: string): boolean {
   try {
-    return storage?.getItem(RIGHT_CLICK_KEY) !== 'off'
+    return storage?.getItem(key) !== 'off'
   } catch {
     return true
   }
 }
+
+export const rightClickEnabled = (storage: Pick<Storage, 'getItem'> | null) =>
+  switchEnabled(storage, RIGHT_CLICK_KEY)
