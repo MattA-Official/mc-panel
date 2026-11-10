@@ -7,6 +7,7 @@ use std::thread;
 
 use flytower_agent::dispatch::dispatch;
 use flytower_agent::envelope::MAX_LINE_BYTES;
+use flytower_agent::exec::RealExec;
 use flytower_agent::handlers::{Context, handle};
 use flytower_agent::server::{ListenOptions, bind, serve};
 use serde_json::{Value, json};
@@ -27,6 +28,7 @@ fn answers_in_order_over_a_socket() {
 
     let ctx = Context {
         version: "1.2.0-test".into(),
+        exec: Box::new(RealExec::default()),
     };
     thread::spawn(move || {
         serve(&listener, None, move |line| {
