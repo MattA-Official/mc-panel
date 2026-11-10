@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'bun:test'
@@ -125,5 +125,49 @@ describe('share links', () => {
     tick(8 * 86_400_000)
     expect(await exports.sweep()).toBe(1)
     expect(await Bun.file(path).exists()).toBe(false)
+  })
+})
+
+describe('past worlds', () => {
+  it('keeps a world with its datapacks, never expires, and can be shared and renamed', async () => {
+    const { exports, dir, tick } = setup()
+    mkdirSync(join(dir, 'world', 'datapacks'))
+    writeFileSync(join(dir, 'world', 'datapacks', 'graves.zip'), 'pack')
+    const row = await exports.keepWorld('survival', join(dir, 'world'), '  2025–26   world ')
+    expect(row.name).toBe('2025–26 world')
+    const listing = Bun.spawnSync(['unzip', '-Z1', exports.path(row)]).stdout.toString()
+    expect(listing).toContain('2025–26 world/datapacks/graves.zip')
+    expect(listing).toContain('2025–26 world/level.dat')
+
+    // Listed as a past world, not as a temporary export.
+    expect(exports.list('survival')).toEqual([])
+    expect(exports.pastWorlds('survival').map((w) => w.id)).toEqual([row.id])
+    expect(exports.pastWorlds().map((w) => w.id)).toEqual([row.id])
+
+    const { token, share } = exports.share('survival', row.id, '7d', 1)
+    expect(share.expiresAt.getTime()).toBeGreaterThan(row.createdAt.getTime())
+    tick(365 * 86_400_000)
+    expect(await exports.sweep()).toBe(0)
+    expect(exports.get('survival', row.id).id).toBe(row.id)
+    expect(exports.redeem(token)).toBeNull() // the link ran out; the world didn't
+    expect(exports.redeem(exports.share('survival', row.id, '1h', 1).token)?.id).toBe(row.id)
+
+    expect(exports.renamePastWorld('survival', row.id, 'Season one').name).toBe('Season one')
+    expect(() => exports.renamePastWorld('survival', row.id, '   ')).toThrow('Give the past')
+    expect(() => exports.renamePastWorld('survival', row.id, 'x'.repeat(61))).toThrow('at most')
+    expect(exports.pastWorld(row.id).name).toBe('Season one')
+  })
+
+  it("can't rename an ordinary export, and stays when the server is deleted", async () => {
+    const { exports, dir } = setup()
+    await exports.export('survival', 'S').done
+    const [plain] = exports.list('survival')
+    expect(() => exports.renamePastWorld('survival', plain!.id, 'x')).toThrow('No such past')
+    expect(() => exports.pastWorld(plain!.id)).toThrow('No such past')
+    const kept = await exports.keepWorld('survival', join(dir, 'world'), 'Old')
+    await exports.removeAll('survival')
+    expect(existsSync(exports.path(plain!))).toBe(false)
+    expect(existsSync(exports.path(kept))).toBe(true)
+    expect(exports.pastWorlds('survival')).toHaveLength(1)
   })
 })
