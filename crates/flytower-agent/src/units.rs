@@ -20,6 +20,8 @@ pub struct Paths {
     pub panel_data: String,
     /// Where `/var/log`, `/var/cache/apt` and `/tmp` are found: `/` except in tests.
     pub system: String,
+    /// The Caddyfile the installer wrote.
+    pub caddyfile: String,
 }
 
 impl Paths {
@@ -39,6 +41,7 @@ impl Paths {
             prefix: env("FLYTOWER_PREFIX", "/opt/flytower"),
             panel_data: env("FLYTOWER_PANEL_DATA", "/var/lib/flytower"),
             system: "/".into(),
+            caddyfile: env("FLYTOWER_CADDYFILE", "/etc/caddy/Caddyfile"),
         }
     }
 
@@ -56,6 +59,7 @@ impl Paths {
             prefix: at("prefix"),
             panel_data: at("panel"),
             system: at("system"),
+            caddyfile: at("Caddyfile"),
         }
     }
 }

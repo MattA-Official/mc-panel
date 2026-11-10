@@ -13,6 +13,7 @@ import {
   waitFromHeaders,
   type Item,
   type Post,
+  type RelayConfig,
   type RelayLine,
 } from '../server/discord/relay'
 import { decodePng, encodePng, HEAD_SIZE, renderHead } from '../server/skins/head'
@@ -59,7 +60,7 @@ describe('reading the log for chat', () => {
   it('ignores everything else', () => {
     expect(parseRelayLine(line('Done (3.2s)! For help, type "help"'))).toBeNull()
     expect(parseRelayLine(line('[Server] hello from the console'))).toBeNull()
-    expect(parseRelayLine(line('Steve was slain by Zombie'))).toBeNull()
+    expect(parseRelayLine(line('Steve moved too quickly!'))).toBeNull()
     expect(parseRelayLine('not a log line <Steve> hi')).toBeNull()
   })
 
@@ -174,14 +175,17 @@ describe('joining lines that pile up', () => {
 
 function relay(
   respond: (n: number) => Response = () => new Response(null, { status: 204 }),
-  config: { chat?: boolean; joins?: boolean } | null = {},
+  config: Partial<Omit<RelayConfig, 'url'>> | null = {},
 ) {
   const posts: Post[] = []
   const sleeps: number[] = []
   const failures: { message: string; permanent: boolean }[] = []
   let clock = 0
   const r = new ChatRelay({
-    config: async () => (config ? { url: WEBHOOK, chat: true, joins: true, ...config } : null),
+    config: async () =>
+      config
+        ? { url: WEBHOOK, chat: true, joins: true, deaths: true, advancements: true, ...config }
+        : null,
     avatar: async (_server, player) => `https://panel.example/api/public/heads/${player}.png`,
     failed: (_server, message, permanent) => failures.push({ message, permanent }),
     now: () => clock,
@@ -279,7 +283,13 @@ describe('the relay', () => {
     const gate = new Promise<void>((r) => (release = r))
     const posts: Post[] = []
     const r = new ChatRelay({
-      config: async () => ({ url: WEBHOOK, chat: true, joins: true }),
+      config: async () => ({
+        url: WEBHOOK,
+        chat: true,
+        joins: true,
+        deaths: true,
+        advancements: true,
+      }),
       avatar: async () => null,
       failed: () => {},
       fetch: async (_url, init = {}) => {
@@ -340,6 +350,8 @@ describe('settings', () => {
       target: 'discord.com/api/webhooks/123/••••',
       chat: true,
       joins: false,
+      deaths: true,
+      advancements: true,
       lastError: null,
       lastErrorAt: null,
       broken: false,
@@ -349,8 +361,94 @@ describe('settings', () => {
   })
 
   it('takes a save with or without a new URL', () => {
-    expect(RelayInput.parse({ chat: false })).toEqual({ chat: false, joins: true })
+    expect(RelayInput.parse({ chat: false })).toEqual({
+      chat: false,
+      joins: true,
+      deaths: true,
+      advancements: true,
+    })
     expect(() => RelayInput.parse({ url: 'nope' })).toThrow()
     expect(() => RelayInput.parse({ url: WEBHOOK, extra: 1 })).toThrow()
+  })
+})
+
+describe('deaths and advancements', () => {
+  it('reads death messages, with or without the system chat prefix', () => {
+    expect(parseRelayLine(line('System chat: Steve was slain by Zombie'))).toEqual({
+      kind: 'death',
+      player: 'Steve',
+      text: 'was slain by Zombie',
+    })
+    expect(parseRelayLine(line('Alex_2 fell from a high place'))).toEqual({
+      kind: 'death',
+      player: 'Alex_2',
+      text: 'fell from a high place',
+    })
+    expect(
+      parseRelayLine(line('System chat: Steve was shot by Skeleton using [Bow of Doom]')),
+    ).toEqual({
+      kind: 'death',
+      player: 'Steve',
+      text: 'was shot by Skeleton using [Bow of Doom]',
+    })
+  })
+
+  it('keeps the whole message when someone else comes first', () => {
+    const l = parseRelayLine(line('System chat: Bob showed Steve that not just the floor is lava'))
+    expect(l).toEqual({
+      kind: 'death',
+      player: 'Steve',
+      text: 'Bob showed Steve that not just the floor is lava',
+      whole: true,
+    })
+    expect(playerPost([item(l!)]).content).toBe(
+      '_Bob showed Steve that not just the floor is lava_',
+    )
+  })
+
+  it('reads advancements, goals and challenges', () => {
+    expect(parseRelayLine(line('System chat: Steve has made the advancement [Stone Age]'))).toEqual(
+      {
+        kind: 'advancement',
+        player: 'Steve',
+        text: 'has made the advancement [Stone Age]',
+      },
+    )
+    expect(parseRelayLine(line("Steve has reached the goal [Sky's the Limit]"))?.kind).toBe(
+      'advancement',
+    )
+    expect(parseRelayLine(line('Steve has completed the challenge [Monsters Hunted]'))?.kind).toBe(
+      'advancement',
+    )
+  })
+
+  it("can't be faked from chat", () => {
+    expect(parseRelayLine(line('<Bob> Steve was slain by Zombie'))?.kind).toBe('chat')
+    expect(parseRelayLine(line('<Bob> Steve has made the advancement [Cheat]'))?.kind).toBe('chat')
+    expect(parseRelayLine(line('[Server] Steve was slain by Zombie'))).toBeNull()
+  })
+
+  it('posts them in italics under the player, and escapes item names', () => {
+    const p = playerPost([
+      item(
+        { kind: 'advancement', player: 'Steve', text: 'has made the advancement [Stone Age]' },
+        'https://h',
+      ),
+    ])
+    expect(p.username).toBe('Steve')
+    expect(p.avatar_url).toBe('https://h')
+    expect(p.content).toBe('_has made the advancement \\[Stone Age\\]_')
+    expect(
+      playerPost([item({ kind: 'death', player: 'Steve', text: 'was slain by **@everyone**' })])
+        .content,
+    ).toBe('_was slain by \\*\\*\\@everyone\\*\\*_')
+  })
+
+  it('only posts the kinds that are switched on', async () => {
+    const { r, posts } = relay(undefined, { deaths: false })
+    await r.offer('survival', { kind: 'death', player: 'Steve', text: 'fell' })
+    await r.offer('survival', { kind: 'advancement', player: 'Steve', text: 'has made …' })
+    await r.idle()
+    expect(posts).toHaveLength(1)
   })
 })

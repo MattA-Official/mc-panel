@@ -25,6 +25,8 @@ export interface AgentContext {
     panelData?: string // /var/lib/flytower
     /** Where /var/log, /var/cache/apt and /tmp are found; `/` except in tests. */
     system?: string
+    /** The Caddyfile the installer wrote. */
+    caddyfile?: string // /etc/caddy/Caddyfile
   }
   /** The `flytower-du` binary, if there is one; otherwise disk use is walked in TypeScript. */
   du?: string | null

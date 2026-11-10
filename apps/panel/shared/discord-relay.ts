@@ -11,6 +11,9 @@ export interface StoredRelay {
   target: string
   chat: boolean
   joins: boolean
+  /** Missing on relays saved before deaths and advancements were added: those count as on. */
+  deaths?: boolean
+  advancements?: boolean
   /** Why Discord refused the last message, if it did. */
   lastError: string | null
   lastErrorAt: number | null
@@ -24,6 +27,8 @@ export interface RelayView {
   target: string | null
   chat: boolean
   joins: boolean
+  deaths: boolean
+  advancements: boolean
   lastError: string | null
   lastErrorAt: number | null
   broken: boolean
@@ -34,6 +39,8 @@ export const OFF: RelayView = {
   target: null,
   chat: true,
   joins: true,
+  deaths: true,
+  advancements: true,
   lastError: null,
   lastErrorAt: null,
   broken: false,
@@ -47,6 +54,8 @@ export function relayView(raw: unknown): RelayView {
     target: typeof s.target === 'string' ? s.target : null,
     chat: s.chat !== false,
     joins: s.joins !== false,
+    deaths: s.deaths !== false,
+    advancements: s.advancements !== false,
     lastError: typeof s.lastError === 'string' ? s.lastError : null,
     lastErrorAt: typeof s.lastErrorAt === 'number' ? s.lastErrorAt : null,
     broken: s.broken === true,
@@ -59,6 +68,8 @@ export const RelayInput = z
     url: z.string().trim().url('That isn’t a web address.').max(500).optional(),
     chat: z.boolean().default(true),
     joins: z.boolean().default(true),
+    deaths: z.boolean().default(true),
+    advancements: z.boolean().default(true),
   })
   .strict()
 export type RelayInput = z.output<typeof RelayInput>
