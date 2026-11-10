@@ -29,3 +29,20 @@ You need a panel with a domain, a Discord server you can add apps to (a test one
 - [ ] `curl -X POST https://<panel>/api/discord/interactions -d '{}'` gets a 401.
 - [ ] In the portal, change the endpoint URL to something else and save, then press **Test connection** in Flytower: the card says **Endpoint not set**. **Try the endpoint again** puts it back.
 - [ ] **Disconnect**: after the passkey check the card is back to empty, the commands disappear from Discord (it may take a minute, or reopen Discord), and the portal's endpoint is empty.
+
+## Web map
+
+You need a Fabric or Paper server with an explored world, and for the last checks its public page on (and a hostname, if you have one). See [Web map](map.md).
+
+- [ ] **World**, **Web map** on a vanilla server says it needs Fabric or Paper.
+- [ ] On Fabric, **Add squaremap**: the plan adds squaremap (and Fabric API if it's missing) and restarts the server.
+- [ ] `squaremap/config.yml` has `internal-webserver: enabled: false`, and `ss -ltn` shows nothing new listening (squaremap's default is 8080).
+- [ ] **Open map** opens `/s/<name>/map/` in a new tab. Join the game: you appear on the map within a few seconds and move as you walk.
+- [ ] **Draw**, Overworld: the console shows squaremap's progress and the explored world fills in. **Stop** stops it.
+- [ ] Turn off **Show players**: the console shows squaremap reloading and you disappear from the map.
+- [ ] In a private window, `/s/<name>/map/` goes to sign-in, and `/s/<name>/map/tiles/players.json` is "Not found".
+- [ ] Turn on **Anyone can open it** (with the public page on): the card shows the address with a copy button, the map opens in a private window without a cookie, the status page has **Open the map**, and `/status` in Discord has a **Map** link. `https://<hostname>/map` opens it too.
+- [ ] Turn the public page off: the map is private again, and the status page and Discord lose the link.
+- [ ] Take a backup: it has no `squaremap/web/tiles`. **Settings**, **Disk use** has a **Web map** line.
+- [ ] Reset the world: the old map is gone, and the new world appears as it's explored.
+- [ ] On Paper, the same with the files under `plugins/squaremap`.
