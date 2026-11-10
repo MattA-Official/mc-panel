@@ -6,6 +6,8 @@ Each server can have a page that anyone can open without signing in, at `https:/
 
 A server's **Settings**, **Public page**: switch on **Show a public page for this server**, write a description (up to 500 characters, shown as plain text with line breaks), choose what it says about players, and **Save**. The card then shows the page's address with a copy button.
 
+If the server has its own [hostname](addresses.md), the page is also at `https://<hostname>`, such as `https://survival.example.com`. See [On the server's own address](#on-the-servers-own-address).
+
 While the page is off, its address says "Nothing here", exactly as for a server that doesn't exist, so nobody can find out which servers you have by guessing names.
 
 You can also set it with `public:` in the [YAML](spec.md#public).
@@ -32,6 +34,29 @@ What goes in it:
 The **Public page** card lists **What players get** and, under **Left out**, anything that wasn't added and why.
 
 The pack lists each file by its Modrinth download and checksums, as the format requires, so Flytower never copies or hosts anyone's mods: the launcher downloads them from Modrinth. It's rebuilt the first time someone asks for it after the server's content, extras or versions change, and kept under `/var/lib/flytower/packs`. Paper and vanilla servers don't get one, since their plugins and datapacks only run on the server.
+
+## On the server's own address
+
+A server with a hostname (and its A record pointing at the VPS, which players need anyway) shows its public page at `https://<hostname>` too. There, nothing else of the panel is reachable: the address only serves that server's page, its modpack and the branding. Signing in and every other page stay on the panel's own domain.
+
+Caddy gets a certificate for the hostname the first time someone opens it, after asking the panel that the name belongs to a server whose public page is on, so nobody can make your box request certificates for other names. Turning the page off stops new certificates; the address then shows "Not found".
+
+Installs from before 1.2 need the installer re-run once (with the same `--domain`) to add this to Caddy's configuration. `/s/<name>` on the panel's domain works without it. If you manage Caddy yourself (`--no-caddy`), add this to your Caddyfile:
+
+```
+{
+	on_demand_tls {
+		ask http://127.0.0.1:3000/api/public/tls-ask
+	}
+}
+
+https:// {
+	tls {
+		on_demand
+	}
+	reverse_proxy 127.0.0.1:3000
+}
+```
 
 ## How it stays light
 

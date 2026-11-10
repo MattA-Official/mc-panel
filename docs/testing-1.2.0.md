@@ -120,3 +120,13 @@ On a Fabric server with a few Modrinth mods (Fabric API, Lithium, and ideally on
 - [ ] Add a mod to the server from the Content tab and apply. Reload the card: the new mod is listed, and a fresh download includes it.
 - [ ] Switch off **Offer a modpack for players**: the page's modpack section disappears and `/api/public/servers/<name>/pack.mrpack` is a 404.
 - [ ] A Paper server's card doesn't offer a modpack.
+
+### On the server's own address
+
+On a server with a hostname whose A record points at the VPS, on a box where the installer has been re-run with this build.
+
+- [ ] `/etc/caddy/Caddyfile` has the `on_demand_tls` block and an `https://` site, and `systemctl status caddy` is happy.
+- [ ] With the public page on, open `https://<hostname>`: it goes to `/s/<name>` with a valid certificate (the first load may take a few seconds while Caddy gets it). The page works, including the modpack download.
+- [ ] `https://<hostname>/login` and `https://<hostname>/servers/<name>` say "Not found". The panel's own domain still works as before.
+- [ ] Turn the public page off: `https://<hostname>` is "Not found". `curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:3000/api/public/tls-ask?domain=<hostname>'` on the box gives 404, and 200 once it's back on.
+- [ ] `https://made-up-name.<your domain>` (if you have a wildcard record) never gets a certificate: the browser shows a TLS error, and Caddy's log (`journalctl -u caddy`) says the ask was refused.
