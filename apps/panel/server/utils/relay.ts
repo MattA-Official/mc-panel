@@ -34,7 +34,13 @@ function relayConfig(server: string): Promise<RelayConfig | null> {
     c = (async () => {
       const s = stored(server)
       if (!s || s.broken) return null
-      return { url: await seal.unseal(s.urlSealed), chat: s.chat, joins: s.joins }
+      return {
+        url: await seal.unseal(s.urlSealed),
+        chat: s.chat,
+        joins: s.joins,
+        deaths: s.deaths !== false,
+        advancements: s.advancements !== false,
+      }
     })().catch((err) => {
       console.error(`[flytower] can't read ${server}'s Discord chat settings`, err)
       return null
@@ -150,6 +156,8 @@ export async function saveRelay(server: string, input: RelayInput): Promise<Rela
     target,
     chat: input.chat,
     joins: input.joins,
+    deaths: input.deaths,
+    advancements: input.advancements,
     lastError: null,
     lastErrorAt: null,
     broken: false,
