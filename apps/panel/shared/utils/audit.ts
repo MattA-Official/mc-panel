@@ -79,7 +79,9 @@ export function describeAudit(
     case 'update.channel':
       return d.channel === 'beta'
         ? 'Chose to be offered beta releases'
-        : 'Chose stable releases only'
+        : d.channel === 'native'
+          ? 'Chose to be offered native builds'
+          : 'Chose stable releases only'
     case 'branding.update':
       return `Changed the branding${d.name ? ` (${str(d.name)}, ${str(d.accent)})` : ''}`
     case 'branding.reset':

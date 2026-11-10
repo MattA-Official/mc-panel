@@ -68,6 +68,48 @@ describe('updates', () => {
   it('defaults to beta only when a beta is running', () => {
     expect(defaultChannel('1.0.1')).toBe('stable')
     expect(defaultChannel('1.1.0-beta.1')).toBe('beta')
+    expect(defaultChannel('1.5.0-native.1')).toBe('native')
+  })
+
+  describe('native builds', () => {
+    const list = () =>
+      listReleases(async () =>
+        Response.json([
+          rel('v1.2.0'),
+          rel('v1.3.0-beta.1', true, true),
+          rel('native-1.5.0-native.2', true, true),
+          rel('native-1.5.0-native.1', true, true),
+          // Mislabelled: a native version under a v tag, or the other way round.
+          rel('v1.6.0-native.1', true, true),
+          rel('native-1.6.0', true, true),
+        ]),
+      )
+
+    it('are read from native- tags only', async () => {
+      const natives = (await list()).filter((r) => r.native).map((r) => r.version)
+      expect(natives).toEqual(['1.5.0-native.2', '1.5.0-native.1'])
+      expect((await list()).map((r) => r.version)).not.toContain('1.6.0')
+    })
+
+    it('are never offered on Beta or Stable', async () => {
+      expect(onChannel(await list(), 'beta')[0]?.version).toBe('1.3.0-beta.1')
+      expect(onChannel(await list(), 'stable')[0]?.version).toBe('1.2.0')
+    })
+
+    it('are offered on Native, alongside stable releases but not betas', async () => {
+      expect(onChannel(await list(), 'native').map((r) => r.version)).toEqual([
+        '1.5.0-native.2',
+        '1.5.0-native.1',
+        '1.2.0',
+      ])
+    })
+
+    it('give way to the stable release that includes them', async () => {
+      const withStable = await listReleases(async () =>
+        Response.json([rel('native-1.5.0-native.2', true, true), rel('v1.5.0')]),
+      )
+      expect(onChannel(withStable, 'native')[0]?.version).toBe('1.5.0')
+    })
   })
 
   it('remembers the chosen channel', () => {
