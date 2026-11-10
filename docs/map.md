@@ -17,7 +17,7 @@ Once squaremap has made the map (the first start after adding it), the card has 
 - `https://<your panel>/s/<server name>/map/`
 - `https://<hostname>/map/` too, when the server has its own [hostname](addresses.md) and its public page is on.
 
-When the map is public, the card shows the address to share, with a copy button.
+When the map is public, the card shows the address to share, with a copy button. The [public page](status-page.md#web-map) links to it too, and so does `/status` in [Discord](discord.md).
 
 ## Who can see it
 

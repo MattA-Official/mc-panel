@@ -22,6 +22,10 @@ You choose what the page says about who's online:
 
 Bear in mind that Minecraft itself already tells anyone who adds your server to their multiplayer list how many people are on, and a sample of their names, unless you set `hide-online-players=true` in the server's settings.
 
+## Web map
+
+When the server has a [web map](map.md) and it's set so **Anyone can open it**, the page has an **Open the map** button. Turning the public page off makes the map private again.
+
 ## Modpack for players
 
 On a Fabric server, the page can offer a **modpack** (`.mrpack`): one file players open in the **Modrinth app** or **Prism Launcher** to get a ready-to-play instance with the right Minecraft, Fabric and mods. It's on by default while the page is on; switch off **Offer a modpack for players** to hide it.
