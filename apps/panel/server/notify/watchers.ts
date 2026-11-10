@@ -67,6 +67,7 @@ export class LogWatcher {
   /** Servers that crashed and that systemd is bringing back. */
   private recovering = new Map<string, number>()
   private listeners = new Set<(server: string, e: LogEvent) => void>()
+  private lineListeners = new Set<(server: string, line: string) => void>()
 
   constructor(
     private n: Notify,
@@ -85,6 +86,12 @@ export class LogWatcher {
   listen(fn: (server: string, e: LogEvent) => void): () => void {
     this.listeners.add(fn)
     return () => this.listeners.delete(fn)
+  }
+
+  /** Hears every new log line, before it's read for events (player stats need the UUID line). */
+  listenLines(fn: (server: string, line: string) => void): () => void {
+    this.lineListeners.add(fn)
+    return () => this.lineListeners.delete(fn)
   }
 
   watching(): string[] {
@@ -197,6 +204,13 @@ export class LogWatcher {
 
   lines(server: string, lines: string[]) {
     for (const line of lines) {
+      for (const l of this.lineListeners) {
+        try {
+          l(server, line)
+        } catch (err) {
+          console.error('[flytower] log line listener failed', err)
+        }
+      }
       const e = parseLogLine(line)
       if (!e) continue
       for (const l of this.listeners) {
