@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { desiredStatus, pickCurrentMilestone, type Item } from './board-sync'
+import { desiredDates, desiredStatus, pickCurrentMilestone, type Item } from './board-sync'
 
 const M = '1.1.0 Alerts and reliability'
 const item = (over: Partial<Item>): Item => ({
@@ -53,5 +53,42 @@ describe('pickCurrentMilestone', () => {
   })
   test('null when nothing is versioned', () => {
     expect(pickCurrentMilestone(['Future'])).toBeNull()
+  })
+})
+
+describe('desiredDates', () => {
+  test('Start date is the day it was opened, in the UK', () => {
+    // 23:30 UTC in summer is already the next day in London.
+    expect(desiredDates(item({ createdAt: '2026-07-01T23:30:00Z' }))).toEqual({
+      start: '2026-07-02',
+    })
+  })
+
+  test('a Start date set by hand stays', () => {
+    expect(desiredDates(item({ createdAt: '2026-11-01T10:00:00Z', start: '2026-10-01' }))).toEqual(
+      {},
+    )
+  })
+
+  test('closed items take the day they closed as Target date, even over a hand-set one', () => {
+    const closed = item({
+      state: 'MERGED',
+      createdAt: '2026-11-09T10:00:00Z',
+      closedAt: '2026-11-10T09:00:00Z',
+      target: '2026-12-01',
+    })
+    expect(desiredDates(closed)).toEqual({ start: '2026-11-09', target: '2026-11-10' })
+  })
+
+  test('open items aim at their milestone, unless a Target date is set by hand', () => {
+    expect(
+      desiredDates(item({ milestoneDue: '2026-12-01T08:00:00Z', start: '2026-11-01' })),
+    ).toEqual({ target: '2026-12-01' })
+    expect(
+      desiredDates(
+        item({ milestoneDue: '2026-12-01T08:00:00Z', start: '2026-11-01', target: '2026-11-20' }),
+      ),
+    ).toEqual({})
+    expect(desiredDates(item({ start: '2026-11-01' }))).toEqual({})
   })
 })

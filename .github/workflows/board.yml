@@ -10,7 +10,7 @@ on:
   pull_request:
     types: [opened, reopened, closed]
   milestone:
-    types: [created, closed, opened]
+    types: [created, edited, closed, opened]
   workflow_dispatch:
 
 permissions:
