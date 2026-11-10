@@ -22,3 +22,20 @@ export type DiscordState =
       /** Why Discord didn't take the command list, when it didn't. */
       commandsError: string | null
     }
+
+/** A Discord role whose members get a Flytower role, for one server or (null) all of them. */
+export interface DiscordRoleMapping {
+  discordRoleId: string
+  /** A name to recognise the Discord role by; Discord doesn't tell the app role names. */
+  label: string
+  /** A Flytower role ID. */
+  roleId: string
+  server: string | null
+}
+
+/** What the role mapping section needs: the mappings and what can be picked. */
+export interface DiscordRolesView {
+  mappings: DiscordRoleMapping[]
+  roles: { id: string; name: string }[]
+  servers: { name: string; displayName: string }[]
+}

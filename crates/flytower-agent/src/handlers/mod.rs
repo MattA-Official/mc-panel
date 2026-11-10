@@ -1,26 +1,54 @@
-//! What each verb does. Ported verbs live in the modules below; the rest answer `failed` with
-//! "not ported yet" until their stage lands, so the Rust agent can be run against a real panel
-//! without pretending to do work it can't.
+//! What each verb does, one module per area, matching `packages/agent/src/handlers`. Every
+//! verb in the protocol is handled here.
 
+pub(crate) mod files;
+pub mod runtime;
+pub mod server;
 pub mod service;
+pub mod ssh;
+#[cfg(test)]
+pub mod testing;
+pub mod update;
 
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use serde_json::{Value, json};
 
-use crate::envelope::{AgentError, ErrorCode, PROTOCOL_VERSION};
+use crate::envelope::{AgentError, PROTOCOL_VERSION};
 use crate::events::UnitEvents;
 use crate::exec::Exec;
+use crate::fetch::Fetch;
+use crate::units::Paths;
 use crate::verbs::Params;
+
+/// What time it is. Tests set their own.
+pub type Clock = Arc<dyn Fn() -> SystemTime + Send + Sync>;
+
+#[must_use]
+pub fn system_clock() -> Clock {
+    Arc::new(SystemTime::now)
+}
 
 /// Everything a handler may touch, from the same environment variables as the TypeScript
 /// agent. Tests swap `exec` for a fake.
 pub struct Context {
     pub version: String,
-    pub exec: Box<dyn Exec>,
+    pub exec: Arc<dyn Exec>,
+    pub now: Clock,
+    /// Downloads; `curl` in production.
+    pub fetch: Arc<dyn Fetch>,
+    /// The CPU, as Rust names it: `x86_64` or `aarch64`.
+    pub arch: String,
     /// Unit changes from the journal; `None` makes `service.wait` tell the panel to poll.
     pub events: Option<Arc<UnitEvents>>,
+    pub paths: Paths,
+    /// The panel's group, which may use the agent and shares server folders.
+    pub panel_group: String,
+    /// Where releases are downloaded from: `<url>/<tag>/<file>`.
+    pub releases_url: String,
+    /// The key releases are signed with, as a PEM `PUBLIC KEY`; tests use their own.
+    pub release_key: String,
 }
 
 /// Runs one checked request.
@@ -42,9 +70,17 @@ pub fn handle(params: &Params, ctx: &Context) -> Result<Value, AgentError> {
         Params::ServiceStart(p) => service::action("start", &p.server, ctx),
         Params::ServiceStop(p) => service::action("stop", &p.server, ctx),
         Params::ServiceRestart(p) => service::action("restart", &p.server, ctx),
-        _ => Err(AgentError::new(
-            ErrorCode::Failed,
-            "not ported to the Rust agent yet; use the TypeScript agent",
-        )),
+        Params::ServerCreate(p) => server::create(&p.name, p.port, p.memory_mb, p.java_major, ctx),
+        Params::ServerConfigure(p) => {
+            server::configure(&p.name, p.memory_mb, p.port, p.java_major, ctx)
+        }
+        Params::ServerPermissions(p) => server::permissions(&p.name, ctx),
+        Params::ServerDelete(p) => server::remove(&p.name, ctx),
+        Params::RuntimeInstall(p) => runtime::install(p.major, ctx),
+        Params::SshStatus => Ok(ssh::status(ctx)),
+        Params::SshSet(p) => ssh::set(p.open, p.minutes, ctx),
+        Params::UpdateStatus => Ok(update::status(ctx)),
+        Params::UpdateInstall(p) => update::install(&p.version, ctx),
+        Params::UpdateRollback(p) => update::rollback(&p.version, ctx),
     }
 }

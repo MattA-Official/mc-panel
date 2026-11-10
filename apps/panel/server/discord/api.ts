@@ -94,4 +94,30 @@ export class DiscordApi {
       commands,
     )
   }
+
+  /**
+   * Posts a follow-up message to an interaction. Its token is the credential (valid for 15
+   * minutes), so no bot token is sent. Tried once more if Discord hasn't seen the first
+   * answer yet.
+   */
+  async followUp(applicationId: string, interactionToken: string, message: unknown) {
+    const url = `${DISCORD_API}/webhooks/${encodeURIComponent(applicationId)}/${encodeURIComponent(interactionToken)}`
+    for (let attempt = 0; ; attempt++) {
+      const res = await this.fetchImpl(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(message),
+        signal: AbortSignal.timeout(20_000),
+        redirect: 'error',
+      })
+      if (res.ok) return
+      const text = await res.text().catch(() => '')
+      if (res.status === 404 && attempt === 0) {
+        await Bun.sleep(1000)
+        continue
+      }
+      const why = errorText(text)
+      throw new DiscordError(`Discord answered ${res.status}${why ? `: ${why}` : ''}`, res.status)
+    }
+  }
 }

@@ -40,6 +40,7 @@ const base: PublicStatus = {
   version: { minecraft: '1.21.10', loader: 'Fabric' },
   pack: null,
   map: null,
+  leaderboard: false,
 }
 
 function source(

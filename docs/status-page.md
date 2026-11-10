@@ -28,6 +28,12 @@ You choose what the page says about who's online:
 
 Bear in mind that Minecraft itself already tells anyone who adds your server to their multiplayer list how many people are on, and a sample of their names, unless you set `hide-online-players=true` in the server's settings.
 
+## Leaderboards
+
+With **Names and heads** chosen, you can also tick **Show leaderboards**. The page then shows the top five for playtime, deaths, mob kills, distance travelled and blocks mined, for all time, this month and this week, from the same figures as the server's [Stats tab](stats.md). It's off unless you turn it on.
+
+Leaderboards only show while the page shows names and the server keeps [player stats](stats.md). Players left out of stats never appear. Only names, heads and the figures leave the panel: nothing about when people played or who is left out.
+
 ## Modpack for players
 
 On a Fabric server, the page can offer a **modpack** (`.mrpack`): one file players open in the **Modrinth app** or **Prism Launcher** to get a ready-to-play instance with the right Minecraft, Fabric and mods. It's on by default while the page is on; switch off **Offer a modpack for players** to hide it.

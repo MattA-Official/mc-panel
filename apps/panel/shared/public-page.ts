@@ -64,9 +64,15 @@ export const PublicPage = z
             'Who is online: "names" shows heads and names, "count" only how many, "none" nothing.',
           ),
         version: z.boolean().default(true).describe('Show the Minecraft version and loader.'),
+        leaderboard: z
+          .boolean()
+          .default(false)
+          .describe(
+            'Show the player stats leaderboards. Only when players is "names" and stats are on.',
+          ),
       })
       .strict()
-      .default({ players: 'count', version: true }),
+      .default({ players: 'count', version: true, leaderboard: false }),
     pack: Pack.default({ enabled: true, extras: [] }),
   })
   .strict()
@@ -93,6 +99,7 @@ export function samePublicPage(a: PublicPage, b: PublicPage): boolean {
     a.description === b.description &&
     a.show.players === b.show.players &&
     a.show.version === b.show.version &&
+    a.show.leaderboard === b.show.leaderboard &&
     a.pack.enabled === b.pack.enabled &&
     JSON.stringify(a.pack.extras) === JSON.stringify(b.pack.extras)
   )
@@ -106,6 +113,7 @@ export function compactPublicPage(p: PublicPage): PublicPageInput | null {
   const show: NonNullable<PublicPageInput['show']> = {}
   if (p.show.players !== 'count') show.players = p.show.players
   if (!p.show.version) show.version = false
+  if (p.show.leaderboard) show.leaderboard = true
   if (Object.keys(show).length) out.show = show
   const pack: NonNullable<PublicPageInput['pack']> = {}
   if (!p.pack.enabled) pack.enabled = false
@@ -120,7 +128,7 @@ export function describePublicPage(p: PublicPage): string {
   const players = { names: 'player names', count: 'how many are online', none: 'no players' }[
     p.show.players
   ]
-  return `On, showing ${players}`
+  return `On, showing ${players}${p.show.leaderboard && p.show.players === 'names' ? ' and leaderboards' : ''}`
 }
 
 /** What the public page shows, as the public API sends it. */
@@ -147,6 +155,16 @@ export interface PublicStatus {
   version: { minecraft: string; loader: string } | null
   /** The players' modpack download, when the server offers one. */
   pack: { url: string; filename: string } | null
-  /** The web map, when it's public and squaremap has made it. */
+  /** The web map, when it's public and has been drawn. */
   map: { url: string } | null
+  /** Whether the page shows leaderboards (from /api/public/servers/<name>/leaderboards). */
+  leaderboard: boolean
+}
+
+/**
+ * Whether a public page shows leaderboards: only when it was asked for, the page already shows
+ * player names (a leaderboard is a list of names) and the server keeps stats.
+ */
+export function showsLeaderboard(page: PublicPage, statsEnabled: boolean): boolean {
+  return page.show.leaderboard && page.show.players === 'names' && statsEnabled
 }

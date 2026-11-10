@@ -52,5 +52,6 @@ export async function buildPublicStatus(
     icon: iconUrl(name)?.replace(`/api/servers/${name}/`, `/api/public/servers/${name}/`) ?? null,
     maxPlayers: Number.isFinite(max) ? max : null,
     withUuids: (names) => withUuids(names, usercache),
+    statsEnabled: statsSettings(name).enabled,
   })
 }

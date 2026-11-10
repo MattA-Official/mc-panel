@@ -12,3 +12,5 @@ There's one JSON object per line:
 Some rules are Zod refinements that JSON Schema can't express. A note ending in "(a refinement, not in schema.json)" marks those lines, so other languages have to check them in code.
 
 The TypeScript tests (`packages/protocol/src/fixtures.test.ts`) replay every line against the Zod schemas. They also check that each verb has at least one valid params line and one valid result line. When you add or change a verb, add lines here in the same commit.
+
+`server-unit.service` and `server.env` are the systemd template and environment file the agent writes for a server, with the default paths and the `flytower` group. Both agents rewrite the template whenever it differs from theirs, so they must agree byte for byte. `packages/agent/test/units-fixture.test.ts` and the Rust agent's `units.rs` tests both check these files. Change them together with `packages/agent/src/units.ts`.
