@@ -93,6 +93,10 @@ interface ContentNode {
   repository: { nameWithOwner: string }
 }
 
+// Fields of an issue or pull request, for a connection that only holds one of the two.
+const FIELDS = '__typename id number state milestone { title } repository { nameWithOwner }'
+
+// The same fields for a board item, whose content could be either (or a draft).
 const CONTENT = `
   __typename
   ... on Issue { id number state milestone { title } repository { nameWithOwner } }
@@ -187,8 +191,8 @@ async function main() {
     `query($owner: String!, $repo: String!) {
       repository(owner: $owner, name: $repo) {
         milestones(states: OPEN, first: 50) { nodes { title } }
-        issues(states: OPEN, first: 100) { nodes { ${CONTENT} } }
-        pullRequests(states: OPEN, first: 100) { nodes { ${CONTENT} } }
+        issues(states: OPEN, first: 100) { nodes { ${FIELDS} } }
+        pullRequests(states: OPEN, first: 100) { nodes { ${FIELDS} } }
       }
     }`,
     { owner: OWNER, repo: REPO },
@@ -215,7 +219,7 @@ async function main() {
       `query($owner: String!, $repo: String!, $title: String!) {
         repository(owner: $owner, name: $repo) {
           milestones(query: $title, first: 5) {
-            nodes { title issues(first: 100) { nodes { ${CONTENT} } } pullRequests(first: 100) { nodes { ${CONTENT} } } }
+            nodes { title issues(first: 100) { nodes { ${FIELDS} } } pullRequests(first: 100) { nodes { ${FIELDS} } } }
           }
         }
       }`,
