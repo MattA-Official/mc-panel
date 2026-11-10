@@ -1,7 +1,12 @@
 <script setup lang="ts">
+import { can } from '#shared/permissions'
 import { systemUpdateCount } from '#shared/updates'
 
 const updates = useLiveUpdates()
+const { state } = useAuthState()
+const canManagePeople = computed(() =>
+  state.value?.access ? can(state.value.access, 'people.manage') : false,
+)
 /** System is split into sections, so health, updates, storage, alerts, branding and sign-in each get a page. */
 const sections = computed(() => [
   { label: 'Overview', icon: 'i-lucide-gauge', to: '/system', exact: true },
@@ -19,6 +24,9 @@ const sections = computed(() => [
         }
       : {}),
   },
+  ...(canManagePeople.value
+    ? [{ label: 'People', icon: 'i-lucide-users', to: '/system/people' }]
+    : []),
   { label: 'Off-site storage', icon: 'i-lucide-cloud', to: '/system/storage' },
   { label: 'Notifications', icon: 'i-lucide-bell', to: '/system/notifications' },
   { label: 'Branding', icon: 'i-lucide-palette', to: '/system/branding' },
