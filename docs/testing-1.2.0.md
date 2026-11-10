@@ -91,3 +91,20 @@ On any server, in **Settings**, **Game settings**, with Minecraft open on the mu
 - [ ] **Remove** takes it away; after a restart the list shows the default icon again.
 - [ ] Clone a server that has an icon: the clone has it too.
 - [ ] On a phone, the crop dialog fits the screen and dragging the picture works with a finger.
+
+## Public status page
+
+On a running server, ideally one you can join with a real account and a friend's.
+
+- [ ] **Settings**, **Public page**: switch it on, write a two-line description, leave **How many are online**, and **Save**. The card shows the page's address.
+- [ ] Open the address in a private window (signed out). It shows the server's name, icon (if it has one), MOTD in the game's colours, your description on two lines, **Online**, the address with a working **Copy** button, and the version.
+- [ ] Join the server: within 30 seconds the page says "1 of 20 players online" with no names. Leave: it says nobody's on.
+- [ ] Switch to **Names and heads** and save. Your head and name appear; a second player joining appears too, and disappears when they leave.
+- [ ] **Nothing** hides the players section. Unticking the version hides it.
+- [ ] Restart the server: the page shows **Starting**, then **Online** with nobody on. Stop it: **Offline**.
+- [ ] Restart the panel (`sudo systemctl restart flytower-panel`) while someone is on: the page still lists them.
+- [ ] Switch the page off. The address now says "Nothing here", the same as `/s/does-not-exist`.
+- [ ] Paste the address into a Discord message: the preview shows the server's name and description (and your logo, if you uploaded one).
+- [ ] Turn on branding colours and a logo: the page uses them, in light and dark mode. On a phone it fits without scrolling sideways.
+- [ ] **YAML**: the spec shows a `public:` block; change `players: names` to `count` and apply. The plan lists **Public page** and the page follows.
+- [ ] The browser's console shows no content security policy errors on the page.

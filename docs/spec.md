@@ -122,6 +122,27 @@ What Flytower does when the server gets stuck. Left out, the current setting sta
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `restartWhenUnresponsive` | `true` to restart the server once when its console hasn't answered for five minutes. Defaults to `false`. See [Crashes](crashes.md#not-responding). |
 
+### `public`
+
+The server's [public status page](status-page.md). Left out, the current settings stay.
+
+| Field          | Meaning                                                                                                     |
+| -------------- | ----------------------------------------------------------------------------------------------------------- |
+| `enabled`      | `true` to turn the page on at `/s/<name>`. Defaults to `false`.                                             |
+| `description`  | A few lines about the server, up to 500 characters, shown as plain text with line breaks.                   |
+| `show.players` | `count` (the default) shows how many are online, `names` shows their heads and names, `none` shows nothing. |
+| `show.version` | `false` to hide the Minecraft version and loader. Defaults to `true`.                                       |
+
+```yaml
+public:
+  enabled: true
+  description: |
+    Survival for New Theatre members.
+    Season 3 started in September.
+  show:
+    players: names
+```
+
 ### `timezone`
 
 The time zone the server's [scheduled tasks](schedules.md) run in, such as `Europe/London`. Left out, it stays (UTC to begin with). Backups have their own, under `backups`.
