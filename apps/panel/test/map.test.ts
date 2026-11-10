@@ -2,7 +2,14 @@ import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'bun:test'
-import { MapService, parseReport, type MapDeps, type MapStatus } from '../server/map/service'
+import {
+  MapService,
+  parseProgress,
+  parseReport,
+  readStderr,
+  type MapDeps,
+  type MapStatus,
+} from '../server/map/service'
 import { DEFAULT_MAP, type MapSettings } from '../shared/map-settings'
 import { mapAccess, mapFile, viewerPage } from '../server/map/serve'
 import { parseDimension, parsePos, PlayerPositions } from '../server/map/players'
@@ -42,6 +49,7 @@ function setup(opts: { world?: boolean; palette?: 'ok' | 'fails' } = {}) {
   const settings: Record<string, MapSettings> = { survival: { ...DEFAULT_MAP, enabled: true } }
   const runs: string[][] = []
   const published: MapStatus['state'][] = []
+  const progress: (MapStatus['progress'] | null)[] = []
   const palettes: string[] = []
   const watching: { dir: string; save: () => void; stopped: boolean }[] = []
   let fail: string | null = null
@@ -57,15 +65,19 @@ function setup(opts: { world?: boolean; palette?: 'ok' | 'fails' } = {}) {
       if (opts.palette === 'fails') throw new Error('offline')
       writeFileSync(dest, 'block minecraft:stone 7d7d7d\n')
     },
-    async run(args) {
+    async run(args, onProgress) {
       runs.push(args)
       if (fail) throw new Error(fail)
+      for (let done = 0; done <= 3; done++) onProgress?.({ done, total: 3 })
       const out = args[args.indexOf('--out') + 1]!
       mkdirSync(out, { recursive: true })
       writeFileSync(join(out, 'maps.json'), '{}')
       return REPORT
     },
-    publish: (_name, status) => published.push(status.state),
+    publish: (_name, status) => {
+      published.push(status.state)
+      progress.push(status.progress)
+    },
     watch(dir, save) {
       const w = { dir, save, stopped: false }
       watching.push(w)
@@ -73,6 +85,7 @@ function setup(opts: { world?: boolean; palette?: 'ok' | 'fails' } = {}) {
     },
     quietMs: 20,
     maxWaitMs: 60,
+    progressMs: 0,
   }
   const service = new MapService(deps)
   return {
@@ -82,6 +95,7 @@ function setup(opts: { world?: boolean; palette?: 'ok' | 'fails' } = {}) {
     settings,
     runs,
     published,
+    progress,
     palettes,
     watching,
     failWith: (why: string | null) => (fail = why),
@@ -92,7 +106,7 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 describe('map service', () => {
   it('draws a map that is on, with the game colours, and remembers the pass', async () => {
-    const { service, runs, root, published, watching, palettes, deps } = setup()
+    const { service, runs, root, published, progress, watching, palettes, deps } = setup()
     await service.sync('survival')
     await service.draw('survival')
     expect(watching.map((w) => w.dir)).toEqual([join(root, 'servers', 'survival')])
@@ -103,11 +117,20 @@ describe('map service', () => {
       join(root, 'servers', 'survival', 'world'),
       '--out',
       join(root, 'maps', 'servers', 'survival'),
+      '--progress',
       '--palette',
       join(root, 'maps', 'palettes', '26.3.palette'),
     ])
     expect(published).toContain('drawing')
     expect(published.at(-1)).toBe('idle')
+    // Watchers see the pass move along, and no progress once it's done.
+    expect(progress.filter(Boolean).slice(-4)).toEqual([
+      { done: 0, total: 3 },
+      { done: 1, total: 3 },
+      { done: 2, total: 3 },
+      { done: 3, total: 3 },
+    ])
+    expect(progress.at(-1)).toBeNull()
     const status = await service.status('survival')
     expect(status).toMatchObject({ enabled: true, state: 'idle', error: null })
     expect(status.lastPass).toMatchObject({
@@ -203,6 +226,7 @@ describe('map service', () => {
       state: 'off',
       lastPass: null,
       error: null,
+      progress: null,
     })
 
     settings.survival = { ...DEFAULT_MAP, enabled: true }
@@ -220,6 +244,33 @@ describe('map service', () => {
     await service.draw('survival')
     expect(runs).toEqual([])
     expect(watching).toEqual([])
+  })
+})
+
+describe('parseProgress', () => {
+  it('reads only progress lines', () => {
+    expect(parseProgress('progress 12 340')).toEqual({ done: 12, total: 340 })
+    expect(parseProgress('progress 0 0\r')).toEqual({ done: 0, total: 0 })
+    expect(parseProgress('progress 5 4')).toBeNull()
+    expect(parseProgress('flytower-map: world/region: Permission denied')).toBeNull()
+    expect(parseProgress('progress -1 4')).toBeNull()
+  })
+
+  it('passes progress on as it comes and keeps the rest for errors', async () => {
+    const parts = ['progress 0 2\nprog', 'ress 1 2\nflytower-map: oh no\n', 'progress 2 2']
+    const stream = new ReadableStream<Uint8Array>({
+      start(c) {
+        for (const p of parts) c.enqueue(new TextEncoder().encode(p))
+        c.close()
+      },
+    })
+    const seen: unknown[] = []
+    expect(await readStderr(stream, (p) => seen.push(p))).toBe('flytower-map: oh no')
+    expect(seen).toEqual([
+      { done: 0, total: 2 },
+      { done: 1, total: 2 },
+      { done: 2, total: 2 },
+    ])
   })
 })
 
