@@ -60,7 +60,7 @@ function attach(topic: string, emit: (data: unknown) => void, access: () => Acce
   }
   if (topic === 'updates') {
     // Opening the panel checks again if the last check is over an hour old.
-    const off = useUpdates().watch(emit)
+    const off = useUpdates().watch((data) => emit(visibleUpdates(data, access())))
     useUpdates().maybeCheck(ON_OPEN_AFTER_MS)
     return off
   }

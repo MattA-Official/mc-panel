@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { schema } from '../db'
 import { loadAccess } from '../auth/access'
 import { can, type Access, type Permission } from '../../shared/permissions'
+import type { UpdatesSnapshot } from '../../shared/updates'
 
 /**
  * Requires a signed-in person who still exists, and returns their session and access.
@@ -67,4 +68,14 @@ export function canSeeJob(access: Access, id: number): boolean {
     .get()
   if (!row) return true // The route answers 404 itself.
   return row.server === null || can(access, 'server.view', row.server)
+}
+
+/** The update check's findings, with only the servers this person can see. */
+export function visibleUpdates(snapshot: UpdatesSnapshot, access: Access): UpdatesSnapshot {
+  return {
+    ...snapshot,
+    servers: Object.fromEntries(
+      Object.entries(snapshot.servers).filter(([name]) => can(access, 'server.view', name)),
+    ),
+  }
 }
