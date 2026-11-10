@@ -36,6 +36,51 @@ const LOOK: Record<ServerEventKind, { label: string; icon: string; color: string
 const when = (iso: string) =>
   new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'medium' })
 const open = ref<number | null>(null)
+
+// Each crash's actions, for right-click (#106).
+const can = useCan()
+const copy = useCopy()
+const toast = useToast()
+async function copyReport(e: ServerEvent) {
+  try {
+    const { content } = await $fetch<{ content: string }>(
+      `/api/servers/${server.value!.name}/files/read` as string,
+      { query: { path: `/${e.crashReport}` } },
+    )
+    await copy(content, 'Crash report')
+  } catch (err) {
+    toast.add({
+      title: "Couldn't read the crash report",
+      description: errorMessage(err),
+      color: 'error',
+    })
+  }
+}
+function rowMenu(e: ServerEvent) {
+  const items = []
+  if (e.crashReport) {
+    items.push({
+      label: 'Open crash report',
+      icon: 'i-lucide-file-warning',
+      onSelect: () => void navigateTo(crashReportLink(server.value!.name, e.crashReport!)),
+    })
+    if (can('files.read', server.value?.name)) {
+      items.push({
+        label: 'Copy report',
+        icon: 'i-lucide-copy',
+        onSelect: () => void copyReport(e),
+      })
+    }
+  }
+  if (e.logTail.length) {
+    items.push({
+      label: 'Copy the log before it',
+      icon: 'i-lucide-scroll-text',
+      onSelect: () => void copy(e.logTail.join('\n'), 'Log'),
+    })
+  }
+  return [items]
+}
 </script>
 
 <template>
@@ -47,7 +92,14 @@ const open = ref<number | null>(null)
       description="Crashes, crash loops and times the server stopped responding are listed here."
     />
     <ul v-else class="divide-y divide-default rounded-lg border border-default">
-      <li v-for="e in events" :key="e.id" class="p-3 text-sm">
+      <ActionTarget
+        v-for="e in events"
+        :key="e.id"
+        as="li"
+        :items="rowMenu(e)"
+        :label="LOOK[e.kind].label"
+        class="p-3 text-sm"
+      >
         <div class="flex items-start gap-3">
           <UIcon
             :name="LOOK[e.kind].icon"
@@ -93,7 +145,7 @@ const open = ref<number | null>(null)
             </div>
           </div>
         </div>
-      </li>
+      </ActionTarget>
     </ul>
   </div>
 </template>
