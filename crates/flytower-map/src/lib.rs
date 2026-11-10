@@ -11,9 +11,13 @@
 //!   region (one pixel per block); each level up halves the detail.
 //! - `maps.json`: the dimensions that have tiles, where they are and how far they reach.
 //! - `state/`: what was drawn, so the next pass knows what changed.
+//!
+//! `flytower-map palette` makes the colour palette from the Minecraft client jar.
 
 pub mod chunk;
+pub mod colours;
 pub mod draw;
+pub mod jar;
 pub mod nbt;
 pub mod palette;
 pub mod region;
