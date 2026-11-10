@@ -14,6 +14,7 @@
 
 pub mod chunk;
 pub mod draw;
+pub mod jar;
 pub mod nbt;
 pub mod palette;
 pub mod region;
