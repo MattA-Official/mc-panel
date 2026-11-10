@@ -9,7 +9,7 @@ use std::time::Duration;
 use flytower_agent::dispatch::dispatch;
 use flytower_agent::events::{Journal, UnitEvents};
 use flytower_agent::exec::RealExec;
-use flytower_agent::handlers::{Context, handle, server};
+use flytower_agent::handlers::{Context, handle, server, ssh, system_clock};
 use flytower_agent::server::{ListenOptions, bind, group_id, serve};
 use flytower_agent::units::Paths;
 
@@ -26,7 +26,8 @@ fn main() -> ExitCode {
     events.start();
     let ctx = Context {
         version: env("FLYTOWER_VERSION", "0.0.0-dev"),
-        exec: Box::new(RealExec::default()),
+        exec: Arc::new(RealExec::default()),
+        now: system_clock(),
         events: Some(events),
         paths: Paths::from_env(),
         panel_group: env("FLYTOWER_PANEL_GROUP", "flytower"),
@@ -54,6 +55,10 @@ fn main() -> ExitCode {
         }
     };
     println!("flytower-agent {} (rust) listening", ctx.version);
+    // An emergency SSH opening must end on time even if the agent restarted in between.
+    if let Err(e) = ssh::restore(&ctx) {
+        eprintln!("restoring the SSH timer failed: {}", e.message);
+    }
     match server::refresh_template(&ctx) {
         Ok(true) => println!("updated the server unit template"),
         Ok(false) => {}

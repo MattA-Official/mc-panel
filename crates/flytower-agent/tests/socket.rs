@@ -3,12 +3,13 @@
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::UnixStream;
+use std::sync::Arc;
 use std::thread;
 
 use flytower_agent::dispatch::dispatch;
 use flytower_agent::envelope::MAX_LINE_BYTES;
 use flytower_agent::exec::RealExec;
-use flytower_agent::handlers::{Context, handle};
+use flytower_agent::handlers::{Context, handle, system_clock};
 use flytower_agent::server::{ListenOptions, bind, serve};
 use flytower_agent::units::Paths;
 use serde_json::{Value, json};
@@ -29,7 +30,8 @@ fn answers_in_order_over_a_socket() {
 
     let ctx = Context {
         version: "1.2.0-test".into(),
-        exec: Box::new(RealExec::default()),
+        exec: Arc::new(RealExec::default()),
+        now: system_clock(),
         events: None,
         paths: Paths::under(&dir),
         panel_group: "flytower".into(),
@@ -43,7 +45,7 @@ fn answers_in_order_over_a_socket() {
     let mut stream = UnixStream::connect(&opts.socket_path).unwrap();
     // Two requests in one write, the second split across writes.
     stream
-        .write_all(b"{\"id\":\"a\",\"verb\":\"ping\",\"params\":{}}\n{\"id\":\"b\",\"verb\":\"ssh.status\",")
+        .write_all(b"{\"id\":\"a\",\"verb\":\"ping\",\"params\":{}}\n{\"id\":\"b\",\"verb\":\"service.start\",")
         .unwrap();
     stream.write_all(b"\"params\":{}}\n").unwrap();
     let mut reader = BufReader::new(stream.try_clone().unwrap());
@@ -60,7 +62,7 @@ fn answers_in_order_over_a_socket() {
     let second: Value = serde_json::from_str(&read()).unwrap();
     assert_eq!(
         (second["id"].as_str(), second["error"]["code"].as_str()),
-        (Some("b"), Some("failed"))
+        (Some("b"), Some("invalid_params"))
     );
 
     // An overlong line drops the connection.
