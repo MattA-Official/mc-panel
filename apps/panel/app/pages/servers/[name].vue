@@ -38,6 +38,8 @@ const WRITE_NEEDS: [string, { permission: Permission; text: string }][] = [
       text: 'You can see the schedules but not change or run them.',
     },
   ],
+  // Only people who manage access reach it, and it checks its own buttons.
+  ['settings/access', { permission: 'server.view', text: '' }],
   [
     'settings/community',
     {
