@@ -392,3 +392,66 @@ export function deleteRole(db: Db, access: Access, id: string) {
   db.delete(schema.roles).where(eq(schema.roles.id, id)).run()
   return r
 }
+
+// ------------------------------------------------------------------------ one server's access
+
+/**
+ * Whether someone may change who has access to `server`: anyone who manages people, or who
+ * was given Manage who has access there. Either way they can only give what they hold there.
+ */
+export const mayManageAccess = (access: Access, server: string) =>
+  can(access, 'people.manage') || can(access, 'access.manage', server)
+
+/**
+ * Everyone who can reach `server` and why, for its Access section: their grants for it and
+ * for all servers. Also everyone else's names, to add them, and the open invites for it.
+ */
+export function serverAccess(db: Db, access: Access, server: string, now = Date.now()) {
+  const { people, roles, invites } = listPeople(db, now)
+  const here = (g: GrantInput) => g.server === null || g.server === server
+  return {
+    people: people
+      .map((p) => ({ id: p.id, name: p.name, grants: p.grants.filter(here) }))
+      .filter((p) => p.grants.length),
+    others: people.filter((p) => !p.grants.some(here)).map((p) => ({ id: p.id, name: p.name })),
+    // Roles this person could hand out here, so the picker only offers those.
+    roles: roles
+      .filter((r) => mayGrant(db, access, { roleId: r.id, server }))
+      .map((r) => ({ id: r.id, name: r.name, permissions: r.permissions })),
+    allRoles: roles.map((r) => ({ id: r.id, name: r.name })),
+    invites: invites.filter((i) => i.server === server),
+  }
+}
+
+/**
+ * Replaces the roles a person has on `server` alone. Their roles for all servers stay as they
+ * are; those are changed on Access. Giving and taking both need the same standing.
+ */
+export function setServerGrants(
+  db: Db,
+  access: Access,
+  userId: number,
+  server: string,
+  roleIds: string[],
+) {
+  if (!serverExists(db, server)) throw new PeopleError('That server no longer exists.', 404)
+  const user = db.select().from(schema.users).where(eq(schema.users.id, userId)).get()
+  if (!user) throw new PeopleError('No such person.', 404)
+  const before = currentGrants(db, userId)
+  const others = before.filter((g) => g.server !== server)
+  const wanted = [...new Set(roleIds)].map((roleId) => ({ roleId, server }))
+  for (const g of wanted) checkGrant(db, access, g)
+  for (const g of before.filter((g) => g.server === server)) {
+    if (!mayGrant(db, access, g)) {
+      throw new PeopleError("You can't change someone who has more access than you.", 403)
+    }
+  }
+  const after = [...others, ...wanted]
+  db.transaction((tx) => {
+    tx.delete(schema.grants)
+      .where(and(eq(schema.grants.userId, userId), eq(schema.grants.server, server)))
+      .run()
+    for (const g of wanted) grantRole(tx, userId, g.roleId, server)
+  })
+  return { user, before, after }
+}

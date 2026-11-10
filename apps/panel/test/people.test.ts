@@ -305,3 +305,59 @@ describe('access changes for Activity', () => {
     })
   })
 })
+
+describe("a server's own access", () => {
+  const ACCESS_ROUTES = [
+    'index.get.ts',
+    '[id].put.ts',
+    'invites/index.post.ts',
+    'invites/[id].delete.ts',
+  ]
+
+  test('every Access route checks for an access manager straight after seeing the server', async () => {
+    for (const f of ACCESS_ROUTES) {
+      const src = await Bun.file(
+        new URL(`../server/api/servers/[name]/access/${f}`, import.meta.url),
+      ).text()
+      const body = src.slice(src.indexOf('defineEventHandler(')).split('\n')
+      expect(body[2]).toContain('requireAccessManager(event, server)')
+    }
+  })
+
+  test('someone given Manage who has access on one server manages only that one', async () => {
+    const { mayManageAccess, serverAccess, setServerGrants } = await import('../server/auth/people')
+    const { db, owner, person, access } = setup()
+    db.insert(schema.roles)
+      .values({
+        id: 'host',
+        name: 'Host',
+        permissions: ['server.view', 'server.power', 'access.manage', 'players.manage'],
+      })
+      .run()
+    const host = person('Host', 'host', 'survival')
+    const sam = person('Sam')
+    const a = access(host)
+    expect(mayManageAccess(a, 'survival')).toBe(true)
+    expect(mayManageAccess(a, 'creative')).toBe(false)
+    expect(mayManageAccess(access(owner), 'creative')).toBe(true)
+
+    // Only roles the host could hold here are offered, and given.
+    const view = serverAccess(db, a, 'survival')
+    expect(view.roles.map((r) => r.id).sort()).toEqual(['host', 'viewer'])
+    expect(view.others.map((p) => p.name)).toContain('Sam')
+    setServerGrants(db, a, sam, 'survival', ['viewer'])
+    expect(can(access(sam), 'server.view', 'survival')).toBe(true)
+    expect(can(access(sam), 'server.view', 'creative')).toBe(false)
+    fails(() => setServerGrants(db, a, sam, 'survival', ['operator']), /more access than you have/)
+    // Grants for other servers and for all of them are left alone.
+    grantRole(db, sam, 'viewer', null)
+    setServerGrants(db, a, sam, 'survival', [])
+    expect(can(access(sam), 'server.view', 'creative')).toBe(true)
+  })
+
+  test('Admins do not get Manage who has access', () => {
+    const { access, person } = setup()
+    const admin = person('Ada', 'admin')
+    expect(can(access(admin), 'access.manage', 'survival')).toBe(false)
+  })
+})

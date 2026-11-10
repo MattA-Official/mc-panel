@@ -12,6 +12,10 @@ function saved() {
 const restarting = ref(false)
 const can = useCan()
 const configText = "You can see this server's settings but not change them."
+// Only people who may manage access here see who has it.
+const managesAccess = computed(
+  () => can('people.manage') || can('access.manage', server.value?.name ?? ''),
+)
 const sections = computed<CollapsibleSection[]>(() => [
   {
     id: 'general',
@@ -48,6 +52,16 @@ const sections = computed<CollapsibleSection[]>(() => [
       text: 'You can see the schedules but not change or run them.',
     },
   },
+  ...(managesAccess.value
+    ? [
+        {
+          id: 'access',
+          label: 'Access',
+          icon: 'i-lucide-user-cog',
+          description: 'Who can reach this server, and their roles on it',
+        },
+      ]
+    : []),
   {
     id: 'maintenance',
     label: 'Maintenance',
@@ -111,6 +125,9 @@ async function restart() {
     </template>
     <template #schedules>
       <ServerSchedules />
+    </template>
+    <template #access>
+      <ServerAccess />
     </template>
     <template #maintenance>
       <div class="space-y-6">

@@ -189,4 +189,10 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   'servers/[name]/schedules/[id]/run.delete.ts': 'schedules.manage',
 
   'servers/[name]/index.delete.ts': 'server.delete',
+
+  // Who has access: Manage people, or Manage who has access on this server (checked next).
+  'servers/[name]/access/index.get.ts': 'server.view',
+  'servers/[name]/access/[id].put.ts': 'server.view',
+  'servers/[name]/access/invites/index.post.ts': 'server.view',
+  'servers/[name]/access/invites/[id].delete.ts': 'server.view',
 }

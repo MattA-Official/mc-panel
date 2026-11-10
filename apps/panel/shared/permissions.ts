@@ -23,6 +23,7 @@ export const SERVER_PERMISSIONS = [
   'schedules.manage',
   'community.manage',
   'spec.edit',
+  'access.manage',
   'server.delete',
 ] as const
 
@@ -157,6 +158,7 @@ export const PERMISSION_AREAS: { label: string; install: boolean; permissions: P
       'server.delete',
     ],
   },
+  { label: 'Access', install: false, permissions: ['access.manage'] },
   { label: 'Servers', install: true, permissions: ['servers.create', 'activity.all'] },
   {
     label: 'People',
@@ -185,6 +187,7 @@ export const POWERFUL: Partial<Record<Permission, string>> = {
   'files.write': 'Can add a mod or plugin, which is code running on the machine.',
   'content.manage': 'Can add a mod or plugin, which is code running on the machine.',
   'spec.edit': 'Changes everything about the server at once, including its content.',
+  'access.manage': 'Can bring people onto this server with any access they have on it.',
   'people.manage': 'Can give others any access they have themselves.',
   'roles.manage': 'Changing a role changes everyone who has it.',
   'system.updates': 'Can move Flytower to another version or channel.',
@@ -215,7 +218,11 @@ export type BuiltInRole = 'owner' | 'admin' | 'operator' | 'viewer'
 /** The roles every install has. Their permissions live here, so an update can widen them. */
 export const BUILT_IN_ROLES: Record<BuiltInRole, { name: string; permissions: Permission[] }> = {
   owner: { name: 'Owner', permissions: [...ALL_PERMISSIONS] },
-  admin: { name: 'Admin', permissions: [...SERVER_PERMISSIONS, 'servers.create'] },
+  // Everything on their servers except bringing people in, which Admins never had.
+  admin: {
+    name: 'Admin',
+    permissions: [...SERVER_PERMISSIONS.filter((p) => p !== 'access.manage'), 'servers.create'],
+  },
   operator: {
     name: 'Operator',
     permissions: [
@@ -322,6 +329,10 @@ export const PERMISSION_LABELS: Record<Permission, { label: string; help: string
     help: 'Public page, stats, Discord chat and the web map.',
   },
   'spec.edit': { label: 'Edit the YAML', help: 'Change any part of the server in one go.' },
+  'access.manage': {
+    label: 'Manage who has access',
+    help: 'Give and take roles on this server, and invite people to it.',
+  },
   'server.delete': { label: 'Delete the server', help: 'Gone for good, after a passkey check.' },
   'servers.create': { label: 'Create servers', help: 'New, imported and cloned servers.' },
   'people.invite': { label: 'Invite people', help: 'Make and cancel invite links.' },

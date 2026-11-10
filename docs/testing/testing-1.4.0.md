@@ -132,3 +132,14 @@ Do this on a box that was on 1.3 first, with at least one custom role, so the up
 - [ ] Editing a saved role shows the extras locked again, not as separate ticks.
 - [ ] **People**: the checklist button by each person lists what they can do on all servers, on each server they have extra on, and across Flytower.
 - [ ] Change a role and someone's roles, then open **Activity**: "Changed the X role: added …; removed …" and "Gave Alex … on Survival, and took away … on all servers".
+
+## A server's own access
+
+You need two servers and a second account.
+
+- [ ] As the Owner, open a server's **Settings**: there's an **Access** section listing everyone who can reach it, with "… here" for roles on this server and "… on all servers" for the rest.
+- [ ] The pencil changes someone's roles on this server only; their roles for all servers stay. Saving asks for your passkey, and the server's **Activity** says what was given or taken.
+- [ ] **Add someone** offers only people not on this server yet. **Invite** makes a link for this server; it shows under "Invite links not used yet" and can be cancelled there.
+- [ ] Make a role with **Manage who has access**, **Start and stop** and **Manage players**, and give it to the second account on one server only. As them, that server's **Settings** has **Access**; the other server's doesn't.
+- [ ] As them, the role picker offers only roles they could have there themselves (Viewer and their own role, not Operator or Admin), and the server refuses anything more.
+- [ ] Built-in **Admin** has no **Manage who has access**, so an Admin's Settings has no Access section.
