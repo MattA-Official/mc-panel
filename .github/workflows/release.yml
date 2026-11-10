@@ -42,10 +42,11 @@ jobs:
             # Native builds (the native branch, docs/decisions/0001-rust-and-go.md) get their own
             # tag, which panels on the Stable and Beta channels never look at. Beta panels offer
             # every v-tagged pre-release, so the native branch must never publish a v tag.
-            if [[ "$version" == *-native.* ]]; then
+            # Native versions add a counter to the release they go with: 1.2.0-beta.2.native.1.
+            if [[ "$version" =~ -(.+\.)?native\.[0-9]+$ ]]; then
               tag="native-$version"
             elif [[ "$GITHUB_REF_NAME" == native ]]; then
-              echo "::error::the native branch only releases native builds, like 1.5.0-native.1"; exit 1
+              echo "::error::the native branch only releases native builds, like 1.2.0-beta.2.native.1"; exit 1
             else
               tag="v$version"
             fi
