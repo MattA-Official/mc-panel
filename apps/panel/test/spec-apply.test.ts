@@ -870,3 +870,36 @@ describe('vanilla tweaks', () => {
     expect(again.changes).toEqual([])
   })
 })
+
+describe('which permissions a spec change needs', () => {
+  it('needs nothing for the spec as it stands', async () => {
+    const { service } = setup()
+    const current = await service.currentSpec('survival')
+    expect(await service.needs('survival', current)).toEqual([])
+    // A form that sends the current spec back through ServerSpec changes nothing either.
+    expect(await service.needs('survival', ServerSpec.parse(current))).toEqual([])
+  })
+
+  it('needs the permission for each part that changes', async () => {
+    const { service } = setup()
+    const current = await service.currentSpec('survival')
+    const needs = (extra: Partial<ServerSpecInput>) =>
+      service.needs('survival', ServerSpec.parse({ ...current, ...extra }))
+    expect(await needs({ properties: { motd: 'Hi' } })).toEqual(['settings.edit'])
+    expect(await needs({ content: [{ modrinth: 'lithium' }] })).toEqual(['content.manage'])
+    expect(await needs({ schedules: [{ restart: '0 5 * * *' }] })).toEqual(['schedules.manage'])
+    expect(await needs({ timezone: 'Europe/London', content: [{ modrinth: 'lithium' }] })).toEqual([
+      'settings.edit',
+      'content.manage',
+    ])
+    expect(await service.needs('survival', current, true)).toEqual(['content.manage'])
+  })
+
+  it('keeps what a plan needs until it is applied', async () => {
+    const { service, spec } = setup()
+    const plan = await service.plan('survival', spec({ properties: { motd: 'Hi' } }))
+    expect(service.planNeeds('survival', plan.id)).toContain('settings.edit')
+    expect(service.planNeeds('creative', plan.id)).toBeNull()
+    expect(service.planNeeds('survival', 'nope')).toBeNull()
+  })
+})

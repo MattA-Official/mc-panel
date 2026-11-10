@@ -27,6 +27,8 @@ import type { BackupService } from '../backups/service'
 import { specFromServer } from './from-server'
 import { readLock, unmanagedFiles, writeLock, type Lock, type LockedItem } from './lock'
 import { makePlan, type Plan } from './plan'
+import { specNeeds } from './sections'
+import type { ServerPermission } from '../../shared/permissions'
 import { budgetProblem, type MemoryUser } from '../memory'
 
 export const PLAN_TTL_MS = 15 * 60_000
@@ -78,6 +80,8 @@ interface StoredPlan {
   plan: Plan
   fingerprint: string
   at: number
+  /** The permissions the change needs, checked again when it's applied. */
+  needs: ServerPermission[]
 }
 
 export type PublicPlan = Omit<Plan, 'work'> & { id: string }
@@ -224,8 +228,21 @@ export class SpecService {
     }
   }
 
+  /** The permissions changing `name` to `spec` needs (see sections.ts). */
+  async needs(name: string, spec: ServerSpec, upgrade?: true | string[]) {
+    return specNeeds(await this.currentSpec(name), spec, upgrade)
+  }
+
+  /** What a plan made earlier needs, or null when it has expired. */
+  planNeeds(name: string, planId: string): ServerPermission[] | null {
+    this.sweep()
+    const stored = this.plans.get(planId)
+    return stored && stored.plan.server === name ? stored.needs : null
+  }
+
   async plan(name: string, spec: ServerSpec, upgrade?: true | string[]): Promise<PublicPlan> {
     const { db } = this.deps
+    const needs = await this.needs(name, spec, upgrade)
     const row = this.row(name)
     const dir = this.deps.serverDir(name)
     const props = await this.deps.readProperties(name)
@@ -264,7 +281,12 @@ export class SpecService {
     })
     this.sweep()
     const id = Buffer.from(crypto.getRandomValues(new Uint8Array(12))).toString('hex')
-    this.plans.set(id, { plan, fingerprint: await this.fingerprint(name), at: this.now() })
+    this.plans.set(id, {
+      plan,
+      fingerprint: await this.fingerprint(name),
+      at: this.now(),
+      needs,
+    })
     return publicPlan(id, plan)
   }
 
