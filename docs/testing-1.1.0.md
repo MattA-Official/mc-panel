@@ -75,3 +75,14 @@ On a server running spark (or any server, using the steps below):
 - [ ] Start a spark profile in the console with `spark profiler start`, then **Back up now** while it runs. The backup finishes, and its job says nothing about skipped files: spark's `config/spark/tmp` folder is left out. Stop the profile with `spark profiler stop`.
 - [ ] SSH in and make a file only the server can read: `sudo -u mc-<name> sh -c 'echo x > /srv/flytower/servers/<name>/private.txt && chmod 600 /srv/flytower/servers/<name>/private.txt'`. **Back up now** finishes, and its job ends with "Left out 1 file Flytower couldn't read: private.txt (Permission denied)." Delete the file afterwards.
 - [ ] A file ending in `.tmp` anywhere in the server folder isn't in the backup (download it and look, or restore it on a test server).
+
+## Hidden secrets
+
+On a 26.3 server (or any Minecraft version from 1.21.9 on):
+
+- [ ] In **Files**, open `server.properties` and set `management-server-enabled=true`. Restart the server so Minecraft writes a `management-server-secret`.
+- [ ] The **YAML** tab and **Download spec** don't contain `management-server-secret` or `rcon.password`.
+- [ ] **Settings**, server.properties: neither secret is listed. Change the MOTD and save; in **Files**, `management-server-secret` still has the same value.
+- [ ] In the **YAML** tab, add `management-server-secret: abc` under `properties:`. The plan is refused with "management-server-secret is a secret, so it's managed by Flytower" on that line.
+- [ ] **Clone** the server. In the clone's **Files** tab, `management-server-secret` is 40 letters and digits and different from the original's.
+- [ ] **Activity** shows the property change and the clone without any secret in their details.

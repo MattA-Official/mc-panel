@@ -69,7 +69,10 @@ The address players use, such as `survival.example.com`. `null` clears it; left 
 
 ### `properties`
 
-Values for `server.properties`: strings, numbers or booleans. Anything left out keeps its current value. Values equal to Minecraft's defaults are left out when Flytower writes a spec. `server-port`, `enable-rcon`, `rcon.port` and `rcon.password` are managed by Flytower and can't be set here.
+Values for `server.properties`: strings, numbers or booleans. Anything left out keeps its current value. Values equal to Minecraft's defaults are left out when Flytower writes a spec. Some keys can't be set here:
+
+- `server-port`, `enable-rcon` and `rcon.port` are managed by Flytower. Set the port with `port`.
+- Secrets are hidden: `rcon.password`, `management-server-secret`, and any other key ending in `secret` or `password` (such as `-secret` or `.password`). They're never written into a spec or shown in the Settings form, and editing other properties or applying a spec keeps whatever secret is on disk. A cloned server gets fresh secrets of its own. To change one by hand, edit `server.properties` in the **Files** tab.
 
 ### `content`
 
