@@ -230,6 +230,8 @@ export function describeAudit(
     case 'world.copy':
       return `Copied ${str(d.from)}'s world into ${t}`
   }
+  if (action === 'map.render.full') return `Started drawing ${t}'s whole map`
+  if (action === 'map.render.cancel') return `Stopped drawing ${t}'s map`
   if (action.startsWith('world.pregen.')) {
     const what = action.slice(13)
     return what === 'start'

@@ -7,7 +7,7 @@ interface Status {
   ready: boolean
 }
 
-const { server, refresh: refreshServer } = useServerContext()
+const { server, status, refresh: refreshServer } = useServerContext()
 const toast = useToast()
 const name = computed(() => server.value?.name ?? '')
 const change = ref<{ propose: (spec: unknown, o: { title: string }) => Promise<void> }>()
@@ -58,6 +58,32 @@ async function copy(text: string) {
   await navigator.clipboard.writeText(text).catch(() => {})
   copied.value = true
   setTimeout(() => (copied.value = false), 1500)
+}
+
+const DIMENSIONS = [
+  { label: 'Overworld', value: 'overworld' },
+  { label: 'Nether', value: 'the_nether' },
+  { label: 'End', value: 'the_end' },
+]
+const dimension = ref('overworld')
+const rendering = ref<'full' | 'cancel' | null>(null)
+async function render(action: 'full' | 'cancel') {
+  rendering.value = action
+  try {
+    const r = await $fetch<{ reply: string }>(`/api/servers/${name.value}/map/render` as string, {
+      method: 'POST',
+      body: { action, dimension: dimension.value },
+    })
+    toast.add({ title: 'squaremap', description: r.reply, color: 'success' })
+  } catch (err) {
+    toast.add({
+      title: "squaremap couldn't do that",
+      description: errorMessage(err),
+      color: 'error',
+    })
+  } finally {
+    rendering.value = null
+  }
 }
 </script>
 
@@ -155,6 +181,36 @@ async function copy(text: string) {
             (v: boolean) => save({ public: v }, v ? 'The map is public' : 'The map is private')
           "
         />
+      </div>
+      <div v-if="data.ready" class="mt-5" data-e2e="map-render">
+        <h3 class="text-sm font-medium">Draw the whole map</h3>
+        <p class="mt-1 text-sm text-muted">
+          squaremap draws new and changed places by itself. To fill in everywhere already explored,
+          say after adding it or restoring a backup, draw the whole map. It runs in the background
+          and shows its progress in the Console.
+        </p>
+        <p v-if="status !== 'active'" class="mt-3 text-sm text-muted">
+          Start the server to draw the map.
+        </p>
+        <div v-else class="mt-3 flex flex-wrap items-center gap-2">
+          <USelect v-model="dimension" :items="DIMENSIONS" class="w-40" />
+          <UButton
+            label="Draw"
+            icon="i-lucide-brush"
+            :loading="rendering === 'full'"
+            :disabled="!!rendering"
+            data-e2e="map-render-full"
+            @click="render('full')"
+          />
+          <UButton
+            label="Stop"
+            color="neutral"
+            variant="ghost"
+            :loading="rendering === 'cancel'"
+            :disabled="!!rendering"
+            @click="render('cancel')"
+          />
+        </div>
       </div>
     </template>
     <SpecChange ref="change" :server="server.name" @applied="refresh()" />

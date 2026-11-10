@@ -113,6 +113,7 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   'servers/[name]/stats/settings.patch.ts': 'server.configure',
   'servers/[name]/map/index.get.ts': 'server.view',
   'servers/[name]/map/settings.patch.ts': 'server.configure',
+  'servers/[name]/map/render.post.ts': 'world.manage',
   'servers/[name]/properties.get.ts': 'server.view',
   'servers/[name]/icon.get.ts': 'server.view',
   'servers/[name]/pack.get.ts': 'server.view',

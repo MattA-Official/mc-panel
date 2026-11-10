@@ -14,7 +14,7 @@ import { isExcluded } from '../server/backups/archive'
 import { openDb, schema } from '../server/db'
 import type { AgentCall } from '../server/jobs/runner'
 import { MAP_CSP, mapAccess, mapFile } from '../server/map/serve'
-import { MapService } from '../server/map/service'
+import { MapService, plainReply } from '../server/map/service'
 import { dataDir, hasSquaremap, squaremapConfig, webDir } from '../server/map/squaremap'
 import { writeLock } from '../server/spec/lock'
 
@@ -268,5 +268,42 @@ describe('serving the map', () => {
     expect(MAP_CSP).toContain("default-src 'self'")
     expect(MAP_CSP).not.toContain('https:')
     expect(MAP_CSP).toContain("frame-ancestors 'none'")
+  })
+})
+
+describe('drawing the map', () => {
+  it('draws or stops a dimension over the console, and says what squaremap said', async () => {
+    const { service, commands } = await setup()
+    expect(await service.render('survival', 'full', 'the_nether')).toBe('Started drawing the map.')
+    expect(await service.render('survival', 'cancel', 'overworld')).toBe('Stopped drawing.')
+    expect(commands).toEqual([
+      'squaremap fullrender minecraft:the_nether',
+      'squaremap cancelrender minecraft:overworld',
+    ])
+    expect(plainReply('<red>Render already in progress for §aminecraft:overworld')).toBe(
+      'Render already in progress for minecraft:overworld',
+    )
+  })
+
+  it('refuses when it cannot', async () => {
+    await expect(
+      (await setup({ installed: false })).service.render('survival', 'full', 'overworld'),
+    ).rejects.toThrow('Add squaremap')
+    const stopped = await setup()
+    stopped.stop()
+    await expect(stopped.service.render('survival', 'full', 'overworld')).rejects.toThrow(
+      'Start the server',
+    )
+  })
+
+  it('forgets the tiles of a replaced world, and nothing else', async () => {
+    const { service, dir } = await setup()
+    mkdirSync(join(dir, 'squaremap', 'web', 'tiles', 'minecraft_overworld'), { recursive: true })
+    writeFileSync(join(dir, 'squaremap', 'web', 'index.html'), '')
+    writeFileSync(join(dir, 'squaremap', 'config.yml'), '')
+    await service.clearTiles('survival')
+    expect(existsSync(join(dir, 'squaremap', 'web', 'tiles'))).toBe(false)
+    expect(existsSync(join(dir, 'squaremap', 'web', 'index.html'))).toBe(true)
+    expect(existsSync(join(dir, 'squaremap', 'config.yml'))).toBe(true)
   })
 })
