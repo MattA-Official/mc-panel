@@ -37,7 +37,7 @@ The **Native** channel is for trying Flytower with parts rewritten in Rust and G
 
 Use native builds on a test server. Leaving them means using **Go back to** for a version you had before, or reinstalling. To start on one, install with `--native`, or choose **Native** under **System, Updates**.
 
-From 1.3.0-beta.1, every release also carries the Rust system helper, switched off. [Testing the Rust agent](testing/testing-rust-agent.md) shows how to try it on any channel.
+From 1.3.0-beta.1, every release also carries the Rust system helper, switched off, on any channel. To try it, run `echo rust > /etc/flytower/agent` as root and restart `flytower-agent`. Delete that file and restart again to go back.
 
 ## Releases are signed
 
