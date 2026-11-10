@@ -55,6 +55,8 @@ export interface SpecDeps {
   writeProperties: (name: string, changes: Record<string, string>) => Promise<void>
   /** Called after backup settings change. */
   schedulesChanged?: () => void
+  /** Called after player stats settings change, to stop recording or forget players. */
+  statsChanged?: (name: string, before: unknown) => void
   /** Scheduled tasks: read for plans and specs, replaced by apply. */
   tasks?: {
     tasks(name: string): TaskSpec[]
@@ -439,11 +441,13 @@ export class SpecService {
           ? { restartWhenUnresponsive: s.restartWhenUnresponsive }
           : {}),
         ...(s.publicPage ? { publicPage: s.publicPage } : {}),
+        ...(s.stats ? { stats: s.stats } : {}),
         content: s.content,
       })
       .where(eq(schema.servers.name, name))
       .run()
     if (s.backups) this.deps.schedulesChanged?.()
+    if (s.stats) this.deps.statsChanged?.(name, row.stats)
     if (s.schedules || s.timezone !== undefined) {
       const tasks = this.deps.tasks
       tasks?.replace(name, s.schedules ?? tasks.tasks(name), s.timezone)
