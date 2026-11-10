@@ -15,6 +15,7 @@ import { protocolInfo, type Handlers } from './dispatch.ts'
 import { startFakeMinecraft } from './dev-minecraft.ts'
 import { listen } from './server.ts'
 import { UnitEvents } from './events.ts'
+import * as disk from './handlers/disk.ts'
 
 type State = 'active' | 'inactive' | 'activating' | 'deactivating' | 'failed'
 
@@ -138,6 +139,11 @@ const fakeUpdate = (to: string, manual: boolean) => {
   return { started: true as const }
 }
 
+// Pretend system folders, so System, Disk has something to split up and clean.
+const MB = 1024 * 1024
+const fakeSystem = { java: 190 * MB, flytower: 240 * MB, logs: 610 * MB, temp: 85 * MB }
+const fakeFree = { journal: 520 * MB, aptCache: 70 * MB, oldReleases: 110 * MB }
+
 const handlers: Handlers = {
   ping: async (_p, ctx) => protocolInfo(ctx.version),
   'update.status': async () => ({
@@ -215,6 +221,35 @@ const handlers: Handlers = {
     }
     return sshState()
   },
+  // Server folders are measured for real under the dev data folder; the rest is pretend.
+  'disk.usage': async (p, ctx) => {
+    const real = await disk.usage({ servers: p.servers, system: false }, ctx)
+    if (!p.system) return real
+    const shared = await disk.usage({ servers: [], system: true }, ctx)
+    return {
+      servers: real.servers,
+      shared: shared.shared,
+      system: { ...fakeSystem, unreadable: 0, ...fakeFree },
+    }
+  },
+  'disk.vacuum-journal': async ({ maxMb }) => {
+    const freed = Math.max(0, fakeFree.journal - maxMb * MB)
+    fakeFree.journal -= freed
+    fakeSystem.logs -= freed
+    return { freedBytes: freed }
+  },
+  'disk.clean-apt': async () => {
+    const freed = fakeFree.aptCache
+    fakeFree.aptCache = 0
+    fakeSystem.temp -= freed
+    return { freedBytes: freed }
+  },
+  'disk.prune-flytower': async () => {
+    const freed = fakeFree.oldReleases
+    fakeFree.oldReleases = 0
+    fakeSystem.flytower -= freed
+    return { freedBytes: freed, removed: freed ? ['0.0.0-dev-old'] : [] }
+  },
   'server.delete': async ({ name }) => {
     await rm(join(serversDir, name), { recursive: true, force: true })
     states.delete(name)
@@ -224,6 +259,17 @@ const handlers: Handlers = {
 
 const ctx = {
   unitEvents,
+  paths: {
+    servers: serversDir,
+    runtimes: join(root, 'runtimes'),
+    archive: join(root, 'archive'),
+    config: join(root, 'etc'),
+    systemd: join(root, 'systemd'),
+    state: join(root, 'agent'),
+    panelData: root,
+    prefix: join(root, 'prefix'),
+    system: join(root, 'system'),
+  },
   version: '0.0.0-dev-fake',
   log: (e: unknown) => console.log(JSON.stringify(e)),
 } as unknown as AgentContext
