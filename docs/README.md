@@ -19,7 +19,7 @@ Flytower is a web panel for running Minecraft servers on your own VPS. You insta
 
 ## Looking after the machine
 
-- [Updating Flytower](updating.md): self-update, going back, and upgrading old installs.
+- [Updating Flytower](updating.md): self-update, going back, update badges, and upgrading old installs.
 - [Troubleshooting](troubleshooting.md): logs, SSH, and getting the panel itself back.
 
 ## How it fits together
