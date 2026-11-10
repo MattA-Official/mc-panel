@@ -49,6 +49,8 @@ impl Fake {
             events: None,
             paths: paths.clone(),
             panel_group: "flytower".into(),
+            releases_url: super::update::RELEASES.into(),
+            release_key: crate::release::RELEASE_KEY.into(),
         }
     }
 }

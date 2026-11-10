@@ -1,21 +1,21 @@
-//! What each verb does. Ported verbs live in the modules below; the rest answer `failed` with
-//! "not ported yet" until their stage lands, so the Rust agent can be run against a real panel
-//! without pretending to do work it can't.
+//! What each verb does, one module per area, matching `packages/agent/src/handlers`. Every
+//! verb in the protocol is handled here.
 
-mod files;
+pub(crate) mod files;
 pub mod runtime;
 pub mod server;
 pub mod service;
 pub mod ssh;
 #[cfg(test)]
 pub mod testing;
+pub mod update;
 
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 use serde_json::{Value, json};
 
-use crate::envelope::{AgentError, ErrorCode, PROTOCOL_VERSION};
+use crate::envelope::{AgentError, PROTOCOL_VERSION};
 use crate::events::UnitEvents;
 use crate::exec::Exec;
 use crate::fetch::Fetch;
@@ -45,6 +45,10 @@ pub struct Context {
     pub paths: Paths,
     /// The panel's group, which may use the agent and shares server folders.
     pub panel_group: String,
+    /// Where releases are downloaded from: `<url>/<tag>/<file>`.
+    pub releases_url: String,
+    /// The key releases are signed with, as a PEM `PUBLIC KEY`; tests use their own.
+    pub release_key: String,
 }
 
 /// Runs one checked request.
@@ -75,9 +79,8 @@ pub fn handle(params: &Params, ctx: &Context) -> Result<Value, AgentError> {
         Params::RuntimeInstall(p) => runtime::install(p.major, ctx),
         Params::SshStatus => Ok(ssh::status(ctx)),
         Params::SshSet(p) => ssh::set(p.open, p.minutes, ctx),
-        _ => Err(AgentError::new(
-            ErrorCode::Failed,
-            "not ported to the Rust agent yet; use the TypeScript agent",
-        )),
+        Params::UpdateStatus => Ok(update::status(ctx)),
+        Params::UpdateInstall(p) => update::install(&p.version, ctx),
+        Params::UpdateRollback(p) => update::rollback(&p.version, ctx),
     }
 }

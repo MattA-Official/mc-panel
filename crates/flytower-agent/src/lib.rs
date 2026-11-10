@@ -4,11 +4,13 @@
 //! `docs/decisions/0001-rust-and-go.md`.
 
 pub mod dispatch;
+pub mod entry_points;
 pub mod envelope;
 pub mod events;
 pub mod exec;
 pub mod fetch;
 pub mod handlers;
+pub mod release;
 pub mod server;
 pub mod time;
 pub mod units;
