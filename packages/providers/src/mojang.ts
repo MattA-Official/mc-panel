@@ -1,6 +1,7 @@
 import { cached, getJson } from './http.ts'
 import {
   ProviderError,
+  type ExpectedHash,
   type Fetch,
   type LoaderProvider,
   type ResolvedServer,
@@ -15,7 +16,7 @@ interface Manifest {
 }
 
 interface VersionJson {
-  downloads?: { server?: { sha1: string; url: string } }
+  downloads?: { server?: { sha1: string; url: string }; client?: { sha1: string; url: string } }
   javaVersion?: { majorVersion: number }
 }
 
@@ -37,6 +38,16 @@ export class Mojang {
     return this.cache(`v:${mc}`, () =>
       getJson<VersionJson>(this.fetchImpl, entry.url, 'Mojang'),
     ) as Promise<VersionJson>
+  }
+
+  /**
+   * The game client for a version. The web map reads its textures and biome data for
+   * colours; nothing in it is ever run.
+   */
+  async clientJar(mc: string): Promise<{ url: string; hash: ExpectedHash }> {
+    const client = (await this.versionJson(mc)).downloads?.client
+    if (!client) throw new ProviderError(`Minecraft ${mc} has no client download.`)
+    return { url: client.url, hash: { algorithm: 'sha1', value: client.sha1 } }
   }
 
   async javaMajor(mc: string): Promise<number> {

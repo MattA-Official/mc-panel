@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { mkdtemp, exists } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createLoaders, downloadVerified, ProviderError, type Fetch } from '../src/index.ts'
+import { createLoaders, downloadVerified, Mojang, ProviderError, type Fetch } from '../src/index.ts'
 
 const fixture = (name: string) => Bun.file(join(import.meta.dir, 'fixtures', name)).text()
 
@@ -62,6 +62,17 @@ describe('vanilla', () => {
   test('unknown versions give a readable error', async () => {
     const { vanilla } = createLoaders(fixtureFetch())
     await expect(vanilla.resolve('9.9')).rejects.toThrow("Minecraft 9.9 doesn't exist.")
+  })
+
+  test('finds the client jar for the web map, with its sha1', async () => {
+    const mojang = new Mojang(fixtureFetch())
+    expect(await mojang.clientJar('26.3')).toEqual({
+      url: 'https://piston-data.mojang.com/v1/objects/e877b6a07acd633fb3bb475002175cec036e7b87/client.jar',
+      hash: { algorithm: 'sha1', value: 'e877b6a07acd633fb3bb475002175cec036e7b87' },
+    })
+    await expect(mojang.clientJar('1.16.5')).rejects.toThrow(
+      'Minecraft 1.16.5 has no client download.',
+    )
   })
 
   test('caches the manifest', async () => {
