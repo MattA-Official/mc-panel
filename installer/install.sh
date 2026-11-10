@@ -129,7 +129,7 @@ if [[ -z "$tarball" ]]; then
       fi
       [[ -n "$version" ]] || die "couldn't find the latest release"
     fi
-    if [[ "$version" == *-native.* ]]; then
+    if [[ "$version" =~ -(.+\.)?native\.[0-9]+$ ]]; then
       base="https://github.com/$REPO/releases/download/native-$version"
     else
       base="https://github.com/$REPO/releases/download/v$version"
