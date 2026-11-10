@@ -28,14 +28,14 @@ export const serverRoutes = (name: string) => {
     console: base,
     logs: `${base}?logs=`,
     players: `${base}/players`,
-    backups: `${base}/world`,
-    backupNow: `${base}/world?backup=now`,
+    backups: `${base}/world#backups`,
+    backupNow: `${base}/world?backup=now#backups`,
     content: `${base}/content`,
     world: `${base}/world`,
     files: `${base}/files`,
     settings: `${base}/settings`,
-    clone: `${base}/settings/maintenance?clone=1`,
-    delete: `${base}/settings/maintenance?delete=1`,
+    clone: `${base}/settings?clone=1#maintenance`,
+    delete: `${base}/settings?delete=1#maintenance`,
   }
 }
 

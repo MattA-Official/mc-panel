@@ -326,7 +326,7 @@ async function submit() {
 </script>
 
 <template>
-  <div class="mx-auto w-full max-w-5xl space-y-6">
+  <div class="space-y-6">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <p class="text-sm text-muted">
         Restarts, commands and announcements that run by themselves. They're in the server's YAML as

@@ -231,7 +231,7 @@ function menu(b: BackupRow) {
 </script>
 
 <template>
-  <div class="mx-auto w-full max-w-5xl space-y-6">
+  <div class="space-y-6">
     <UCard v-if="job">
       <div class="mb-4 flex items-center justify-between">
         <h2 class="font-semibold">{{ job.title }}</h2>
