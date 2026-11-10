@@ -73,6 +73,15 @@ const playersLine = computed(() => {
   <article v-else-if="data && state" class="space-y-6" data-e2e="status-page">
     <header class="space-y-3">
       <div class="flex flex-wrap items-center gap-3">
+        <img
+          v-if="data.icon"
+          :src="data.icon"
+          alt=""
+          width="48"
+          height="48"
+          class="size-12 shrink-0 rounded-sm [image-rendering:pixelated]"
+          data-e2e="status-icon"
+        />
         <h1 class="min-w-0 font-display text-4xl tracking-wide break-words uppercase">
           {{ data.displayName }}
         </h1>

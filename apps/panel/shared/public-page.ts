@@ -78,6 +78,8 @@ export interface PublicStatus {
   description: string
   /** The message of the day from server.properties, with its `§` codes. */
   motd: string
+  /** The server's 64×64 icon, or null when it has none. */
+  icon: string | null
   /** The address players join with. */
   address: string
   /** online: players can join; starting: on its way up; offline: stopped or crashed. */

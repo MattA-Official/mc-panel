@@ -22,6 +22,8 @@ export interface PageInput {
   roster: RosterView
   /** The host the visitor reached the panel on, for servers without their own hostname. */
   machine: string
+  /** The public URL of the server's icon, or null. */
+  icon: string | null
   /** `motd` from server.properties. */
   motd: string
   /** `max-players` from server.properties, when it's a number. */
@@ -55,6 +57,7 @@ export function publicStatus(input: PageInput): PublicStatus {
     displayName: row.displayName,
     description: page.description,
     motd: input.motd,
+    icon: input.icon,
     address: joinAddress(row, input.machine),
     state,
     players,
