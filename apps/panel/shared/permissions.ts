@@ -143,7 +143,7 @@ export const PERMISSION_LABELS: Record<Permission, { label: string; help: string
   'people.manage': { label: 'Manage people', help: 'Invites, roles and removing people.' },
   'system.manage': {
     label: 'Manage Flytower',
-    help: 'Updates, SSH, notifications, off-site storage and branding.',
+    help: 'Updates, SSH, notifications, Discord, off-site storage and branding.',
   },
   'activity.all': { label: 'See all activity', help: 'Otherwise only for servers they can see.' },
 }
