@@ -18,8 +18,8 @@ const Body = z.object({ mappings: z.array(Mapping).max(MAX_MAPPINGS) })
  * command needs it, and a Discord role is easier to hand out than a passkey.
  */
 export default defineEventHandler(async (event) => {
-  await requirePermission(event, 'system.manage')
   await requirePermission(event, 'people.manage')
+  await requirePermission(event, 'system.manage')
   const { user } = await requireElevated(event)
   const { mappings } = await readValidatedBody(event, Body.parse)
   const db = useDb()
