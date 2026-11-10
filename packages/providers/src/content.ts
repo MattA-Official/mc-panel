@@ -31,8 +31,11 @@ export interface ContentHit {
   iconUrl: string | null
   downloads: number
   kind: ContentKind
-  /** Whether the server needs it; client-only items never appear. */
-  serverSide: 'required' | 'optional' | 'unknown'
+  /**
+   * Whether the server needs it. Client-only items ('unsupported') appear only when the
+   * search asks for them.
+   */
+  serverSide: 'required' | 'optional' | 'unsupported' | 'unknown'
 }
 
 export interface ContentVersion {
@@ -67,6 +70,11 @@ export interface ResolvedContent {
   request?: { url: string; form: Record<string, string> }
   /** The download is a zip holding the real file, as Vanilla Tweaks sends datapacks. */
   wrapped?: boolean
+  /**
+   * The source says it only runs on players' computers. Authors set this and it's not
+   * always right, so it's installed anyway when asked for, with a warning.
+   */
+  clientOnly?: boolean
 }
 
 export interface ContentRef {
@@ -80,7 +88,14 @@ export interface ContentProvider {
   name: string
   search(
     query: string,
-    opts: { kind: ContentKind; target: ContentTarget; limit?: number; offset?: number },
+    opts: {
+      kind: ContentKind
+      target: ContentTarget
+      limit?: number
+      offset?: number
+      /** Include projects marked client-only. Off by default. */
+      clientOnly?: boolean
+    },
   ): Promise<{ hits: ContentHit[]; total: number }>
   versions(
     project: string,

@@ -7,12 +7,17 @@ const Query = z.object({
   q: z.string().max(100).default(''),
   offset: z.coerce.number().int().min(0).max(10_000).default(0),
   source: z.enum(['modrinth', 'hangar']).default('modrinth'),
+  /** Include Modrinth projects marked client-only. */
+  clientOnly: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
 })
 
 /** Searches Modrinth (or Hangar, for plugins) for content this server's loader and version can run. */
 export default defineEventHandler(async (event) => {
   const { name } = await specContext(event)
-  const { kind, q, offset, source } = await getValidatedQuery(event, Query.parse)
+  const { kind, q, offset, source, clientOnly } = await getValidatedQuery(event, Query.parse)
   const row = findServer(name)
   if (!ACCEPTS[row.loader].includes(kind)) {
     throw createError({
@@ -30,6 +35,7 @@ export default defineEventHandler(async (event) => {
       kind,
       target: { loader: row.loader, minecraft: row.mcVersion },
       offset,
+      clientOnly,
     }),
   )
   return {

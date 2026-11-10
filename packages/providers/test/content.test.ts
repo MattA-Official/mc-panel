@@ -55,6 +55,9 @@ const projects: Record<string, object> = {
   P_chnk: project('P_chnk', 'chunky'),
   P_loop: project('P_loop', 'loop'),
   zoom: project('P_zoom', 'zoom', { server_side: 'unsupported' }),
+  P_zoom: project('P_zoom', 'zoom', { server_side: 'unsupported' }),
+  companion: project('P_comp', 'companion', { server_side: 'required' }),
+  P_comp: project('P_comp', 'companion', { server_side: 'required' }),
   terralith: project('P_terr', 'terralith', { loaders: ['fabric', 'datapack'] }),
   P_terr: project('P_terr', 'terralith', { loaders: ['fabric', 'datapack'] }),
   sodiumish: project('P_sodi', 'sodiumish'),
@@ -90,6 +93,13 @@ const versions: Record<string, object[]> = {
   P_preg: [
     version('PregFab1', 'P_preg'),
     version('PregPap1', 'P_preg', { loaders: ['bukkit', 'paper'] }),
+  ],
+  P_zoom: [version('ZoomVer1', 'P_zoom')],
+  // A server mod that needs a client-only one, as Voxy's old server companion did.
+  P_comp: [
+    version('CompVer1', 'P_comp', {
+      dependencies: [{ project_id: 'P_zoom', version_id: null, dependency_type: 'required' }],
+    }),
   ],
   P_sodi: [
     version('SodiVer1', 'P_sodi', {
@@ -191,9 +201,24 @@ describe('modrinth', () => {
     )
   })
 
-  test('refuses client-only mods and unknown projects', async () => {
+  test('search shows client-only mods when asked, marked as such', async () => {
+    const calls: string[] = []
+    const m = modrinthProvider(fakeModrinth(calls))
+    const { hits } = await m.search('', { kind: 'mod', target, clientOnly: true })
+    expect(hits.map((h) => [h.slug, h.serverSide])).toEqual([
+      ['lithium', 'optional'],
+      ['zoom', 'unsupported'],
+    ])
+    const facets = JSON.parse(new URLSearchParams(calls[0]!.split('?')[1]).get('facets')!)
+    expect(facets).not.toContainEqual(['server_side:required', 'server_side:optional'])
+  })
+
+  test('resolves client-only mods, flagged, and refuses unknown projects', async () => {
     const m = modrinthProvider(fakeModrinth())
-    await expect(m.resolve({ project: 'zoom' }, target)).rejects.toThrow("players' computers")
+    const zoom = await m.resolve({ project: 'zoom' }, target)
+    expect(zoom.versionId).toBe('ZoomVer1')
+    expect(zoom.clientOnly).toBe(true)
+    expect((await m.resolve({ project: 'lithium' }, target)).clientOnly).toBeUndefined()
     await expect(m.resolve({ project: 'ghost' }, target)).rejects.toThrow('no project')
     await expect(m.resolve({ project: '../etc' }, target)).rejects.toThrow(ProviderError)
   })
@@ -262,6 +287,36 @@ describe('resolveAll', () => {
     expect(set.problems).toContain("Sodiumish can't run alongside Lithium.")
     expect(set.problems).toContain('Lithium is listed twice.')
     expect(set.problems.some((p) => p.includes('ghost'))).toBe(true)
+  })
+
+  test('a client-only item asked for is installed, with a warning', async () => {
+    const set = await resolveAll([{ modrinth: 'zoom' }], target, modrinthProvider(fakeModrinth()))
+    expect(set.problems).toEqual([])
+    expect(set.items.map((i) => i.slug)).toEqual(['zoom'])
+    expect(set.warnings).toEqual([
+      "Modrinth marks Zoom as client-only. It's installed because you asked for it; remove it if the server won't start.",
+    ])
+  })
+
+  test('a client-only dependency comes along, naming who needs it', async () => {
+    const set = await resolveAll(
+      [{ modrinth: 'companion' }],
+      target,
+      modrinthProvider(fakeModrinth()),
+    )
+    expect(set.problems).toEqual([])
+    expect(set.items.map((i) => [i.slug, i.requiredBy])).toEqual([
+      ['companion', []],
+      ['zoom', ['Companion']],
+    ])
+    expect(set.warnings).toEqual([
+      "Modrinth marks Zoom as client-only. It's installed because Companion needs it; remove Companion if the server won't start.",
+    ])
+  })
+
+  test('no warnings without client-only items', async () => {
+    const set = await resolveAll([{ modrinth: 'chunky' }], target, modrinthProvider(fakeModrinth()))
+    expect(set.warnings).toEqual([])
   })
 
   test('a pinned version wins over a dependency', async () => {
