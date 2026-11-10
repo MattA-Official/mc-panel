@@ -41,6 +41,10 @@ export const SENDERS: Record<ChannelKind, Sender> = {
 export const QUIET_MS: Partial<Record<EventKind, number>> = {
   'backup.failed': 30 * 60_000,
   'offsite.failed': 30 * 60_000,
+  // Quiet only while it's still down; once it's back up, the next crash is sent.
+  'server.crashed': 10 * 60_000,
+  'server.crash_loop': 30 * 60_000,
+  'server.unresponsive': 30 * 60_000,
 }
 
 /** Disk warnings: at 85% and 95%, and back to normal below 80%. */

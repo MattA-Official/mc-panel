@@ -213,6 +213,17 @@ const Backups = z
   })
   .strict()
 
+const Recovery = z
+  .object({
+    restartWhenUnresponsive: z
+      .boolean()
+      .default(false)
+      .describe(
+        "Restart the server once, automatically, when its console hasn't answered for five minutes.",
+      ),
+  })
+  .strict()
+
 /** A DNS name players connect with, stored lower case. */
 export const Hostname = z
   .string()
@@ -247,6 +258,9 @@ export const ServerSpec = z
     backups: Backups.optional().describe(
       'Backup schedule and how many to keep. Left out, the current settings stay.',
     ),
+    recovery: Recovery.optional().describe(
+      'What Flytower does when the server gets stuck. Left out, the current settings stay.',
+    ),
   })
   .strict()
   .describe('A Flytower server.')
@@ -277,6 +291,7 @@ export function compactSpec(spec: ServerSpec): ServerSpecInput {
   if (spec.hostname) out.hostname = spec.hostname
   if (Object.keys(spec.properties).length) out.properties = spec.properties
   if (spec.content.length) out.content = spec.content
+  if (spec.recovery?.restartWhenUnresponsive) out.recovery = { restartWhenUnresponsive: true }
   const b = spec.backups
   if (!b) return out as ServerSpecInput
   const keepDefault = b.keep.last === 6 && b.keep.daily === 7 && b.keep.weekly === 4

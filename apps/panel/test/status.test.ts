@@ -65,4 +65,56 @@ describe('StatusWatcher', () => {
     await Promise.all([w.poke(), w.poke(), w.poke()])
     expect(calls).toHaveLength(1)
   })
+
+  it('follows systemd through the agent instead of polling, and tells the crash monitor', async () => {
+    const states: Record<string, string> = { a: 'active' }
+    let release: (() => void) | null = null
+    const verbs: string[] = []
+    const polls: Record<string, unknown>[] = []
+    const agent = (async (verb: string, params: { server?: string; after?: string | null }) => {
+      verbs.push(verb)
+      if (verb === 'service.wait') {
+        if (params.after === null) return { cursor: 'r:0', changed: ['a'], following: true }
+        await new Promise<void>((r) => (release = r))
+        return { cursor: 'r:1', changed: ['a'], following: true }
+      }
+      return { active: states[params.server!], since: null, result: 'success' }
+    }) as unknown as AgentCall
+    const w = new StatusWatcher(
+      agent,
+      () => ['a'],
+      1,
+      (p) => void polls.push(p),
+    )
+    const seen: StatusMap[] = []
+    w.follow({ fallbackMs: 5 })
+    w.watch((m) => seen.push({ ...m }))
+    await Bun.sleep(30)
+    const statusCalls = verbs.filter((v) => v === 'service.status').length
+    // Nothing is asked again while systemd is quiet.
+    await Bun.sleep(30)
+    expect(verbs.filter((v) => v === 'service.status').length).toBe(statusCalls)
+
+    states.a = 'activating'
+    release!()
+    await Bun.sleep(20)
+    expect(seen.at(-1)).toEqual({ a: 'activating' })
+    expect(polls.at(-1)).toMatchObject({ a: { active: 'activating', result: 'success' } })
+    w.unfollow()
+    release!()
+  })
+
+  it('falls back to polling when the agent cannot follow the journal', async () => {
+    let calls = 0
+    const agent = (async (verb: string) => {
+      if (verb === 'service.wait') return { cursor: '', changed: ['a'], following: false }
+      calls++
+      return { active: 'active', since: null }
+    }) as unknown as AgentCall
+    const w = new StatusWatcher(agent, () => ['a'])
+    w.follow({ fallbackMs: 5 })
+    await Bun.sleep(60)
+    w.unfollow()
+    expect(calls).toBeGreaterThan(3)
+  })
 })

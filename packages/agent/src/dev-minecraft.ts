@@ -1,6 +1,9 @@
 /**
  * Pretends to be a running Minecraft server for the fake agent: writes believable lines to
  * logs/latest.log and answers RCON on the port and password in server.properties.
+ *
+ * For working on crash detection, two extra console commands: `crash` (or `crash oom`)
+ * writes a crash report and dies, and `hang` stops the console answering.
  */
 import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -79,7 +82,33 @@ async function listCommand(dir: string, body: string): Promise<string | null> {
   return cmd.ok(name)
 }
 
-export async function startFakeMinecraft(dir: string) {
+export interface FakeHooks {
+  /** Called when `crash` is typed; `oom` for `crash oom`. */
+  onCrash?: (oom: boolean) => void
+}
+
+/** Writes what a ticking crash leaves behind: a crash report and an error in the log. */
+async function fakeCrash(dir: string, log: string, oom: boolean) {
+  if (oom) {
+    await appendFile(log, line('Server thread', 'ERROR', 'Out of memory, pretending to be killed'))
+    return
+  }
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  const name = `crash-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}.${p(d.getMinutes())}.${p(d.getSeconds())}-server.txt`
+  await mkdir(join(dir, 'crash-reports'), { recursive: true })
+  await writeFile(
+    join(dir, 'crash-reports', name),
+    `---- Minecraft Crash Report ----\n// Don't be sad, have a hug! <3\n\nTime: ${d.toISOString()}\nDescription: Exception ticking world (pretend)\n\njava.lang.NullPointerException: Cannot invoke "Object.hashCode()" because "key" is null\n\tat net.minecraft.server.level.ServerLevel.tick(ServerLevel.java:42)\n`,
+  )
+  await appendFile(log, line('Server thread', 'ERROR', 'Encountered an unexpected exception'))
+  await appendFile(
+    log,
+    line('Server thread', 'ERROR', `This crash report has been saved to: ./crash-reports/${name}`),
+  )
+}
+
+export async function startFakeMinecraft(dir: string, hooks: FakeHooks = {}) {
   const log = join(dir, 'logs', 'latest.log')
   await mkdir(join(dir, 'logs'), { recursive: true })
   await writeFile(log, line('main', 'INFO', 'Loading Minecraft 26.3 with Fabric Loader 0.18.4'))
@@ -103,6 +132,7 @@ export async function startFakeMinecraft(dir: string) {
   }
 
   let rcon: TCPSocketListener<PacketParser> | null = null
+  let hung = false
   if (port) {
     rcon = Bun.listen<PacketParser>({
       hostname: '127.0.0.1',
@@ -114,6 +144,18 @@ export async function startFakeMinecraft(dir: string) {
             if (p.type === PacketType.Auth) {
               s.write(encodePacket(p.body === password ? p.id : -1, PacketType.Command, ''))
             } else if (p.type === PacketType.Command) {
+              if (hung) continue
+              if (p.body === 'hang') {
+                hung = true
+                await appendFile(log, line('Server thread', 'WARN', "Can't keep up! (pretend)"))
+                continue
+              }
+              if (p.body === 'crash' || p.body === 'crash oom') {
+                s.write(encodePacket(p.id, PacketType.Response, 'Crashing (pretend)'))
+                await fakeCrash(dir, log, p.body === 'crash oom')
+                hooks.onCrash?.(p.body === 'crash oom')
+                continue
+              }
               const listed = await listCommand(dir, p.body)
               if (listed !== null) {
                 s.write(encodePacket(p.id, PacketType.Response, listed))

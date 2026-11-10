@@ -66,9 +66,28 @@ export function syncLogWatcher() {
   useLogWatcher().sync(serverNames())
 }
 
-/** Runs after each metrics sample: the disk filling up, and following any new server's log. */
-export function afterSample(sample: { machine: MachineReading | null }) {
+/**
+ * Runs after each metrics sample: the disk filling up, following any new server's log, and
+ * whether each running server's console answered (for crash detection's not-responding).
+ */
+export function afterSample(sample: {
+  machine: MachineReading | null
+  answered: Record<string, boolean>
+}) {
   const notify = useNotify()
+  if (Object.keys(sample.answered).length) {
+    const restartWhenUnresponsive = new Map(
+      useDb()
+        .select({ name: schema.servers.name, on: schema.servers.restartWhenUnresponsive })
+        .from(schema.servers)
+        .all()
+        .map((r) => [r.name, r.on]),
+    )
+    const crashes = useCrashes()
+    for (const [server, ok] of Object.entries(sample.answered)) {
+      void crashes.answered(server, ok, restartWhenUnresponsive.get(server) ?? false)
+    }
+  }
   const m = sample.machine
   if (m?.diskUsedMb != null && m.diskTotalMb && notify.wants('disk.full')) {
     notify.disk(m.diskUsedMb, m.diskTotalMb)
@@ -79,6 +98,7 @@ export function afterSample(sample: { machine: MachineReading | null }) {
 /** Forgets a deleted server everywhere notifications remember it. */
 export function forgetNotifyServer(name: string) {
   useNotify().forgetServer(name)
+  useCrashes().forget(name)
   syncLogWatcher()
 }
 

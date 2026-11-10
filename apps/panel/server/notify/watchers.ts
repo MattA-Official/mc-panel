@@ -10,10 +10,13 @@
 import { watch, type FSWatcher } from 'node:fs'
 import { join } from 'node:path'
 import { LogTailer } from '../console/tailer'
+import type { EventKind } from '../../shared/notify'
 import type { NotifyEvent } from './types'
 
 interface Notify {
   notify(e: NotifyEvent): void
+  /** Sends the "back to normal" message for a problem that was reported. */
+  resolve?(e: NotifyEvent & { kind: EventKind }): void
 }
 
 /** What a log line means for notifications, if anything. */
@@ -52,6 +55,8 @@ interface Followed {
 export class LogWatcher {
   private followed = new Map<string, Followed>()
   private restarting = new Map<string, number>()
+  /** Servers that crashed and that systemd is bringing back. */
+  private recovering = new Map<string, number>()
 
   constructor(
     private n: Notify,
@@ -70,9 +75,13 @@ export class LogWatcher {
     return [...this.followed.keys()]
   }
 
-  /** The panel's Restart was pressed: say so now, and expect the server to come back. */
-  restartPressed(server: string) {
+  /**
+   * The panel's Restart was pressed: say so now, and expect the server to come back. Flytower's
+   * own restart of a server that stopped responding has already said why, so `announce` is off.
+   */
+  restartPressed(server: string, announce = true) {
     this.restarting.set(server, this.now())
+    if (!announce) return
     this.n.notify({
       kind: 'server.restarted',
       server,
@@ -81,6 +90,15 @@ export class LogWatcher {
       severity: 'info',
       link: `/servers/${server}`,
     })
+  }
+
+  /**
+   * Crash detection saw the server crash. When it's ready again, that's "back up" (the crash
+   * alert's all-clear) rather than a plain "Server started".
+   */
+  crashed(server: string) {
+    this.restarting.delete(server)
+    this.recovering.set(server, this.now())
   }
 
   /** The restart never happened, so a later stop is a real stop again. */
@@ -150,6 +168,7 @@ export class LogWatcher {
     f.tailer.stop()
     this.followed.delete(server)
     this.restarting.delete(server)
+    this.recovering.delete(server)
   }
 
   lines(server: string, lines: string[]) {
@@ -158,6 +177,20 @@ export class LogWatcher {
       if (!e) continue
       const link = `/servers/${server}`
       if (e.kind === 'ready') {
+        const crashedAt = this.recovering.get(server)
+        this.recovering.delete(server)
+        if (crashedAt !== undefined && this.now() - crashedAt < RESTART_WINDOW_MS) {
+          this.restarting.delete(server)
+          this.n.resolve?.({
+            kind: 'server.crashed',
+            server,
+            title: 'Server is back up',
+            detail: 'It started again after crashing. Players can join again.',
+            severity: 'ok',
+            link,
+          })
+          continue
+        }
         const restarted = this.isRestarting(server)
         this.restarting.delete(server)
         this.n.notify(

@@ -40,16 +40,20 @@ const {
   refresh,
 } = await useFetch<LogView>(() => `${base.value}/view`, {
   query: computed(() => ({ name: selected.value, q: query.value })),
-  immediate: !!selected.value,
+  immediate: !!selected.value && selected.value !== 'crashes',
   watch: [selected, query],
 })
 
-const items = computed(() =>
-  files.value.map((f) => ({
+/** The Crashes list sits alongside the log files, as ?log=crashes. */
+const CRASHES = 'crashes'
+const showCrashes = computed(() => selected.value === CRASHES)
+const items = computed(() => [
+  { label: 'Crashes', value: CRASHES },
+  ...files.value.map((f) => ({
     label: f.live ? `${f.name} (live)` : f.name,
     value: f.name,
   })),
-)
+])
 
 function size(n: number) {
   if (n < 1024) return `${n} B`
@@ -92,6 +96,19 @@ async function reload() {
     <aside class="md:w-64 md:shrink-0">
       <USelect v-model="selected" :items="items" class="w-full md:hidden" aria-label="Log file" />
       <ul class="hidden space-y-0.5 md:block" aria-label="Log files">
+        <li>
+          <button
+            type="button"
+            class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm hover:bg-elevated"
+            :class="showCrashes ? 'bg-elevated text-highlighted' : 'text-muted'"
+            :aria-current="showCrashes ? 'true' : undefined"
+            data-e2e="crashes-tab"
+            @click="selected = CRASHES"
+          >
+            <UIcon name="i-lucide-octagon-alert" class="size-4" />
+            Crashes
+          </button>
+        </li>
         <li v-for="f in files" :key="f.name">
           <button
             type="button"
@@ -113,8 +130,9 @@ async function reload() {
     </aside>
 
     <section class="flex min-h-[60vh] min-w-0 flex-1 flex-col gap-3">
+      <ServerCrashes v-if="showCrashes" />
       <UEmpty
-        v-if="files.length === 0"
+        v-else-if="files.length === 0"
         icon="i-lucide-scroll-text"
         title="No logs yet"
         description="Logs appear here once the server has run."

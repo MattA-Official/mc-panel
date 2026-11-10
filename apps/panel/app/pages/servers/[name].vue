@@ -8,6 +8,10 @@ const live = useLiveStatuses()
 const status = computed<ServiceState>(
   () => live.value[name.value] ?? server.value?.status ?? 'unknown',
 )
+const liveHealth = useLiveHealth()
+const health = computed<Health>(
+  () => liveHealth.value[name.value] ?? server.value?.health ?? { condition: null, crash: null },
+)
 const running = computed(() => status.value === 'active' || status.value === 'activating')
 const busy = ref<null | 'start' | 'stop' | 'restart'>(null)
 const confirming = ref<null | 'stop' | 'restart'>(null)
@@ -29,7 +33,7 @@ async function act(action: 'start' | 'stop' | 'restart') {
   }
 }
 
-provideServerContext({ server, status, refresh })
+provideServerContext({ server, status, health, refresh })
 
 const tabs = computed<{ label: string; icon: string; to: string; exact?: boolean }[]>(() => [
   { label: 'Console', icon: 'i-lucide-terminal', to: `/servers/${name.value}`, exact: true },
@@ -86,7 +90,9 @@ const powerMenu = computed(() => [
           <UButton icon="i-lucide-arrow-left" variant="ghost" color="neutral" to="/" />
         </template>
         <template #trailing>
-          <span v-if="server" class="hidden sm:contents"><StatusBadge :status="status" /></span>
+          <span v-if="server" class="hidden sm:contents"
+            ><StatusBadge :status="status" :condition="health.condition"
+          /></span>
           <span v-if="server" class="hidden min-w-0 text-sm text-muted md:block">
             <CopyAddress :server="server" />
           </span>
@@ -148,7 +154,9 @@ const powerMenu = computed(() => [
             data-e2e="tab-menu"
           />
         </UDropdownMenu>
-        <span class="ml-auto flex items-center sm:hidden"><StatusBadge :status="status" /></span>
+        <span class="ml-auto flex items-center sm:hidden"
+          ><StatusBadge :status="status" :condition="health.condition"
+        /></span>
       </UDashboardToolbar>
     </template>
 

@@ -23,6 +23,22 @@ const paths = (ctx: AgentContext, name: string) => ({
   template: join(ctx.paths.systemd, 'flytower-mc@.service'),
 })
 
+/**
+ * Brings the systemd template up to date when the agent starts, so servers made by an older
+ * version pick up changes such as the crash-loop limit. Only if a server exists (the
+ * template does) and it differs. `daemon-reload` doesn't restart running servers; the new
+ * settings apply from their next start or crash.
+ */
+export async function refreshTemplate(ctx: AgentContext): Promise<boolean> {
+  const file = join(ctx.paths.systemd, 'flytower-mc@.service')
+  const current = await readFile(file, 'utf8').catch(() => null)
+  const wanted = templateUnit(ctx)
+  if (current === null || current === wanted) return false
+  await writeFile(file, wanted, { mode: 0o644 })
+  await run(ctx, 'systemctl', ['daemon-reload'])
+  return true
+}
+
 /** ufw rules are tagged so delete can find exactly the rule create added. */
 export const ufwComment = (name: string) => `flytower server ${name}`
 

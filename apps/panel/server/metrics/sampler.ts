@@ -37,7 +37,12 @@ export interface MetricsDeps {
    * Called after each sample with which servers are running (servers the agent didn't answer
    * for are left out) and the machine's reading, for notifications.
    */
-  onSample?: (sample: { active: Record<string, boolean>; machine: MachineReading | null }) => void
+  onSample?: (sample: {
+    active: Record<string, boolean>
+    machine: MachineReading | null
+    /** For each running server, whether its console answered. */
+    answered: Record<string, boolean>
+  }) => void
 }
 
 /** "Average time per tick: 3.2ms" from `tick query`, in milliseconds. */
@@ -139,6 +144,7 @@ export class MetricsSampler {
     const at = Math.floor(nowMs / 60_000) * 60
     const names = this.deps.names()
     const rows: (typeof schema.metrics.$inferInsert)[] = []
+    const answered: Record<string, boolean> = {}
 
     const [usage, machine] = await Promise.all([
       names.length
@@ -173,6 +179,7 @@ export class MetricsSampler {
           this.deps.rcon(server, 'tick query').catch(() => ''),
         ])
         const mspt = parseTickQuery(tick)
+        answered[server] = list !== '' || tick !== ''
         rows.push({
           server,
           at,
@@ -208,6 +215,7 @@ export class MetricsSampler {
       this.deps.onSample?.({
         active: Object.fromEntries(Object.entries(usage).map(([s, u]) => [s, u.active])),
         machine,
+        answered,
       })
     } catch (err) {
       console.error('[flytower] after-sample hook failed', err)

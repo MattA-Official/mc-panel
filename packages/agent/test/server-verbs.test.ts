@@ -3,7 +3,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, it } from 'bun:test'
 import { dispatch, handlers } from '../src/index.ts'
-import { ufwRuleNumbers } from '../src/handlers/server.ts'
+import { refreshTemplate, ufwRuleNumbers } from '../src/handlers/server.ts'
+import { templateUnit } from '../src/units.ts'
 import type { AgentContext } from '../src/context.ts'
 import { fakeContext, fakeExec } from './fakes.ts'
 
@@ -250,5 +251,37 @@ describe('service.usage', () => {
       },
     })
     expect(calls[0]!.args).toContain('flytower-mc@survival.service')
+  })
+})
+
+describe('refreshTemplate', () => {
+  it('does nothing before any server exists', async () => {
+    const { exec, calls } = fakeExec()
+    const { ctx } = fakeContext(exec, undefined, paths)
+    expect(await refreshTemplate(ctx)).toBe(false)
+    expect(existsSync(join(paths.systemd, 'flytower-mc@.service'))).toBe(false)
+    expect(calls).toHaveLength(0)
+  })
+
+  it('rewrites an old template and reloads systemd, without restarting anything', async () => {
+    mkdirSync(paths.systemd, { recursive: true })
+    const file = join(paths.systemd, 'flytower-mc@.service')
+    writeFileSync(file, '# an older template\n[Service]\nRestart=on-failure\n')
+    const { exec, calls } = fakeExec()
+    const { ctx } = fakeContext(exec, undefined, paths)
+    expect(await refreshTemplate(ctx)).toBe(true)
+    const unit = readFileSync(file, 'utf8')
+    expect(unit).toContain('StartLimitIntervalSec=600')
+    expect(unit).toContain('StartLimitBurst=3')
+    expect(calls.map((c) => [c.file, ...c.args].join(' '))).toEqual(['systemctl daemon-reload'])
+  })
+
+  it('leaves a current template alone', async () => {
+    mkdirSync(paths.systemd, { recursive: true })
+    const { exec, calls } = fakeExec()
+    const { ctx } = fakeContext(exec, undefined, paths)
+    writeFileSync(join(paths.systemd, 'flytower-mc@.service'), templateUnit(ctx))
+    expect(await refreshTemplate(ctx)).toBe(false)
+    expect(calls).toHaveLength(0)
   })
 })

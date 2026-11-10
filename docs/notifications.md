@@ -8,6 +8,9 @@ Set them up on **System**, **Notifications**. Each place Flytower sends to is a 
 
 | Group    | Event                                            | When                                                                                                        |
 | -------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| Problems | A server crashed                                 | As it happens (Flytower follows systemd), with the cause. "Back up" follows once it's running.              |
+| Problems | A server kept crashing and was left stopped      | After three crashes in ten minutes. See [Crashes](crashes.md#crash-loops).                                  |
+| Problems | A server stopped responding                      | Its console hasn't answered for five minutes. "Responding again" follows when it does.                      |
 | Problems | A backup failed                                  | A manual or scheduled backup fails. A "working again" message follows the next good backup.                 |
 | Problems | Copying a backup off-site failed                 | An off-site copy fails twice in a row (one blip that the retry fixes stays quiet), and when it works again. |
 | Problems | The disk is nearly full                          | Once at 85%, once more at 95%, and "back to normal" when it drops below 80%.                                |
@@ -17,11 +20,11 @@ Set them up on **System**, **Notifications**. Each place Flytower sends to is a 
 | Activity | A server restarted from the panel                | "Restarting" when you press **Restart**, then "Restarted" once players can join again.                      |
 | Activity | A player joined or left                          | The moment it happens.                                                                                      |
 
-New channels start with the problems and updates ticked, and the activity left off. Crash alerts come with crash detection in a later release.
+New channels start with the problems and updates ticked, and the activity left off. Channels made before crash alerts existed get them ticked if they already had any problem ticked.
 
-**How activity is noticed.** Flytower reads each server's own log (`logs/latest.log`) and Linux tells it the moment a line is written, so nothing is checked on a timer and no mod or plugin is needed. "Server started" means the log said `Done (…)! For help, type "help"`, which is when players can actually join. "Server stopping" means it said `Stopping the server`. A restart from the panel sends "Restarting" and "Restarted" instead of a stop and a start. Chat can't fake any of these: a player typing "Steve joined the game" doesn't count.
+**How activity is noticed.** Flytower reads each server's own log (`logs/latest.log`) and Linux tells it the moment a line is written, so nothing is checked on a timer and no mod or plugin is needed. "Server started" means the log said `Done (…)! For help, type "help"`, which is when players can actually join. "Server stopping" means it said `Stopping the server`. A restart from the panel sends "Restarting" and "Restarted" instead of a stop and a start. Chat can't fake any of these: a player typing "Steve joined the game" doesn't count. Crashes come from systemd's journal instead, since a crashed server may not get to write anything; see [Crashes](crashes.md).
 
-**Quiet periods.** The same problem on the same server is sent at most once every 30 minutes, so a backup that fails every hour doesn't flood the channel. Updates are sent once per version. Activity isn't held back.
+**Quiet periods.** The same problem on the same server is sent at most once every 30 minutes (ten for crashes), so a backup that fails every hour doesn't flood the channel. Once a problem has cleared, the next one is sent straight away. Updates are sent once per version. Activity isn't held back.
 
 **Servers.** Leave **Servers** empty to hear about every server, including ones you create later, or pick some. Machine-wide events (the disk, Flytower updates) go to every channel that has them ticked.
 

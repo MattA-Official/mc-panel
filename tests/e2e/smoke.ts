@@ -159,6 +159,43 @@ try {
     if (!/players online/.test(reply)) throw new Error(`unexpected RCON reply: ${reply}`)
     step(`RCON answered: ${reply}`)
 
+    // Crash detection: kill Java outright. systemd restarts it after 15 seconds; Flytower
+    // records the crash, shows the banner, and the console answers again afterwards.
+    const killed = Bun.spawnSync(['docker', 'exec', 'vps', 'pkill', '-KILL', '-u', 'mc-smoke'])
+    if (killed.exitCode !== 0) throw new Error(`couldn't kill the server: ${killed.stderr}`)
+    type Health = { condition: string | null; crash: { id: number; cause: string } | null }
+    const crash = await until(
+      'the crash to be recorded',
+      async () => {
+        const r = await api<{ health: Health }>(view, '/api/servers/smoke')
+        return r.body.health.crash
+      },
+      60_000,
+      2000,
+    )
+    if (!/SIGKILL/.test(crash.cause)) throw new Error(`unexpected crash cause: ${crash.cause}`)
+    await waitForText(view, 'Crashed at', 30_000)
+    await shot('2b-crash-banner')
+    await until(
+      'systemd to restart it',
+      async () => {
+        const r = await api<{ reply: string }>(view, '/api/servers/smoke/command', {
+          body: { command: 'list' },
+        })
+        return r.status === 200 && /players online/.test(r.body.reply) ? true : null
+      },
+      5 * 60_000,
+      3000,
+    )
+    const after = await api<{ status: string; health: Health }>(view, '/api/servers/smoke')
+    if (after.body.status !== 'active' || after.body.health.condition !== null) {
+      throw new Error(`not back to normal after the crash: ${JSON.stringify(after.body)}`)
+    }
+    const dismissed = await api(view, `/api/servers/smoke/events/${crash.id}/dismiss`, { body: {} })
+    if (dismissed.status !== 200)
+      throw new Error(`dismiss failed: ${JSON.stringify(dismissed.body)}`)
+    step(`a killed server was noticed (${crash.cause}) and restarted by systemd`)
+
     // Backups: a block placed before the backup survives a change and a restore.
     const rcon = async (command: string) => {
       const r = await api<{ reply: string }>(view, '/api/servers/smoke/command', {
