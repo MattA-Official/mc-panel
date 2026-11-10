@@ -15,6 +15,16 @@ It installs over what's there and keeps your data and sign-in, like any re-run o
 
 ## Player heads
 
+On any server where you can join with a real (online-mode) account, and ideally a second account or a friend.
+
+- [ ] **Players**: everyone on **Online now**, **Whitelist**, **Operators** and **Banned** has their face (with the hat layer) next to their name, sharp at 24px, not blurry.
+- [ ] Reload the tab. The heads appear straight away, and the panel's journal (`journalctl -u flytower`) shows no new requests failing. On the box, `/var/lib/flytower/skins/profiles/` has one file per player and `textures/` one PNG per skin.
+- [ ] Change your skin at minecraft.net. The panel keeps the old one for up to a day, then shows the new one. (To see it sooner, delete your file in `profiles/`.)
+- [ ] Whitelist a name that has never played and has no Mojang account, or set `online-mode=false` and join: they get the default Steve or Alex head, with no errors.
+- [ ] Block Mojang for a moment (for example `sudo iptables -A OUTPUT -d sessionserver.mojang.com -j REJECT`, removed afterwards with `-D`) and delete a `profiles/` file: that player shows a default head and nothing breaks. Players already cached still show their own skin.
+- [ ] An old-style skin (Notch's, for example: whitelist `Notch`) shows his face, not a black square.
+- [ ] The browser's console shows no content security policy errors on the Players tab.
+
 ## MOTD editor
 
 On any server, in **Settings**, **Game settings**. Have Minecraft open on the multiplayer screen with the server added, to compare.
