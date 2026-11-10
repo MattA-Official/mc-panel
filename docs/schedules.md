@@ -2,8 +2,6 @@
 section: Running servers
 order: 14
 since: '1.1.0'
-panelRoute:
-  - '/servers/:name/settings/schedules'
 ---
 
 # Scheduled tasks

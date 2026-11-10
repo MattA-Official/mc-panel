@@ -2,8 +2,6 @@
 section: Running servers
 order: 19
 since: '1.3.0'
-panelRoute:
-  - '/servers/:name/world/map'
 ---
 
 # Web map

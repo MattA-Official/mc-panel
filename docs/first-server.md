@@ -36,14 +36,16 @@ Players connect to your VPS's address, with `:port` if it isn't 25565. To give e
 
 ## The server's tabs
 
-| Tab      | What it's for                                                                                                                                                                                                                                           |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Console  | Live output, and commands (without the `/`). Start, stop and restart are in the header. **View logs** opens today's log and older ones to search or download, and **Crashes** lists recent crashes.                                                     |
-| Players  | **People**: who's online; kick, ban, operators, and the whitelist. **Stats**: leaderboards and a card for every player (see [Stats](stats.md)).                                                                                                         |
-| Content  | Mods, plugins and datapacks. See [Content](content.md).                                                                                                                                                                                                 |
-| World    | **Backups** (taking, restoring, schedule, off-site copies), the **Web map**, **Past worlds** and world exports, and **Tools**: pre-generating chunks, copying another server's world in, and resetting.                                                 |
-| Files    | The server folder: edit, upload, rename, delete.                                                                                                                                                                                                        |
-| Settings | **General**: `server.properties`, memory, version and loader, address. **Community**: public page, player stats, Discord chat. **Schedules**. **Maintenance**: crashes, disk use, cloning, deleting. **YAML**: the whole server as one [spec](spec.md). |
+| Tab      | What it's for                                                                                                                                                                                                                                                                 |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Console  | Live output, and commands (without the `/`). Start, stop and restart are in the header. **View logs** opens today's log and older ones to search or download, and **Crashes** lists recent crashes.                                                                           |
+| Players  | **People**: who's online; kick, ban, operators, and the whitelist. **Stats**: leaderboards and a card for every player (see [Stats](stats.md)).                                                                                                                               |
+| Content  | Mods, plugins and datapacks. See [Content](content.md).                                                                                                                                                                                                                       |
+| World    | **Backups** (taking, restoring, schedule, off-site copies), the **Web map**, **Past worlds** and world exports, and **Tools**: pre-generating chunks, copying another server's world in, and resetting.                                                                       |
+| Files    | The server folder: edit, upload, rename, delete.                                                                                                                                                                                                                              |
+| Settings | **General**: `server.properties`, memory, version and loader, address. **Community**: public page, player stats, Discord chat. **Schedules**. **Maintenance**: crashes, disk use, cloning, deleting. **Edit as YAML** at the bottom: the whole server as one [spec](spec.md). |
+
+World and Settings list their sections on one page. Click a section's bar to open or close it; the panel remembers which ones you left open. Closed sections show a short summary on their bar, such as whether the public page is on.
 
 ## How busy a server is
 

@@ -286,7 +286,7 @@ export class OffsiteService {
         title: 'Off-site copies are working again',
         detail: `${row.file} was copied to off-site storage.`,
         severity: 'ok',
-        link: `/servers/${row.server}/world`,
+        link: `/servers/${row.server}/world#backups`,
       })
     } catch (err) {
       console.error(`[flytower] off-site copy of ${row.server}/${row.file} failed`, err)
@@ -305,7 +305,7 @@ export class OffsiteService {
           title: 'Copying a backup off-site failed',
           detail: `${explain(err)} Flytower keeps retrying for a while, and you can retry it from the Backups tab.`,
           severity: 'warning',
-          link: `/servers/${row.server}/world`,
+          link: `/servers/${row.server}/world#backups`,
         })
       }
       if (retrying) {
