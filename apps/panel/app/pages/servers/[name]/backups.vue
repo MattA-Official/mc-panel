@@ -180,6 +180,7 @@ const count = computed(() => {
 })
 const total = computed(() => (data.value?.backups ?? []).reduce((a, b) => a + b.bytes, 0))
 
+/** A backup's actions, for its ⋯ button and its right-click menu (#106). */
 function menu(b: BackupRow) {
   return [
     [
@@ -271,7 +272,14 @@ function menu(b: BackupRow) {
           </tr>
         </thead>
         <tbody class="divide-y divide-default">
-          <tr v-for="b in data?.backups" :key="b.id" class="hover:bg-elevated/40">
+          <ActionTarget
+            v-for="b in data?.backups"
+            :key="b.id"
+            as="tr"
+            :items="menu(b)"
+            :label="`Backup ${when(b.createdAt)}`"
+            class="hover:bg-elevated/40"
+          >
             <td class="px-3 py-2 whitespace-nowrap">{{ when(b.createdAt) }}</td>
             <td class="px-3 py-2">
               <div class="flex items-center gap-2">
@@ -316,7 +324,7 @@ function menu(b: BackupRow) {
                 />
               </UDropdownMenu>
             </td>
-          </tr>
+          </ActionTarget>
           <tr v-if="!data?.backups.length">
             <td colspan="5" class="px-3 py-8 text-center text-muted">
               No backups yet. Make one now, or set a schedule below.
