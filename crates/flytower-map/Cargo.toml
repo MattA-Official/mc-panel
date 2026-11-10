@@ -1,0 +1,15 @@
+[package]
+name = "flytower-map"
+description = "Draws web map tiles from Minecraft region files for the Flytower panel: reads worlds from outside the server, redraws only what changed."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+flate2 = "1.1.11"
+lz4_flex = { version = "0.14.0", default-features = false, features = ["safe-decode"] }
+png = "0.18.1"
+
+[lints]
+workspace = true
