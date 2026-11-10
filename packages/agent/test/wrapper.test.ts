@@ -3,10 +3,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'bun:test'
 
-const WRAPPER = join(import.meta.dir, '..', 'bin', 'flytower-agent')
-
-/** A release whose `bun` and Rust agent just say which they are. */
-function release(withRust = true) {
+/** A release whose `bun` and Rust programs just say which they are, with one wrapper. */
+function release(wrapper: 'flytower-agent' | 'flytower-updater', withRust = true) {
   const root = mkdtempSync(join(tmpdir(), 'ft-wrap-'))
   const bin = join(root, 'release', 'bin')
   mkdirSync(bin, { recursive: true })
@@ -16,11 +14,11 @@ function release(withRust = true) {
     chmodSync(join(bin, name), 0o755)
   }
   script('bun', 'bun')
-  if (withRust) script('flytower-agent-rust', 'rust')
-  copyFileSync(WRAPPER, join(bin, 'flytower-agent'))
-  chmodSync(join(bin, 'flytower-agent'), 0o755)
+  if (withRust) script(`${wrapper}-rust`, 'rust')
+  copyFileSync(join(import.meta.dir, '..', 'bin', wrapper), join(bin, wrapper))
+  chmodSync(join(bin, wrapper), 0o755)
   const run = () => {
-    const r = Bun.spawnSync([join(bin, 'flytower-agent'), '--x'], {
+    const r = Bun.spawnSync([join(bin, wrapper), '--x'], {
       env: { PATH: process.env.PATH, FLYTOWER_CONFIG_DIR: join(root, 'etc') },
     })
     return r.stdout.toString().trim()
@@ -32,21 +30,26 @@ function release(withRust = true) {
   return { run, choose, bin }
 }
 
-describe('the flytower-agent wrapper', () => {
-  it('starts the Bun agent unless the Rust one is switched on', () => {
-    const { run, choose, bin } = release()
-    expect(run()).toBe(`bun ${bin}/../agent/agent.js --x`)
-    choose('rust\n')
-    expect(run()).toBe('rust --x')
-    choose('bun\n')
-    expect(run()).toStartWith('bun ')
-    choose(null)
-    expect(run()).toStartWith('bun ')
-  })
+for (const [wrapper, script] of [
+  ['flytower-agent', 'agent.js'],
+  ['flytower-updater', 'updater.js'],
+] as const) {
+  describe(`the ${wrapper} wrapper`, () => {
+    it('starts the Bun version unless the Rust one is switched on', () => {
+      const { run, choose, bin } = release(wrapper)
+      expect(run()).toBe(`bun ${bin}/../agent/${script} --x`)
+      choose('rust\n')
+      expect(run()).toBe('rust --x')
+      choose('bun\n')
+      expect(run()).toStartWith('bun ')
+      choose(null)
+      expect(run()).toStartWith('bun ')
+    })
 
-  it('falls back to Bun when the release has no Rust agent', () => {
-    const { run, choose } = release(false)
-    choose('rust')
-    expect(run()).toStartWith('bun ')
+    it('falls back to Bun when the release has no Rust version', () => {
+      const { run, choose } = release(wrapper, false)
+      choose('rust')
+      expect(run()).toStartWith('bun ')
+    })
   })
-})
+}

@@ -14,4 +14,5 @@ pub mod release;
 pub mod server;
 pub mod time;
 pub mod units;
+pub mod updater;
 pub mod verbs;
