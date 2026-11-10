@@ -57,6 +57,7 @@ export class LogWatcher {
   private restarting = new Map<string, number>()
   /** Servers that crashed and that systemd is bringing back. */
   private recovering = new Map<string, number>()
+  private listeners = new Set<(server: string, e: LogEvent) => void>()
 
   constructor(
     private n: Notify,
@@ -69,6 +70,12 @@ export class LogWatcher {
     const keep = new Set(servers)
     for (const server of [...this.followed.keys()]) if (!keep.has(server)) this.unfollow(server)
     for (const server of keep) if (!this.followed.has(server)) this.follow(server)
+  }
+
+  /** Hears every event in every followed log, for things other than notifications. */
+  listen(fn: (server: string, e: LogEvent) => void): () => void {
+    this.listeners.add(fn)
+    return () => this.listeners.delete(fn)
   }
 
   watching(): string[] {
@@ -175,6 +182,13 @@ export class LogWatcher {
     for (const line of lines) {
       const e = parseLogLine(line)
       if (!e) continue
+      for (const l of this.listeners) {
+        try {
+          l(server, e)
+        } catch (err) {
+          console.error('[flytower] log listener failed', err)
+        }
+      }
       const link = `/servers/${server}`
       if (e.kind === 'ready') {
         const crashedAt = this.recovering.get(server)

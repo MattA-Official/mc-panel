@@ -117,6 +117,7 @@ export function specFromServer(
     },
     ...(row.restartWhenUnresponsive ? { recovery: { restartWhenUnresponsive: true } } : {}),
     timezone: row.timezone,
+    ...(row.publicPage ? { public: row.publicPage } : {}),
     ...(tasks.length ? { schedules: tasks.map((t) => ScheduleItem.parse(toItem(t))) } : {}),
   }
 }

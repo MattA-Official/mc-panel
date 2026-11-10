@@ -51,5 +51,9 @@ export const migrations: { tag: string; sql: string }[] = [
   {
     "tag": "0012_past_worlds",
     "sql": "ALTER TABLE `backups` ADD `kept` integer DEFAULT false NOT NULL;--> statement-breakpoint\nALTER TABLE `exports` ADD `name` text;"
+  },
+  {
+    "tag": "0013_public_page",
+    "sql": "ALTER TABLE `servers` ADD `public_page` text;"
   }
 ]

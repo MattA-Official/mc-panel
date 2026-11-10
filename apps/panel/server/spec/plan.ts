@@ -14,6 +14,12 @@ import {
   type WantedContent,
 } from '@flytower/providers'
 import { mbToMemory, type ServerSpec } from '../../shared/spec'
+import {
+  defaultPublicPage,
+  describePublicPage,
+  samePublicPage,
+  type PublicPage,
+} from '../../shared/public-page'
 import { describeTask, sameTask, toTask, type TaskSpec } from '../../shared/schedules'
 import type { schema } from '../db'
 import { formatBytes } from '../backups/service'
@@ -55,6 +61,8 @@ export interface SettingsChange {
   schedules?: TaskSpec[]
   /** The time zone schedules are read in. */
   timezone?: string
+  /** The public status page. */
+  publicPage?: PublicPage
   content: ServerSpec['content']
 }
 
@@ -264,6 +272,23 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
           to: nameOf(wanted),
         })
       }
+    }
+  }
+
+  if (spec.public) {
+    const was = row.publicPage ?? defaultPublicPage()
+    if (!samePublicPage(was, spec.public)) {
+      settings.publicPage = spec.public
+      const from = describePublicPage(was)
+      const to = describePublicPage(spec.public)
+      changes.push({
+        area: 'settings',
+        action: 'set',
+        label: 'Public page',
+        from,
+        // The summary can read the same when only the description changed.
+        to: to === from ? `${to}, updated` : to,
+      })
     }
   }
 

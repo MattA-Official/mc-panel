@@ -5,6 +5,7 @@
  */
 import { z } from 'zod'
 import { Schedules, toItem, toTask } from './schedules'
+import { PublicPage, compactPublicPage } from './public-page'
 
 export const SPEC_SCHEMA_PATH = '/schema/server-v1.json'
 
@@ -282,6 +283,9 @@ export const ServerSpec = z
       'What Flytower does when the server gets stuck. Left out, the current settings stay.',
     ),
     schedules: Schedules.optional(),
+    public: PublicPage.optional().describe(
+      'The public status page. Left out, the current settings stay.',
+    ),
     timezone: z
       .string()
       .trim()
@@ -324,6 +328,8 @@ export function compactSpec(spec: ServerSpec): ServerSpecInput {
   if (spec.recovery?.restartWhenUnresponsive) out.recovery = { restartWhenUnresponsive: true }
   if (spec.timezone && spec.timezone !== 'UTC') out.timezone = spec.timezone
   if (spec.schedules?.length) out.schedules = spec.schedules.map((s) => toItem(toTask(s)))
+  const publicPage = spec.public && compactPublicPage(spec.public)
+  if (publicPage) out.public = publicPage
   const b = spec.backups
   if (!b) return out as ServerSpecInput
   const keepDefault = b.keep.last === 6 && b.keep.daily === 7 && b.keep.weekly === 4

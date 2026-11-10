@@ -56,6 +56,7 @@ export interface SpecExtras {
   content?: ServerSpec['content']
   hostname?: string | null
   recovery?: ServerSpec['recovery']
+  publicPage?: ServerSpec['public']
 }
 
 export interface RunnerDeps {
@@ -376,6 +377,7 @@ export class JobRunner {
           content: extras.content ?? [],
           hostname: extras.hostname ?? null,
           restartWhenUnresponsive: extras.recovery?.restartWhenUnresponsive ?? false,
+          publicPage: extras.publicPage ?? null,
         })
         .run()
 

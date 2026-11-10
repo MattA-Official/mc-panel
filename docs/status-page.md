@@ -1,0 +1,31 @@
+# Public status page
+
+Each server can have a page that anyone can open without signing in, at `https://<your panel>/s/<server name>`. It shows the server's name, icon and MOTD, a few lines you write about it, whether it's up, the address to join with a **Copy** button, the Minecraft version, and who's online. It wears your [branding](branding.md) and works in light and dark mode. It's useful to link from a Discord server or a website, and those sites show a preview of the link with the server's name and description.
+
+## Turning it on
+
+A server's **Settings**, **Public page**: switch on **Show a public page for this server**, write a description (up to 500 characters, shown as plain text with line breaks), choose what it says about players, and **Save**. The card then shows the page's address with a copy button.
+
+While the page is off, its address says "Nothing here", exactly as for a server that doesn't exist, so nobody can find out which servers you have by guessing names.
+
+You can also set it with `public:` in the [YAML](spec.md#public).
+
+## Players
+
+You choose what the page says about who's online:
+
+- **How many are online** (the default): "3 of 20 players online".
+- **Names and heads**: everyone who's on, by name, with their face. Heads come through the panel, as on the Players tab, so visitors' browsers never contact Mojang or anyone else.
+- **Nothing**.
+
+Bear in mind that Minecraft itself already tells anyone who adds your server to their multiplayer list how many people are on, and a sample of their names, unless you set `hide-online-players=true` in the server's settings.
+
+## How it stays light
+
+Visitors never reach the Minecraft server. Who's online comes from the "joined the game" and "left the game" lines in the server's log, which Flytower already follows for [notifications](notifications.md). When the panel starts, it asks the console once who's already on. Whether the server is up comes from systemd, as everywhere else in the panel.
+
+The page refreshes itself every 30 seconds while it's open in a visible tab. The panel limits each visitor to 120 requests a minute, and nothing on the page loads from other sites.
+
+## What the page never shows
+
+Only what's listed above leaves the panel: no ports other than the join address, no file paths, console output, backups or settings, and no other servers. Offline-mode player names get the default Steve or Alex head.

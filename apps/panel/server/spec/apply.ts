@@ -438,6 +438,7 @@ export class SpecService {
         ...(s.restartWhenUnresponsive !== undefined
           ? { restartWhenUnresponsive: s.restartWhenUnresponsive }
           : {}),
+        ...(s.publicPage ? { publicPage: s.publicPage } : {}),
         content: s.content,
       })
       .where(eq(schema.servers.name, name))
