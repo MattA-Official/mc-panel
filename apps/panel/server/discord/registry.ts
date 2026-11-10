@@ -29,7 +29,7 @@ export interface CommandOption {
   required?: boolean
   /** Ask the command for choices as the person types. */
   autocomplete?: boolean
-  /** The only values allowed, shown as a list. */
+  /** A fixed list to pick from (up to 25). Not with autocomplete. */
   choices?: Choice[]
   /** Up to this many characters, for strings. */
   maxLength?: number
@@ -149,7 +149,7 @@ function optionDefinition(o: CommandOption): Record<string, unknown> {
     // Discord refuses `required` on a sub-command.
     ...(o.type !== OptionType.SubCommand && { required: o.required ?? false }),
     ...(o.autocomplete && { autocomplete: true }),
-    ...(o.choices && { choices: o.choices }),
+    ...(o.choices?.length && { choices: o.choices.slice(0, 25) }),
     ...(o.maxLength && { max_length: o.maxLength }),
     ...(o.options && { options: o.options.map(optionDefinition) }),
   }

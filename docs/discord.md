@@ -28,10 +28,12 @@ Last, press **Add to a Discord server** and pick the server. The app only needs 
 
 ## Commands
 
-| Command             | Answers                                                                                           |
-| ------------------- | ------------------------------------------------------------------------------------------------- |
-| `/status [server]`  | Whether the server is online, starting or offline, its address, how many are on, and its version. |
-| `/players [server]` | Who's on right now.                                                                               |
+| Command                                 | Answers                                                                                                           |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `/status [server]`                      | Whether the server is online, starting or offline, its address, how many are on, and its version.                 |
+| `/players [server]`                     | Who's on right now.                                                                                               |
+| `/leaderboard [stat] [period] [server]` | The top players for playtime, deaths, mob kills, distance or blocks mined, for all time, this month or this week. |
+| `/stats <player> [server]`              | One player's figures for all time, and what they added this week.                                                 |
 
 ### Staff commands
 
@@ -54,6 +56,8 @@ Leave out `server` to get every server at once; as you type it, Discord suggests
 Both answer from the same information as the [public status page](status-page.md), so the server itself is never asked and the page's settings apply: a server whose page shows only a count shows only a count in Discord, and one that hides players or its version hides them here too.
 
 **Which servers show.** Servers with their **public page** turned on, plus any server the caller can see through their [Discord role](#discord-roles). Everything else stays hidden: asking for it answers the same as a server that doesn't exist.
+
+**Leaderboards and stats.** `/leaderboard` and `/stats` use the same figures as the server's [Stats tab](stats.md). They only cover servers whose public page shows leaderboards (which needs the page to show player names, and the server to keep stats). Players left out of stats never appear, and `/stats` never says when someone last played. With more than one such server, pick one with `server`.
 
 Answers are posted in the channel for everyone to see, except "no such server" and similar, which only the person who asked sees. Player names can never ping anyone.
 
