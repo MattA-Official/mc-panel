@@ -308,6 +308,7 @@ function onDrop(e: DragEvent) {
             <td class="px-3 py-1.5">
               <button
                 type="button"
+                data-row-open
                 class="flex max-w-full items-center gap-2 text-left"
                 :class="e.type === 'link' || e.type === 'other' ? 'cursor-default text-muted' : ''"
                 @click="open(e)"

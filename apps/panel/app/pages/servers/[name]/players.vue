@@ -76,7 +76,29 @@ async function add(list: 'whitelist' | 'ops' | 'banned') {
   }
 }
 
-const isOp = (n: string) => data.value?.ops.some((o) => o.name.toLowerCase() === n.toLowerCase())
+const isOp = (n: string) => !!data.value?.ops.some((o) => o.name.toLowerCase() === n.toLowerCase())
+
+// Each player row's actions, for its ⋯ button and right-click menu (#106).
+const can = useCan()
+const copy = useCopy()
+function startBan(name: string) {
+  inputs.banned = name
+  void nextTick(() => {
+    const field = document.querySelector<HTMLInputElement>('input[aria-label="Username to ban"]')
+    field?.scrollIntoView({ block: 'center' })
+    field?.focus()
+  })
+}
+const playerMenu = (player: { name: string; uuid: string }, list: PlayerList) =>
+  playerActions({
+    player,
+    list,
+    isOp: isOp(player.name),
+    canManage: can('players.manage', server.value?.name),
+    act: (action) => void act(action, player.name),
+    startBan: () => startBan(player.name),
+    copy: (text, what) => void copy(text, what),
+  })
 </script>
 
 <template>
@@ -120,9 +142,12 @@ const isOp = (n: string) => data.value?.ops.some((o) => o.name.toLowerCase() ===
           Nobody's playing right now.
         </p>
         <ul v-else class="mt-3 divide-y divide-default">
-          <li
+          <ActionTarget
             v-for="{ name: p, uuid } in data.online.players"
             :key="p"
+            as="li"
+            :items="playerMenu({ name: p, uuid }, 'online')"
+            :label="p"
             class="flex items-center gap-3 py-2"
           >
             <PlayerHead :uuid="uuid" />
@@ -145,7 +170,8 @@ const isOp = (n: string) => data.value?.ops.some((o) => o.name.toLowerCase() ===
               :loading="busy === `kick:${p}`"
               @click="act('kick', p)"
             />
-          </li>
+            <ActionMenuButton :items="playerMenu({ name: p, uuid }, 'online')" :label="p" />
+          </ActionTarget>
         </ul>
       </section>
 
@@ -175,7 +201,14 @@ const isOp = (n: string) => data.value?.ops.some((o) => o.name.toLowerCase() ===
             />
           </form>
           <ul class="mt-3 space-y-1">
-            <li v-for="p in data.whitelist" :key="p.uuid" class="flex items-center gap-2 text-sm">
+            <ActionTarget
+              v-for="p in data.whitelist"
+              :key="p.uuid"
+              as="li"
+              :items="playerMenu(p, 'whitelist')"
+              :label="p.name"
+              class="flex items-center gap-2 text-sm"
+            >
               <PlayerHead :uuid="p.uuid" />
               <span class="flex-1">{{ p.name }}</span>
               <UButton
@@ -186,7 +219,7 @@ const isOp = (n: string) => data.value?.ops.some((o) => o.name.toLowerCase() ===
                 :aria-label="`Remove ${p.name}`"
                 @click="act('whitelist-remove', p.name)"
               />
-            </li>
+            </ActionTarget>
             <li v-if="data.whitelist.length === 0" class="text-sm text-muted">Nobody yet.</li>
           </ul>
         </section>
@@ -209,7 +242,14 @@ const isOp = (n: string) => data.value?.ops.some((o) => o.name.toLowerCase() ===
             />
           </form>
           <ul class="mt-3 space-y-1">
-            <li v-for="p in data.ops" :key="p.uuid" class="flex items-center gap-2 text-sm">
+            <ActionTarget
+              v-for="p in data.ops"
+              :key="p.uuid"
+              as="li"
+              :items="playerMenu(p, 'ops')"
+              :label="p.name"
+              class="flex items-center gap-2 text-sm"
+            >
               <PlayerHead :uuid="p.uuid" />
               <span class="flex-1">{{ p.name }}</span>
               <UButton
@@ -220,7 +260,7 @@ const isOp = (n: string) => data.value?.ops.some((o) => o.name.toLowerCase() ===
                 :aria-label="`Remove operator ${p.name}`"
                 @click="act('deop', p.name)"
               />
-            </li>
+            </ActionTarget>
             <li v-if="data.ops.length === 0" class="text-sm text-muted">Nobody yet.</li>
           </ul>
         </section>
@@ -254,7 +294,14 @@ const isOp = (n: string) => data.value?.ops.some((o) => o.name.toLowerCase() ===
             />
           </form>
           <ul class="mt-3 space-y-1">
-            <li v-for="p in data.banned" :key="p.uuid" class="flex items-start gap-2 text-sm">
+            <ActionTarget
+              v-for="p in data.banned"
+              :key="p.uuid"
+              as="li"
+              :items="playerMenu(p, 'banned')"
+              :label="p.name"
+              class="flex items-start gap-2 text-sm"
+            >
               <PlayerHead :uuid="p.uuid" />
               <span class="flex-1">
                 {{ p.name }}
@@ -267,7 +314,7 @@ const isOp = (n: string) => data.value?.ops.some((o) => o.name.toLowerCase() ===
                 color="neutral"
                 @click="act('pardon', p.name)"
               />
-            </li>
+            </ActionTarget>
             <li v-if="data.banned.length === 0" class="text-sm text-muted">Nobody.</li>
           </ul>
         </section>
