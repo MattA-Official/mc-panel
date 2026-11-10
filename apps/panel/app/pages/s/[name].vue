@@ -4,6 +4,7 @@
  * the server's settings allow, from /api/public/servers/<name>.
  */
 import type { PublicStatus } from '#shared/public-page'
+import { layoutMotd, motdPlainText } from '~~/shared/utils/motd'
 
 definePageMeta({ layout: 'public' })
 
@@ -43,6 +44,13 @@ async function copy() {
   setTimeout(() => (copied.value = false), 1500)
 }
 
+// The MOTD as the multiplayer list shows it: two lines, in the game's colours.
+const motd = computed(() =>
+  data.value?.motd && motdPlainText(data.value.motd).trim()
+    ? layoutMotd(data.value.motd).visible
+    : [],
+)
+
 const skin = (uuid: string) =>
   `/api/public/servers/${encodeURIComponent(name.value)}/skins/${encodeURIComponent(uuid)}.png`
 
@@ -77,6 +85,13 @@ const playersLine = computed(() => {
           data-e2e="status-state"
         />
       </div>
+      <div
+        v-if="motd.length"
+        class="motd rounded-md bg-neutral-900 px-3 py-2 font-mono text-sm leading-snug"
+        data-e2e="status-motd"
+      >
+        <div v-for="(line, i) in motd" :key="i"><MotdText :line="line" /></div>
+      </div>
       <p v-if="data.description" class="whitespace-pre-line text-default">
         {{ data.description }}
       </p>
@@ -85,9 +100,7 @@ const playersLine = computed(() => {
     <section class="rounded-lg border border-default p-5">
       <h2 class="text-sm font-semibold text-muted">Join with</h2>
       <div class="mt-2 flex min-w-0 items-center gap-2">
-        <span class="truncate font-mono text-lg" data-e2e="status-address">{{
-          data.address
-        }}</span>
+        <span class="truncate font-mono text-lg" data-e2e="status-address">{{ data.address }}</span>
         <UButton
           :icon="copied ? 'i-lucide-check' : 'i-lucide-copy'"
           :label="copied ? 'Copied' : 'Copy'"

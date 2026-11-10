@@ -116,6 +116,8 @@ export class Roster {
       .catch(() => null)
       .then((online) => {
         if (!online) return
+        // Only a console that didn't answer waits before being asked again.
+        this.lastTry.delete(server)
         const e = this.entry(server)
         // A join or a "Done" seen while asking is newer than the answer.
         if (e.known) return

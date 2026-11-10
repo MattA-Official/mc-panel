@@ -22,6 +22,8 @@ export interface PageInput {
   roster: RosterView
   /** The host the visitor reached the panel on, for servers without their own hostname. */
   machine: string
+  /** `motd` from server.properties. */
+  motd: string
   /** `max-players` from server.properties, when it's a number. */
   maxPlayers: number | null
   withUuids: (names: string[]) => { name: string; uuid: string }[]
@@ -52,6 +54,7 @@ export function publicStatus(input: PageInput): PublicStatus {
     name: row.name,
     displayName: row.displayName,
     description: page.description,
+    motd: input.motd,
     address: joinAddress(row, input.machine),
     state,
     players,

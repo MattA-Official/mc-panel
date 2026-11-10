@@ -25,6 +25,7 @@ export default defineEventHandler(async (event) => {
     service,
     roster,
     machine: getRequestURL(event, { xForwardedHost: true }).hostname,
+    motd: props.motd ?? '',
     maxPlayers: Number.isFinite(max) ? max : null,
     withUuids: (names) => withUuids(names, usercache),
   })
