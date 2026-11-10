@@ -54,7 +54,9 @@ export function cleanIcon(input: Uint8Array): Uint8Array {
   const height = view.getUint32(4)
   const [depth, colourType, compression, filter, interlace] = header.data.subarray(8)
   if (width !== ICON_SIZE || height !== ICON_SIZE) {
-    throw new IconError(`The icon must be ${ICON_SIZE}×${ICON_SIZE} pixels, not ${width}×${height}.`)
+    throw new IconError(
+      `The icon must be ${ICON_SIZE}×${ICON_SIZE} pixels, not ${width}×${height}.`,
+    )
   }
   const kind = COLOUR_TYPES[colourType!]
   if (!kind || !kind.depths.includes(depth!) || compression || filter || interlace) {

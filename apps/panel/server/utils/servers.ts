@@ -1,7 +1,10 @@
+import { statSync } from 'node:fs'
+import { join } from 'node:path'
 import { eq } from 'drizzle-orm'
 import { schema } from '../db'
 import type { ServiceState } from '../jobs/status'
 import type { Health } from '../crashes/monitor'
+import { ICON_FILE } from '../icon'
 
 type Row = typeof schema.servers.$inferSelect
 
@@ -21,6 +24,20 @@ export function publicServer(row: Row, status: ServiceState, health?: Health) {
     restartWhenUnresponsive: row.restartWhenUnresponsive,
     status,
     health: health ?? { condition: null, crash: null },
+    icon: iconUrl(row.name),
+  }
+}
+
+/**
+ * Where the panel loads the server's icon from, or null if it has none. The file's time is
+ * in the URL, so a new icon is never hidden by the browser's cache.
+ */
+export function iconUrl(name: string): string | null {
+  try {
+    const st = statSync(join(serverDir(name), ICON_FILE))
+    return st.isFile() ? `/api/servers/${name}/icon?v=${Math.floor(st.mtimeMs)}` : null
+  } catch {
+    return null
   }
 }
 
