@@ -289,9 +289,25 @@ if [[ $with_caddy -eq 1 ]]; then
       reverse_proxy 127.0.0.1:$PANEL_PORT
     }"
   fi
+  # The panel's own domain, then any server hostname whose public status page is on: Caddy
+  # asks the panel before getting a certificate for a name it hasn't seen (on-demand TLS).
   cat >"$caddyfile" <<EOF
 # Managed by Flytower. Re-running the installer rewrites this file.
+{
+	on_demand_tls {
+		ask http://127.0.0.1:$PANEL_PORT/api/public/tls-ask
+	}
+}
+
 $domain {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:$PANEL_PORT
+}
+
+https:// {
+	tls {
+		on_demand
+	}
 	encode zstd gzip
 	reverse_proxy 127.0.0.1:$PANEL_PORT
 }

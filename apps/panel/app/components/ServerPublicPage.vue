@@ -28,6 +28,8 @@ const url = computed(() =>
   server.value ? `${useRequestURL().origin}/s/${encodeURIComponent(server.value.name)}` : '',
 )
 const live = computed(() => !!server.value?.publicPage.enabled)
+// On its own hostname too, once Caddy serves it (see docs/status-page.md).
+const hostUrl = computed(() => (server.value?.hostname ? `https://${server.value.hostname}` : null))
 
 const saving = ref(false)
 async function save() {
@@ -143,6 +145,16 @@ const PLAYER_ITEMS: { label: string; value: PlayerVisibility; description: strin
         @click="copyLink"
       />
     </div>
+    <p v-if="live && hostUrl" class="mt-2 text-sm text-muted" data-e2e="public-page-host">
+      Also at
+      <a
+        :href="hostUrl"
+        target="_blank"
+        rel="noopener"
+        class="font-mono text-primary hover:underline"
+        >{{ hostUrl }}</a
+      >, the server's own address. Its certificate is fetched the first time someone opens it.
+    </p>
 
     <div class="mt-4 space-y-5">
       <USwitch
