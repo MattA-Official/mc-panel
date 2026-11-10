@@ -147,9 +147,9 @@ On a server with a hostname whose A record points at the VPS, on a box where the
 ## People and roles
 
 1. **Setup link**: on a fresh install, open the setup link the installer prints. You go straight to creating your passkey, and the address bar no longer shows the token. Also try typing the token on `/setup` instead.
-2. Go to **People** in the sidebar. You're listed as Owner on all servers.
+2. Go to **Access** in the sidebar. It has **People** and **Roles** tabs, and you're listed under People as Owner on all servers.
 3. Choose **Invite someone**, pick **Operator** on one server, and make the link (your passkey is asked for). Open it in a private window or on another device. You see who invited you and as what. Pick a name, create a passkey, save the codes.
-4. As the new person: that server shows, others don't. Start and stop and the console work. Files is hidden, Settings says **View only**, System shows only Overview, and People isn't in the sidebar.
+4. As the new person: that server shows, others don't. Start and stop and the console work. Files is hidden, Settings says **View only**, System shows only Overview, and Access isn't in the sidebar.
 5. As the Owner, change them to **Viewer**. Without reloading, their next click can't reach the console.
 6. Remove them. Their next click signs them out.
 7. Try making yourself an Admin while you're the only Owner. It's refused.
@@ -159,18 +159,18 @@ On a server with a hostname whose A record points at the VPS, on a box where the
 
 ### Custom roles and what people see
 
-1. On **People**, choose **New role**. Call it Moderator and tick **Read the console and logs** and **Manage players**. See the server is ticked and can't be unticked.
+1. On **Access**, open the **Roles** tab and choose **New role**. Call it Moderator and tick **Read the console and logs** and **Manage players**. See the server is ticked and can't be unticked.
 2. Invite someone as **Viewer** on one server and join as them. Check that:
    - **New server** doesn't show.
    - Opening the server lands on **Players**, with no Console, Logs or Files tabs and no Start or Stop.
    - **Settings** says **View only**, and nothing can be changed.
-   - **System** shows only Overview, and **People** isn't in the sidebar.
+   - **System** shows only Overview, and **Access** isn't in the sidebar.
 3. As the Owner, change them to **Moderator** on that server. Switch back to their tab: Console and Logs appear, with no box for typing commands.
 4. Try deleting Moderator while they have it. It's refused. Give them another role, then delete it.
 
 ### Your account
 
-1. Click your name at the bottom of the sidebar. **Your account** shows Profile, your passkeys and recovery codes, and Signed-in devices. **System** no longer has Account and security, and SSH is its own section there. Old links to `/system/account` and `/system/people` still land in the right place.
-2. Change your name. The sidebar, People and Activity show the new name.
-3. Pick **Light**, then sign in on another browser: it's light there too. The sun and moon button in the sidebar saves your choice as well.
+1. Click your name at the bottom of the sidebar. **Your account** shows Profile, your passkeys and recovery codes, and Signed-in devices. **System** no longer has Account and security, and SSH is its own section there. Old links to `/system/account`, `/system/people` and `/people` still land in the right place.
+2. Change your name. The sidebar, Access and Activity show the new name.
+3. Under **Appearance**, pick **Light**, then sign in on another browser: it's light there too. The sun and moon button in the sidebar saves your choice as well.
 4. Sign in on a second browser, then choose **Sign out everywhere else** on the first. The second is signed out on its next click; the first stays signed in.

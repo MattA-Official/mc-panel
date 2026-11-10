@@ -40,6 +40,6 @@ The panel then asks for the setup token again, as on the first day. Your servers
 
 Click your name at the bottom of the sidebar to open **Your account**:
 
-- **Profile**: change your name (it shows in Activity and on People) and choose light, dark or follow-the-device. Your choice is saved for you, so it follows you to every device. The sun and moon button in the sidebar switches too.
+- **Profile**: change your name (it shows in Activity and on Access) and pick **Appearance**: light, dark or system. Your choice is saved for you, so it follows you to every device. The sun and moon button in the sidebar switches too.
 - **Your passkeys** and **recovery codes**, as above.
 - **Sign out everywhere else**: for a lost phone or a shared computer. Every other browser signed in as you is signed out on its next click; this one stays signed in. It asks for your passkey.

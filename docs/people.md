@@ -15,7 +15,7 @@ Dangerous actions (deleting, restoring, resetting a world, opening SSH and so on
 
 ## Custom roles
 
-Under **Roles** on the People page, **New role** makes your own, such as a Moderator who can read the console and manage players but not start or stop the server. Tick what it can do. Anything done on a server includes seeing it. The permissions under **Across Flytower** (creating servers, people, managing Flytower, all activity) only count when the role is given for all servers.
+On **Access**, the **Roles** tab lists every role, and **New role** makes your own, such as a Moderator who can read the console and manage players but not start or stop the server. Tick what it can do. Anything done on a server includes seeing it. The permissions under **Across Flytower** (creating servers, people, managing Flytower, all activity) only count when the role is given for all servers.
 
 Changing a role changes it for everyone who has it, straight away. A role can be deleted once nobody has it, and its unused invite links are cancelled. Built-in roles can't be changed, and you can't make a role that can do more than you can.
 
@@ -27,7 +27,7 @@ If someone's access changes while they have the panel open, it updates when they
 
 ## Inviting someone
 
-1. Go to **People** in the sidebar, and choose **Invite someone**.
+1. Go to **Access** in the sidebar. On the **People** tab, choose **Invite someone**.
 2. Pick a role and a server (or all servers). A note for who it's for is optional and only shown to you.
 3. Copy the link and send it to them. It works once, for 7 days, and is only shown once.
 
@@ -37,7 +37,7 @@ You can only give someone access you have yourself.
 
 ## Changing or removing someone
 
-On **People**, choose the pencil to change someone's roles, or the remove button to take them off. Both ask for your passkey and apply straight away: a removed person is signed out on their next click and their passkeys stop working.
+On **Access**, **People**, choose the pencil to change someone's roles, or the remove button to take them off. Both ask for your passkey and apply straight away: a removed person is signed out on their next click and their passkeys stop working.
 
 The last Owner can't be removed or given a smaller role. Make someone else an Owner first.
 
