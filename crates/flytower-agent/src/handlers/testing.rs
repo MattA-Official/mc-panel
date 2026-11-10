@@ -42,6 +42,10 @@ impl Fake {
             version: "0.0.0-test".into(),
             exec: Arc::new(self.clone()),
             now: super::system_clock(),
+            fetch: Arc::new(crate::fetch::Curl {
+                exec: Arc::new(self.clone()),
+            }),
+            arch: std::env::consts::ARCH.into(),
             events: None,
             paths: paths.clone(),
             panel_group: "flytower".into(),

@@ -3,6 +3,7 @@
 //! without pretending to do work it can't.
 
 mod files;
+pub mod runtime;
 pub mod server;
 pub mod service;
 pub mod ssh;
@@ -17,6 +18,7 @@ use serde_json::{Value, json};
 use crate::envelope::{AgentError, ErrorCode, PROTOCOL_VERSION};
 use crate::events::UnitEvents;
 use crate::exec::Exec;
+use crate::fetch::Fetch;
 use crate::units::Paths;
 use crate::verbs::Params;
 
@@ -34,6 +36,10 @@ pub struct Context {
     pub version: String,
     pub exec: Arc<dyn Exec>,
     pub now: Clock,
+    /// Downloads; `curl` in production.
+    pub fetch: Arc<dyn Fetch>,
+    /// The CPU, as Rust names it: `x86_64` or `aarch64`.
+    pub arch: String,
     /// Unit changes from the journal; `None` makes `service.wait` tell the panel to poll.
     pub events: Option<Arc<UnitEvents>>,
     pub paths: Paths,
@@ -66,6 +72,7 @@ pub fn handle(params: &Params, ctx: &Context) -> Result<Value, AgentError> {
         }
         Params::ServerPermissions(p) => server::permissions(&p.name, ctx),
         Params::ServerDelete(p) => server::remove(&p.name, ctx),
+        Params::RuntimeInstall(p) => runtime::install(p.major, ctx),
         Params::SshStatus => Ok(ssh::status(ctx)),
         Params::SshSet(p) => ssh::set(p.open, p.minutes, ctx),
         _ => Err(AgentError::new(
