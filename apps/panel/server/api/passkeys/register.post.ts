@@ -92,6 +92,10 @@ export default defineEventHandler(async (event) => {
       detail: { nickname: body.nickname },
     })
     .run()
-  await replaceUserSession(event, { user: session.user!, elevatedUntil: session.elevatedUntil })
+  await replaceUserSession(event, {
+    user: session.user!,
+    sessionVersion: session.sessionVersion,
+    elevatedUntil: session.elevatedUntil,
+  })
   return { recoveryCodes: null }
 })

@@ -13,7 +13,7 @@ export async function requireSignedIn(event: H3Event) {
   const session = await requireUserSession(event)
   // The auth middleware usually loaded it already for this request.
   const cached = event.context.access as Access | undefined
-  const access = cached ?? loadAccess(useDb(), session.user.id)
+  const access = cached ?? loadAccess(useDb(), session.user.id, session.sessionVersion)
   if (!access) {
     await clearUserSession(event)
     throw createError({ statusCode: 401, statusMessage: 'Sign in first.' })

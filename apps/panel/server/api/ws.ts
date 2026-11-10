@@ -119,7 +119,8 @@ export default defineWebSocketHandler({
     if (subs.has(topic)) return
     const session = await getUserSession(peer)
     const userId = session.user?.id
-    const access = () => (userId === undefined ? null : loadAccess(useDb(), userId))
+    const version = session.sessionVersion
+    const access = () => (userId === undefined ? null : loadAccess(useDb(), userId, version))
     const now = access()
     if (!now) return send(peer, 'error', 'Sign in first.')
     const needs = topicNeeds(topic)

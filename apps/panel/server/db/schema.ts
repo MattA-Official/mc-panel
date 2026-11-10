@@ -19,6 +19,12 @@ const createdAt = () => integer('created_at', { mode: 'timestamp_ms' }).notNull(
 export const users = sqliteTable('users', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
+  /** Bumped by "Sign out everywhere": sessions made under an older number stop working. */
+  sessionVersion: integer('session_version').notNull().default(0),
+  /** Light, dark or follow the device, remembered for the person rather than the browser. */
+  theme: text('theme', { enum: ['system', 'light', 'dark'] })
+    .notNull()
+    .default('system'),
   createdAt: createdAt(),
 })
 

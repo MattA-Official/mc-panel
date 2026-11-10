@@ -63,5 +63,9 @@ export const migrations: { tag: string; sql: string }[] = [
   {
     "tag": "0015_invites",
     "sql": "CREATE TABLE `invites` (\n\t`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,\n\t`token_hash` text NOT NULL,\n\t`role_id` text NOT NULL,\n\t`server` text,\n\t`note` text,\n\t`created_by` integer,\n\t`created_at` integer DEFAULT (unixepoch() * 1000) NOT NULL,\n\t`expires_at` integer NOT NULL,\n\t`used_at` integer,\n\t`used_by` integer,\n\tFOREIGN KEY (`role_id`) REFERENCES `roles`(`id`) ON UPDATE no action ON DELETE cascade,\n\tFOREIGN KEY (`server`) REFERENCES `servers`(`name`) ON UPDATE no action ON DELETE cascade,\n\tFOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null,\n\tFOREIGN KEY (`used_by`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null\n);\n--> statement-breakpoint\nCREATE UNIQUE INDEX `invites_token_hash_unique` ON `invites` (`token_hash`);"
+  },
+  {
+    "tag": "0016_account",
+    "sql": "ALTER TABLE `users` ADD `session_version` integer DEFAULT 0 NOT NULL;--> statement-breakpoint\nALTER TABLE `users` ADD `theme` text DEFAULT 'system' NOT NULL;"
   }
 ]
