@@ -6,6 +6,8 @@ import {
   wantsBrowserMenu,
 } from '../app/utils/action-menus'
 import {
+  contentActions,
+  contentPage,
   serverActions,
   type ActionItem,
   type ServerActionContext,
@@ -142,5 +144,40 @@ describe('serverActions', () => {
     calls.length = 0
     find(serverActions(ctx()), 'Copy link')!.onSelect!()
     expect(calls).toEqual(['copy https://panel.example/servers/survival'])
+  })
+})
+
+describe('contentActions', () => {
+  const item = {
+    title: 'Lithium',
+    source: 'modrinth',
+    slug: 'lithium',
+    versionNumber: '0.15.0',
+    asked: true,
+  }
+  const noop = () => {}
+  const base = { update: noop, remove: noop, copy: noop, openInNewTab: noop }
+  const labels = (g: ActionItem[][]) => g.flat().map((i) => i.label)
+
+  test('offers an update only when there is one', () => {
+    expect(labels(contentActions({ ...base, item, updateTo: null }))).not.toContain(
+      'Update to 0.16.0',
+    )
+    expect(labels(contentActions({ ...base, item, updateTo: '0.16.0' }))[0]).toBe(
+      'Update to 0.16.0',
+    )
+  })
+  test('links to the project page where there is one', () => {
+    expect(contentPage(item)).toBe('https://modrinth.com/project/lithium')
+    expect(contentPage({ source: 'url', slug: '' })).toBeNull()
+    expect(
+      labels(contentActions({ ...base, item: { ...item, source: 'url' }, updateTo: null })),
+    ).not.toContain('Open project page')
+  })
+  test('items another needs cannot be removed on their own', () => {
+    expect(labels(contentActions({ ...base, item, updateTo: null }))).toContain('Remove…')
+    expect(
+      labels(contentActions({ ...base, item: { ...item, asked: false }, updateTo: null })),
+    ).not.toContain('Remove…')
   })
 })

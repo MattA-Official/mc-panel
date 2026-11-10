@@ -139,11 +139,7 @@ pub fn decode(nbt: &Tag, palette: &Palette) -> Result<Option<Chunk>, &'static st
             .unwrap_or(&[]);
         let ids = names
             .iter()
-            .map(|s| {
-                s.get("Name")
-                    .and_then(Tag::as_str)
-                    .map_or(AIR, |n| palette.block_id(n))
-            })
+            .map(|s| block_name(s).map_or(AIR, |n| palette.block_id(n)))
             .collect();
         let data = block_states
             .get("data")
@@ -173,6 +169,18 @@ pub fn decode(nbt: &Tag, palette: &Palette) -> Result<Option<Chunk>, &'static st
     Ok(Some(Chunk { sections }))
 }
 
+/// A block palette entry's name. Up to Minecraft 26.2 every entry is `{Name, Properties}`.
+/// From 26.3 a block saved with its default state is just its name, one with other
+/// properties is `{id, properties}`, and in a list that mixes the two the plain names are
+/// wrapped as `{"": name}`, as the game does for any list holding mixed types.
+fn block_name(entry: &Tag) -> Option<&str> {
+    entry.as_str().or_else(|| {
+        ["Name", "id", ""]
+            .into_iter()
+            .find_map(|key| entry.get(key).and_then(Tag::as_str))
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -200,6 +208,88 @@ mod tests {
     fn out_of_range_indices_fall_back() {
         let p = Packed::new(vec![5, 6], &[-1; 256], 4096, 4).unwrap();
         assert_eq!(p.get(0), 5);
+    }
+
+    fn compound(fields: Vec<(&str, Tag)>) -> Tag {
+        Tag::Compound(fields.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
+    }
+
+    fn text(s: &str) -> Tag {
+        Tag::String(s.to_owned())
+    }
+
+    /// A chunk with one section: index 1 of `entries` at the bottom row, air above.
+    fn chunk_with(entries: Vec<Tag>) -> Tag {
+        let mut data = vec![0i64; 256];
+        for word in &mut data[..16] {
+            // Sixteen 4-bit indices of 1 per word: the bottom 256 blocks.
+            *word = 0x1111_1111_1111_1111;
+        }
+        compound(vec![
+            ("Status", text("minecraft:full")),
+            (
+                "sections",
+                Tag::List(vec![compound(vec![
+                    ("Y", Tag::Byte(0)),
+                    (
+                        "block_states",
+                        compound(vec![
+                            ("palette", Tag::List(entries)),
+                            ("data", Tag::LongArray(data)),
+                        ]),
+                    ),
+                ])]),
+            ),
+        ])
+    }
+
+    #[test]
+    fn reads_every_way_the_game_writes_block_names() {
+        let palette = Palette::builtin();
+        let stone = palette.block_id("minecraft:stone");
+        let leaves = palette.block_id("minecraft:oak_leaves");
+        let props = || compound(vec![("distance", text("1"))]);
+        let cases = [
+            // Up to 26.2: always {Name, Properties}.
+            (
+                vec![
+                    compound(vec![("Name", text("minecraft:air"))]),
+                    compound(vec![("Name", text("minecraft:stone"))]),
+                ],
+                stone,
+            ),
+            // 26.3, every block in its default state: plain names.
+            (vec![text("minecraft:air"), text("minecraft:stone")], stone),
+            // 26.3, mixed: plain names wrapped as {"": name}, the rest {id, properties}.
+            (
+                vec![
+                    compound(vec![("", text("minecraft:air"))]),
+                    compound(vec![
+                        ("id", text("minecraft:oak_leaves")),
+                        ("properties", props()),
+                    ]),
+                ],
+                leaves,
+            ),
+            (
+                vec![
+                    compound(vec![
+                        ("id", text("minecraft:oak_leaves")),
+                        ("properties", props()),
+                    ]),
+                    compound(vec![("", text("minecraft:stone"))]),
+                ],
+                stone,
+            ),
+        ];
+        for (entries, want) in cases {
+            let chunk = decode(&chunk_with(entries.clone()), &palette)
+                .unwrap()
+                .unwrap();
+            let section = &chunk.sections[0];
+            assert_eq!(section.block(3, 0, 7), want, "{entries:?}");
+            assert_eq!(section.block(3, 1, 7), section.block(0, 15, 0));
+        }
     }
 
     #[test]

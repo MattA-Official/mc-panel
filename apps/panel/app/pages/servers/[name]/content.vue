@@ -125,6 +125,18 @@ function update(item?: Item) {
   })
 }
 
+const copy = useCopy()
+/** An item's actions, for its ⋯ button and its right-click menu (#106). */
+const itemMenu = (item: Item) =>
+  contentActions({
+    item,
+    updateTo: updateFor(item.title)?.to ?? null,
+    update: () => void update(item),
+    remove: () => void remove(item),
+    copy: (text, what) => void copy(text, what),
+    openInNewTab: (url) => void window.open(url, '_blank', 'noopener'),
+  })
+
 function applied() {
   refresh()
   refreshUpdates()
@@ -349,7 +361,13 @@ const pendingText = computed(() => {
           </tr>
         </thead>
         <tbody class="divide-y divide-default">
-          <tr v-for="item in data.items" :key="item.path">
+          <ActionTarget
+            v-for="item in data.items"
+            :key="item.path"
+            as="tr"
+            :items="itemMenu(item)"
+            :label="item.title"
+          >
             <td class="px-3 py-2">
               <p class="font-medium">{{ item.title }}</p>
               <p v-if="!item.asked" class="text-xs text-dimmed">
@@ -380,17 +398,9 @@ const pendingText = computed(() => {
                 :aria-label="`Update ${item.title}`"
                 @click="update(item)"
               />
-              <UButton
-                v-if="item.asked"
-                size="xs"
-                color="error"
-                variant="ghost"
-                icon="i-lucide-trash-2"
-                :aria-label="`Remove ${item.title}`"
-                @click="remove(item)"
-              />
+              <ActionMenuButton :items="itemMenu(item)" :label="item.title" />
             </td>
-          </tr>
+          </ActionTarget>
         </tbody>
       </table>
     </div>
