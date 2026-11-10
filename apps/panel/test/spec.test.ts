@@ -117,6 +117,24 @@ describe('spec', () => {
     expect(specFromServer(row as never, props).recovery).toBeUndefined()
   })
 
+  test('player stats settings read back, and are left out when on with nobody left out', () => {
+    const stats = {
+      enabled: false,
+      leaveOut: [{ uuid: '069a79f4-44e9-4726-a5be-fca90e38aaf5', name: 'Steve' }],
+    }
+    const yaml = toYaml(
+      specFromServer({ ...row, stats } as never, props),
+      'https://panel.example/schema/server-v1.json',
+    )
+    expect(yaml).toContain('leaveOut:')
+    const back = parseSpec(yaml)
+    expect(back.ok && back.spec.stats).toEqual(stats)
+    expect(specFromServer(row as never, props).stats).toBeUndefined()
+    expect(
+      specFromServer({ ...row, stats: { enabled: true, leaveOut: [] } } as never, props).stats,
+    ).toBeUndefined()
+  })
+
   test('compact specs leave defaults out', () => {
     const spec = ServerSpec.parse({ name: 'ab', loader: { type: 'vanilla', minecraft: '26.3' } })
     expect(compactSpec(spec)).toEqual({

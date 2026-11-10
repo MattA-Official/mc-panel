@@ -43,6 +43,7 @@ export default defineEventHandler(async (event) => {
         hostname: spec.hostname ?? null,
         recovery: spec.recovery,
         publicPage: spec.public,
+        stats: spec.stats,
       },
     )
     void done.then((job) => {

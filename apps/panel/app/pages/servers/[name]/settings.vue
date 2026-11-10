@@ -45,6 +45,7 @@ async function restart() {
     <ServerResources @saved="saved" />
     <ServerAddress />
     <ServerPublicPage />
+    <ServerStats />
     <ServerRecovery />
     <ServerDisk />
     <ServerVersion />

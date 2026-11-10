@@ -134,6 +134,13 @@
       "when": 1794326024685,
       "tag": "0018_player_stats",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1794326235042,
+      "tag": "0019_stats_settings",
+      "breakpoints": true
     }
   ]
 }

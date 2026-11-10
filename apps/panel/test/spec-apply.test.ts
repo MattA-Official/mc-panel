@@ -196,6 +196,7 @@ function setup(
 
   let state = opts.running ? 'active' : 'inactive'
   const calls: string[] = []
+  const statsChanges: { name: string; before: unknown }[] = []
   const agent = (async (verb: Verb, params: unknown) => {
     calls.push(verb === 'server.configure' ? `${verb} ${JSON.stringify(params)}` : verb)
     if (verb === 'service.status') return { active: state, since: null }
@@ -252,6 +253,7 @@ function setup(
       { id: 2, name: 'R2' },
     ],
     offsiteChanged: (n) => calls.push(`offsite ${n}`),
+    statsChanged: (name, before) => statsChanges.push({ name, before }),
     tasks: {
       tasks: () => scheduled.tasks,
       replace: (_n, tasks, timezone) => {
@@ -267,7 +269,7 @@ function setup(
       loader: { type: opts.loader ?? 'fabric', minecraft: '26.3' },
       ...extra,
     })
-  return { db, dir, service, calls, snapshots, spec, scheduled }
+  return { db, dir, service, calls, snapshots, spec, scheduled, statsChanges }
 }
 
 describe('plan', () => {
@@ -351,6 +353,32 @@ describe('plan', () => {
     expect((await service.currentSpec('survival')).recovery).toEqual({
       restartWhenUnresponsive: true,
     })
+    // Left out, it stays.
+    expect((await service.plan('survival', spec())).changes).toEqual([])
+  })
+
+  it('changes player stats settings and says what was there before', async () => {
+    const { service, spec, db, statsChanges } = setup()
+    const leaveOut = [{ uuid: '069a79f4-44e9-4726-a5be-fca90e38aaf5', name: 'Steve' }]
+    const plan = await service.plan('survival', spec({ stats: { leaveOut } }))
+    expect(plan.changes).toEqual([
+      {
+        area: 'settings',
+        action: 'set',
+        label: 'Player stats',
+        from: 'On',
+        to: 'On, 1 player left out',
+      },
+    ])
+    expect(plan.restart).toBe(false)
+    await (
+      await service.apply('survival', plan.id)
+    ).done
+    expect(
+      db.select().from(schema.servers).where(eq(schema.servers.name, 'survival')).get()?.stats,
+    ).toEqual({ enabled: true, leaveOut })
+    expect(statsChanges).toEqual([{ name: 'survival', before: null }])
+    expect((await service.currentSpec('survival')).stats).toEqual({ enabled: true, leaveOut })
     // Left out, it stays.
     expect((await service.plan('survival', spec())).changes).toEqual([])
   })
