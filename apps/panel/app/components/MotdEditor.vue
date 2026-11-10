@@ -10,7 +10,7 @@ import type { ColourCode, MotdFormat, MotdLine, MotdStyle } from '~~/shared/util
  * of its text, so typing, selection, undo and phone keyboards behave as usual.
  */
 const model = defineModel<string>({ required: true })
-defineProps<{ name: string; maxPlayers?: number }>()
+defineProps<{ name: string; maxPlayers?: number; icon?: string | null }>()
 
 interface Cell {
   ch: string
@@ -377,7 +377,7 @@ function cellStyle(style: MotdStyle) {
       />
     </div>
 
-    <MotdPreview :motd="model" :name="name" :max-players="maxPlayers" />
+    <MotdPreview :motd="model" :name="name" :max-players="maxPlayers" :icon="icon" />
   </div>
 </template>
 

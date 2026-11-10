@@ -39,7 +39,7 @@ interface Chunk {
 }
 
 /** Checks an uploaded icon and returns a clean copy to write, or throws an IconError. */
-export function cleanIcon(input: Uint8Array): Uint8Array {
+export function cleanIcon(input: Uint8Array): Uint8Array<ArrayBuffer> {
   if (input.length > MAX_ICON_BYTES) throw new IconError('The icon is too big.')
   if (input.length < SIGNATURE.length || !SIGNATURE.every((b, i) => input[i] === b)) {
     throw new IconError('The icon must be a PNG.')
@@ -108,7 +108,7 @@ function readChunks(png: Uint8Array): Chunk[] {
   return chunks
 }
 
-function concat(parts: Uint8Array[]): Uint8Array {
+function concat(parts: Uint8Array[]): Uint8Array<ArrayBuffer> {
   const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0))
   let at = 0
   for (const p of parts) {

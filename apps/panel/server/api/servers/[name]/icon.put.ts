@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
   }
   const body = await readRawBody(event, false)
   if (!body?.length) throw createError({ statusCode: 400, statusMessage: 'No icon sent.' })
-  let icon: Uint8Array
+  let icon: Uint8Array<ArrayBuffer>
   try {
     icon = cleanIcon(new Uint8Array(body))
   } catch (err) {

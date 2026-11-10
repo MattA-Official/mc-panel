@@ -9,17 +9,14 @@ export default defineEventHandler(async (event) => {
   await requireUserSession(event)
   const { name } = await getValidatedRouterParams(event, Params.parse)
   findServer(name)
-  const path = await downloadPath(serverDir(name), ICON_FILE).catch((err) => {
-    if (err instanceof FileError || (err as NodeJS.ErrnoException).code === 'ENOENT') return null
+  const found = await downloadPath(serverDir(name), ICON_FILE).catch((err) => {
+    if (err instanceof FileError) return null
     throw err
   })
-  const file = path ? Bun.file(path) : null
-  if (!file || !(await file.exists())) {
-    throw createError({ statusCode: 404, statusMessage: 'This server has no icon.' })
-  }
+  if (!found) throw createError({ statusCode: 404, statusMessage: 'This server has no icon.' })
   setResponseHeaders(event, {
     'content-type': 'image/png',
     'cache-control': 'private, max-age=31536000, immutable',
   })
-  return file
+  return Bun.file(found.file)
 })
