@@ -43,6 +43,21 @@ export function statsChanged(server: string, before: unknown) {
   }
 }
 
+/** A player's UUID from usercache.json, or worked out on an offline-mode server. */
+export async function lookupPlayerUuid(server: string, name: string): Promise<string | null> {
+  const cache = await readUserCache(server)
+  if (Array.isArray(cache)) {
+    const lower = name.toLowerCase()
+    for (const e of cache as { name?: unknown; uuid?: unknown }[]) {
+      if (typeof e?.name === 'string' && typeof e.uuid === 'string')
+        if (e.name.toLowerCase() === lower) return e.uuid.toLowerCase()
+    }
+  }
+  // An offline-mode server gives every name a fixed UUID, so it can be worked out here.
+  const props = await readProperties(server).catch(() => ({}) as Record<string, string>)
+  return props['online-mode'] === 'false' ? offlineUuid(name) : null
+}
+
 let sessions: Sessions | undefined
 
 /** Player sessions for every server, from the log. */
@@ -51,19 +66,7 @@ export function useSessions(): Sessions {
     const s = new Sessions({
       db: useDb(),
       include: statsInclude,
-      lookupUuid: async (server, name) => {
-        const cache = await readUserCache(server)
-        if (Array.isArray(cache)) {
-          const lower = name.toLowerCase()
-          for (const e of cache as { name?: unknown; uuid?: unknown }[]) {
-            if (typeof e?.name === 'string' && typeof e.uuid === 'string')
-              if (e.name.toLowerCase() === lower) return e.uuid.toLowerCase()
-          }
-        }
-        // An offline-mode server gives every name a fixed UUID, so it can be worked out here.
-        const props = await readProperties(server).catch(() => ({}) as Record<string, string>)
-        return props['online-mode'] === 'false' ? offlineUuid(name) : null
-      },
+      lookupUuid: lookupPlayerUuid,
     })
     const logs = useLogWatcher()
     logs.listenLines((server, line) => s.line(server, line))

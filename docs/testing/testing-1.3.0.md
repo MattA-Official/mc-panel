@@ -39,3 +39,19 @@ You need a panel with a domain, a Discord server you can add apps to (a test one
 - [ ] `/backup note:test`: "Backing up", then "Backed up … <size>". The backup has the note in the Backups tab.
 - [ ] **Activity** shows each of these as "<your Discord name> via Discord".
 - [ ] **Disconnect**: after the passkey check the card is back to empty, the commands disappear from Discord (it may take a minute, or reopen Discord), and the portal's endpoint is empty.
+
+## Game chat to Discord
+
+You need a Discord channel you can add webhooks to and a running Fabric or Paper server. Player faces need the panel to have a domain. See [Game chat in a channel](discord.md#game-chat-in-a-channel).
+
+- [ ] In Discord, the channel's settings, **Integrations**, **Webhooks**, **New Webhook**, **Copy Webhook URL**.
+- [ ] Server, **Settings**, **Discord chat**: paste `https://example.com/hook` and press **Turn on**. It's refused as not a Discord webhook.
+- [ ] Paste the real URL and press **Send a test**: "Flytower will post … chat here." arrives in the channel.
+- [ ] Press **Turn on**. After the passkey check the card says **On** and shows only the webhook's ID. **Activity** shows "Started posting … chat to Discord".
+- [ ] Join the server: "**you** joined the game" appears in the channel within a second, with your face.
+- [ ] Say something: it appears under your name with your face. Say `**bold** @everyone <@1> # big https://example.com`: it shows exactly as typed, nobody is pinged, and the link works without a preview.
+- [ ] `/me waves` appears in italics.
+- [ ] Send ten lines quickly (or paste them): they all arrive, joined into fewer messages, in order.
+- [ ] Turn **Chat** off and save: chat stops, joins and leaves still post. Turn **Joins and leaves** off: they stop too.
+- [ ] Delete the webhook in Discord, then say something: the card says **Stopped** with Discord's reason. Paste a new webhook and save: chat posts again.
+- [ ] **Turn off**: nothing more is posted, and the card is back to empty.

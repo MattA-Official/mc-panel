@@ -42,6 +42,7 @@ export default defineEventHandler(async (event) => {
   forgetMetrics(db, name)
   useDiskUsage().forget(name)
   forgetNotifyServer(name)
+  forgetRelay(name)
   useSessions().forget(name)
   useStatsSnapshot().forget(name)
   useUpdates().forget(name)

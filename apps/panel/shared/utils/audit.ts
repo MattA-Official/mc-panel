@@ -163,6 +163,11 @@ export function describeAudit(
       if (d.enabled === false && d.was !== false) return `Turned off player stats on ${t}`
       if (d.enabled === true && d.was === false) return `Turned on player stats on ${t}`
       return `Changed who is left out of player stats on ${t}`
+    case 'server.discord_relay':
+      if (d.on === false) return `Stopped posting ${t}'s chat to Discord`
+      return d.was
+        ? `Changed how ${t}'s chat is posted to Discord`
+        : `Started posting ${t}'s chat to Discord`
     case 'server.public_page':
       if (d.enabled === false) return `Turned off ${t}'s public page`
       return d.was === false ? `Turned on ${t}'s public page` : `Changed ${t}'s public page`
