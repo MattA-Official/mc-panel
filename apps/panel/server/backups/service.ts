@@ -13,12 +13,16 @@ import { JobError, type AgentCall, type JobTracker } from '../jobs/runner'
 import { createArchive, extractArchive, isExcluded } from './archive'
 import { toPrune } from './retention'
 import type { Notifier } from '../notify/types'
+import { DISK_URGENT } from '../../shared/disk'
 
 export type Backup = typeof schema.backups.$inferSelect
 export type BackupKind = Backup['kind']
 
 /** Shown to the user as-is. */
 export class BackupError extends JobError {}
+
+/** A scheduled backup that didn't start because the disk is nearly full. */
+export class BackupSkipped extends BackupError {}
 
 export const SAFETY_KEEP = 3
 const FILE = /^[a-z][a-z0-9-]{1,30}-\d{8}T\d{6}Z(-[a-z]+)?\.tar\.zst$/
@@ -47,6 +51,8 @@ export interface BackupDeps {
   }
   /** Tells people when a backup fails, and when backups work again. */
   notifier?: Notifier
+  /** How full the servers' disk is, in percent, or null if unknown. */
+  diskPercent?: () => number | null
 }
 
 const stampOf = (d: Date) =>
@@ -199,7 +205,7 @@ export class BackupService {
         this.deps.notifier?.notify({
           kind: 'backup.failed',
           server,
-          title: `A ${what} failed`,
+          title: err instanceof BackupSkipped ? `A ${what} was skipped` : `A ${what} failed`,
           detail: failed.message ?? undefined,
           severity: 'critical',
           link: `/servers/${server}/backups`,
@@ -384,6 +390,14 @@ export class BackupService {
 
   private async runBackup(server: string, kind: BackupKind, note: string | null, job: JobTracker) {
     job.step(0)
+    // Starting a big archive on a nearly full disk risks filling it mid-save, which can
+    // corrupt the world. A person can still back up by hand once they've been warned.
+    const pct = kind === 'scheduled' ? (this.deps.diskPercent?.() ?? null) : null
+    if (pct !== null && pct >= DISK_URGENT) {
+      throw new BackupSkipped(
+        `Skipped: the disk is ${Math.round(pct)}% full, so this scheduled backup didn't start. Free up some space (old backups and world exports are the usual culprits) and the next one will run as normal.`,
+      )
+    }
     const size = await this.checkSpace(server)
     try {
       return await this.withSavesPaused(

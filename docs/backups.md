@@ -16,6 +16,8 @@ Some things are left out because they're never worth restoring: `logs`, `crash-r
 
 Scheduled backups are thinned out by the **keep** settings. By default Flytower keeps the newest 6, plus the newest from each of the last 7 days and the last 4 weeks. The three newest safety backups are kept. Backups you take yourself are never deleted automatically.
 
+When the disk is 95% full, scheduled backups are skipped rather than risk filling it, and **Back up now** asks first. See [Disk space](disk.md).
+
 ## Restoring
 
 Choose **Restore** on a backup. Flytower asks for your passkey, takes a safety backup of how things are now, stops the server, puts the backup back, and starts it again. Changed your mind? Restore the safety backup.
