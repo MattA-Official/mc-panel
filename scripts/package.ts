@@ -3,7 +3,8 @@
  *
  *   bun scripts/package.ts --version 0.1.0 --arch amd64 [--bun /path/to/bun] [--out dist]
  *
- * Expects `bun run build` to have produced apps/panel/.output. Without --bun it downloads
+ * Expects `bun run build` to have produced apps/panel/.output, and cargo (with the toolchain
+ * in crates/rust-toolchain.toml) for the Rust helpers. Without --bun it downloads
  * the official Bun release matching packageManager in package.json and checks its hash.
  */
 import { chmod, cp, mkdir, rm } from 'node:fs/promises'
@@ -85,6 +86,15 @@ if (values.bun) {
   await cp(join(out, asset, 'bun'), bunTarget)
 }
 await chmod(bunTarget, 0o755)
+
+// Rust helpers (crates/), as static binaries. rust-lld cross-links arm64 from amd64.
+const rustTarget = arch === 'amd64' ? 'x86_64-unknown-linux-musl' : 'aarch64-unknown-linux-musl'
+const crates = join(repo, 'crates')
+await $`cargo build --release --locked --target ${rustTarget}`.cwd(crates)
+for (const bin of ['flytower-du']) {
+  await cp(join(crates, 'target', rustTarget, 'release', bin), join(stage, 'bin', bin))
+  await chmod(join(stage, 'bin', bin), 0o755)
+}
 
 // Stable entry points: systemd and the agent start these, never Bun directly, so a later
 // release can swap what's behind them (docs/decisions/0001-rust-and-go.md).
