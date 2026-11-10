@@ -13,6 +13,18 @@ Flytower can have more than one person signing in. Each person has one or more *
 
 Dangerous actions (deleting, restoring, resetting a world, opening SSH and so on) still ask for a passkey, whatever the role.
 
+## Custom roles
+
+Under **Roles** on the People page, **New role** makes your own, such as a Moderator who can read the console and manage players but not start or stop the server. Tick what it can do. Anything done on a server includes seeing it. The permissions under **Across Flytower** (creating servers, people, managing Flytower, all activity) only count when the role is given for all servers.
+
+Changing a role changes it for everyone who has it, straight away. A role can be deleted once nobody has it, and its unused invite links are cancelled. Built-in roles can't be changed, and you can't make a role that can do more than you can.
+
+## What people see
+
+People only see the servers they've been given. On a server, tabs they can't use are hidden: without the console permission a server opens on its players, and Files only shows with the files permission. Where they can look but not change things (settings, content, players, backups, schedules, world), the tab says **View only** and its buttons are off. Start, stop and restart only show for people who can use them, as do **New server** and the System pages for updates, storage, notifications, branding and SSH.
+
+If someone's access changes while they have the panel open, it updates when they come back to the tab.
+
 ## Inviting someone
 
 1. Go to **System**, **People**, and choose **Invite someone**.

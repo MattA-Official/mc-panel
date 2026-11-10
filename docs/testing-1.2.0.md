@@ -149,10 +149,21 @@ On a server with a hostname whose A record points at the VPS, on a box where the
 1. **Setup link**: on a fresh install, open the setup link the installer prints. You go straight to creating your passkey, and the address bar no longer shows the token. Also try typing the token on `/setup` instead.
 2. Go to **System**, **People**. You're listed as Owner on all servers.
 3. Choose **Invite someone**, pick **Operator** on one server, and make the link (your passkey is asked for). Open it in a private window or on another device. You see who invited you and as what. Pick a name, create a passkey, save the codes.
-4. As the new person: that server shows, others don't. Start and stop and the console work; Files, Settings changes and System pages say you don't have permission.
+4. As the new person: that server shows, others don't. Start and stop and the console work. Files is hidden, Settings says **View only**, and System shows only Overview and Account and security.
 5. As the Owner, change them to **Viewer**. Without reloading, their next click can't reach the console.
 6. Remove them. Their next click signs them out.
 7. Try making yourself an Admin while you're the only Owner. It's refused.
 8. Make an invite and cancel it. The link then says it can't be used. An old link (over 7 days) or a used one says the same.
 9. **Activity**, **Sign-ins and access** lists each invite, join, change and removal.
 10. Existing install updated from an earlier beta: you're the Owner, and everything works as before.
+
+### Custom roles and what people see
+
+1. On **System**, **People**, choose **New role**. Call it Moderator and tick **Read the console and logs** and **Manage players**. See the server is ticked and can't be unticked.
+2. Invite someone as **Viewer** on one server and join as them. Check that:
+   - **New server** doesn't show.
+   - Opening the server lands on **Players**, with no Console, Logs or Files tabs and no Start or Stop.
+   - **Settings** says **View only**, and nothing can be changed.
+   - **System** shows only Overview and Account and security.
+3. As the Owner, change them to **Moderator** on that server. Switch back to their tab: Console and Logs appear, with no box for typing commands.
+4. Try deleting Moderator while they have it. It's refused. Give them another role, then delete it.
