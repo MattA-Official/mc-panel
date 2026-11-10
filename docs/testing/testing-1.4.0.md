@@ -37,3 +37,13 @@ You need two servers, one running and one stopped.
 - [ ] **Content**: each item has a ⋯ button. Right-click or ⋯ gives **Update to …** (only when there's an update), **Open project page** (Modrinth and Vanilla Tweaks), **Copy version** and **Remove…**. Remove shows the usual plan before anything changes. Items another one needs have no Remove.
 - [ ] Focus a row's name and press the **Menu** key: its menu opens there.
 - [ ] On a phone, press and hold a row: the sheet opens. **Download** from the sheet downloads the file.
+
+## Command palette
+
+- [ ] Press **Ctrl + K** (**⌘K** on a Mac) on any page, including while typing in a field: the palette opens. **Escape** closes it. The sidebar's **Search** button opens it too, also on a phone.
+- [ ] Before typing: your servers come first, the one you're on at the top, then the ones you opened lately. On a server page, its tabs and actions follow ("Survival › Backups", "Survival › Restart"), then the panel's pages.
+- [ ] Type part of a server's name: it's first, and Enter opens its console.
+- [ ] Type "survival backups" (with your server's name): Enter opens that tab. "survival restart" asks before restarting, as the button does. "back" finds Back up now and Backups on every server.
+- [ ] Pages are findable: Activity, System, Updates, Notifications, New server, Import, From YAML, Your account.
+- [ ] Help pages still show once you type, below servers and pages.
+- [ ] Signed in as a Viewer: no Start, Stop, Back up now, Clone or Delete, and no New server.
