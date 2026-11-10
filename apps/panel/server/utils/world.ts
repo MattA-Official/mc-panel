@@ -19,6 +19,7 @@ export function useWorld(): WorldService {
     readProperties,
     writeProperties,
     stopped: (name) => useConsole().forget(name),
+    worldReplaced: (name) => useMap().clearTiles(name),
   })
   return service
 }

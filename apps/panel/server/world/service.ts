@@ -38,6 +38,8 @@ export interface WorldDeps {
   readProperties: (name: string) => Promise<Record<string, string>>
   writeProperties: (name: string, changes: Record<string, string>) => Promise<void>
   stopped?: (name: string) => void
+  /** After the world is replaced, with the server stopped: the web map forgets the old one. */
+  worldReplaced?: (name: string) => Promise<void>
   sleep?: (ms: number) => Promise<void>
 }
 
@@ -220,6 +222,7 @@ export class WorldService {
       }
       await rm(old, { recursive: true, force: true })
     }
+    await this.deps.worldReplaced?.(name)
 
     job.step(4)
     if ('random' in seed) await this.deps.writeProperties(name, { 'level-seed': '' })
@@ -323,6 +326,7 @@ export class WorldService {
       throw err
     }
     await rm(old, { recursive: true, force: true })
+    await this.deps.worldReplaced?.(name)
 
     if (wasRunning) {
       job.step(4)

@@ -3,15 +3,27 @@
  * the map settings. All folder access goes through here, so it can become agent verbs for
  * other machines later (#29).
  */
-import { chmod, mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { availableParallelism } from 'node:os'
 import { join } from 'node:path'
 import { eq } from 'drizzle-orm'
 import { readMapSettings } from '../../shared/map-settings'
 import { schema, type Db } from '../db'
-import type { AgentCall } from '../jobs/runner'
+import { JobError, type AgentCall } from '../jobs/runner'
 import { readLock } from '../spec/lock'
 import { dataDir, hasSquaremap, squaremapConfig, webDir, type MapLoader } from './squaremap'
+
+export class MapError extends JobError {}
+
+export type MapDimension = 'overworld' | 'the_nether' | 'the_end'
+export type RenderAction = 'full' | 'cancel'
+
+/** squaremap's replies, without MiniMessage tags or § codes. */
+export const plainReply = (reply: string) =>
+  reply
+    .replace(/<[^<>]*>/g, '')
+    .replace(/§./g, '')
+    .trim()
 
 export interface MapDeps {
   db: Db
@@ -86,6 +98,32 @@ export class MapService {
     if (existing === null) return
     const { active } = await this.deps.agent('service.status', { server: name })
     if (active === 'active') await this.deps.rcon(name, 'squaremap reload')
+  }
+
+  /**
+   * Starts drawing every explored part of a dimension, or stops a drawing under way. squaremap
+   * logs its progress to the console. Returns what squaremap said.
+   */
+  async render(name: string, action: RenderAction, dimension: MapDimension): Promise<string> {
+    const s = await this.status(name)
+    if (s.blocked === 'loader') throw new MapError('The web map needs a Fabric or Paper server.')
+    if (s.blocked === 'not-installed') throw new MapError('Add squaremap to this server first.')
+    const { active } = await this.deps.agent('service.status', { server: name })
+    if (active !== 'active') throw new MapError('Start the server first.')
+    const verb = action === 'full' ? 'fullrender' : 'cancelrender'
+    const reply = plainReply(await this.deps.rcon(name, `squaremap ${verb} minecraft:${dimension}`))
+    return reply || (action === 'full' ? 'Started drawing the map.' : 'Stopped drawing.')
+  }
+
+  /**
+   * Deletes the drawn tiles, for a world that's been replaced, so the map doesn't show the old
+   * one. squaremap draws the new world as it's explored. Call with the server stopped.
+   */
+  async clearTiles(name: string): Promise<void> {
+    const row = this.row(name)
+    const web = row && webDir(row.loader as MapLoader)
+    if (!web) return
+    await rm(join(this.deps.serverDir(name), web, 'tiles'), { recursive: true, force: true })
   }
 
   /** At boot: every server's map config, in case it was changed by hand or by a restore. */

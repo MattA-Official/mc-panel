@@ -170,6 +170,7 @@ async function setup(
           setProperties(parseProperties(readFileSync(propsPath, 'utf8')), changes),
         ),
       ),
+    worldReplaced: async (n) => void calls.push(`replaced ${n}`),
     sleep: async () => {},
   })
   // A second server whose world can be copied in.
@@ -260,6 +261,10 @@ describe('world reset', () => {
     expect(readFileSync(propsPath, 'utf8')).toContain('level-seed=\n')
     expect(calls).toContain('service.stop')
     expect(calls.at(-2)).toBe('service.start')
+    // The web map forgets the old world while the server is stopped.
+    const i = calls.indexOf('replaced survival')
+    expect(i).toBeGreaterThan(calls.indexOf('service.stop'))
+    expect(i).toBeLessThan(calls.lastIndexOf('service.start'))
   })
 
   it('keeps the old world as a past world, and the backup forever, before clearing', async () => {
@@ -341,6 +346,7 @@ describe('copying a world in', () => {
     expect(snapshots).toEqual(["Before copying in creative's world"])
     expect(calls).toContain('service.stop')
     expect(calls.at(-2)).toBe('service.start')
+    expect(calls.indexOf('replaced survival')).toBeGreaterThan(calls.indexOf('service.stop'))
   })
 
   it('refuses copying a server into itself', async () => {
