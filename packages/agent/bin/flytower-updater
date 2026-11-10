@@ -2,5 +2,12 @@
 # Starts the Flytower updater: flytower-updater <version> [--manual]. The agent runs this
 # path rather than Bun itself, so a later release can put a different program here
 # (docs/decisions/0001-rust-and-go.md).
+#
+# Follows the same switch as bin/flytower-agent: `rust` in $FLYTOWER_CONFIG_DIR/agent runs
+# the Rust updater when this release has it.
 here=$(dirname "$(readlink -f "$0")")
+choice=$(cat "${FLYTOWER_CONFIG_DIR:-/etc/flytower}/agent" 2>/dev/null)
+if [ "$choice" = rust ] && [ -x "$here/flytower-updater-rust" ]; then
+  exec "$here/flytower-updater-rust" "$@"
+fi
 exec "$here/bun" "$here/../agent/updater.js" "$@"
