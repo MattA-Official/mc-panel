@@ -65,6 +65,9 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   'people/invites/[id].delete.ts': 'people.manage',
   'people/[id]/grants.put.ts': 'people.manage',
   'people/[id].delete.ts': 'people.manage',
+  'people/roles/index.post.ts': 'people.manage',
+  'people/roles/[id].put.ts': 'people.manage',
+  'people/roles/[id].delete.ts': 'people.manage',
 
   // The install.
   'system/backup-targets/[id].delete.ts': 'system.manage',

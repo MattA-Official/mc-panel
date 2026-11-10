@@ -1,6 +1,13 @@
 import { and, asc, count, eq, isNull, ne } from 'drizzle-orm'
 import { schema, type Db, type DbOrTx } from '../db'
-import { can, isServerPermission, type Access } from '../../shared/permissions'
+import {
+  ALL_PERMISSIONS,
+  can,
+  isBuiltInRole,
+  isServerPermission,
+  type Access,
+  type Permission,
+} from '../../shared/permissions'
 import { grantRole, rolePermissions } from './access'
 
 export const INVITE_TTL_MS = 7 * 24 * 60 * 60_000
@@ -276,4 +283,79 @@ export function listPeople(db: Db, now = Date.now()) {
       permissions: rolePermissions(r),
     })),
   }
+}
+
+// -------------------------------------------------------------------------------- roles
+
+const MAX_ROLES = 50
+
+/**
+ * Makes or changes a custom role. A role can't carry permissions its maker lacks on all
+ * servers, and built-in roles can't be changed.
+ */
+export function saveRole(
+  db: Db,
+  access: Access,
+  input: { id?: string; name: string; permissions: Permission[] },
+) {
+  const name = input.name.trim()
+  if (!name) throw new PeopleError('Give the role a name.')
+  const permissions = ALL_PERMISSIONS.filter((p) => input.permissions.includes(p))
+  if (!permissions.length) throw new PeopleError('Pick at least one permission.')
+  // Anything a role can do on a server needs the server's card to be seen.
+  if (permissions.some(isServerPermission) && !permissions.includes('server.view')) {
+    permissions.unshift('server.view')
+  }
+  if (!permissions.every((p) => can(access, p))) {
+    throw new PeopleError("You can't make a role with more access than you have.", 403)
+  }
+  const clash = db
+    .select({ id: schema.roles.id })
+    .from(schema.roles)
+    .all()
+    .find((r) => r.id !== input.id && roleNameOf(db, r.id).toLowerCase() === name.toLowerCase())
+  if (clash) throw new PeopleError('There is already a role with that name.')
+  if (input.id) {
+    if (isBuiltInRole(input.id)) throw new PeopleError("Built-in roles can't be changed.")
+    const existing = role(db, input.id)
+    // Narrowing or widening a role changes everyone who has it, so it needs the same standing.
+    if (!rolePermissions(existing).every((p) => can(access, p))) {
+      throw new PeopleError("You can't change a role with more access than you have.", 403)
+    }
+    db.update(schema.roles).set({ name, permissions }).where(eq(schema.roles.id, input.id)).run()
+    return { id: input.id, name, permissions }
+  }
+  const total = db.select({ n: count() }).from(schema.roles).get()?.n ?? 0
+  if (total >= MAX_ROLES) throw new PeopleError(`There can be at most ${MAX_ROLES} roles.`)
+  const id = `custom-${Buffer.from(crypto.getRandomValues(new Uint8Array(4))).toString('hex')}`
+  db.insert(schema.roles).values({ id, name, builtIn: false, permissions }).run()
+  return { id, name, permissions }
+}
+
+/** A role's display name, for activity entries. */
+export function roleNameOf(db: DbOrTx, id: string) {
+  return role(db, id).name
+}
+
+/** Deletes a custom role nobody holds and no open invite uses. */
+export function deleteRole(db: Db, access: Access, id: string) {
+  if (isBuiltInRole(id)) throw new PeopleError("Built-in roles can't be deleted.")
+  const r = role(db, id)
+  if (!rolePermissions(r).every((p) => can(access, p))) {
+    throw new PeopleError("You can't delete a role with more access than you have.", 403)
+  }
+  const held = db
+    .select({ n: count() })
+    .from(schema.grants)
+    .where(eq(schema.grants.roleId, id))
+    .get()?.n
+  if (held) {
+    throw new PeopleError(
+      `${held} ${held === 1 ? 'person has' : 'people have'} this role. Give them another one first.`,
+    )
+  }
+  // Unused invites for it would otherwise vanish silently through the cascade.
+  db.delete(schema.invites).where(eq(schema.invites.roleId, id)).run()
+  db.delete(schema.roles).where(eq(schema.roles.id, id)).run()
+  return r
 }

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { PasskeyError, saveCredential, verifyRegistration } from '../../auth/passkeys'
 import { grantRole } from '../../auth/access'
-import { acceptInvite } from '../../auth/people'
+import { acceptInvite, roleNameOf } from '../../auth/people'
 import { issueCodes } from '../../auth/recovery'
 import { markTokenUsed, needsSetup } from '../../auth/setup-token'
 import { audit as auditTable, users } from '../../db/schema'
@@ -69,7 +69,11 @@ export default defineEventHandler(async (event) => {
           .values({
             userId: user.id,
             action: 'people.joined',
-            detail: { role: invite.roleId, server: invite.server },
+            detail: {
+              role: invite.roleId,
+              roleName: roleNameOf(tx, invite.roleId),
+              server: invite.server,
+            },
           })
           .run()
         return user

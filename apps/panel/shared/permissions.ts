@@ -116,3 +116,34 @@ export function canAnywhere(access: Access, permission: ServerPermission): boole
 }
 
 export const NO_ACCESS: Access = { all: [], servers: {} }
+
+/** What each permission lets someone do, for the role editor. */
+export const PERMISSION_LABELS: Record<Permission, { label: string; help: string }> = {
+  'server.view': { label: 'See the server', help: "Status, settings, who's online, backups list." },
+  'server.power': { label: 'Start and stop', help: 'Start, stop and restart.' },
+  'console.read': { label: 'Read the console and logs', help: "They show players' IP addresses." },
+  'console.command': { label: 'Send console commands', help: 'Anything an operator can type.' },
+  'players.manage': { label: 'Manage players', help: 'Whitelist, operators, bans and kicks.' },
+  'backups.create': { label: 'Take backups', help: 'Back up now and send backups off-site.' },
+  'backups.download': {
+    label: 'Download worlds',
+    help: 'Backups, exports and share links hold the whole world.',
+  },
+  'backups.restore': { label: 'Restore backups', help: 'Replaces the world.' },
+  'backups.delete': { label: 'Delete backups', help: 'Backups, exports and past worlds.' },
+  'world.manage': { label: 'Manage the world', help: 'Reset, copy, pregenerate and export.' },
+  'files.read': { label: 'Read files', help: 'The Files tab, read only.' },
+  'files.write': { label: 'Change files', help: 'Upload, edit, rename and delete.' },
+  'server.configure': {
+    label: 'Change settings',
+    help: 'Settings, properties, content, YAML, schedules and the public page.',
+  },
+  'server.delete': { label: 'Delete the server', help: 'Gone for good, after a passkey check.' },
+  'servers.create': { label: 'Create servers', help: 'New, imported and cloned servers.' },
+  'people.manage': { label: 'Manage people', help: 'Invites, roles and removing people.' },
+  'system.manage': {
+    label: 'Manage Flytower',
+    help: 'Updates, SSH, notifications, off-site storage and branding.',
+  },
+  'activity.all': { label: 'See all activity', help: 'Otherwise only for servers they can see.' },
+}

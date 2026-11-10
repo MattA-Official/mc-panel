@@ -54,7 +54,7 @@ const ROLE_NAMES: Record<string, string> = {
 
 /** "Operator on survival", "Admin on all servers". */
 function roleText(d: Record<string, unknown>): string {
-  const role = ROLE_NAMES[String(d.role)] ?? String(d.role ?? 'a role')
+  const role = d.roleName ? String(d.roleName) : (ROLE_NAMES[String(d.role)] ?? 'a role')
   return `${role} on ${d.server ? String(d.server) : 'all servers'}`
 }
 
@@ -85,6 +85,10 @@ export function describeAudit(
       return `Changed what ${str(d.person)} can do`
     case 'people.removed':
       return `Removed ${str(d.person)}`
+    case 'people.role_saved':
+      return `${d.created ? 'Made' : 'Changed'} the ${str(d.name)} role`
+    case 'people.role_deleted':
+      return `Deleted the ${str(d.name)} role`
     case 'passkey.added':
       return `Added a passkey${d.nickname ? ` (${str(d.nickname)})` : ''}`
     case 'passkey.removed':
