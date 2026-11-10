@@ -48,6 +48,19 @@ You need a test server you don't mind crashing. SSH in (System, **SSH access**) 
 - [ ] Turn on **Settings**, **Crashes**, **Restart it when it stops responding**, freeze it again, and check it's restarted once after five minutes, and that Activity says so. The YAML tab now shows `recovery: restartWhenUnresponsive: true`.
 - [ ] After updating an existing install to this build, `systemctl cat flytower-mc@<name>` shows `StartLimitBurst=3` without the servers having been restarted by the update.
 
+## Update badges
+
+See [Update badges](updating.md#update-badges). The checks below are easiest on a test server with a few mods pinned to old versions: in its YAML, give a mod an older `version:` (for example `lithium` with a version from a month ago) and apply it.
+
+- [ ] Open the panel after installing this build. Within a minute the server with the old mod shows a blue number on its card on **Servers**, and the same number on its **Content** tab. Nothing was installed.
+- [ ] The **Content** tab marks that mod with "… available", and **Update** clears the badge on the card and the tab once applied.
+- [ ] On the Beta channel with an older beta installed, **System** in the sidebar and **Updates** show a count, and **System**, **Overview** shows "Flytower … is available" with a link to **Updates**. Updating clears it.
+- [ ] **System**, **Updates**, **Java** lists each installed Java, which servers use it, and either "Up to date" or a newer build.
+- [ ] If a newer Minecraft than your server's is out, the **Content** tab says so, and either that everything is ready for it or lists what's missing under **What is missing**. No notification is sent for it.
+- [ ] With a notification channel that has **Updates for installed mods, plugins or datapacks** ticked, one message arrives for the old mod. Pressing **Check now** on **System**, **Updates** a few times doesn't send it again.
+- [ ] Leave the panel open: badges change by themselves after **Check now**, without reloading.
+- [ ] Optional, a source being down: on the test box, `echo '0.0.0.0 api.modrinth.com' | sudo tee -a /etc/hosts`, then **Check now**. The badge stays, and the **Content** tab says quietly that it couldn't check, with when the shown result is from. Remove the line from `/etc/hosts` and **Check now** clears the message.
+
 ## Reporting feedback
 
 Open an issue with the **[Feedback](https://github.com/MattA-Official/mc-panel/issues/new?template=feedback.yml)** template, or comment on the pull request you're testing.
