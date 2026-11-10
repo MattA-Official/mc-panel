@@ -24,6 +24,12 @@ Choosing Stable again while you're running a beta doesn't take you backwards: yo
 
 If you install a beta with the installer and never choose a channel, Flytower assumes Beta.
 
+## Native builds
+
+The **Native** channel is for trying Flytower with parts rewritten in Rust and Go, such as the system helper. These builds come from a separate `native` branch and are numbered like `1.5.0-native.1`. Beta and Stable never offer them. Native offers newer native builds and stable releases, so a native install moves to the stable release that includes the native work once it's out.
+
+Use native builds on a test server. Leaving them means using **Go back to** for a version you had before, or reinstalling. To start on one, install with `--native`, or choose **Native** under **System, Updates**.
+
 ## Releases are signed
 
 Each release's `SHA256SUMS` is signed with Flytower's Ed25519 release key. The installer and the updater both check the signature before installing anything, using the public key built into them. A download that doesn't match is refused.
@@ -67,3 +73,7 @@ Flytower looks for updates in the background, so you don't have to remember to p
 ## Publishing a beta
 
 For maintainers: run the **Release** workflow with a version like `1.1.0-beta.1`. Any version with a `-suffix` is published as a GitHub pre-release, which only Beta installs are offered. Number betas `beta.1`, `beta.2` and so on; `beta.10` correctly comes after `beta.9`.
+
+## Publishing a native build
+
+For maintainers: run the **Release** workflow on the `native` branch with a version like `1.5.0-native.1`. It's tagged `native-1.5.0-native.1` rather than `v…`, because Beta panels offer every `v`-tagged pre-release, and older panels never look at other tags. The workflow refuses any other version on the `native` branch. Write its summary in `.github/release-notes/1.5.0-native.1.md` as usual.

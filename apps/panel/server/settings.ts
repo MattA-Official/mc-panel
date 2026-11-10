@@ -4,7 +4,7 @@ import { schema, type DbOrTx } from './db'
 import type { DiskReport } from '../shared/disk'
 import type { BrandingSettings, ImageType } from '../shared/branding'
 
-export type UpdateChannel = 'stable' | 'beta'
+export type UpdateChannel = 'stable' | 'beta' | 'native'
 
 export interface Settings {
   /** Which releases are offered: stable only, or betas too. Unset until someone chooses. */
