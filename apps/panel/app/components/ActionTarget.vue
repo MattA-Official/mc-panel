@@ -139,7 +139,7 @@ function choose(item: ActionItem) {
     // Downloads are plain links; the sheet's rows are buttons, so follow it by hand.
     const a = document.createElement('a')
     a.href = item.href
-    if (typeof item.download === 'string') a.download = item.download
+    if (item.download) a.download = typeof item.download === 'string' ? item.download : ''
     a.click()
   } else if (item.to) void navigateTo(item.to)
 }

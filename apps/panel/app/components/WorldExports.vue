@@ -66,6 +66,38 @@ async function remove(e: WorldExport) {
   }
 }
 
+/** One export's actions, for its ⋯ button and right-click menu (#106). */
+function rowMenu(e: WorldExport) {
+  return [
+    [
+      {
+        label: 'Download',
+        icon: 'i-lucide-download',
+        href: `${base.value}/${e.id}/download`,
+        download: true,
+      },
+      { label: 'Share link…', icon: 'i-lucide-link', onSelect: () => (sharing.value = e) },
+      ...(e.shares.length
+        ? [
+            {
+              label: e.shares.length === 1 ? 'Turn off the link' : 'Turn off all links',
+              icon: 'i-lucide-link-2-off',
+              onSelect: () => void Promise.all(e.shares.map((s) => revoke(e, s))),
+            },
+          ]
+        : []),
+    ],
+    [
+      {
+        label: 'Delete',
+        icon: 'i-lucide-trash-2',
+        color: 'error' as const,
+        onSelect: () => void remove(e),
+      },
+    ],
+  ]
+}
+
 function size(n: number) {
   if (n < 1024 ** 2) return `${Math.max(1, Math.round(n / 1024))} KB`
   if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)} MB`
@@ -109,7 +141,14 @@ function until(iso: string) {
 
     <p v-if="exports.length === 0" class="text-sm text-muted">No exports yet.</p>
     <ul v-else class="divide-y divide-default">
-      <li v-for="e in exports" :key="e.id" class="py-3 first:pt-0 last:pb-0">
+      <ActionTarget
+        v-for="e in exports"
+        :key="e.id"
+        as="li"
+        :items="rowMenu(e)"
+        :label="`Export ${when(e.createdAt)}`"
+        class="py-3 first:pt-0 last:pb-0"
+      >
         <div class="flex flex-wrap items-center gap-2">
           <span class="font-medium">{{ when(e.createdAt) }}</span>
           <span class="text-sm text-muted"
@@ -164,7 +203,7 @@ function until(iso: string) {
             />
           </li>
         </ul>
-      </li>
+      </ActionTarget>
     </ul>
 
     <WorldShareModal
