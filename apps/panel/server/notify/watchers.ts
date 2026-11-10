@@ -26,7 +26,9 @@ export type LogEvent =
 // Vanilla and Fabric: `[12:34:56] [Server thread/INFO]: message`; Paper: `[12:34:56 INFO]: message`.
 // The message must start straight after the prefix, so chat like `<Bob> Steve joined the game`
 // or `[Server] Stopping the server` (from /say) never matches. Geyser names start with a dot.
-const PREFIX = /^\[[^\]]*\](?: \[[^\]]*\])?: (.*)$/
+// Minecraft 26.x logs joins and leaves as system chat: `[..]: System chat: Steve joined the game`.
+// Players can't write that: their chat is logged as `<Bob> …`, so it never starts this way.
+const PREFIX = /^\[[^\]]*\](?: \[[^\]]*\])?: (?:System chat: )?(.*)$/
 const ACTIVITY = /^([.*]?[A-Za-z0-9_]{1,16}) (joined|left) the game$/
 const READY = /^Done \([\d.,]+m?s\)! For help, type "help"/
 const STOPPING = /^Stopping (the )?server$/
@@ -67,6 +69,7 @@ export class LogWatcher {
   /** Servers that crashed and that systemd is bringing back. */
   private recovering = new Map<string, number>()
   private listeners = new Set<(server: string, e: LogEvent) => void>()
+  private lineListeners = new Set<(server: string, line: string) => void>()
 
   constructor(
     private n: Notify,
@@ -85,6 +88,12 @@ export class LogWatcher {
   listen(fn: (server: string, e: LogEvent) => void): () => void {
     this.listeners.add(fn)
     return () => this.listeners.delete(fn)
+  }
+
+  /** Hears every new log line, before it's read for events (player stats need the UUID line). */
+  listenLines(fn: (server: string, line: string) => void): () => void {
+    this.lineListeners.add(fn)
+    return () => this.lineListeners.delete(fn)
   }
 
   watching(): string[] {
@@ -197,6 +206,13 @@ export class LogWatcher {
 
   lines(server: string, lines: string[]) {
     for (const line of lines) {
+      for (const l of this.lineListeners) {
+        try {
+          l(server, line)
+        } catch (err) {
+          console.error('[flytower] log line listener failed', err)
+        }
+      }
       const e = parseLogLine(line)
       if (!e) continue
       for (const l of this.listeners) {
