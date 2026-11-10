@@ -193,6 +193,29 @@ try {
     if (!/players online/.test(reply)) throw new Error(`unexpected RCON reply: ${reply}`)
     step(`RCON answered: ${reply}`)
 
+    // Console completion: the game's own reports, run with the server's Java, list every
+    // vanilla command; help over RCON adds the commands only Fabric API has.
+    type Commands = {
+      vanilla: string
+      extra: string
+      root: { literals?: Record<string, { usage?: string }> }
+      registries: Record<string, string[]>
+    }
+    const commands = await api<Commands>(view, '/api/servers/smoke/commands?wait=1')
+    const names = Object.keys(commands.body.root?.literals ?? {})
+    if (commands.status !== 200 || commands.body.vanilla !== 'ready' || !names.includes('give')) {
+      throw new Error(
+        `command catalogue: ${commands.status} ${JSON.stringify(commands.body).slice(0, 300)}`,
+      )
+    }
+    if (commands.body.extra !== 'ready') throw new Error('help over RCON gave no commands')
+    if (!commands.body.registries.item?.includes('diamond_sword')) {
+      throw new Error('the catalogue has no item ids')
+    }
+    step(
+      `console completion knows ${names.length} commands and ${commands.body.registries.item.length} items`,
+    )
+
     // Crash detection: kill Java outright. systemd restarts it after 15 seconds; Flytower
     // records the crash, shows the banner, and the console answers again afterwards.
     const killed = Bun.spawnSync(['docker', 'exec', 'vps', 'pkill', '-KILL', '-u', 'mc-smoke'])
