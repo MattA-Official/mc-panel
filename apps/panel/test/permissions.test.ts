@@ -36,7 +36,7 @@ describe('every API route checks a permission', () => {
     if (permission === 'open') {
       // Answered before sign-in: must sit under a prefix the auth middleware opens.
       expect(file).toMatch(
-        /^(auth|setup|public|join)\/|^passkeys\/register|^(branding|health)\.get\.ts$|^ws\.ts$/,
+        /^(auth|setup|public|join)\/|^passkeys\/register|^(branding|health)\.get\.ts$|^ws\.ts$|^discord\/interactions\.post\.ts$/,
       )
       return
     }

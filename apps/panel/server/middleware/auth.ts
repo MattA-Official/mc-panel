@@ -7,6 +7,8 @@ const ALWAYS_OPEN = new Set([
   '/api/auth/logout',
   // The sign-in, setup and status pages show the install's name and logo.
   '/api/branding',
+  // Discord calls this; it checks Discord's signature before doing anything.
+  '/api/discord/interactions',
 ])
 /** Public status pages; each route checks that the server's page is on. */
 const PUBLIC_PREFIX = '/api/public/'
