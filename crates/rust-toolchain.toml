@@ -1,0 +1,6 @@
+# Pinned like packageManager pins Bun. Bump deliberately, in its own commit.
+[toolchain]
+channel = "1.97.0"
+components = ["rustfmt", "clippy"]
+targets = ["x86_64-unknown-linux-musl", "aarch64-unknown-linux-musl"]
+profile = "minimal"

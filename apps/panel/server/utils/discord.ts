@@ -1,6 +1,11 @@
 import { deriveSecret } from 'nuxt/server'
 import { sealer } from '../backups/offsite'
-import { DiscordError, DiscordService } from '../discord/service'
+import { eq } from 'drizzle-orm'
+import { schema } from '../db'
+import { readPublicPage } from '../../shared/public-page'
+import { DiscordError, DiscordService, INTERACTIONS_PATH } from '../discord/service'
+import { CommandRegistry } from '../discord/registry'
+import { playersCommand, statusCommand, type ServerSource } from '../discord/commands/servers'
 
 let service: DiscordService | undefined
 
@@ -16,6 +21,7 @@ export function useDiscord(): DiscordService {
       const { rpId } = useRuntimeConfig()
       return rpId ? `https://${rpId}` : null
     },
+    commandNames: () => useCommands().names(),
   })
   return service
 }
@@ -30,4 +36,50 @@ export async function discordHttp<T>(fn: () => T | Promise<T>): Promise<T> {
     }
     throw err
   }
+}
+
+let commands: CommandRegistry | undefined
+
+/** The slash commands Flytower answers. Plugins will add theirs here too. */
+export function useCommands(): CommandRegistry {
+  if (commands) return commands
+  const source: ServerSource = {
+    servers: () =>
+      useDb()
+        .select({
+          name: schema.servers.name,
+          displayName: schema.servers.displayName,
+          publicPage: schema.servers.publicPage,
+        })
+        .from(schema.servers)
+        .all()
+        .map((r) => ({
+          name: r.name,
+          displayName: r.displayName,
+          public: readPublicPage(r.publicPage).enabled,
+        })),
+    async status(name) {
+      const row = useDb().select().from(schema.servers).where(eq(schema.servers.name, name)).get()
+      if (!row) throw new Error(`No server called ${name}`)
+      const { rpId, machineIpv4 } = useRuntimeConfig()
+      return buildPublicStatus(
+        row,
+        readPublicPage(row.publicPage),
+        rpId || machineIpv4 || 'localhost',
+      )
+    },
+    origin: () => useDiscord().endpointUrl()?.replace(INTERACTIONS_PATH, '') ?? null,
+  }
+  commands = new CommandRegistry().add(statusCommand(source)).add(playersCommand(source))
+  return commands
+}
+
+/** Sends the command list to Discord if it changed. Never throws; failures show on the card. */
+export async function syncDiscordCommands(force = false) {
+  const registry = useCommands()
+  const result = await useDiscord()
+    .syncCommands(registry.definitions(), registry.hash(), force)
+    .catch(() => 'failed' as const)
+  if (result === 'failed') console.warn('[flytower] Discord didn’t take the command list')
+  return result
 }

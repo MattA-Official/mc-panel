@@ -1,0 +1,83 @@
+{"verb":"ping","kind":"params","valid":true,"value":{}}
+{"verb":"ping","kind":"params","valid":false,"note":"unknown key","value":{"x":1}}
+{"verb":"ping","kind":"result","valid":true,"value":{"agentVersion":"1.2.0-beta.1","protocol":1}}
+{"verb":"ping","kind":"result","valid":false,"note":"protocol must be an integer","value":{"agentVersion":"1.2.0","protocol":1.5}}
+{"verb":"service.status","kind":"params","valid":true,"value":{"server":"survival"}}
+{"verb":"service.status","kind":"params","valid":true,"value":{"server":"creative-2"}}
+{"verb":"service.status","kind":"params","valid":false,"note":"server names start with a letter","value":{"server":"2fast"}}
+{"verb":"service.status","kind":"params","valid":false,"note":"server names must not end with a hyphen (a refinement, not in schema.json)","value":{"server":"trailing-"}}
+{"verb":"service.status","kind":"params","valid":false,"note":"no path tricks","value":{"server":"../etc"}}
+{"verb":"service.status","kind":"params","valid":false,"note":"no capitals","value":{"server":"Survival"}}
+{"verb":"service.status","kind":"params","valid":false,"note":"unknown key","value":{"server":"survival","extra":"rm -rf /"}}
+{"verb":"service.status","kind":"result","valid":true,"value":{"active":"active","since":"2026-11-10T12:00:00Z","result":"success","restarts":0,"exitKind":null,"exitStatus":null}}
+{"verb":"service.status","kind":"result","valid":true,"note":"agents before 1.1 send only active and since","value":{"active":"inactive","since":null}}
+{"verb":"service.status","kind":"result","valid":true,"value":{"active":"failed","since":"2026-11-10T12:00:00Z","result":"exit-code","restarts":3,"exitKind":"killed","exitStatus":9}}
+{"verb":"service.status","kind":"result","valid":false,"note":"unknown state","value":{"active":"sleeping","since":null}}
+{"verb":"service.usage","kind":"params","valid":true,"value":{"servers":["survival","creative"]}}
+{"verb":"service.usage","kind":"params","valid":true,"value":{"servers":[]}}
+{"verb":"service.usage","kind":"params","valid":false,"note":"bad name in the list","value":{"servers":["Survival"]}}
+{"verb":"service.usage","kind":"result","valid":true,"value":{"usage":{"survival":{"active":true,"cpuNs":123456789,"memoryBytes":2147483648},"creative":{"active":false,"cpuNs":null,"memoryBytes":null}}}}
+{"verb":"service.usage","kind":"result","valid":false,"note":"active is required","value":{"usage":{"survival":{"cpuNs":1,"memoryBytes":1}}}}
+{"verb":"service.wait","kind":"params","valid":true,"value":{"servers":["survival"],"after":null,"timeoutMs":60000}}
+{"verb":"service.wait","kind":"params","valid":true,"value":{"servers":[],"after":"s=abc;i=1","timeoutMs":1000}}
+{"verb":"service.wait","kind":"params","valid":false,"note":"timeout under a second","value":{"servers":[],"after":null,"timeoutMs":999}}
+{"verb":"service.wait","kind":"params","valid":false,"note":"timeout over five minutes","value":{"servers":[],"after":null,"timeoutMs":300001}}
+{"verb":"service.wait","kind":"params","valid":false,"note":"after is required, even if null","value":{"servers":[],"timeoutMs":60000}}
+{"verb":"service.wait","kind":"result","valid":true,"value":{"cursor":"s=abc;i=2","changed":["survival"],"following":true}}
+{"verb":"service.wait","kind":"result","valid":false,"note":"following is required","value":{"cursor":"x","changed":[]}}
+{"verb":"service.start","kind":"params","valid":true,"value":{"server":"survival"}}
+{"verb":"service.start","kind":"params","valid":false,"note":"server is required","value":{}}
+{"verb":"service.start","kind":"result","valid":true,"value":{}}
+{"verb":"service.stop","kind":"params","valid":true,"value":{"server":"survival"}}
+{"verb":"service.stop","kind":"params","valid":false,"note":"too short","value":{"server":"a"}}
+{"verb":"service.stop","kind":"result","valid":true,"value":{}}
+{"verb":"service.restart","kind":"params","valid":true,"value":{"server":"survival"}}
+{"verb":"service.restart","kind":"params","valid":false,"note":"underscores are not allowed","value":{"server":"has_underscore"}}
+{"verb":"service.restart","kind":"result","valid":true,"value":{}}
+{"verb":"runtime.install","kind":"params","valid":true,"value":{"vendor":"temurin","major":21}}
+{"verb":"runtime.install","kind":"params","valid":false,"note":"only Temurin","value":{"vendor":"zulu","major":21}}
+{"verb":"runtime.install","kind":"params","valid":false,"note":"Java 7 is too old","value":{"vendor":"temurin","major":7}}
+{"verb":"runtime.install","kind":"result","valid":true,"value":{"javaHome":"/opt/flytower/runtimes/temurin-21","version":"21.0.5+11","alreadyInstalled":false}}
+{"verb":"runtime.install","kind":"result","valid":false,"note":"alreadyInstalled is required","value":{"javaHome":"/x","version":"21"}}
+{"verb":"server.create","kind":"params","valid":true,"value":{"name":"survival","port":25565,"memoryMb":4096,"javaMajor":21}}
+{"verb":"server.create","kind":"params","valid":false,"note":"privileged port","value":{"name":"survival","port":80,"memoryMb":4096,"javaMajor":21}}
+{"verb":"server.create","kind":"params","valid":false,"note":"port out of range","value":{"name":"survival","port":70000,"memoryMb":4096,"javaMajor":21}}
+{"verb":"server.create","kind":"params","valid":false,"note":"under 512 MB","value":{"name":"survival","port":25565,"memoryMb":256,"javaMajor":21}}
+{"verb":"server.create","kind":"params","valid":false,"note":"memory must be an integer","value":{"name":"survival","port":25565,"memoryMb":4096.5,"javaMajor":21}}
+{"verb":"server.create","kind":"result","valid":true,"value":{"directory":"/srv/flytower/servers/survival","user":"mc-survival","unit":"flytower-mc@survival.service"}}
+{"verb":"server.configure","kind":"params","valid":true,"value":{"name":"survival","memoryMb":6144}}
+{"verb":"server.configure","kind":"params","valid":true,"value":{"name":"survival","port":25566,"javaMajor":25}}
+{"verb":"server.configure","kind":"params","valid":false,"note":"nothing to change (a refinement, not in schema.json)","value":{"name":"survival"}}
+{"verb":"server.configure","kind":"params","valid":false,"note":"unknown key","value":{"name":"survival","memoryMb":4096,"flags":"-XX:+Danger"}}
+{"verb":"server.configure","kind":"result","valid":true,"value":{}}
+{"verb":"server.permissions","kind":"params","valid":true,"value":{"name":"survival"}}
+{"verb":"server.permissions","kind":"params","valid":false,"note":"name is required","value":{}}
+{"verb":"server.permissions","kind":"result","valid":true,"value":{}}
+{"verb":"ssh.status","kind":"params","valid":true,"value":{}}
+{"verb":"ssh.status","kind":"result","valid":true,"value":{"open":true,"ports":[22],"closesAt":"2026-11-10T13:00:00Z","firewall":true}}
+{"verb":"ssh.status","kind":"result","valid":true,"value":{"open":false,"ports":[],"closesAt":null,"firewall":false}}
+{"verb":"ssh.status","kind":"result","valid":false,"note":"closesAt is required, even if null","value":{"open":false,"ports":[],"firewall":true}}
+{"verb":"ssh.set","kind":"params","valid":true,"value":{"open":true,"minutes":30}}
+{"verb":"ssh.set","kind":"params","valid":true,"value":{"open":true}}
+{"verb":"ssh.set","kind":"params","valid":true,"value":{"open":false}}
+{"verb":"ssh.set","kind":"params","valid":false,"note":"minutes only applies when opening (a refinement, not in schema.json)","value":{"open":false,"minutes":10}}
+{"verb":"ssh.set","kind":"params","valid":false,"note":"over a day","value":{"open":true,"minutes":1441}}
+{"verb":"ssh.set","kind":"result","valid":true,"value":{"open":true,"ports":[22],"closesAt":"2026-11-10T13:00:00Z","firewall":true}}
+{"verb":"update.status","kind":"params","valid":true,"value":{}}
+{"verb":"update.status","kind":"result","valid":true,"value":{"current":"1.2.0","releases":["1.1.0","1.2.0"],"last":null}}
+{"verb":"update.status","kind":"result","valid":true,"value":{"current":"1.2.0","releases":["1.2.0"],"last":{"state":"rolled-back","from":"1.1.0","to":"1.2.0","reason":"the panel didn't answer","at":"2026-11-10T12:00:00Z","manual":false}}}
+{"verb":"update.status","kind":"result","valid":false,"note":"unknown update state","value":{"current":"1.2.0","releases":[],"last":{"state":"paused","from":"1","to":"2","reason":null,"at":"x","manual":false}}}
+{"verb":"update.install","kind":"params","valid":true,"value":{"version":"1.2.0"}}
+{"verb":"update.install","kind":"params","valid":true,"value":{"version":"1.2.0-beta.1"}}
+{"verb":"update.install","kind":"params","valid":false,"note":"not a release version","value":{"version":"latest"}}
+{"verb":"update.install","kind":"params","valid":false,"note":"no leading v","value":{"version":"v1.2.0"}}
+{"verb":"update.install","kind":"params","valid":false,"note":"no path tricks","value":{"version":"1.2.0/../../etc"}}
+{"verb":"update.install","kind":"result","valid":true,"value":{"started":true}}
+{"verb":"update.install","kind":"result","valid":false,"note":"started is always true","value":{"started":false}}
+{"verb":"update.rollback","kind":"params","valid":true,"value":{"version":"1.1.0"}}
+{"verb":"update.rollback","kind":"params","valid":false,"note":"version is required","value":{}}
+{"verb":"update.rollback","kind":"result","valid":true,"value":{"started":true}}
+{"verb":"server.delete","kind":"params","valid":true,"value":{"name":"survival"}}
+{"verb":"server.delete","kind":"params","valid":false,"note":"unknown key","value":{"name":"survival","force":true}}
+{"verb":"server.delete","kind":"result","valid":true,"value":{"archivedTo":"/var/lib/flytower/archive/survival-2026-11-10.tar.zst"}}
+{"verb":"server.delete","kind":"result","valid":true,"value":{"archivedTo":null}}

@@ -18,6 +18,23 @@ Flytower then:
 
 Last, press **Add to a Discord server** and pick the server. The app only needs the `applications.commands` scope, so it can't read messages or change anything in your Discord server.
 
+## Commands
+
+| Command             | Answers                                                                                           |
+| ------------------- | ------------------------------------------------------------------------------------------------- |
+| `/status [server]`  | Whether the server is online, starting or offline, its address, how many are on, and its version. |
+| `/players [server]` | Who's on right now.                                                                               |
+
+Leave out `server` to get every server at once; as you type it, Discord suggests the servers you can see.
+
+Both answer from the same information as the [public status page](status-page.md), so the server itself is never asked and the page's settings apply: a server whose page shows only a count shows only a count in Discord, and one that hides players or its version hides them here too.
+
+**Which servers show.** Servers with their **public page** turned on. Everything else stays hidden: asking for it answers the same as a server that doesn't exist. Mapping Discord roles to Flytower roles, so staff can see and run more, comes in a later version.
+
+Answers are posted in the channel for everyone to see, except "no such server" and similar, which only the person who asked sees. Player names can never ping anyone.
+
+Flytower sends Discord its command list when you connect, and again after an update if the list changed. If Discord didn't take it, the card says so, with **Send them again**.
+
 ## If the endpoint isn't set
 
 The card says **Endpoint not set**, with Discord's reason, when Discord couldn't reach the panel or the panel has no domain. Fix the cause, then press **Try the endpoint again**. You can also copy the endpoint from the card into **Interactions Endpoint URL** on the app's **General Information** page in the Developer Portal; Discord checks it there too.

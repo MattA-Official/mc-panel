@@ -24,6 +24,12 @@ Choosing Stable again while you're running a beta doesn't take you backwards: yo
 
 If you install a beta with the installer and never choose a channel, Flytower assumes Beta.
 
+## Native builds
+
+The **Native** channel is for trying Flytower with parts rewritten in Rust and Go, such as the system helper. These builds come from a separate `native` branch. Each one is numbered after the release it goes with, plus a counter: `1.2.0-beta.2.native.1` goes with 1.2.0-beta.2, and `1.2.0-native.1` goes with 1.2.0. Beta and Stable never offer them, and Native offers only them, so a native install stays native until you choose another channel.
+
+Use native builds on a test server. Leaving them means using **Go back to** for a version you had before, or reinstalling. To start on one, install with `--native`, or choose **Native** under **System, Updates**.
+
 ## Releases are signed
 
 Each release's `SHA256SUMS` is signed with Flytower's Ed25519 release key. The installer and the updater both check the signature before installing anything, using the public key built into them. A download that doesn't match is refused.
@@ -67,3 +73,7 @@ Flytower looks for updates in the background, so you don't have to remember to p
 ## Publishing a beta
 
 For maintainers: run the **Release** workflow with a version like `1.1.0-beta.1`. Any version with a `-suffix` is published as a GitHub pre-release, which only Beta installs are offered. Number betas `beta.1`, `beta.2` and so on; `beta.10` correctly comes after `beta.9`.
+
+## Publishing a native build
+
+For maintainers: merge `main` into `native`, then run the **Release** workflow on the `native` branch with the version of the release it goes with plus `.native.N`, such as `1.2.0-beta.2.native.1`. For a stable release, use `-native.N`, such as `1.2.0-native.1`. Native builds are published alongside each release from `main`, and in between when native work is worth trying. They're tagged `native-<version>` rather than `v…`, because Beta panels offer every `v`-tagged pre-release and older panels never look at other tags. The workflow refuses any other version on the `native` branch. Write the summary in `.github/release-notes/<version>.md` as usual.

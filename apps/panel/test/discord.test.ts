@@ -3,7 +3,9 @@ import { openDb } from '../server/db'
 import { sealer } from '../server/backups/offsite'
 import { DiscordService, inviteUrl } from '../server/discord/service'
 import { errorText } from '../server/discord/api'
-import { answer, EPHEMERAL, ResponseType } from '../server/discord/interactions'
+import { EPHEMERAL, ResponseType } from '../server/discord/interactions'
+import { CommandRegistry, route } from '../server/discord/registry'
+import { NO_ACCESS } from '../shared/permissions'
 import { MAX_SKEW_MS, verifyInteraction } from '../server/discord/verify'
 
 const NOW = Date.parse('2026-11-10T12:00:00Z')
@@ -69,6 +71,8 @@ describe('interaction signatures', async () => {
   })
 })
 
+const answer = (i: Parameters<typeof route>[1]) => route(new CommandRegistry(), i, () => NO_ACCESS)
+
 describe('answering', () => {
   it('answers PING with PONG', async () => {
     expect(await answer({ id: '1', type: 1, application_id: '1', token: 't' })).toEqual({
@@ -76,8 +80,14 @@ describe('answering', () => {
     })
   })
 
-  it('answers anything else privately, without pinging anyone', async () => {
-    const r = (await answer({ id: '1', type: 2, application_id: '1', token: 't' })) as {
+  it('answers an unknown command privately, without pinging anyone', async () => {
+    const r = (await answer({
+      id: '1',
+      type: 2,
+      application_id: '1',
+      token: 't',
+      data: { name: 'nope' },
+    })) as {
       data: { flags: number; allowed_mentions: unknown }
     }
     expect(r.data.flags).toBe(EPHEMERAL)
@@ -149,6 +159,8 @@ describe('connecting an app', () => {
       endpointError: null,
       inviteUrl: inviteUrl('123456789012345678'),
       connectedAt: new Date(NOW).toISOString(),
+      commands: [],
+      commandsError: null,
     })
     expect(calls.map((c) => `${c.method} ${c.url}`)).toEqual([
       'GET https://discord.com/api/v10/applications/@me',

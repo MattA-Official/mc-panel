@@ -10,7 +10,9 @@ export default defineEventHandler(async (event) => {
   await requirePermission(event, 'system.manage')
   const { user } = await requireElevated(event)
   const { token } = await readValidatedBody(event, Body.parse)
-  const state = await discordHttp(() => useDiscord().connect(token))
+  await discordHttp(() => useDiscord().connect(token))
+  await syncDiscordCommands(true)
+  const state = useDiscord().state()
   if (state.connected) {
     audit(user.id, 'discord.connect', null, {
       applicationId: state.applicationId,
