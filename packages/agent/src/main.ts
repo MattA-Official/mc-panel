@@ -1,3 +1,4 @@
+import { refreshCaddyfile } from './caddy.ts'
 import { UnitEvents } from './events.ts'
 import { realExec } from './exec.ts'
 import { handlers } from './handlers/index.ts'
@@ -22,6 +23,7 @@ const ctx = {
     state: env('FLYTOWER_AGENT_STATE_DIR', '/var/lib/flytower/agent'),
     prefix: env('FLYTOWER_PREFIX', '/opt/flytower'),
     panelData: env('FLYTOWER_PANEL_DATA', '/var/lib/flytower'),
+    caddyfile: env('FLYTOWER_CADDYFILE', '/etc/caddy/Caddyfile'),
   },
   releasesUrl: env(
     'FLYTOWER_RELEASES_URL',
@@ -57,6 +59,10 @@ await refreshTemplate(ctx).then(
 await refreshAgentUnit(ctx).then(
   (changed) => changed && console.log('pointed the agent unit at bin/flytower-agent'),
   (err) => console.error('updating the agent unit failed', err),
+)
+await refreshCaddyfile(ctx).then(
+  (changed) => changed && console.log('added server hostnames to the Caddyfile'),
+  (err) => console.error('updating the Caddyfile failed', err),
 )
 
 for (const sig of ['SIGTERM', 'SIGINT'] as const) {
