@@ -19,6 +19,12 @@ Once squaremap has made the map (the first start after adding it), the card has 
 
 When the map is public, the card shows the address to share, with a copy button. The [public page](status-page.md#web-map) links to it too, and so does `/status` in [Discord](discord.md).
 
+## Drawing the whole map
+
+squaremap draws new and changed places by itself. To fill in everywhere that was explored before it was added, use **Draw the whole map** on the card: pick a dimension and press **Draw**. It runs in the background while people play, and its progress shows in the **Console**. **Stop** stops it.
+
+When the world is reset or another server's world is copied in, Flytower deletes the old map's tiles so the map doesn't show a world that's gone. Restoring a backup leaves the map empty too, because tiles aren't in backups. Draw the whole map again afterwards.
+
 ## Who can see it
 
 - **Show players**: where each online player is, updated every second. Off, squaremap never writes their positions anywhere.
@@ -34,6 +40,7 @@ Player heads on the map are turned off, because squaremap would otherwise load t
 
 - **Memory:** squaremap runs inside the server's own Java, so there's no second program and the memory budget doesn't change. It draws in the background; on machines with four CPU cores or fewer, Flytower gives it one worker so players always come first. Give a server with a map at least 3 GB.
 - **Disk:** one image per 512×512 blocks of explored world, at a few zoom levels. The map's files are under the server folder (`squaremap/web` on Fabric, `plugins/squaremap/web` on Paper).
+- **Disk:** the server's **Disk use** card shows the map on its own line, **Web map**.
 - **Backups:** the map's tiles are left out of backups, since squaremap can always draw them again.
 - **Ports:** none. squaremap has its own web server, but Flytower turns it off and serves the map's files itself, so nothing new listens on the network. The map page can't load anything from other sites, and a public map never sets a cookie.
 
