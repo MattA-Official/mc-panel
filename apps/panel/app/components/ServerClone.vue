@@ -94,10 +94,14 @@ async function clone() {
           @finished="finished = $event"
         />
         <div v-else class="space-y-4">
-          <UFormField label="Display name">
+          <UFormField label="Name" description="What players and you will call it.">
             <UInput v-model="form.displayName" class="w-full" />
           </UFormField>
-          <UFormField label="Folder name" :error="nameError">
+          <UFormField
+            label="Short name"
+            description="Used for the folder and system user."
+            :error="nameError"
+          >
             <UInput v-model="form.name" class="w-full font-mono" data-e2e="clone-name" />
           </UFormField>
           <UFormField

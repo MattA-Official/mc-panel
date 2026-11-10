@@ -155,7 +155,7 @@ async function remove() {
             </template>
           </UFormField>
           <div class="grid gap-4 sm:grid-cols-2">
-            <UFormField label="Bucket" required>
+            <UFormField label="Bucket" description="Its name, as made with your provider." required>
               <UInput v-model="form.bucket" class="w-full font-mono" />
             </UFormField>
             <UFormField label="Region" description="“auto” suits most.">
