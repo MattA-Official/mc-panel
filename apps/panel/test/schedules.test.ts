@@ -6,6 +6,7 @@ import { ScheduleService } from '../server/schedules/service'
 import { CronTimers } from '../server/schedules/timers'
 import type { NotifyEvent } from '../server/notify/types'
 import {
+  describeCron,
   describeTask,
   parseDuration,
   ScheduleItem,
@@ -60,7 +61,13 @@ schedules:
       restartTask(),
       restartTask({ cron: '0 17 * * *', warn: [60, 10], skipWhenEmpty: false }),
       { kind: 'command', cron: '*/30 * * * *', text: 'save-all', warn: [], skipWhenEmpty: false },
-      { kind: 'announce', cron: '0 22 * * *', text: 'Restart at 5am', warn: [], skipWhenEmpty: false },
+      {
+        kind: 'announce',
+        cron: '0 22 * * *',
+        text: 'Restart at 5am',
+        warn: [],
+        skipWhenEmpty: false,
+      },
     ])
     expect(parsed.spec.timezone).toBe('Europe/London')
     // Written back, defaults are left out.
@@ -89,7 +96,9 @@ schedules:
     expect(issues(`schedules:\n  - restart: '0 5 * *'\n`)[0]).toContain(
       "schedules.0.restart: That schedule isn't valid",
     )
-    expect(issues(`timezone: Mars/Olympus\n`)).toEqual(['timezone: Unknown time zone Mars/Olympus.'])
+    expect(issues(`timezone: Mars/Olympus\n`)).toEqual([
+      'timezone: Unknown time zone Mars/Olympus.',
+    ])
   })
 
   it('round-trips a task through the spec form', () => {
@@ -297,7 +306,13 @@ describe('ScheduleService', () => {
 
   it('announces in gold', async () => {
     service.replace('survival', [
-      { kind: 'announce', cron: '0 22 * * *', text: 'Restart at "5am"', warn: [], skipWhenEmpty: false },
+      {
+        kind: 'announce',
+        cron: '0 22 * * *',
+        text: 'Restart at "5am"',
+        warn: [],
+        skipWhenEmpty: false,
+      },
     ])
     await service.runNow('survival', service.view('survival').tasks[0]!.id, 1).done
     expect(commands).toEqual(['tellraw @a {"text":"Restart at \\"5am\\"","color":"gold"}'])
@@ -369,7 +384,13 @@ describe('ScheduleService', () => {
     failRestart = false
     await service.runNow('survival', id, 1).done
     expect(sent.map((s) => s.how)).toEqual(['notify', 'resolve'])
-    expect(db.select().from(schema.audit).all().map((a) => a.userId)).toEqual([1, 1])
+    expect(
+      db
+        .select()
+        .from(schema.audit)
+        .all()
+        .map((a) => a.userId),
+    ).toEqual([1, 1])
   })
 
   it("won't start a task that is already running", async () => {
@@ -378,5 +399,17 @@ describe('ScheduleService', () => {
     const first = service.runNow('survival', id, 1)
     expect(() => service.runNow('survival', id, 1)).toThrow('already running')
     await first.done
+  })
+})
+
+describe('describeCron', () => {
+  it('says common schedules in words', () => {
+    expect(describeCron('0 5 * * *')).toBe('Every day at 05:00')
+    expect(describeCron('30 17 * * 0')).toBe('Every Sunday at 17:30')
+    expect(describeCron('0 * * * *')).toBe('Every hour')
+    expect(describeCron('15 * * * *')).toBe('Every hour at 15 past')
+    expect(describeCron('0 */6 * * *')).toBe('Every 6 hours')
+    expect(describeCron('*/30 * * * *')).toBe('Every 30 minutes')
+    expect(describeCron('0 5 1 * *')).toBe('0 5 1 * *')
   })
 })

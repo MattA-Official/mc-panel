@@ -205,3 +205,21 @@ export interface SchedulesView {
   timezone: string
   tasks: TaskView[]
 }
+
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const hhmm = (h: string, m: string) => `${h.padStart(2, '0')}:${m.padStart(2, '0')}`
+
+/** A cron expression in words when it's a common one, like "Every day at 05:00". */
+export function describeCron(cron: string): string {
+  const c = cron.trim().replace(/\s+/g, ' ')
+  let m: RegExpMatchArray | null
+  if ((m = c.match(/^(\d{1,2}) (\d{1,2}) \* \* \*$/))) return `Every day at ${hhmm(m[2]!, m[1]!)}`
+  if ((m = c.match(/^(\d{1,2}) (\d{1,2}) \* \* ([0-6])$/))) {
+    return `Every ${DAYS[Number(m[3])]} at ${hhmm(m[2]!, m[1]!)}`
+  }
+  if (c === '0 * * * *') return 'Every hour'
+  if ((m = c.match(/^(\d{1,2}) \* \* \* \*$/))) return `Every hour at ${m[1]} past`
+  if ((m = c.match(/^0 \*\/(\d{1,2}) \* \* \*$/))) return `Every ${m[1]} hours`
+  if ((m = c.match(/^\*\/(\d{1,2}) \* \* \* \*$/))) return `Every ${m[1]} minutes`
+  return cron
+}

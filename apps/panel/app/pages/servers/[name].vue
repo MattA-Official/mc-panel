@@ -54,6 +54,7 @@ const tabs = computed<
   { label: 'Players', icon: 'i-lucide-users', to: `/servers/${name.value}/players` },
   { label: 'Performance', icon: 'i-lucide-activity', to: `/servers/${name.value}/performance` },
   { label: 'Backups', icon: 'i-lucide-archive', to: `/servers/${name.value}/backups` },
+  { label: 'Schedules', icon: 'i-lucide-calendar-clock', to: `/servers/${name.value}/schedules` },
   {
     label: 'Content',
     icon: 'i-lucide-package',
