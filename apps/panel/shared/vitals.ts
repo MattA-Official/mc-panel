@@ -101,10 +101,16 @@ export function vitals(points: VitalsPoint[], limitMb: number, nowMs: number): V
   const byAt = new Map(points.map((p) => [p.at, p.mspt]))
   const spark: (number | null)[] = []
   for (let at = end - 59 * 60; at <= end; at += 60) spark.push(byAt.get(at) ?? null)
+  // A minute can miss a figure (the console was slow to answer, or CPU has no baseline yet
+  // just after a start), so each shows its newest reading from the last few minutes.
+  const fresh = points.filter((p) => nowMs / 1000 - p.at <= STALE_SECONDS)
+  const newest = (key: 'mspt' | 'memMb') => fresh.findLast((p) => p[key] !== null)?.[key] ?? null
+  const lastCpu = fresh.findLast((p) => p.cpu !== null)
+  const cpus = points.filter((p) => !lastCpu || p.at <= lastCpu.at).map((p) => p.cpu)
   return {
-    tick: tickLevel(latest.mspt),
-    memory: memoryLevel(latest.memMb, limitMb),
-    cpu: cpuLevel(points.map((p) => p.cpu)),
+    tick: tickLevel(newest('mspt')),
+    memory: memoryLevel(newest('memMb'), limitMb),
+    cpu: cpuLevel(cpus),
     spark,
   }
 }

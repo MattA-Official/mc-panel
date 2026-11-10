@@ -142,7 +142,7 @@ function closeCharts() {
       <UModal
         :open="!!charted"
         :title="charted ? `${charted.displayName}: performance` : 'Performance'"
-        description="CPU, memory, players and tick time, sampled once a minute and kept for a week."
+        description="The last hour, day or week."
         :ui="{ content: 'sm:max-w-4xl' }"
         @update:open="(v) => !v && closeCharts()"
       >

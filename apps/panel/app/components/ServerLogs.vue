@@ -16,7 +16,7 @@ interface LogView {
  * Log files with search and download, and the Crashes list alongside them. Shown in the
  * Console's Logs pop-up; `selected` is the file being read, or "crashes".
  */
-const selected = defineModel<string>({ required: true })
+const model = defineModel<string>({ required: true })
 const { server } = useServerContext()
 const base = computed(() => `/api/servers/${server.value?.name}/logs`)
 
@@ -24,9 +24,10 @@ const { data: files, refresh: refreshList } = await useFetch<LogFile[]>(() => ba
   default: () => [],
 })
 
-// With nothing chosen, open the newest log.
-watchEffect(() => {
-  if (!selected.value && files.value[0]) selected.value = files.value[0].name
+/** With nothing chosen, the newest log. */
+const selected = computed({
+  get: () => model.value || files.value[0]?.name || '',
+  set: (v: string) => (model.value = v),
 })
 const search = ref('')
 const query = ref('')

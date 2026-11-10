@@ -141,7 +141,10 @@ const router = useRouter()
 const logsOpen = computed(() => route.query.logs !== undefined && can('console.read', name.value))
 const logFile = computed({
   get: () => String(route.query.logs ?? ''),
-  set: (logs) => router.replace({ query: { ...route.query, logs } }),
+  set: (logs) => {
+    // Closing empties the choice; that mustn't open the pop-up again.
+    if (route.query.logs !== undefined) router.replace({ query: { ...route.query, logs } })
+  },
 })
 function closeLogs() {
   const query = { ...route.query }

@@ -52,6 +52,20 @@ describe('vitals', () => {
     expect(v.spark.at(-3)).toBe(10)
   })
 
+  test('falls back to the newest reading from the last few minutes', () => {
+    const v = vitals(
+      [
+        { at: minute(1), cpu: 40, memMb: 3000, mspt: 22 },
+        { at: minute(0), cpu: null, memMb: 3100, mspt: null },
+      ],
+      4000,
+      now,
+    )!
+    expect(v.tick.value).toBe(22)
+    expect(v.cpu.value).toBe(40)
+    expect(v.memory.value).toBe(3100)
+  })
+
   test('is null with no recent sample', () => {
     expect(vitals([], 4000, now)).toBeNull()
     expect(vitals([{ at: minute(10), cpu: 1, memMb: 1, mspt: 1 }], 4000, now)).toBeNull()
