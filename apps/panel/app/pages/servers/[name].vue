@@ -91,6 +91,7 @@ const tabs = computed<
       ]
     : []),
   { label: 'Players', icon: 'i-lucide-users', to: `/servers/${name.value}/players` },
+  { label: 'Stats', icon: 'i-lucide-trophy', to: `/servers/${name.value}/stats` },
   { label: 'Performance', icon: 'i-lucide-activity', to: `/servers/${name.value}/performance` },
   { label: 'Backups', icon: 'i-lucide-archive', to: `/servers/${name.value}/backups` },
   { label: 'Schedules', icon: 'i-lucide-calendar-clock', to: `/servers/${name.value}/schedules` },
