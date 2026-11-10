@@ -55,8 +55,7 @@ const ICONS: Record<AuditKind, string> = {
   access: 'i-lucide-key-round',
   system: 'i-lucide-arrow-up-circle',
 }
-const when = (at: string) =>
-  new Date(at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+const when = (at: string) => formatDateTime(at)
 </script>
 
 <template>

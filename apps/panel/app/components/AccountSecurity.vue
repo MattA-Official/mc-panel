@@ -64,8 +64,7 @@ function downloadCodes() {
   URL.revokeObjectURL(url)
 }
 
-const day = (iso: string) =>
-  new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+const day = (iso: string) => formatDate(iso)
 </script>
 
 <template>

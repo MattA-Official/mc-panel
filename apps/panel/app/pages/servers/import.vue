@@ -422,7 +422,7 @@ function size(n: number) {
               <span>
                 <span class="font-medium">{{ a.name }}</span>
                 <span class="block text-xs text-muted">
-                  Deleted {{ new Date(a.deletedAt).toLocaleString() }} · {{ size(a.bytes) }}
+                  Deleted {{ formatDateTime(a.deletedAt) }} · {{ size(a.bytes) }}
                 </span>
               </span>
               <UIcon name="i-lucide-chevron-right" class="size-4 text-muted" />

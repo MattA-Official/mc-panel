@@ -47,8 +47,7 @@ function size(n: number) {
   if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)} MB`
   return `${(n / 1024 ** 3).toFixed(2)} GB`
 }
-const when = (ms: number) =>
-  new Date(ms).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+const when = (ms: number) => formatDateTime(ms)
 const icon = (e: Entry) =>
   e.type === 'dir'
     ? 'i-lucide-folder'

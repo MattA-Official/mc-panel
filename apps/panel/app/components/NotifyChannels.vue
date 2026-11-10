@@ -190,8 +190,7 @@ async function remove() {
   }
 }
 
-const when = (iso: string) =>
-  new Date(iso).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+const when = (iso: string) => formatDateTime(iso)
 
 function summary(c: ChannelView) {
   const n = c.events.length

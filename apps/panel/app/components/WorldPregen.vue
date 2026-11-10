@@ -144,7 +144,7 @@ async function addChunky() {
         <div class="flex flex-wrap items-baseline justify-between gap-2 text-sm">
           <span class="font-medium">{{ dimensionLabel(t.world) }}</span>
           <span class="text-muted tabular-nums">
-            {{ t.percent.toFixed(1) }}% · {{ t.chunks.toLocaleString('en-GB') }} chunks
+            {{ t.percent.toFixed(1) }}% · {{ t.chunks.toLocaleString() }} chunks
             <template v-if="t.eta"> · {{ t.eta }} left</template>
             <template v-if="t.rate"> · {{ t.rate }}/s</template>
           </span>
@@ -204,7 +204,7 @@ async function addChunky() {
         </div>
         <div class="flex flex-wrap items-center justify-between gap-2">
           <p class="text-xs text-muted">
-            About {{ chunks.toLocaleString('en-GB') }} chunks. Players can stay on while it runs.
+            About {{ chunks.toLocaleString() }} chunks. Players can stay on while it runs.
           </p>
           <div class="flex gap-2">
             <UButton

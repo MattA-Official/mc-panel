@@ -145,8 +145,7 @@ function size(n: number) {
   if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)} MB`
   return `${(n / 1024 ** 3).toFixed(2)} GB`
 }
-const when = (iso: string) =>
-  new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+const when = (iso: string) => formatDateTime(iso)
 const kinds = {
   manual: { label: 'Manual', color: 'primary' },
   scheduled: { label: 'Scheduled', color: 'neutral' },
