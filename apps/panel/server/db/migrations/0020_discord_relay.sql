@@ -1,0 +1,1 @@
+ALTER TABLE `servers` ADD `discord_relay` text;
