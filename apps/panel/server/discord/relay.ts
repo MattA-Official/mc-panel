@@ -1,7 +1,7 @@
 /**
- * Game chat to Discord. Each server's chat, joins and leaves come from the log watcher (inotify,
- * so nothing polls) and are posted to the server's Discord channel webhook: chat as the player,
- * with their head as the avatar, and joins and leaves as a short line.
+ * Game chat to Discord. Each server's chat, joins, leaves, deaths and advancements come from the
+ * log watcher (inotify, so nothing polls) and are posted to the server's Discord channel webhook
+ * as plain text under the player's name, with their head as the avatar.
  *
  * Nothing a player types can ping anyone or format the message: every post has
  * `allowed_mentions: { parse: [] }`, Markdown is escaped and link previews are off.
@@ -12,6 +12,7 @@
  * so a busy chat is slowed down rather than dropped.
  */
 import { isDiscordWebhook } from '../notify/discord'
+import { DEATH_MESSAGES } from './death-messages'
 import { DeliveryError, postJson } from '../notify/types'
 
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>
@@ -20,6 +21,8 @@ type Fetch = (input: string, init?: RequestInit) => Promise<Response>
 export type RelayLine =
   | { kind: 'chat'; player: string; text: string; emote?: boolean }
   | { kind: 'joined' | 'left'; player: string }
+  /** `text` follows the player's name; `whole` is set when the name isn't first, so it's all of it. */
+  | { kind: 'death' | 'advancement'; player: string; text: string; whole?: boolean }
 
 // The log prefix, as in notify/watchers.ts: vanilla and Fabric `[12:34:56] [Server thread/INFO]: `,
 // Paper `[12:34:56 INFO]: `. Unsigned chat is logged as `[Not Secure] <Steve> hi`, and mods that
@@ -32,6 +35,40 @@ const CHAT = /^<([^<>]{1,64})> (.+)$/
 const EMOTE = /^\* ([.*]?[A-Za-z0-9_]{1,16}) (.+)$/
 const ACTIVITY = /^([.*]?[A-Za-z0-9_]{1,16}) (joined|left) the game$/
 const NAME = /^[.*]?[A-Za-z0-9_]{1,16}$/
+const NAME_GROUP = '([.*]?[A-Za-z0-9_]{1,16})'
+// `Steve has made the advancement [Stone Age]`, `… has reached the goal […]`, `… has completed
+// the challenge […]`.
+const ADVANCEMENT = new RegExp(
+  `^${NAME_GROUP} (has (?:made the advancement|reached the goal|completed the challenge) \\[.+\\])$`,
+)
+
+/** Each death message as a pattern: the dead player captured, the killer and item anything. */
+const DEATHS: RegExp[] = DEATH_MESSAGES.map((t) => {
+  const parts = t.split(/(%[123]\$s)/)
+  const body = parts
+    .map((p) =>
+      p === '%1$s'
+        ? NAME_GROUP
+        : /^%[23]\$s$/.test(p)
+          ? '.+?'
+          : p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+    )
+    .join('')
+  return new RegExp(`^${body}$`)
+})
+
+/** A death message's player, or null. Deaths are system messages players can't write. */
+export function parseDeath(msg: string): RelayLine | null {
+  for (const re of DEATHS) {
+    const m = re.exec(msg)
+    if (!m) continue
+    const player = m[1]!
+    return msg.startsWith(`${player} `)
+      ? { kind: 'death', player, text: msg.slice(player.length + 1) }
+      : { kind: 'death', player, text: msg, whole: true }
+  }
+  return null
+}
 
 /** What a log line says that's worth posting, or null. */
 export function parseRelayLine(line: string): RelayLine | null {
@@ -44,7 +81,9 @@ export function parseRelayLine(line: string): RelayLine | null {
   if (a) return { kind: a[2] === 'joined' ? 'joined' : 'left', player: a[1]! }
   const e = EMOTE.exec(msg)
   if (e) return { kind: 'chat', player: e[1]!, text: e[2]!, emote: true }
-  return null
+  const adv = ADVANCEMENT.exec(msg)
+  if (adv) return { kind: 'advancement', player: adv[1]!, text: adv[2]! }
+  return parseDeath(msg)
 }
 
 /** The account name inside a decorated display name like `[Red] Steve`, if there is one. */
@@ -106,10 +145,11 @@ export interface Item {
 function lineText(i: Item): string {
   const l = i.line
   if (l.kind === 'chat') return l.emote ? `_${escapeChat(l.text)}_` : escapeChat(l.text)
+  if (l.kind === 'death' || l.kind === 'advancement') return escapeChat(l.text)
   return l.kind === 'joined' ? 'joined the game' : 'left the game'
 }
 
-/** As posted under the player's name: joins and leaves in italics, so they read as events. */
+/** As posted under the player's name: everything but chat in italics, so it reads as an event. */
 function ownLine(i: Item): string {
   return i.line.kind === 'chat' ? lineText(i) : `_${lineText(i)}_`
 }
@@ -117,11 +157,14 @@ function ownLine(i: Item): string {
 /** As posted under someone else's name: `**Steve**: hi`, or `**Steve** joined the game`. */
 function namedLine(i: Item): string {
   const who = `**${escapeChat(i.line.player)}**`
-  return i.line.kind === 'chat' ? `${who}: ${lineText(i)}` : `_${who} ${lineText(i)}_`
+  if (i.line.kind === 'chat') return `${who}: ${lineText(i)}`
+  // `Bob showed Steve that not just the floor is lava` already says who.
+  if (i.line.kind === 'death' && i.line.whole) return `_${lineText(i)}_`
+  return `_${who} ${lineText(i)}_`
 }
 
 /**
- * One player's lines in a row (chat, joins and leaves), posted as them with their head, all in
+ * One player's lines in a row (chat, joins, leaves, deaths, advancements), posted as them with their head, all in
  * plain text like the rest of the relay.
  */
 export function playerPost(items: Item[]): Post {
@@ -208,6 +251,23 @@ export interface RelayConfig {
   url: string
   chat: boolean
   joins: boolean
+  deaths: boolean
+  advancements: boolean
+}
+
+/** Whether a server's relay posts this kind of line. */
+export function wants(config: RelayConfig, line: RelayLine): boolean {
+  switch (line.kind) {
+    case 'chat':
+      return config.chat
+    case 'joined':
+    case 'left':
+      return config.joins
+    case 'death':
+      return config.deaths
+    case 'advancement':
+      return config.advancements
+  }
 }
 
 export interface RelayDeps {
@@ -260,7 +320,7 @@ export class ChatRelay {
   async offer(server: string, line: RelayLine) {
     const config = await this.deps.config(server)
     if (!config) return
-    if (line.kind === 'chat' ? !config.chat : !config.joins) return
+    if (!wants(config, line)) return
     // Queued at once so lines stay in the order they were said; the head is looked up meanwhile.
     const q = this.queue(server)
     const item: Item = { line, avatar: null }
