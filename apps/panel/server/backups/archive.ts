@@ -7,6 +7,7 @@ import { rename, rm, stat } from 'node:fs/promises'
 import { Readable, Writable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { createZstdCompress, createZstdDecompress } from 'node:zlib'
+import { TILE_DIRS } from '../map/squaremap'
 
 /** Folders inside a server that are never worth backing up. */
 export const EXCLUDE = [
@@ -15,6 +16,8 @@ export const EXCLUDE = [
   './.flytower-restore',
   // spark's profiler scratch space: Java makes these files readable by their owner only.
   './config/spark/tmp',
+  // The web map's tiles: squaremap draws them again from the world.
+  ...TILE_DIRS,
 ]
 
 /** File names that are never worth backing up, wherever they are: half-written temp files. */

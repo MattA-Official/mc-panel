@@ -50,6 +50,7 @@ export function useSpecs(): SpecService {
     writeProperties,
     schedulesChanged: syncBackupSchedules,
     statsChanged,
+    mapChanged: (name) => useMap().sync(name),
     tasks: useSchedules(),
     offsiteTargets: () => useOffsite().targets(),
     offsiteChanged: (name) => useOffsite().queueServer(name),
