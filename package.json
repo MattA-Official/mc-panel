@@ -11,7 +11,8 @@
     "format": "prettier --write .",
     "typecheck": "bun run --filter '*' typecheck",
     "test": "bun test",
-    "build": "bun run --filter '*' build",
+    "build": "bun run --filter '*' --filter '!@flytower/site' build",
+    "build:site": "bun run --filter @flytower/site build",
     "package": "bun scripts/package.ts",
     "release-notes": "bun scripts/release-notes.ts"
   },
