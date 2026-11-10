@@ -38,6 +38,13 @@ export interface MapStatus {
   lastPass: MapPass | null
   /** Why the last pass failed, if it did. */
   error: string | null
+  /** How far the pass being drawn has got, in region files. Null when not drawing. */
+  progress: MapProgress | null
+}
+
+export interface MapProgress {
+  done: number
+  total: number
 }
 
 export interface MapDeps {
@@ -51,8 +58,9 @@ export interface MapDeps {
   levelName: (name: string) => Promise<string | null>
   /** Makes the palette for a Minecraft version at `dest`, from the client jar. */
   makePalette: (minecraft: string, dest: string) => Promise<void>
-  /** Runs `flytower-map` with these arguments and returns what it prints. */
-  run: (args: string[]) => Promise<string>
+  /** Runs `flytower-map` with these arguments and returns what it prints, passing on any
+   * progress it reports along the way. */
+  run: (args: string[], onProgress?: (p: MapProgress) => void) => Promise<string>
   /** Tells anyone watching that a server's map status changed. */
   publish: (name: string, status: MapStatus) => void
   /** Calls `onSave` when a region file under `dir` changes. Returns a function to stop. */
@@ -61,6 +69,8 @@ export interface MapDeps {
   quietMs?: number
   /** The longest a pass waits while saving goes on. */
   maxWaitMs?: number
+  /** The least time between progress updates sent to watchers. */
+  progressMs?: number
 }
 
 interface Live {
@@ -69,6 +79,8 @@ interface Live {
   firstSave: number | null
   queued: { full: boolean } | null
   drawing: boolean
+  progress: MapProgress | null
+  progressSent: number
   waiting: boolean
   lastPass: MapPass | null
   error: string | null
@@ -98,6 +110,8 @@ export class MapService {
         firstSave: null,
         queued: null,
         drawing: false,
+        progress: null,
+        progressSent: 0,
         waiting: false,
         lastPass: null,
         error: null,
@@ -136,7 +150,8 @@ export class MapService {
           : s.waiting
             ? 'waiting'
             : 'idle'
-    return { enabled, state, lastPass: s.lastPass, error: s.error }
+    const progress = state === 'drawing' ? s.progress : null
+    return { enabled, state, lastPass: s.lastPass, error: s.error, progress }
   }
 
   private publish(name: string) {
@@ -253,10 +268,20 @@ export class MapService {
     try {
       const palette = await this.palette(name)
       const out = this.dir(name)
-      const args = ['render', '--world', world, '--out', out]
+      const args = ['render', '--world', world, '--out', out, '--progress']
       if (palette) args.push('--palette', palette)
       if (job.full) args.push('--full')
-      const report = parseReport(await this.deps.run(args))
+      const report = parseReport(
+        await this.deps.run(args, (p) => {
+          s.progress = p
+          // Often enough to move smoothly, not once per region on a big world.
+          const now = Date.now()
+          if (p.done === p.total || now - s.progressSent >= (this.deps.progressMs ?? 500)) {
+            s.progressSent = now
+            this.publish(name)
+          }
+        }),
+      )
       const pass: MapPass = { ...report, full: job.full, colours: palette ? 'game' : 'built-in' }
       await mkdir(out, { recursive: true })
       await writeFile(join(out, 'last-pass.json.tmp'), JSON.stringify(pass))
@@ -268,6 +293,7 @@ export class MapService {
       console.error(`[flytower] map pass for ${name} failed`, err)
     } finally {
       s.drawing = false
+      s.progress = null
       // Switched off while drawing: clear up what the pass wrote.
       if (!this.deps.settings(name)?.enabled) await this.sync(name)
       this.publish(name)
@@ -298,6 +324,38 @@ export class MapService {
     }
     return making
   }
+}
+
+/** A `progress DONE TOTAL` line from `flytower-map render --progress`, or null for any other. */
+export function parseProgress(line: string): MapProgress | null {
+  const m = line.trim().match(/^progress (\d+) (\d+)$/)
+  if (!m) return null
+  const done = Number(m[1])
+  const total = Number(m[2])
+  return done <= total ? { done, total } : null
+}
+
+/** Reads standard error as it comes: progress lines are passed on, the rest kept for errors. */
+export async function readStderr(
+  stream: ReadableStream<Uint8Array>,
+  onProgress?: (p: MapProgress) => void,
+): Promise<string> {
+  const kept: string[] = []
+  const take = (line: string) => {
+    const p = parseProgress(line)
+    if (p) onProgress?.(p)
+    else if (line.trim()) kept.push(line)
+  }
+  const decoder = new TextDecoder()
+  let rest = ''
+  for await (const chunk of stream) {
+    rest += decoder.decode(chunk, { stream: true })
+    const lines = rest.split('\n')
+    rest = lines.pop() ?? ''
+    lines.forEach(take)
+  }
+  take(rest + decoder.decode())
+  return kept.join('\n')
 }
 
 /** Sums `flytower-map render`'s answer over dimensions. */
