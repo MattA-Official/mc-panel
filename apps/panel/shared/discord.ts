@@ -17,4 +17,8 @@ export type DiscordState =
       /** Adds the app's commands to a Discord server. */
       inviteUrl: string
       connectedAt: string
+      /** The slash commands Flytower answers, without the slash. */
+      commands: string[]
+      /** Why Discord didn't take the command list, when it didn't. */
+      commandsError: string | null
     }

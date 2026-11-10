@@ -19,6 +19,10 @@ export interface DiscordApp {
   endpointSet: boolean
   endpointError: string | null
   connectedAt: string
+  /** The hash of the command list Discord last accepted. */
+  commandsHash?: string
+  /** Why the last command sync failed, when it did. */
+  commandsError?: string | null
 }
 
 export interface DiscordDeps {
@@ -29,6 +33,8 @@ export interface DiscordDeps {
   origin: () => string | null
   fetch?: Fetch
   now?: () => Date
+  /** The slash commands Flytower answers, for the card. */
+  commandNames?: () => string[]
 }
 
 export const INTERACTIONS_PATH = '/api/discord/interactions'
@@ -69,7 +75,36 @@ export class DiscordService {
       endpointError: app.endpointError,
       inviteUrl: inviteUrl(app.applicationId),
       connectedAt: app.connectedAt,
+      commands: this.deps.commandNames?.() ?? [],
+      commandsError: app.commandsError ?? null,
     }
+  }
+
+  /**
+   * Sends the command list to Discord when it differs from what Discord last accepted. Runs
+   * on connecting and when the panel starts (an update may have changed the commands).
+   */
+  async syncCommands(
+    definitions: unknown[],
+    hash: string,
+    force = false,
+  ): Promise<'sent' | 'unchanged' | 'failed' | 'no-app'> {
+    const app = this.app()
+    if (!app) return 'no-app'
+    if (!force && app.commandsHash === hash && !app.commandsError) return 'unchanged'
+    let commandsHash = app.commandsHash
+    let commandsError: string | null = null
+    try {
+      await this.api.putCommands(await this.token(), app.applicationId, definitions)
+      commandsHash = hash
+    } catch (err) {
+      commandsError = (err as Error).message
+    }
+    const now = this.app()
+    if (now?.applicationId === app.applicationId) {
+      setSetting(this.deps.db, 'discord.app', { ...now, commandsHash, commandsError })
+    }
+    return commandsError ? 'failed' : 'sent'
   }
 
   async token(): Promise<string> {
