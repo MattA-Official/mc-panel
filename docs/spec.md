@@ -126,14 +126,15 @@ What Flytower does when the server gets stuck. Left out, the current setting sta
 
 The server's [public status page](status-page.md). Left out, the current settings stay.
 
-| Field          | Meaning                                                                                                               |
-| -------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `enabled`      | `true` to turn the page on at `/s/<name>`. Defaults to `false`.                                                       |
-| `description`  | A few lines about the server, up to 500 characters, shown as plain text with line breaks.                             |
-| `show.players` | `count` (the default) shows how many are online, `names` shows their heads and names, `none` shows nothing.           |
-| `show.version` | `false` to hide the Minecraft version and loader. Defaults to `true`.                                                 |
-| `pack.enabled` | `false` to stop offering the players' [modpack](status-page.md#modpack-for-players). Defaults to `true`; Fabric only. |
-| `pack.extras`  | Client-only extras for the modpack: a list of `modrinth: <slug>`, each with an optional exact `version`.              |
+| Field              | Meaning                                                                                                               |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `enabled`          | `true` to turn the page on at `/s/<name>`. Defaults to `false`.                                                       |
+| `description`      | A few lines about the server, up to 500 characters, shown as plain text with line breaks.                             |
+| `show.players`     | `count` (the default) shows how many are online, `names` shows their heads and names, `none` shows nothing.           |
+| `show.version`     | `false` to hide the Minecraft version and loader. Defaults to `true`.                                                 |
+| `show.leaderboard` | `true` to show the player stats leaderboards. Needs `show.players: names` and stats on. Defaults to `false`.          |
+| `pack.enabled`     | `false` to stop offering the players' [modpack](status-page.md#modpack-for-players). Defaults to `true`; Fabric only. |
+| `pack.extras`      | Client-only extras for the modpack: a list of `modrinth: <slug>`, each with an optional exact `version`.              |
 
 ```yaml
 public:
