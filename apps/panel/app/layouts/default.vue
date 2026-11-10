@@ -37,7 +37,7 @@ const items = computed<NavigationMenuItem[]>(() => [
     <UDashboardGroup class="relative inset-auto min-h-0 flex-1">
       <UDashboardSidebar collapsible :ui="{ footer: 'border-t border-default' }">
         <template #header="{ collapsed }">
-          <NuxtLink to="/" class="flex items-center gap-2 px-1">
+          <NuxtLink to="/" class="flex min-w-0 items-center gap-2 px-1" :title="productName">
             <img
               :src="brand?.logo ?? '/flytower-mark.svg'"
               alt=""
@@ -45,7 +45,8 @@ const items = computed<NavigationMenuItem[]>(() => [
             />
             <span
               v-if="!collapsed"
-              class="font-display text-2xl font-extrabold uppercase tracking-wide"
+              class="truncate font-display font-extrabold uppercase tracking-wide"
+              :class="productName.length > 10 ? 'text-lg' : 'text-2xl'"
             >
               {{ productName }}
             </span>
