@@ -14,3 +14,5 @@ Some rules are Zod refinements that JSON Schema can't express. A note ending in 
 The TypeScript tests (`packages/protocol/src/fixtures.test.ts`) replay every line against the Zod schemas. They also check that each verb has at least one valid params line and one valid result line. When you add or change a verb, add lines here in the same commit.
 
 `server-unit.service` and `server.env` are the systemd template and environment file the agent writes for a server, with the default paths and the `flytower` group. Both agents rewrite the template whenever it differs from theirs, so they must agree byte for byte. `packages/agent/test/units-fixture.test.ts` and the Rust agent's `units.rs` tests both check these files. Change them together with `packages/agent/src/units.ts`.
+
+`disk-groups.jsonl` says which part of a server's space each top-level entry of its folder counts towards in `disk.usage`: `entry` is the name, `levelName` the server's `level-name` property (or null), and `group` the answer. `packages/agent/test/disk.test.ts` and the Rust agent's `disk.rs` tests both replay it.
