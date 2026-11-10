@@ -81,6 +81,7 @@ async function onFile(e: Event) {
         <template #leading>
           <UButton icon="i-lucide-arrow-left" variant="ghost" color="neutral" to="/servers/new" />
         </template>
+        <template #right><HelpButton /></template>
       </UDashboardNavbar>
     </template>
 

@@ -5,7 +5,9 @@ useHead({ title: 'Your account' })
 <template>
   <UDashboardPanel id="account">
     <template #header>
-      <UDashboardNavbar title="Your account" />
+      <UDashboardNavbar title="Your account">
+        <template #right><HelpButton /></template>
+      </UDashboardNavbar>
     </template>
     <template #body>
       <div class="mx-auto w-full max-w-5xl space-y-6">

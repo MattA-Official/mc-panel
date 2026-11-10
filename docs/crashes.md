@@ -1,3 +1,11 @@
+---
+section: Running servers
+order: 15
+since: '1.1.0'
+panelRoute:
+  - '/servers/:name/logs'
+---
+
 # Crashes
 
 Flytower notices when a server crashes, tells you why, and stops a server that keeps crashing from restarting forever. It also spots a server that is still running but has stopped responding.

@@ -97,7 +97,7 @@ async function remove() {
           <h2 class="text-base font-semibold">Off-site backups</h2>
           <p class="mt-1 text-sm text-muted">
             Buckets that servers can copy their backups to. Choose one per server on its Backups
-            tab.
+            tab. <HelpLink to="backups#off-site-copies" />
           </p>
         </div>
         <UButton

@@ -1,3 +1,15 @@
+---
+section: Getting started
+order: 3
+panelRoute:
+  - '/'
+  - '/servers/new'
+  - '/servers/import'
+  - '/servers/:name'
+  - '/servers/:name/**'
+  - '/servers/:name/settings#the-servers-tabs'
+---
+
 # Your first server
 
 ## Create it

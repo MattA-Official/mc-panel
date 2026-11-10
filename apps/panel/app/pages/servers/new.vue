@@ -158,6 +158,7 @@ function startOver() {
         <template #leading>
           <UButton icon="i-lucide-arrow-left" variant="ghost" color="neutral" to="/" />
         </template>
+        <template #right><HelpButton /></template>
       </UDashboardNavbar>
     </template>
 
