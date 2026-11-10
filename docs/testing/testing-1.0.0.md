@@ -21,11 +21,11 @@ Allow about 30 minutes.
 
 ## 3. Documentation
 
-- [ ] Read [the documentation](README.md) as if you were new. Anything wrong, missing or confusing is worth an issue, especially [Passkeys and recovery codes](account.md) and [Troubleshooting](troubleshooting.md).
+- [ ] Read [the documentation](../README.md) as if you were new. Anything wrong, missing or confusing is worth an issue, especially [Passkeys and recovery codes](../account.md) and [Troubleshooting](../troubleshooting.md).
 
 ## 4. Upgrading
 
-- [ ] If you still have an install from before 0.5.0 anywhere, re-run the installer on it ([Updating](updating.md#re-running-the-installer)). Your servers and sign-in survive.
+- [ ] If you still have an install from before 0.5.0 anywhere, re-run the installer on it ([Updating](../updating.md#re-running-the-installer)). Your servers and sign-in survive.
 
 ## Reporting feedback
 

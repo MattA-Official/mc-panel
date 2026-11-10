@@ -33,7 +33,7 @@ export function parseInline(src: string): Inline[] {
   return out
 }
 
-export function parseMarkdown(src: string): Block[] {
+export function parseNotes(src: string): Block[] {
   const blocks: Block[] = []
   let para: string[] = []
   let list: Inline[][] | null = null

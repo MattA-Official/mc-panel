@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'bun:test'
-import { parseInline, parseMarkdown } from '../shared/utils/markdown'
+import { parseInline, parseNotes } from '../shared/utils/markdown'
 
 describe('markdown', () => {
   it('reads release notes as headings, lists and paragraphs', () => {
-    const blocks = parseMarkdown(
+    const blocks = parseNotes(
       '### Fixes\n\n- **panel:** works ([abc1234](https://github.com/x/y/commit/abc))\n- two\n\n**Full diff:** https://github.com/x/y/compare/a...b',
     )
     expect(blocks.map((b) => b.type)).toEqual(['heading', 'list', 'paragraph'])

@@ -10,7 +10,9 @@ const tabs = [
 <template>
   <UDashboardPanel id="access">
     <template #header>
-      <UDashboardNavbar title="Access" />
+      <UDashboardNavbar title="Access">
+        <template #right><HelpButton /></template>
+      </UDashboardNavbar>
       <UDashboardToolbar>
         <UNavigationMenu :items="tabs" highlight class="-mx-1 flex-1" />
       </UDashboardToolbar>

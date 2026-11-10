@@ -1,6 +1,6 @@
 # Testing 1.0.1
 
-Thanks for testing. 1.0.1 adds an **update channel**: choose whether Flytower offers only stable releases, or betas too, so new features can be tried before they're released to everyone. See [Updating](updating.md#stable-or-beta).
+Thanks for testing. 1.0.1 adds an **update channel**: choose whether Flytower offers only stable releases, or betas too, so new features can be tried before they're released to everyone. See [Updating](../updating.md#stable-or-beta).
 
 Allow about 10 minutes.
 
