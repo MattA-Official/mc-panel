@@ -1,6 +1,7 @@
 // Runs after db and jobs (alphabetical).
 export default defineNitroPlugin(() => {
   syncBackupSchedules()
+  useSchedules().sync()
   // Expired world exports are deleted hourly, and once at boot.
   const sweep = () =>
     void useExports()

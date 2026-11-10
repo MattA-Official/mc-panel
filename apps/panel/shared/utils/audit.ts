@@ -24,7 +24,12 @@ export function auditKind(action: string): AuditKind {
 }
 
 /** Things Flytower records by itself, with nobody signed in behind them. */
-const BY_FLYTOWER = ['server.crashed', 'server.crash_loop', 'server.unresponsive']
+const BY_FLYTOWER = [
+  'server.crashed',
+  'server.crash_loop',
+  'server.unresponsive',
+  'schedule.run',
+]
 
 /** Who to show for an entry with no user: Flytower for its own, otherwise a removed person. */
 export function auditActor(action: string, user: string | null): string | null {
@@ -130,6 +135,10 @@ export function describeAudit(
       return `Restored a backup of ${t}`
     case 'backup.schedule':
       return `Changed ${t}'s backup schedule`
+    case 'schedule.update':
+      return `Changed ${t}'s scheduled tasks`
+    case 'schedule.run':
+      return `${t}: ${str(d.task)}. ${str(d.result)}`
     case 'backup.offsite':
       return d.target
         ? `Started copying ${t}'s backups to ${str(d.target)}`

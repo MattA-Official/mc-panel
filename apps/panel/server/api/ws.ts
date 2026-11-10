@@ -4,7 +4,9 @@ import { z } from 'zod'
 import { schema } from '../db'
 import { ON_OPEN_AFTER_MS } from '../update-checks'
 
-const Topic = z.string().regex(/^(job:\d+|servers|health|updates|console:[a-z][a-z0-9-]{1,30})$/)
+const Topic = z
+  .string()
+  .regex(/^(job:\d+|servers|health|updates|(console|schedules):[a-z][a-z0-9-]{1,30})$/)
 const ClientMessage = z.discriminatedUnion('type', [
   z.object({ type: z.literal('subscribe'), topic: Topic }),
   z.object({ type: z.literal('unsubscribe'), topic: z.string().max(64) }),
@@ -47,6 +49,12 @@ function attach(topic: string, emit: (data: unknown) => void): () => void {
     if (!exists) return () => {}
     return useConsole().watch(name, emit)
   }
+  if (topic.startsWith('schedules:')) {
+    const name = topic.slice('schedules:'.length)
+    const off = useJobs().bus.subscribe(topic, emit)
+    emit(useSchedules().view(name))
+    return off
+  }
   const off = useJobs().bus.subscribe(topic, emit)
   emit(useJobs().get(Number(topic.slice('job:'.length))))
   return off
@@ -54,7 +62,8 @@ function attach(topic: string, emit: (data: unknown) => void): () => void {
 
 /**
  * One authenticated socket per tab. The browser subscribes to topics (`job:<id>`,
- * `servers`, `health`, `updates`, `console:<name>`) and gets `{ topic, data }` messages back.
+ * `servers`, `health`, `updates`, `console:<name>`, `schedules:<name>`) and gets `{ topic, data }`
+ * messages back.
  */
 export default defineWebSocketHandler({
   async upgrade(request) {
