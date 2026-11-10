@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const { server } = useServerContext()
+const past = ref<{ refresh: () => void } | null>(null)
 </script>
 
 <template>
@@ -7,6 +8,7 @@ const { server } = useServerContext()
     <WorldPregen />
     <WorldCopy />
     <WorldExports v-if="server" :server="server.name" />
-    <WorldReset />
+    <WorldPastWorlds v-if="server" ref="past" :server="server.name" />
+    <WorldReset @reset="past?.refresh()" />
   </div>
 </template>

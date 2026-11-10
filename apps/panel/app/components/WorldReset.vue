@@ -1,6 +1,7 @@
 <script setup lang="ts">
-/** Throws the world away for a new one, after a backup. */
+/** Starts a new world, after a backup, optionally keeping the old one as a past world. */
 const { server } = useServerContext()
+const emit = defineEmits<{ reset: [] }>()
 const withElevation = useElevation()
 const toast = useToast()
 
@@ -8,6 +9,14 @@ const open = ref(false)
 const seedMode = ref<'keep' | 'random' | 'seed'>('random')
 const seed = ref('')
 const typed = ref('')
+const keepWorld = ref(true)
+const pastName = ref('')
+const keepBackup = ref(false)
+
+function defaultName() {
+  const month = new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+  return `${server.value?.displayName ?? 'Old'} world, ${month}`.slice(0, 60)
+}
 const starting = ref(false)
 const job = ref<number | null>(null)
 const finished = ref<JobEvent | null>(null)
@@ -16,6 +25,9 @@ function begin() {
   seedMode.value = 'random'
   seed.value = ''
   typed.value = ''
+  keepWorld.value = true
+  pastName.value = defaultName()
+  keepBackup.value = false
   job.value = null
   finished.value = null
   open.value = true
@@ -23,20 +35,32 @@ function begin() {
 
 const canReset = computed(
   () =>
-    typed.value === server.value?.name && (seedMode.value !== 'seed' || seed.value.trim() !== ''),
+    typed.value === server.value?.name &&
+    (seedMode.value !== 'seed' || seed.value.trim() !== '') &&
+    (!keepWorld.value || pastName.value.trim() !== ''),
 )
+
+function onFinished(e: JobEvent) {
+  finished.value = e
+  if (e.state === 'succeeded') emit('reset')
+}
 
 async function reset() {
   if (!server.value) return
   const name = server.value.name
   starting.value = true
   try {
-    const body =
+    const seedChoice =
       seedMode.value === 'keep'
         ? { keep: true }
         : seedMode.value === 'random'
           ? { random: true }
           : { seed: seed.value.trim() }
+    const body = {
+      ...seedChoice,
+      pastWorld: keepWorld.value ? pastName.value.trim() : null,
+      keepBackup: keepBackup.value,
+    }
     const r = await withElevation(() =>
       $fetch<{ jobId: number }>(`/api/servers/${name}/world/reset` as string, {
         method: 'POST',
@@ -58,8 +82,8 @@ async function reset() {
       <h2 class="text-base font-semibold text-error">Reset the world</h2>
       <div class="mt-3 flex flex-wrap items-center justify-between gap-4">
         <p class="max-w-lg text-sm text-muted">
-          Starts a brand new world. A backup is taken first, so the old one can come back from
-          Backups. Installed datapacks stay.
+          Starts a brand new world. A backup is taken first, and the old world can be kept as a past
+          world to download, share or start a server from. Installed datapacks stay.
         </p>
         <UButton
           label="Reset world"
@@ -82,9 +106,31 @@ async function reset() {
           :job-id="job"
           :steps="WORLD_RESET_STEPS"
           success-title="World reset"
-          @finished="finished = $event"
+          @finished="onFinished"
         />
         <div v-else class="space-y-4">
+          <div class="space-y-2">
+            <UCheckbox
+              v-model="keepWorld"
+              label="Keep the old world as a past world"
+              description="A zip that opens in singleplayer, listed under Past worlds until you delete it."
+              data-e2e="keep-world"
+            />
+            <UFormField v-if="keepWorld" label="Name" class="pl-6">
+              <UInput
+                v-model="pastName"
+                class="w-full"
+                :maxlength="60"
+                placeholder="2025–26 world"
+                data-e2e="past-world-name"
+              />
+            </UFormField>
+            <UCheckbox
+              v-model="keepBackup"
+              label="Keep the final backup forever"
+              description="The whole server (mods, settings and world) as it is now. Retention never deletes it."
+            />
+          </div>
           <URadioGroup
             v-model="seedMode"
             legend="Seed"

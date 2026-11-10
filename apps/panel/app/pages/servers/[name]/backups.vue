@@ -7,6 +7,7 @@ interface BackupRow {
   bytes: number
   kind: 'manual' | 'scheduled' | 'safety'
   note: string | null
+  kept: boolean
   createdAt: string
   local: boolean
   offsite: {
@@ -125,6 +126,23 @@ async function restore() {
   }
 }
 
+// Keep forever
+async function setKept(b: BackupRow, kept: boolean) {
+  try {
+    await $fetch(`/api/servers/${name.value}/backups/${b.id}` as string, {
+      method: 'PATCH',
+      body: { kept },
+    })
+    toast.add({
+      title: kept ? 'Kept forever' : 'Retention can delete it again',
+      color: 'success',
+    })
+    refresh()
+  } catch (err) {
+    toast.add({ title: "Couldn't change it", description: errorMessage(err), color: 'error' })
+  }
+}
+
 // Delete
 const deleting = ref<BackupRow | null>(null)
 async function remove() {
@@ -189,6 +207,13 @@ function menu(b: BackupRow) {
         disabled: running.value,
         onSelect: () => (restoring.value = b),
       },
+      b.kept
+        ? {
+            label: 'Stop keeping forever',
+            icon: 'i-lucide-lock-open',
+            onSelect: () => setKept(b, false),
+          }
+        : { label: 'Keep forever', icon: 'i-lucide-lock', onSelect: () => setKept(b, true) },
     ],
     [
       {
@@ -255,6 +280,15 @@ function menu(b: BackupRow) {
                   variant="subtle"
                   size="sm"
                 />
+                <UTooltip v-if="b.kept" text="Kept forever: retention never deletes it">
+                  <UBadge
+                    label="Kept"
+                    icon="i-lucide-lock"
+                    color="success"
+                    variant="subtle"
+                    size="sm"
+                  />
+                </UTooltip>
                 <UTooltip v-if="offsiteBadge(b)" :text="offsiteBadge(b)!.label">
                   <UIcon
                     :name="offsiteBadge(b)!.icon"

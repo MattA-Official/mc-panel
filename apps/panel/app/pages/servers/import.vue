@@ -24,15 +24,24 @@ interface Archive {
   bytes: number
   deletedAt: string
 }
+interface PastWorld {
+  id: number
+  name: string
+  server: string
+  serverName: string
+  bytes: number
+  createdAt: string
+}
 
 const toast = useToast()
 const CHUNK = 32 * 1024 * 1024
 
-const source = ref<'upload' | 'link' | 'deleted'>('upload')
+const source = ref<'upload' | 'link' | 'deleted' | 'past'>('upload')
 const sources = [
   { label: 'Upload a file', value: 'upload', icon: 'i-lucide-upload' },
   { label: 'From a link', value: 'link', icon: 'i-lucide-link' },
   { label: 'A deleted server', value: 'deleted', icon: 'i-lucide-archive-restore' },
+  { label: 'A past world', value: 'past', icon: 'i-lucide-archive' },
 ]
 
 const meta = ref<ImportMeta | null>(null)
@@ -118,6 +127,36 @@ async function fromArchive(a: Archive) {
     })
   }
 }
+
+// Past worlds, kept when a world was reset
+const { data: pastWorlds } = await useFetch<PastWorld[]>('/api/imports/past-worlds', {
+  default: () => [],
+})
+async function fromPastWorld(w: PastWorld) {
+  try {
+    const m = await $fetch<ImportMeta>('/api/imports', {
+      method: 'POST',
+      body: { label: w.name, size: null },
+    })
+    form.displayName = w.name
+    await unpack(m, { pastWorld: w.id })
+  } catch (err) {
+    toast.add({
+      title: "Couldn't start the import",
+      description: errorMessage(err),
+      color: 'error',
+    })
+  }
+}
+// Linked from a past world on the World tab: start straight away.
+const route = useRoute()
+onMounted(() => {
+  const id = Number(route.query.pastWorld)
+  if (!id) return
+  source.value = 'past'
+  const w = pastWorlds.value.find((p) => p.id === id)
+  if (w) void fromPastWorld(w)
+})
 
 async function unpack(m: ImportMeta, body: object) {
   meta.value = m
@@ -413,6 +452,28 @@ function size(n: number) {
               :disabled="!url.startsWith('https://')"
             />
           </form>
+
+          <div v-else-if="source === 'past'" class="space-y-2">
+            <p v-if="!pastWorlds.length" class="text-sm text-muted">
+              No past worlds yet. They're kept when you reset a server's world.
+            </p>
+            <button
+              v-for="w in pastWorlds"
+              :key="w.id"
+              type="button"
+              class="flex w-full items-center justify-between rounded-lg border border-default px-4 py-3 text-left hover:bg-elevated"
+              @click="fromPastWorld(w)"
+            >
+              <span>
+                <span class="font-medium">{{ w.name }}</span>
+                <span class="block text-xs text-muted">
+                  From {{ w.serverName }} · kept {{ formatDateTime(w.createdAt) }} ·
+                  {{ size(w.bytes) }}
+                </span>
+              </span>
+              <UIcon name="i-lucide-chevron-right" class="size-4 text-muted" />
+            </button>
+          </div>
 
           <div v-else class="space-y-2">
             <p v-if="!archives.length" class="text-sm text-muted">
