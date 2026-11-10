@@ -206,6 +206,14 @@ umask 022
 
 # ---------------------------------------------------------------- systemd
 
+# Newer releases start the agent through a stable wrapper (bin/flytower-agent), so a
+# later release can swap what's behind it. Older releases only have Bun and agent.js.
+if [[ -x "$PREFIX/current/bin/flytower-agent" ]]; then
+  agent_exec="ExecStart=$PREFIX/current/bin/flytower-agent"
+else
+  agent_exec="ExecStart=$bun $PREFIX/current/agent/agent.js"
+fi
+
 cat >"$SYSTEMD_DIR/flytower-agent.service" <<EOF
 # Managed by Flytower. Changes are overwritten.
 [Unit]
@@ -214,7 +222,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-ExecStart=$PREFIX/current/bin/bun $PREFIX/current/agent/agent.js
+$agent_exec
 Environment=FLYTOWER_VERSION=$version
 Environment=FLYTOWER_PANEL_GROUP=flytower
 Restart=always
