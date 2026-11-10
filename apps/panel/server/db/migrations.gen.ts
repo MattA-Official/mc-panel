@@ -75,5 +75,9 @@ export const migrations: { tag: string; sql: string }[] = [
   {
     "tag": "0018_player_stats",
     "sql": "CREATE TABLE `player_stats` (\n\t`server` text NOT NULL,\n\t`uuid` text NOT NULL,\n\t`day` text NOT NULL,\n\t`taken_at` integer NOT NULL,\n\t`stats` text NOT NULL,\n\tPRIMARY KEY(`server`, `uuid`, `day`)\n);\n"
+  },
+  {
+    "tag": "0019_stats_settings",
+    "sql": "ALTER TABLE `servers` ADD `stats` text;"
   }
 ]
