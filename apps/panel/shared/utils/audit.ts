@@ -112,6 +112,9 @@ export function describeAudit(
       return d.restartWhenUnresponsive
         ? `Set ${t} to restart when it stops responding`
         : `Set ${t} not to restart when it stops responding`
+    case 'server.public_page':
+      if (d.enabled === false) return `Turned off ${t}'s public page`
+      return d.was === false ? `Turned on ${t}'s public page` : `Changed ${t}'s public page`
     case 'server.stop':
       return `Stopped ${t}`
     case 'server.restart':

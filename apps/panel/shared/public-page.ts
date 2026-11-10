@@ -85,7 +85,7 @@ export interface PublicStatus {
     count: number
     max: number | null
     /** Only when the page shows names. */
-    list?: { name: string; uuid: string | null }[]
+    list?: { name: string; uuid: string }[]
   } | null
   /** null when the page doesn't show the version. */
   version: { minecraft: string; loader: string } | null

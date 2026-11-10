@@ -7,6 +7,8 @@ const ALWAYS_OPEN = new Set([
   // The sign-in, setup and status pages show the install's name and logo.
   '/api/branding',
 ])
+/** Public status pages; each route checks that the server's page is on. */
+const PUBLIC_PREFIX = '/api/public/'
 const SETUP_ROUTES = new Set([
   '/api/setup/token',
   '/api/passkeys/register-options',
@@ -23,6 +25,7 @@ const ENROL_ROUTES = new Set(['/api/passkeys/register-options', '/api/passkeys/r
 export default defineEventHandler(async (event) => {
   const path = getRequestURL(event).pathname
   if (!path.startsWith('/api/') || path.startsWith('/api/_') || ALWAYS_OPEN.has(path)) return
+  if (path.startsWith(PUBLIC_PREFIX)) return
 
   if (needsSetup(useDb())) {
     if (SETUP_ROUTES.has(path)) return
