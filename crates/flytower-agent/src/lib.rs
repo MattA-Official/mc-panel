@@ -7,6 +7,7 @@ pub mod dispatch;
 pub mod envelope;
 pub mod events;
 pub mod exec;
+pub mod fetch;
 pub mod handlers;
 pub mod server;
 pub mod time;
