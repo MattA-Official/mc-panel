@@ -385,16 +385,16 @@ describe('plan', () => {
     expect((await service.plan('survival', spec())).changes).toEqual([])
   })
 
-  it('changes map settings and brings the map config in line', async () => {
+  it('changes map settings and tells the map service', async () => {
     const { service, spec, db, mapSyncs } = setup()
-    const plan = await service.plan('survival', spec({ map: { public: true } }))
+    const plan = await service.plan('survival', spec({ map: { enabled: true, public: true } }))
     expect(plan.changes).toEqual([
       {
         area: 'settings',
         action: 'set',
         label: 'Web map',
-        from: 'Signed-in people, with players',
-        to: 'Anyone, with players',
+        from: 'Off',
+        to: 'On: anyone, with players',
       },
     ])
     expect(plan.restart).toBe(false)
@@ -403,9 +403,13 @@ describe('plan', () => {
     ).done
     expect(
       db.select().from(schema.servers).where(eq(schema.servers.name, 'survival')).get()?.map,
-    ).toEqual({ public: true, players: true })
+    ).toEqual({ enabled: true, public: true, players: true })
     expect(mapSyncs).toEqual(['survival'])
-    expect((await service.currentSpec('survival')).map).toEqual({ public: true, players: true })
+    expect((await service.currentSpec('survival')).map).toEqual({
+      enabled: true,
+      public: true,
+      players: true,
+    })
     expect((await service.plan('survival', spec())).changes).toEqual([])
   })
 

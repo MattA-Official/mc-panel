@@ -136,7 +136,7 @@ describe('spec', () => {
   })
 
   test('map settings read back, and are left out at their defaults', () => {
-    const map = { public: true, players: false }
+    const map = { enabled: true, public: true, players: false }
     const yaml = toYaml(
       specFromServer({ ...row, map } as never, props),
       'https://panel.example/schema/server-v1.json',
@@ -146,7 +146,10 @@ describe('spec', () => {
     expect(back.ok && back.spec.map).toEqual(map)
     expect(specFromServer(row as never, props).map).toBeUndefined()
     expect(
-      specFromServer({ ...row, map: { public: false, players: true } } as never, props).map,
+      specFromServer(
+        { ...row, map: { enabled: false, public: false, players: true } } as never,
+        props,
+      ).map,
     ).toBeUndefined()
   })
 

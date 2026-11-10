@@ -57,10 +57,7 @@ export interface SpecDeps {
   schedulesChanged?: () => void
   /** Called after player stats settings change, to stop recording or forget players. */
   statsChanged?: (name: string, before: unknown) => void
-  /**
-   * Called after content or map settings are saved, so the map's own config matches them.
-   * The server is stopped at this point when the change needs a restart.
-   */
+  /** Called after settings are saved, so the map service starts or stops drawing. */
   mapChanged?: (name: string) => Promise<void>
   /** Scheduled tasks: read for plans and specs, replaced by apply. */
   tasks?: {
