@@ -141,6 +141,13 @@
       "when": 1794326235042,
       "tag": "0019_stats_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1794327614609,
+      "tag": "0020_map_settings",
+      "breakpoints": true
     }
   ]
 }
