@@ -71,7 +71,7 @@ Staff commands use the access of a Flytower role. Under **Discord roles** on the
 2. In your Discord server's **Server Settings**, **Roles**, right-click the role and choose **Copy Role ID**.
 3. On the card, press **Give a Discord role access**, paste the ID, give it a name you'll recognise (Discord doesn't tell the app role names), and pick the Flytower role and servers.
 
-A member with several mapped roles gets all of them together. Changes apply to the next command. Owner can't be given out through Discord. Saving needs **Manage Flytower**, **Manage people** and your passkey, and is in **Activity**.
+A member with several mapped roles gets all of them together. Changes apply to the next command. Owner can't be given out through Discord. Saving needs **Manage integrations**, **Manage roles** and your passkey, and is in **Activity**.
 
 Anyone without a mapped role who tries a staff command gets a private "Sorry, you can't use that", and the attempt is in **Activity**. Commands used in a direct message with the app only get what everyone gets.
 
@@ -108,4 +108,4 @@ If Discord says the webhook is gone (it was deleted) or refuses it, Flytower sto
 
 - Every request to the endpoint must carry Discord's Ed25519 signature, made with the app's private key and checked against its public key before anything else happens. Requests with a missing or wrong signature, or a timestamp more than five minutes off, get a 401.
 - The bot token and each server's chat webhook are encrypted with keys derived from the panel's own secret, like notification and off-site storage secrets.
-- Connecting and disconnecting need **Manage Flytower** and a passkey check, and both are in **Activity**.
+- Connecting and disconnecting need **Manage integrations** and a passkey check, and both are in **Activity**.

@@ -24,7 +24,9 @@ Dangerous actions (deleting, restoring, resetting a world, opening SSH and so on
 
 ## Custom roles
 
-On **Access**, the **Roles** tab lists every role, and **New role** makes your own, such as a Moderator who can read the console and manage players but not start or stop the server. Tick what it can do. Anything done on a server includes seeing it. The permissions under **Across Flytower** (creating servers, people, managing Flytower, all activity) only count when the role is given for all servers.
+On **Access**, the **Roles** tab lists every role, and **New role** makes your own, such as a Moderator who can read the console and manage players but not start or stop the server. Tick what it can do. Anything done on a server includes seeing it, and some permissions bring others along: sending console commands includes reading the console, changing files includes reading them, and **Edit the YAML** includes every kind of setting. The permissions under **Across Flytower** (creating servers, inviting and managing people, roles, updates, notifications, integrations, branding, SSH and all activity) only count when the role is given for all servers.
+
+A server's settings are split so a role can cover just part of them: **Change settings** (properties, MOTD, icon, memory, recovery, address, time zone), **Manage content** (mods, plugins, datapacks, game version), **Manage schedules**, **Change backup settings**, and **Manage community features** (public page, stats, Discord chat, web map). The YAML tab can change everything at once, so it needs **Edit the YAML**; a change made anywhere else only needs the permission for the part it touches.
 
 Changing a role changes it for everyone who has it, straight away. A role can be deleted once nobody has it, and its unused invite links are cancelled. Built-in roles can't be changed, and you can't make a role that can do more than you can.
 

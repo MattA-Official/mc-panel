@@ -2,7 +2,8 @@ import type { H3Event } from 'h3'
 import { eq } from 'drizzle-orm'
 import { schema } from '../db'
 import { loadAccess } from '../auth/access'
-import { can, type Access, type Permission } from '../../shared/permissions'
+import { can, type Access, type Permission, type ServerPermission } from '../../shared/permissions'
+import { SECTION_NAMES, SECTION_PERMISSIONS } from '../spec/sections'
 import type { UpdatesSnapshot } from '../../shared/updates'
 
 /**
@@ -47,6 +48,25 @@ export async function requireServerPermission(event: H3Event, permission: Permis
   const server = getRouterParam(event, 'name') ?? ''
   const result = await requirePermission(event, permission, server)
   return { ...result, server }
+}
+
+/**
+ * Requires every permission a spec change needs (see spec/sections.ts). A change that touches
+ * nothing still needs one of them, so people who can only look can't start applies.
+ */
+export function requireSpecChange(event: H3Event, server: string, needs: ServerPermission[]) {
+  const access = eventAccess(event)
+  if (!needs.length) {
+    if (Object.values(SECTION_PERMISSIONS).some((p) => can(access, p, server))) return
+    throw createError({ statusCode: 403, statusMessage: "You can't change this server." })
+  }
+  const missing = needs.find((p) => !can(access, p, server))
+  if (missing) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: `You can't change this server's ${SECTION_NAMES[missing] ?? 'settings'}.`,
+    })
+  }
 }
 
 /** The access loaded for this request by one of the helpers above. */

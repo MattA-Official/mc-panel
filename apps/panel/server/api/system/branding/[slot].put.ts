@@ -4,7 +4,7 @@ const Params = z.object({ slot: z.enum(['logo', 'favicon']) })
 
 /** Uploads a logo or favicon: the raw SVG or PNG as the body, with its content type. */
 export default defineEventHandler(async (event) => {
-  await requirePermission(event, 'system.manage')
+  await requirePermission(event, 'system.branding')
   const { user } = await requireElevated(event)
   const { slot } = await getValidatedRouterParams(event, Params.parse)
   const length = Number(getRequestHeader(event, 'content-length') ?? 0)

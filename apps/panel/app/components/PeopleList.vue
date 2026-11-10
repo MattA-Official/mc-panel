@@ -2,6 +2,7 @@
 import type { GrantView, InviteView, PeopleView, Person } from '~/utils/people'
 /** Everyone who can sign in, what they can do, and invite links nobody has used yet. */
 const toast = useToast()
+const can = useCan()
 const withElevation = useElevation()
 const { data, refresh } = await useFetch<PeopleView>('/api/people')
 const { data: servers } = await useFetch<Server[]>('/api/servers', { default: () => [] })
@@ -191,7 +192,7 @@ async function remove() {
             · {{ p.passkeys }} {{ p.passkeys === 1 ? 'passkey' : 'passkeys' }}
           </p>
         </div>
-        <div class="flex shrink-0 gap-1">
+        <div v-if="can('people.manage')" class="flex shrink-0 gap-1">
           <UButton
             icon="i-lucide-pencil"
             color="neutral"

@@ -87,5 +87,9 @@ export const migrations: { tag: string; sql: string }[] = [
   {
     "tag": "0021_map_settings",
     "sql": "ALTER TABLE `servers` ADD `map` text;"
+  },
+  {
+    "tag": "0022_permission_split",
+    "sql": "-- 1.4.0 split three broad permissions into finer ones (#126). Custom roles get every key the\n-- old one stood for, so nobody can do more or less than before. Built-in roles live in code.\nUPDATE `roles` SET `permissions` = (\n\tSELECT json_group_array(`value`) FROM (\n\t\tSELECT `value` FROM json_each(`roles`.`permissions`)\n\t\t\tWHERE `value` NOT IN ('server.configure', 'system.manage')\n\t\tUNION\n\t\tSELECT `n`.`value` FROM json_each(`roles`.`permissions`) AS `o`,\n\t\t\tjson_each('[\"spec.edit\",\"settings.edit\",\"content.manage\",\"schedules.manage\",\"community.manage\",\"backups.schedule\"]') AS `n`\n\t\t\tWHERE `o`.`value` = 'server.configure'\n\t\tUNION\n\t\tSELECT `n`.`value` FROM json_each(`roles`.`permissions`) AS `o`,\n\t\t\tjson_each('[\"system.updates\",\"system.notifications\",\"system.integrations\",\"system.branding\",\"system.ssh\"]') AS `n`\n\t\t\tWHERE `o`.`value` = 'system.manage'\n\t\tUNION\n\t\tSELECT `n`.`value` FROM json_each(`roles`.`permissions`) AS `o`,\n\t\t\tjson_each('[\"people.invite\",\"roles.manage\"]') AS `n`\n\t\t\tWHERE `o`.`value` = 'people.manage'\n\t)\n)\nWHERE `built_in` = 0 AND EXISTS (\n\tSELECT 1 FROM json_each(`roles`.`permissions`)\n\t\tWHERE `value` IN ('server.configure', 'system.manage', 'people.manage')\n);\n--> statement-breakpoint\nINSERT INTO `audit` (`user_id`, `action`, `target`, `detail`)\n\tSELECT NULL, 'people.permissions_split', NULL, json_object('roles', count(*))\n\tFROM `roles` WHERE `built_in` = 0\n\tHAVING count(*) > 0;\n"
   }
 ]

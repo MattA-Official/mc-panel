@@ -4,7 +4,7 @@ const Params = z.object({ id: z.coerce.number().int() })
 
 /** Removes a channel. */
 export default defineEventHandler(async (event) => {
-  await requirePermission(event, 'system.manage')
+  await requirePermission(event, 'system.notifications')
   const { user } = await requireElevated(event)
   const { id } = await getValidatedRouterParams(event, Params.parse)
   const removed = await notifyHttp(() => useNotify().remove(id))

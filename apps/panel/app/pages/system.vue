@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { can } from '#shared/permissions'
+import { can, type InstallPermission } from '#shared/permissions'
 import { systemUpdateCount } from '#shared/updates'
 
 const updates = useLiveUpdates()
 const { state } = useAuthState()
-const allowed = (p: 'system.manage') => (state.value?.access ? can(state.value.access, p) : false)
+const allowed = (p: InstallPermission) => (state.value?.access ? can(state.value.access, p) : false)
 /** System is split into sections, so health, updates, storage, alerts, integrations, branding and SSH each get a page. */
 interface Section {
   label: string
@@ -12,17 +12,20 @@ interface Section {
   to: string
   exact?: boolean
   badge?: { label: string; color: 'info'; variant: 'subtle' }
+  /** Who sees it; the overview is for everyone. */
+  permission?: InstallPermission
 }
 const sections = computed<Section[]>(() => [
   { label: 'Overview', icon: 'i-lucide-gauge', to: '/system', exact: true },
-  ...(allowed('system.manage') ? systemSections.value : []),
+  ...systemSections.value.filter((s) => s.permission && allowed(s.permission)),
 ])
-/** Install-wide pages, for people who manage Flytower itself. */
+/** Install-wide pages, each for people with its permission. */
 const systemSections = computed<Section[]>(() => [
   {
     label: 'Updates',
     icon: 'i-lucide-arrow-up-circle',
     to: '/system/updates',
+    permission: 'system.updates',
     ...(systemUpdateCount(updates.value)
       ? {
           badge: {
@@ -33,11 +36,36 @@ const systemSections = computed<Section[]>(() => [
         }
       : {}),
   },
-  { label: 'Off-site storage', icon: 'i-lucide-cloud', to: '/system/storage' },
-  { label: 'Notifications', icon: 'i-lucide-bell', to: '/system/notifications' },
-  { label: 'Integrations', icon: 'i-lucide-blocks', to: '/system/integrations' },
-  { label: 'Branding', icon: 'i-lucide-palette', to: '/system/branding' },
-  { label: 'SSH', icon: 'i-lucide-terminal-square', to: '/system/ssh' },
+  {
+    label: 'Off-site storage',
+    icon: 'i-lucide-cloud',
+    to: '/system/storage',
+    permission: 'system.integrations',
+  },
+  {
+    label: 'Notifications',
+    icon: 'i-lucide-bell',
+    to: '/system/notifications',
+    permission: 'system.notifications',
+  },
+  {
+    label: 'Integrations',
+    icon: 'i-lucide-blocks',
+    to: '/system/integrations',
+    permission: 'system.integrations',
+  },
+  {
+    label: 'Branding',
+    icon: 'i-lucide-palette',
+    to: '/system/branding',
+    permission: 'system.branding',
+  },
+  {
+    label: 'SSH',
+    icon: 'i-lucide-terminal-square',
+    to: '/system/ssh',
+    permission: 'system.ssh',
+  },
 ])
 const route = useRoute()
 const current = computed(

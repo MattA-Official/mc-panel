@@ -87,7 +87,7 @@ async function save() {
     <div class="flex items-center justify-between gap-3">
       <h3 class="font-medium">Discord roles</h3>
       <UButton
-        v-if="!editing && data && can('people.manage')"
+        v-if="!editing && data && can('roles.manage')"
         :label="data.mappings.length ? 'Change' : 'Give a Discord role access'"
         size="sm"
         color="neutral"

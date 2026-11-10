@@ -30,11 +30,11 @@ const canPower = computed(() => can('server.power', name.value))
 const WRITE_NEEDS: [string, { permission: Permission; text: string }][] = [
   [
     'settings/yaml',
-    { permission: 'server.configure', text: 'You can read the YAML but not apply changes.' },
+    { permission: 'spec.edit', text: 'You can read the YAML but not apply changes.' },
   ],
   [
     'content',
-    { permission: 'server.configure', text: 'You can see what is installed but not change it.' },
+    { permission: 'content.manage', text: 'You can see what is installed but not change it.' },
   ],
   [
     'players',

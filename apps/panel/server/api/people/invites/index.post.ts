@@ -9,7 +9,7 @@ const Body = z.object({
 
 /** Makes a one-time invite link. The link is shown once. */
 export default defineEventHandler(async (event) => {
-  const { access } = await requirePermission(event, 'people.manage')
+  const { access } = await requirePermission(event, 'people.invite')
   const { user } = await requireElevated(event)
   const body = await readValidatedBody(event, Body.parse)
   const db = useDb()

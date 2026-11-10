@@ -18,7 +18,7 @@ const sections = computed<CollapsibleSection[]>(() => [
     label: 'General',
     icon: 'i-lucide-sliders-horizontal',
     description: 'Game rules, memory, version and address',
-    need: { permission: 'server.configure', text: configText },
+    need: { permission: 'settings.edit', text: configText },
   },
   {
     id: 'community',
@@ -33,7 +33,10 @@ const sections = computed<CollapsibleSection[]>(() => [
           .filter(Boolean)
           .join(' · ')
       : null,
-    need: { permission: 'server.configure', text: configText },
+    need: {
+      permission: 'community.manage',
+      text: "You can see this server's community features but not change them.",
+    },
   },
   {
     id: 'schedules',
@@ -41,7 +44,7 @@ const sections = computed<CollapsibleSection[]>(() => [
     icon: 'i-lucide-calendar-clock',
     description: 'Restarts, commands and announcements on a timer',
     need: {
-      permission: 'server.configure',
+      permission: 'schedules.manage',
       text: 'You can see the schedules but not change or run them.',
     },
   },
@@ -50,7 +53,7 @@ const sections = computed<CollapsibleSection[]>(() => [
     label: 'Maintenance',
     icon: 'i-lucide-wrench',
     description: 'Crash recovery, disk, copying and deleting',
-    need: { permission: 'server.configure', text: configText },
+    need: { permission: 'settings.edit', text: configText },
   },
 ])
 async function restart() {
@@ -128,7 +131,7 @@ async function restart() {
           <span class="block font-semibold">Edit as YAML</span>
           <span class="block truncate text-sm text-muted">
             Everything above as one file{{
-              can('server.configure', server.name) ? ', with a review before it applies' : ''
+              can('spec.edit', server.name) ? ', with a review before it applies' : ''
             }}
           </span>
         </span>

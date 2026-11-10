@@ -12,7 +12,7 @@ const Body = z.discriminatedUnion('action', [
  * Needs a recent passkey check, and is recorded in Activity with what it freed.
  */
 export default defineEventHandler(async (event) => {
-  await requirePermission(event, 'system.manage')
+  await requirePermission(event, 'system.updates')
   const { user } = await requireElevated(event)
   const body = await readValidatedBody(event, Body.parse)
   let freedBytes: number

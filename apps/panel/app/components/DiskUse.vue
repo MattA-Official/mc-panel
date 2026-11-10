@@ -127,7 +127,7 @@ const cleanOpen = computed({
   },
 })
 const can = useCan()
-const canManage = computed(() => can('system.manage'))
+const canManage = computed(() => can('system.updates'))
 
 const totalBytes = computed(() => (data.value?.totalMb ?? 0) * MB)
 const width = (bytes: number) =>

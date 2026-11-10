@@ -14,7 +14,7 @@ const Body = z.object({
 
 /** Edits server.properties. Minecraft reads it at start-up, so changes need a restart. */
 export default defineEventHandler(async (event) => {
-  await requireServerPermission(event, 'server.configure')
+  await requireServerPermission(event, 'settings.edit')
   const { user } = await requireUserSession(event)
   const { name } = await getValidatedRouterParams(event, Params.parse)
   const { values } = await readValidatedBody(event, Body.parse)

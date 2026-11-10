@@ -27,7 +27,13 @@ export function auditKind(action: string): AuditKind {
 }
 
 /** Things Flytower records by itself, with nobody signed in behind them. */
-const BY_FLYTOWER = ['server.crashed', 'server.crash_loop', 'server.unresponsive', 'schedule.run']
+const BY_FLYTOWER = [
+  'people.permissions_split',
+  'server.crashed',
+  'server.crash_loop',
+  'server.unresponsive',
+  'schedule.run',
+]
 
 /**
  * Who to show for an entry: the person; "Name via Discord" for a slash command; Flytower for
@@ -104,6 +110,8 @@ export function describeAudit(
       return `Removed ${str(d.person)}`
     case 'people.role_saved':
       return `${d.created ? 'Made' : 'Changed'} the ${str(d.name)} role`
+    case 'people.permissions_split':
+      return 'Split permissions into finer ones; custom roles kept everything they could do'
     case 'people.role_deleted':
       return `Deleted the ${str(d.name)} role`
     case 'passkey.added':

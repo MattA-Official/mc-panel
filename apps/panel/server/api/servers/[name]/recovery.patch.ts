@@ -7,7 +7,7 @@ const Body = z.object({ restartWhenUnresponsive: z.boolean() }).strict()
 
 /** Whether to restart a server automatically when its console stops answering. */
 export default defineEventHandler(async (event) => {
-  await requireServerPermission(event, 'server.configure')
+  await requireServerPermission(event, 'settings.edit')
   const { user } = await requireUserSession(event)
   const { name } = await getValidatedRouterParams(event, Params.parse)
   const body = await readValidatedBody(event, Body.parse)

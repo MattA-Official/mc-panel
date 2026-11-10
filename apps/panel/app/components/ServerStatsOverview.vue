@@ -75,7 +75,7 @@ const sinceLabel = computed(() =>
       title="Player stats are off"
       description="Nothing new is being kept for this server. What was kept before is still shown."
       :actions="
-        can('server.configure', server.name)
+        can('community.manage', server.name)
           ? [
               {
                 label: 'Settings',
@@ -98,7 +98,7 @@ const sinceLabel = computed(() =>
       </p>
       <div class="flex items-center gap-2">
         <UButton
-          v-if="can('server.configure', server.name) && data?.enabled"
+          v-if="can('community.manage', server.name) && data?.enabled"
           label="Read now"
           icon="i-lucide-refresh-cw"
           size="xs"

@@ -6,7 +6,7 @@ const Body = z.object({ url: z.string().trim().url().max(500).optional() })
 
 /** Sends one test message to the webhook given, or the saved one, and says whether it arrived. */
 export default defineEventHandler(async (event) => {
-  await requireServerPermission(event, 'server.configure')
+  await requireServerPermission(event, 'community.manage')
   const { name } = await getValidatedRouterParams(event, Params.parse)
   const { url } = await readValidatedBody(event, Body.parse)
   const server = findServer(name)

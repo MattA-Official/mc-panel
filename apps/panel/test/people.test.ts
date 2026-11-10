@@ -233,6 +233,18 @@ describe('custom roles', () => {
     expect(can(access(sam), 'players.manage', 'survival')).toBe(false)
   })
 
+  test('saving a role adds what its permissions need', async () => {
+    const { saveRole } = await import('../server/auth/people')
+    const { db, owner, access } = setup()
+    const writer = saveRole(db, access(owner), { name: 'Writer', permissions: ['files.write'] })
+    expect(writer.permissions).toEqual(['server.view', 'files.read', 'files.write'])
+    const content = saveRole(db, access(owner), {
+      name: 'Content',
+      permissions: ['content.manage'],
+    })
+    expect(content.permissions).toEqual(['server.view', 'content.manage'])
+  })
+
   test('names are unique, built-in roles are fixed, and nobody makes a role beyond themselves', async () => {
     const { saveRole } = await import('../server/auth/people')
     const { db, owner, person, access } = setup()
@@ -251,7 +263,7 @@ describe('custom roles', () => {
     )
     const adminAll = person('Ada', 'admin')
     fails(
-      () => saveRole(db, access(adminAll), { name: 'Boss', permissions: ['system.manage'] }),
+      () => saveRole(db, access(adminAll), { name: 'Boss', permissions: ['system.updates'] }),
       /more access than you have/,
     )
   })

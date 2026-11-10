@@ -9,7 +9,7 @@ const Params = z.object({ name: z.string().max(40) })
  * sends what players say off the machine, so it needs a fresh passkey check.
  */
 export default defineEventHandler(async (event) => {
-  await requireServerPermission(event, 'server.configure')
+  await requireServerPermission(event, 'community.manage')
   const { user } = await requireElevated(event)
   const { name } = await getValidatedRouterParams(event, Params.parse)
   const body = await readValidatedBody(event, RelayInput.parse)

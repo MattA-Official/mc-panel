@@ -9,7 +9,7 @@ const Body = z.object({
 
 /** Makes a custom role. */
 export default defineEventHandler(async (event) => {
-  const { access, session } = await requirePermission(event, 'people.manage')
+  const { access, session } = await requirePermission(event, 'roles.manage')
   await requireElevated(event)
   const body = await readValidatedBody(event, Body.parse)
   const role = peopleCall(() => saveRole(useDb(), access, body))

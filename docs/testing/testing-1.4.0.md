@@ -106,3 +106,17 @@ You need a test VPS on this build with at least one server. Test with the Bun ag
 - [ ] **Activity** shows each clean-up, such as "Shrank the system journal to 100 MB, freeing 412.3 MB", under **Flytower, notifications, branding and Discord**.
 - [ ] Stop the agent (`sudo systemctl stop flytower-agent`) and press **Measure now**: servers are still measured, and the rest goes back to one **System and other files** part. Start it again and measure: the parts come back.
 - [ ] A disk warning sent before this update isn't sent again after it.
+
+## Finer permissions
+
+Do this on a box that was on 1.3 first, with at least one custom role, so the upgrade has something to move. You need a second account (an invite link in a private window is easiest).
+
+- [ ] Before upgrading, note what each custom role can do on **Access**, **Roles**. After upgrading, **Activity** has one entry saying permissions were split, and each role still covers the same things (a role that had **Change settings** now lists all the settings permissions and **Edit the YAML**).
+- [ ] The second account, with that old role, can still do everything it did before. Nothing new appears for it either.
+- [ ] **Access**, **Roles**, **New role**: the list has **Change settings**, **Manage content**, **Manage schedules**, **Change backup settings**, **Manage community features** and **Edit the YAML** for servers, and **Invite people**, **Manage people**, **Manage roles**, **Update Flytower**, **Manage notifications**, **Manage integrations**, **Change branding** and **Open SSH** across Flytower.
+- [ ] Make a role with only **Manage content** and give it to the second account on one server. As them: **Content** lets you add and remove mods. **Settings** (General) is view only. The **YAML** tab shows the spec but says you can't apply changes.
+- [ ] As them, paste a spec into the YAML tab's apply anyway (or change a property through the API): it's refused with "You can't change this server's settings."
+- [ ] Make a role with only **Change settings**: properties and the MOTD save, and **Content** is view only.
+- [ ] Make a role with **Send console commands** only and save it: it now also lists **Read the console and logs**. One with **Change files** also gets **Read files**.
+- [ ] A role with **Manage notifications** across Flytower shows only **Notifications** on **System** (plus the overview). **Updates**, **Branding** and **SSH** are hidden and their pages refuse.
+- [ ] A role with **Invite people** but not **Manage people** can open **Access** and make invite links, but has no pencil or remove buttons on people and no **New role**.
