@@ -1,5 +1,6 @@
 import type { Handlers } from '../dispatch.ts'
 import { protocolInfo } from '../dispatch.ts'
+import * as disk from './disk.ts'
 import * as runtime from './runtime.ts'
 import * as server from './server.ts'
 import * as service from './service.ts'
@@ -24,4 +25,8 @@ export const handlers: Handlers = {
   'update.status': update.status,
   'update.install': update.install,
   'update.rollback': update.rollback,
+  'disk.usage': disk.usage,
+  'disk.vacuum-journal': disk.vacuumJournal,
+  'disk.clean-apt': disk.cleanApt,
+  'disk.prune-flytower': disk.pruneFlytower,
 }

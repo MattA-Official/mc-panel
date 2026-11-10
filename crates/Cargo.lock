@@ -168,6 +168,7 @@ version = "0.0.0"
 dependencies = [
  "base64",
  "ed25519-dalek",
+ "flytower-du",
  "rustix",
  "serde",
  "serde_json",

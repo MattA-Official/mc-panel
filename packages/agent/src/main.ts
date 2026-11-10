@@ -1,3 +1,4 @@
+import { duBinary } from './du.ts'
 import { refreshCaddyfile } from './caddy.ts'
 import { UnitEvents } from './events.ts'
 import { realExec } from './exec.ts'
@@ -30,6 +31,7 @@ const ctx = {
     'https://github.com/MattA-Official/mc-panel/releases/download',
   ),
   panelGroup: env('FLYTOWER_PANEL_GROUP', 'flytower'),
+  du: duBinary(),
   // stdout goes to the journal; one JSON line per request.
   log: (e: unknown) => console.log(JSON.stringify({ audit: e })),
   unitEvents: new UnitEvents(),

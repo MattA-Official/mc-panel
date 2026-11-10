@@ -378,12 +378,15 @@ export class NotifyService {
     }
   }
 
-  /** Warns at 85% and 95% full, once each, and says when it's back below 80%. */
-  disk(usedMb: number, totalMb: number) {
+  /**
+   * Warns at 85% and 95% full, once each, and says when it's back below 80%. Kept per
+   * machine; this machine's state was once kept under `disk.full:*`, which still counts.
+   */
+  disk(usedMb: number, totalMb: number, machine = 'local') {
     if (!(totalMb > 0)) return
     const pct = (usedMb / totalMb) * 100
-    const key = 'disk.full:*'
-    const state = this.state(key)
+    const key = `disk.full:${machine}`
+    const state = this.state(key) ?? (machine === 'local' ? this.state('disk.full:*') : null)
     const warned = state?.open ? Number(state.value) || 0 : 0
     const level = [...DISK_LEVELS].reverse().find((l) => pct >= l) ?? 0
     const free = formatMb(totalMb - usedMb)

@@ -29,7 +29,8 @@ export async function status(
   }
 }
 
-async function busy(ctx: AgentContext) {
+/** Refuses while an update is running. */
+export async function busy(ctx: AgentContext) {
   const r = await readRecord(ctx.paths.state)
   // A record left "running" for over 10 minutes is from an updater that died.
   if (r?.state === 'running' && Date.now() - Date.parse(r.at) < 10 * 60_000) {
