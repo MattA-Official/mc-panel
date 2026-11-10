@@ -49,11 +49,30 @@ const {
   data: updates,
   refresh: refreshUpdates,
   status: updatesStatus,
+  error: updatesError,
 } = await useFetch<{ updates: Update[] }>(() => `/api/servers/${name.value}/content/updates`, {
   server: false,
   lazy: true,
 })
-const updateFor = (title: string) => updates.value?.updates.find((u) => u.label === title)
+// The background check's last result, shown until (or if) the fresh check above answers.
+const live = useLiveUpdates()
+const stored = computed(() => live.value?.servers[name.value])
+const updateList = computed<Update[]>(
+  () => updates.value?.updates ?? stored.value?.content?.summary?.updates ?? [],
+)
+const updateFor = (title: string) => updateList.value.find((u) => u.label === title)
+const checkFailed = computed(() => {
+  if (updatesStatus.value === 'pending' || updates.value) return null
+  const e = updatesError.value ? errorMessage(updatesError.value) : stored.value?.content?.error
+  return e ? e.replace(/\.$/, '') : null
+})
+const lastChecked = computed(() => stored.value?.content?.checkedAt ?? null)
+/** A newer Minecraft, mentioned only: changing version stays a choice in Settings. */
+const minecraft = computed(() => {
+  const m = stored.value?.minecraft?.summary
+  return m?.newest && m.current === server.value?.mcVersion ? m : null
+})
+const missingOpen = ref(false)
 
 const KIND_LABEL: Record<Kind, string> = { mod: 'Mod', plugin: 'Plugin', datapack: 'Datapack' }
 
@@ -278,8 +297,8 @@ const pendingText = computed(() => {
       </p>
       <div class="flex gap-2">
         <UButton
-          v-if="updates?.updates.length"
-          :label="`Update ${updates.updates.length}`"
+          v-if="updateList.length"
+          :label="`Update ${updateList.length}`"
           icon="i-lucide-arrow-up-circle"
           color="neutral"
           variant="outline"
@@ -381,6 +400,53 @@ const pendingText = computed(() => {
       "
     />
     <p v-if="updatesStatus === 'pending'" class="text-xs text-dimmed">Checking for updates…</p>
+    <p v-else-if="checkFailed" class="text-xs text-dimmed" data-e2e="content-check-failed">
+      Couldn't check for updates: {{ checkFailed }}.
+      <template v-if="lastChecked"
+        >Showing what was found {{ formatDateTime(lastChecked) }}.</template
+      >
+    </p>
+
+    <div
+      v-if="minecraft"
+      class="rounded-md border border-default px-4 py-3 text-sm"
+      data-e2e="minecraft-update"
+    >
+      <p v-if="minecraft.ready === minecraft.newest">
+        <UIcon name="i-lucide-info" class="mr-1 size-4 align-text-bottom text-info" />
+        Minecraft {{ minecraft.newest }} is out, and everything installed has a build for it.
+        <NuxtLink :to="`/servers/${name}/settings`" class="text-primary underline">
+          Change the version in Settings</NuxtLink
+        >
+        when you're ready.
+      </p>
+      <template v-else>
+        <p>
+          <UIcon name="i-lucide-info" class="mr-1 size-4 align-text-bottom text-info" />
+          Minecraft {{ minecraft.newest }} is out, but not everything installed has a build for it
+          yet.
+          <template v-if="minecraft.ready">
+            Minecraft {{ minecraft.ready }} is ready, from
+            <NuxtLink :to="`/servers/${name}/settings`" class="text-primary underline">
+              Settings</NuxtLink
+            >.
+          </template>
+        </p>
+        <UButton
+          v-if="minecraft.missing.length"
+          class="mt-1 -ml-2.5"
+          size="xs"
+          color="neutral"
+          variant="link"
+          :trailing-icon="missingOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+          :label="missingOpen ? 'Hide what is missing' : 'What is missing'"
+          @click="missingOpen = !missingOpen"
+        />
+        <ul v-if="missingOpen" class="mt-1 list-disc space-y-0.5 pl-5 text-xs text-muted">
+          <li v-for="m in minecraft.missing" :key="m">{{ m }}</li>
+        </ul>
+      </template>
+    </div>
 
     <section v-if="data?.unmanaged.length" class="space-y-2">
       <h2 class="text-sm font-semibold">Added by hand</h2>
