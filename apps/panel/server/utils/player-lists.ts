@@ -17,3 +17,12 @@ export async function writeList(name: string, file: ListFile, list: Entry[]) {
   await chmod(`${path}.flytower`, 0o660)
   await rename(`${path}.flytower`, path)
 }
+
+/** The server's usercache.json (name to UUID for everyone who has joined), or []. */
+export async function readUserCache(name: string): Promise<unknown> {
+  try {
+    return JSON.parse(await readFile(join(serverDir(name), 'usercache.json'), 'utf8'))
+  } catch {
+    return []
+  }
+}

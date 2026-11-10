@@ -1,5 +1,7 @@
 /** Pure helpers for the Players tab: parsing `list`, commands, and the JSON list files. */
 
+import { offlineUuid } from '@flytower/providers'
+
 export interface OnlinePlayers {
   count: number
   max: number
@@ -101,4 +103,20 @@ export const FILE_ACTIONS: Partial<Record<PlayerAction, { file: ListFile; add: b
   deop: { file: 'ops.json', add: false },
   ban: { file: 'banned-players.json', add: true },
   pardon: { file: 'banned-players.json', add: false },
+}
+
+/**
+ * UUIDs for the names `list` shows, from the server's usercache.json (written as players
+ * join). A name that isn't there gets the UUID an offline-mode server would give it, which
+ * draws a default head.
+ */
+export function withUuids(names: string[], usercache: unknown): { name: string; uuid: string }[] {
+  const known = new Map<string, string>()
+  if (Array.isArray(usercache)) {
+    for (const e of usercache as { name?: unknown; uuid?: unknown }[]) {
+      if (typeof e?.name === 'string' && typeof e.uuid === 'string')
+        known.set(e.name.toLowerCase(), e.uuid)
+    }
+  }
+  return names.map((name) => ({ name, uuid: known.get(name.toLowerCase()) ?? offlineUuid(name) }))
 }
