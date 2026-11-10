@@ -39,6 +39,7 @@ const base: PublicStatus = {
   },
   version: { minecraft: '1.21.10', loader: 'Fabric' },
   pack: null,
+  map: null,
 }
 
 function source(
@@ -262,6 +263,17 @@ describe('/status', () => {
   })
 
   it('leaves out what the public page hides', () => {
+    expect(
+      statusEmbed({ ...base, map: { url: '/s/survival/map/' } }, 'https://panel.example').fields,
+    ).toContainEqual({
+      name: 'Map',
+      value: '[Open the map](https://panel.example/s/survival/map/)',
+      inline: true,
+    })
+    // No link without the panel's address.
+    expect(
+      statusEmbed({ ...base, map: { url: '/s/survival/map/' } }, null).fields.map((f) => f.name),
+    ).not.toContain('Map')
     const e = statusEmbed(
       { ...base, state: 'offline', players: null, version: null, description: '', icon: null },
       null,

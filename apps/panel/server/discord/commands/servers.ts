@@ -79,6 +79,8 @@ export function statusEmbed(s: PublicStatus, origin: string | null) {
       inline: true,
     })
   }
+  const map = absolute(origin, s.map?.url ?? null)
+  if (map) fields.push({ name: 'Map', value: `[Open the map](${map})`, inline: true })
   const icon = absolute(origin, s.icon)
   return {
     title: s.displayName.slice(0, 256),
