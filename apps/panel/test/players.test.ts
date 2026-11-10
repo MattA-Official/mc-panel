@@ -7,7 +7,9 @@ import {
   mcDate,
   parseList,
   removeEntry,
+  withUuids,
 } from '../server/players'
+import { offlineUuid } from '@flytower/providers'
 
 describe('players', () => {
   it('parses list replies', () => {
@@ -43,5 +45,19 @@ describe('players', () => {
       entryFor('banned-players.json', steve, { now: new Date(Date.UTC(2026, 10, 9, 13, 5, 1)) }),
     ).toMatchObject({ created: '2026-11-09 13:05:01 +0000', expires: 'forever' })
     expect(mcDate(new Date(Date.UTC(2026, 0, 2, 3, 4, 5)))).toBe('2026-01-02 03:04:05 +0000')
+  })
+})
+
+describe('online players', () => {
+  it('finds UUIDs in usercache.json, case-insensitively', () => {
+    const cache = [
+      { name: 'Notch', uuid: '069a79f4-44e9-4726-a5be-fca90e38aaf5', expiresOn: '2026-12-01' },
+      { junk: true },
+    ]
+    expect(withUuids(['notch', 'Stranger'], cache)).toEqual([
+      { name: 'notch', uuid: '069a79f4-44e9-4726-a5be-fca90e38aaf5' },
+      { name: 'Stranger', uuid: offlineUuid('Stranger') },
+    ])
+    expect(withUuids(['Alex'], 'not a list')).toEqual([{ name: 'Alex', uuid: offlineUuid('Alex') }])
   })
 })

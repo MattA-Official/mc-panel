@@ -1,7 +1,7 @@
 <script setup lang="ts">
 interface PlayersView {
   running: boolean
-  online: { count: number; max: number; names: string[] } | null
+  online: { count: number; max: number; players: { name: string; uuid: string }[] } | null
   whitelistEnabled: boolean
   onlineMode: boolean
   whitelist: { uuid: string; name: string }[]
@@ -88,12 +88,16 @@ const isOp = (n: string) => data.value?.ops.some((o) => o.name.toLowerCase() ===
           >{{ data.online.count }} of {{ data.online.max }}</span
         >
       </div>
-      <p v-if="!data.online || data.online.names.length === 0" class="mt-3 text-sm text-muted">
+      <p v-if="!data.online || data.online.players.length === 0" class="mt-3 text-sm text-muted">
         Nobody's playing right now.
       </p>
       <ul v-else class="mt-3 divide-y divide-default">
-        <li v-for="p in data.online.names" :key="p" class="flex items-center gap-3 py-2">
-          <UAvatar :alt="p" size="sm" class="rounded-sm" />
+        <li
+          v-for="{ name: p, uuid } in data.online.players"
+          :key="p"
+          class="flex items-center gap-3 py-2"
+        >
+          <PlayerHead :uuid="uuid" />
           <span class="flex-1 font-medium">{{ p }}</span>
           <UBadge v-if="isOp(p)" label="Operator" size="sm" variant="subtle" />
           <UButton
@@ -140,7 +144,7 @@ const isOp = (n: string) => data.value?.ops.some((o) => o.name.toLowerCase() ===
         </form>
         <ul class="mt-3 space-y-1">
           <li v-for="p in data.whitelist" :key="p.uuid" class="flex items-center gap-2 text-sm">
-            <UAvatar :alt="p.name" size="xs" class="rounded-sm" />
+            <PlayerHead :uuid="p.uuid" />
             <span class="flex-1">{{ p.name }}</span>
             <UButton
               icon="i-lucide-x"
@@ -174,7 +178,7 @@ const isOp = (n: string) => data.value?.ops.some((o) => o.name.toLowerCase() ===
         </form>
         <ul class="mt-3 space-y-1">
           <li v-for="p in data.ops" :key="p.uuid" class="flex items-center gap-2 text-sm">
-            <UAvatar :alt="p.name" size="xs" class="rounded-sm" />
+            <PlayerHead :uuid="p.uuid" />
             <span class="flex-1">{{ p.name }}</span>
             <UButton
               icon="i-lucide-x"
@@ -219,7 +223,7 @@ const isOp = (n: string) => data.value?.ops.some((o) => o.name.toLowerCase() ===
         </form>
         <ul class="mt-3 space-y-1">
           <li v-for="p in data.banned" :key="p.uuid" class="flex items-start gap-2 text-sm">
-            <UAvatar :alt="p.name" size="xs" class="mt-0.5 rounded-sm" />
+            <PlayerHead :uuid="p.uuid" />
             <span class="flex-1">
               {{ p.name }}
               <span v-if="p.reason" class="block text-xs text-muted">{{ p.reason }}</span>
