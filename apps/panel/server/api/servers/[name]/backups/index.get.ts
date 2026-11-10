@@ -19,6 +19,7 @@ export default defineEventHandler(async (event) => {
         bytes: b.bytes,
         kind: b.kind,
         note: b.note,
+        kept: b.kept,
         createdAt: b.createdAt,
         local: await Bun.file(service.path(b)).exists(),
         offsite: b.offsiteState

@@ -25,6 +25,22 @@ On any server where you can join with a real (online-mode) account, and ideally 
 - [ ] An old-style skin (Notch's, for example: whitelist `Notch`) shows his face, not a black square.
 - [ ] The browser's console shows no content security policy errors on the Players tab.
 
+## Past worlds
+
+On a server with a world you don't mind resetting, ideally with a datapack or two installed.
+
+- [ ] **World**, **Reset the world**. The dialog ticks **Keep the old world as a past world** and suggests a name like "Survival world, November 2026". Change it to "2025–26 world", tick **Keep the final backup forever**, and reset.
+- [ ] The job shows a **Keeping the old world** step, and ends with "The old one is kept as "2025–26 world" in Past worlds". The new world generates, and the datapacks are still installed.
+- [ ] **Past worlds** on the World tab lists it with its size. **Download** gives `2025–26 world.zip`; unzip it into your `saves` folder and open it in single player. It's the old world, datapacks working.
+- [ ] **Share** it for 1 hour. The link downloads the same zip in a private window. **Turn off** stops the link.
+- [ ] **Rename** it. The new name shows straight away and is used for the next download.
+- [ ] **Backups**: the safety backup "Before resetting the world (2025–26 world)" has a **Kept** badge. Take a few manual backups and change something that takes safety backups (apply a YAML change touching mods) four times: the kept one stays. **Stop keeping forever** on it, then trigger another safety backup: it's pruned.
+- [ ] **Start a server from it** (in the past world's **⋯** menu) opens Import with the world unpacked. Pick Fabric and the same Minecraft version, create it, and join: it's the old world.
+- [ ] **Import**, **A past world** lists the same world with the server it came from.
+- [ ] Reset again with **Keep the old world** unticked: nothing is added to Past worlds, and the job says the old one is in Backups.
+- [ ] Fill the disk until the world won't fit twice (or test on a small VPS), then reset with a past world: the reset fails saying there isn't room, the server comes back up, and the old world is untouched.
+- [ ] Delete a server that has a past world. **Import**, **A past world** still lists it.
+
 ## MOTD editor
 
 On any server, in **Settings**, **Game settings**. Have Minecraft open on the multiplayer screen with the server added, to compare.
