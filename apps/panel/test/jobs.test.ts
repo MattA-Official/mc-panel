@@ -8,6 +8,7 @@ import type { Fetch, LoaderProvider, ResolvedServer } from '@flytower/providers'
 import { openDb, schema } from '../server/db'
 import { Bus } from '../server/jobs/bus'
 import { defaultProperties, randomSecret } from '../server/jobs/properties'
+import { parseProperties, toRecord } from '../server/properties'
 import { JobRunner, lowestFree, type AgentCall, type JobEvent } from '../server/jobs/runner'
 
 const JAR = 'pretend jar'
@@ -242,9 +243,10 @@ describe('helpers', () => {
     expect(lowestFree(25565, new Set([25565, 25566, 25568]))).toBe(25567)
   })
 
-  it('escapes the motd', () => {
-    const p = defaultProperties({ port: 1, rconPort: 2, rconPassword: 'x', motd: 'Café\nTwo' })
-    expect(p).toContain('motd=Caf\\u00e9 Two')
+  it('escapes the motd, keeping its second line', () => {
+    const p = defaultProperties({ port: 1, rconPort: 2, rconPassword: 'x', motd: '§6Café\nTwo' })
+    expect(p).toContain('motd=\\u00a76Caf\\u00e9\\nTwo')
+    expect(toRecord(parseProperties(p))['motd']).toBe('§6Café\nTwo')
   })
 
   it('makes fresh secrets of 40 letters and digits', () => {

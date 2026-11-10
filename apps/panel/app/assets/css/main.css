@@ -99,3 +99,10 @@ a[data-slot='base'][aria-disabled='true'] {
   filter: grayscale(1);
   opacity: 0.45;
 }
+
+/* Monocraft (SIL OFL 1.1, licence in public/fonts), subset to Latin, for the MOTD preview. */
+@font-face {
+  font-family: 'Monocraft';
+  src: url('/fonts/monocraft.woff2') format('woff2');
+  font-display: swap;
+}

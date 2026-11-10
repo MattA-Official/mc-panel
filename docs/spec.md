@@ -81,6 +81,15 @@ Values for `server.properties`: strings, numbers or booleans. Anything left out 
 - `server-port`, `enable-rcon` and `rcon.port` are managed by Flytower. Set the port with `port`.
 - Secrets are hidden: `rcon.password`, `management-server-secret`, and any other key ending in `secret` or `password` (such as `-secret` or `.password`). They're never written into a spec or shown in the Settings form, and editing other properties or applying a spec keeps whatever secret is on disk. A cloned server gets fresh secrets of its own. To change one by hand, edit `server.properties` in the **Files** tab.
 
+`motd` is the message of the day, shown under the server in the multiplayer list. It can have two lines and Minecraft's `§` formatting codes: colours `§0` to `§f`, `§l` bold, `§o` italic, `§n` underline, `§m` strikethrough, `§k` obfuscated and `§r` to reset. In YAML, use double quotes so `\n` starts the second line:
+
+```yaml
+properties:
+  motd: "§6§lNew Theatre §r§7Survival\n§bOpen to members"
+```
+
+The editor in **Settings**, **Game settings** writes the same string, so you rarely need to type codes by hand. Hex colours aren't supported, because vanilla only reads the 16 colours from `server.properties`.
+
 ### `content`
 
 The full list of what the server runs. Anything installed through Flytower that isn't listed is removed. Dependencies don't need listing. Each item is one of:

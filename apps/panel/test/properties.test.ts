@@ -55,6 +55,21 @@ describe('properties', () => {
     expect(toRecord(parseProperties(out))['motd']).toBe('Hello: wörld #1')
   })
 
+  it('writes a two-line motd with its codes on one line, and reads it back', () => {
+    const motd = '§6§lNew Theatre §r§7Survival\n§bOpen to members: join on Discord'
+    const out = stringifyProperties(setProperties(parseProperties(SAMPLE), { motd }))
+    expect(out).toContain(
+      'motd=\\u00a76\\u00a7lNew Theatre \\u00a7r\\u00a77Survival\\n\\u00a7bOpen to members\\: join on Discord\n',
+    )
+    expect(out.split('\n').filter((l) => l.startsWith('motd=')).length).toBe(1)
+    expect(toRecord(parseProperties(out))['motd']).toBe(motd)
+  })
+
+  it('reads § written by hand, raw or escaped', () => {
+    const r = toRecord(parseProperties('motd=§aHi\\n\\u00A7cthere\n'))
+    expect(r['motd']).toBe('§aHi\n§cthere')
+  })
+
   it('keeps CRLF files as CRLF', () => {
     const crlf = 'a=1\r\nb=2\r\n'
     expect(stringifyProperties(setProperties(parseProperties(crlf), { b: '3' }))).toBe(

@@ -61,3 +61,19 @@ On **System**, **Branding**. See [Branding](branding.md). Have an SVG and a PNG 
 - [ ] Register a new passkey (**System**, **Account and security**): the browser's prompt names your panel. Old passkeys still sign in.
 - [ ] **Reset to Flytower** asks first, then puts everything back.
 - [ ] The browser's console shows no content security policy errors on any page.
+
+## MOTD editor
+
+On any server, in **Settings**, **Game settings**. Have Minecraft open on the multiplayer screen with the server added, to compare.
+
+- [ ] **Message of the day** is one box with two rows (Enter starts the second line; a third is refused), with a preview of the server's entry in the multiplayer list. An MOTD written before (plain, or with `§` codes typed by hand) opens already formatted, and opening the tab alone doesn't mark anything unsaved.
+- [ ] Select a word and pick a colour from the colour menu, then bold, italic, underline, strikethrough and obfuscated. The word changes in the line and the preview straight away; obfuscated text keeps changing in the preview. Pressing a format again on the same word turns it off, and **Clear formatting** takes everything off the selection.
+- [ ] With nothing selected, press **Bold** (or pick a colour) and type: the new text is bold, and moving the cursor away forgets it.
+- [ ] Paste `§dpink` into the box: it arrives as pink text, not as the codes.
+- [ ] Turn on **Show codes**. The box shows the raw `§` text, the toolbar buttons insert codes at the cursor, and turning it off reads your edits back in, formatted.
+- [ ] Type a first line that's too long. The preview wraps it as the game does, and a warning says how many pixels too wide it is and what gets cut off.
+- [ ] Save and restart the server. The multiplayer list shows the same two lines, colours and formatting as the preview (the font and the default icon differ, since Mojang's aren't shipped).
+- [ ] `server.properties` (Files tab) has the MOTD on one line, with `\n` between the two lines and `§` for each `§`. Reload Settings: the editor reads it back unchanged.
+- [ ] The **YAML** tab shows the same `motd:` string, and a server made **From YAML** with a two-line `motd` gets both lines.
+- [ ] On a phone, the toolbar wraps, the preview shrinks to fit, and selecting text then tapping a button still applies to the selection.
+- [ ] The browser's console shows no content security policy errors.
