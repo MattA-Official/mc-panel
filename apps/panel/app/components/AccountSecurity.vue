@@ -68,7 +68,7 @@ const day = (iso: string) => formatDate(iso)
 </script>
 
 <template>
-  <UCard class="max-w-xl" data-e2e="account-security">
+  <UCard data-e2e="account-security">
     <template #header>
       <h2 class="font-semibold">Your passkeys</h2>
     </template>

@@ -33,7 +33,7 @@ const { data: health, refresh } = await useFetch('/api/health')
           </template>
         </UCard>
         <UCard>
-          <template #header><h2 class="font-medium">This machine</h2></template>
+          <template #header><h2 class="text-base font-semibold">This machine</h2></template>
           <MetricsHistory />
         </UCard>
         <FlytowerUpdates />

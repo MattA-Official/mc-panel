@@ -118,7 +118,7 @@ const when = (at: string) => formatDateTime(at)
 </script>
 
 <template>
-  <UCard v-if="data" class="max-w-xl" data-e2e="updates">
+  <UCard v-if="data" data-e2e="updates">
     <div class="space-y-4 text-sm">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
@@ -145,6 +145,7 @@ const when = (at: string) => formatDateTime(at)
         legend="Update channel"
         orientation="horizontal"
         variant="card"
+        :ui="{ fieldset: 'grid gap-2 sm:auto-cols-fr sm:grid-flow-col', item: 'w-full' }"
         :disabled="savingChannel || !!working"
         data-e2e="update-channel"
         @update:model-value="(v) => setChannel(v as Status['channel'])"

@@ -46,7 +46,7 @@ async function save() {
 
 <template>
   <section class="rounded-lg border border-default p-5">
-    <h2 class="font-display text-lg tracking-wide uppercase">Resources</h2>
+    <h2 class="text-base font-semibold">Resources</h2>
     <div class="mt-4 grid gap-6 sm:grid-cols-[1fr_auto]">
       <UFormField
         label="Memory"

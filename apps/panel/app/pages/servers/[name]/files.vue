@@ -245,10 +245,9 @@ function onDrop(e: DragEvent) {
         icon="i-lucide-folder-plus"
         color="neutral"
         variant="outline"
-        size="sm"
         @click="newFolder = ''"
       />
-      <UButton label="Upload" icon="i-lucide-upload" size="sm" @click="fileInput?.click()" />
+      <UButton label="Upload" icon="i-lucide-upload" @click="fileInput?.click()" />
       <input
         ref="fileInput"
         type="file"

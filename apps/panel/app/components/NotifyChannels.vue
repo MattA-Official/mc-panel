@@ -201,17 +201,22 @@ function summary(c: ChannelView) {
 </script>
 
 <template>
-  <UCard class="max-w-3xl" data-e2e="notify-channels">
+  <UCard data-e2e="notify-channels">
     <template #header>
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 class="font-medium">Notifications</h2>
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div class="min-w-0">
+          <h2 class="text-base font-semibold">Notifications</h2>
           <p class="mt-1 text-sm text-muted">
             Hear about failed backups, a filling disk and new versions without watching the panel.
             Send them to Discord, to your phone with ntfy, or anywhere as JSON.
           </p>
         </div>
-        <UButton icon="i-lucide-plus" label="Add channel" @click="add" />
+        <UButton
+          icon="i-lucide-plus"
+          label="Add channel"
+          class="shrink-0 self-start"
+          @click="add"
+        />
       </div>
     </template>
 

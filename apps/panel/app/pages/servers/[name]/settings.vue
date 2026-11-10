@@ -23,7 +23,7 @@ async function restart() {
 </script>
 
 <template>
-  <div v-if="server" class="mx-auto w-full max-w-3xl space-y-6">
+  <div v-if="server" class="mx-auto w-full max-w-5xl space-y-6">
     <UAlert
       v-if="needsRestart"
       color="warning"

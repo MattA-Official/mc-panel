@@ -40,7 +40,7 @@ async function remove() {
 <template>
   <div v-if="server">
     <section class="rounded-lg border border-error/40 p-5">
-      <h2 class="font-display text-lg tracking-wide text-error uppercase">Danger zone</h2>
+      <h2 class="text-base font-semibold text-error">Danger zone</h2>
       <div class="mt-3 flex flex-wrap items-center justify-between gap-4">
         <div class="text-sm">
           <p class="font-medium">Delete this server</p>

@@ -48,7 +48,7 @@ const ports = computed(() => ssh.value?.ports.join(', ') ?? '22')
 </script>
 
 <template>
-  <UCard class="max-w-xl">
+  <UCard>
     <template #header>
       <div class="flex items-center justify-between gap-3">
         <h2 class="font-semibold">Server access (SSH)</h2>

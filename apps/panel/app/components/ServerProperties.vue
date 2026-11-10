@@ -161,7 +161,7 @@ const showAll = ref(false)
 <template>
   <section class="rounded-lg border border-default p-5">
     <div class="flex items-center justify-between gap-4">
-      <h2 class="font-display text-lg tracking-wide uppercase">Game settings</h2>
+      <h2 class="text-base font-semibold">Game settings</h2>
       <UButton label="Save" :disabled="!dirty" :loading="saving" @click="save" />
     </div>
     <p v-if="!data" class="mt-4 text-sm text-muted">Loading…</p>

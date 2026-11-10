@@ -237,22 +237,23 @@ function startOver() {
               :items="loaderItems"
               orientation="horizontal"
               variant="card"
+              :ui="{ fieldset: 'grid gap-2 sm:auto-cols-fr sm:grid-flow-col', item: 'w-full' }"
             />
           </UFormField>
 
           <div class="grid gap-6 sm:grid-cols-2">
-            <UFormField label="Minecraft version" :error="mcErrorText">
-              <USelectMenu
-                v-model="form.mcVersion"
-                :items="mcItems"
-                value-key="value"
-                :loading="mcStatus === 'pending'"
-                class="w-full"
-              />
-              <template #hint>
-                <UCheckbox v-model="snapshots" label="Snapshots" size="xs" />
-              </template>
-            </UFormField>
+            <div class="space-y-3">
+              <UFormField label="Minecraft version" :error="mcErrorText">
+                <USelectMenu
+                  v-model="form.mcVersion"
+                  :items="mcItems"
+                  value-key="value"
+                  :loading="mcStatus === 'pending'"
+                  class="w-full"
+                />
+              </UFormField>
+              <USwitch v-model="snapshots" label="Show snapshots" size="sm" />
+            </div>
 
             <UFormField
               v-if="LOADERS[form.loader].versionLabel"

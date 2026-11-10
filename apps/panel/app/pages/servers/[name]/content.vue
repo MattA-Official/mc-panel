@@ -265,7 +265,7 @@ const pendingText = computed(() => {
 </script>
 
 <template>
-  <div v-if="server" class="mx-auto w-full max-w-4xl space-y-6">
+  <div v-if="server" class="mx-auto w-full max-w-5xl space-y-6">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <p class="text-sm text-muted">
         {{

@@ -64,7 +64,7 @@ const when = (at: string) => formatDateTime(at)
       <UDashboardNavbar title="Activity" />
     </template>
     <template #body>
-      <div class="mx-auto w-full max-w-3xl space-y-4">
+      <div class="mx-auto w-full max-w-5xl space-y-4">
         <div class="flex flex-wrap gap-3">
           <USelect v-model="server" :items="serverItems" class="w-48" />
           <USelect v-model="kind" :items="kindItems" class="w-56" />

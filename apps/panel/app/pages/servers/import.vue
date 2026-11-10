@@ -364,7 +364,13 @@ function size(n: number) {
             Bring a server from another host or a singleplayer world. Zip, .tar.gz and .tar.zst
             files work. Vanilla, Fabric, Paper and Spigot servers can be imported.
           </p>
-          <URadioGroup v-model="source" :items="sources" variant="card" orientation="horizontal" />
+          <URadioGroup
+            v-model="source"
+            :items="sources"
+            variant="card"
+            orientation="horizontal"
+            :ui="{ fieldset: 'grid gap-2 sm:auto-cols-fr sm:grid-flow-col', item: 'w-full' }"
+          />
 
           <div v-if="source === 'upload'" class="space-y-4">
             <label

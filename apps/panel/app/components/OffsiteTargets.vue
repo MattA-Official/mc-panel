@@ -90,17 +90,22 @@ async function remove() {
 </script>
 
 <template>
-  <UCard class="max-w-3xl" data-e2e="offsite-targets">
+  <UCard data-e2e="offsite-targets">
     <template #header>
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 class="font-medium">Off-site backups</h2>
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div class="min-w-0">
+          <h2 class="text-base font-semibold">Off-site backups</h2>
           <p class="mt-1 text-sm text-muted">
             Buckets that servers can copy their backups to. Choose one per server on its Backups
             tab.
           </p>
         </div>
-        <UButton icon="i-lucide-plus" label="Add storage" @click="open = true" />
+        <UButton
+          icon="i-lucide-plus"
+          label="Add storage"
+          class="shrink-0 self-start"
+          @click="open = true"
+        />
       </div>
     </template>
     <ul v-if="targets?.length" class="divide-y divide-default">
