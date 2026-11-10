@@ -1,3 +1,4 @@
+import { loadAccess } from '../auth/access'
 import { needsSetup } from '../auth/setup-token'
 
 const ALWAYS_OPEN = new Set([
@@ -35,6 +36,13 @@ export default defineEventHandler(async (event) => {
 
   const session = await getUserSession(event)
   if (!session.user) throw createError({ statusCode: 401, statusMessage: 'Sign in first.' })
+  // Someone removed since signing in is signed out at once, whatever their cookie says.
+  const access = loadAccess(useDb(), session.user.id)
+  if (!access) {
+    await clearUserSession(event)
+    throw createError({ statusCode: 401, statusMessage: 'Sign in first.' })
+  }
+  event.context.access = access
   if (session.mustEnrolPasskey && !ENROL_ROUTES.has(path)) {
     throw createError({ statusCode: 403, statusMessage: 'Add a new passkey first.' })
   }

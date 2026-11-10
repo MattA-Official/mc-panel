@@ -23,6 +23,7 @@ const Body = z.object({
  * own lists in step; while stopped it edits the JSON files directly.
  */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'players.manage')
   const { user } = await requireUserSession(event)
   const { name } = await getValidatedRouterParams(event, Params.parse)
   const { action, player, reason } = await readValidatedBody(event, Body.parse)

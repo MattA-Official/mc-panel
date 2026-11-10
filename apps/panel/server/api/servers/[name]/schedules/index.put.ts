@@ -10,6 +10,7 @@ const Body = z.object({
 
 /** Replaces the server's scheduled tasks and time zone, as the spec's `schedules:` would. */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'server.configure')
   const { user } = await requireUserSession(event)
   const { name } = await getValidatedRouterParams(event, Params.parse)
   findServer(name)

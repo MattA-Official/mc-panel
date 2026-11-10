@@ -3,6 +3,7 @@ import { downloadPath } from '../../../../files'
 
 /** Streams one file back as a download. */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'files.read')
   const ctx = await fileContext(event)
   const { path } = await getValidatedQuery(event, PathQuery.parse)
   const { file, size } = await fileAction(ctx, null, {}, () => downloadPath(ctx.root, path))

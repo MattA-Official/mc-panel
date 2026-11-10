@@ -6,6 +6,7 @@ const Params = z.object({ id: z.string().min(1).max(512) })
 
 /** Removes one of your passkeys. The last one can't go, so you can always sign in. */
 export default defineEventHandler(async (event) => {
+  await requireSignedIn(event)
   const { user } = await requireElevated(event)
   const { id } = await getValidatedRouterParams(event, Params.parse)
   const db = useDb()

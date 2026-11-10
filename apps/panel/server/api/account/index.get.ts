@@ -3,6 +3,7 @@ import { schema } from '../../db'
 
 /** The signed-in person's passkeys and how many recovery codes they have left. */
 export default defineEventHandler(async (event) => {
+  await requireSignedIn(event)
   const { user } = await requireUserSession(event)
   const db = useDb()
   const passkeys = db

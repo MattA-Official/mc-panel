@@ -16,6 +16,7 @@ const Query = z.object({
 
 /** Searches Modrinth (or Hangar, for plugins) for content this server's loader and version can run. */
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'server.configure')
   const { name } = await specContext(event)
   const { kind, q, offset, source, clientOnly } = await getValidatedQuery(event, Query.parse)
   const row = findServer(name)

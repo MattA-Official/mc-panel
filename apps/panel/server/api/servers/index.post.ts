@@ -3,6 +3,7 @@ import { CreateServerInput, JobError } from '../../jobs/runner'
 
 /** Starts a create-server job and returns its id; progress follows on `job:<id>`. */
 export default defineEventHandler(async (event) => {
+  await requirePermission(event, 'servers.create')
   const body = await readBody(event)
   try {
     const { jobId } = useJobs().createServer(CreateServerInput.parse(body))

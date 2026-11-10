@@ -4,6 +4,7 @@ import { parseList, withUuids, type OnlinePlayers } from '../../../players'
 const Params = z.object({ name: z.string().max(40) })
 
 export default defineEventHandler(async (event) => {
+  await requireServerPermission(event, 'server.view')
   const { name } = await getValidatedRouterParams(event, Params.parse)
   findServer(name)
   const statuses = await useStatus().current()

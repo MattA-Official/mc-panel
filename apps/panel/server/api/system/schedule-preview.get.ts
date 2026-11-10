@@ -11,7 +11,7 @@ const Query = z.object({
  * saved. Uses the same reading as the backup scheduler.
  */
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  await requireSignedIn(event)
   const { cron, tz } = await getValidatedQuery(event, Query.parse)
   const next: string[] = []
   let from = new Date()

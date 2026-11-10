@@ -6,7 +6,7 @@ import { diskLevel } from '../../../../shared/disk'
  * shared imports and archive folders. Reads what the background walk last found, so it's quick.
  */
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  await requireSignedIn(event)
   const fullness = diskFullness()
   const report = useDiskUsage().current()
   const names = new Map(

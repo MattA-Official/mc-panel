@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { PasskeyError, saveCredential, verifyRegistration } from '../../auth/passkeys'
+import { grantRole } from '../../auth/access'
 import { issueCodes } from '../../auth/recovery'
 import { markTokenUsed, needsSetup } from '../../auth/setup-token'
 import { audit as auditTable, users } from '../../db/schema'
@@ -44,6 +45,8 @@ export default defineEventHandler(async (event) => {
         .returning()
         .get()
       saveCredential(tx, u.id, cred, body.nickname)
+      // The first person owns the install.
+      grantRole(tx, u.id, 'owner')
       markTokenUsed(tx)
       tx.insert(auditTable).values({ userId: u.id, action: 'setup.completed' }).run()
       return u
