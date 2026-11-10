@@ -2,6 +2,8 @@
 export default defineAppConfig({
   /** The one place the product name lives, so a rename touches one line. */
   productName: 'Flytower',
+  /** Help lives at /help (the website shows the same docs at /docs). */
+  docs: { base: '/help' },
   ui: {
     colors: {
       primary: 'tungsten',

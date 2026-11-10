@@ -19,8 +19,14 @@ const can = useCan()
   <UDashboardPanel id="servers">
     <template #header>
       <UDashboardNavbar title="Servers">
-        <template v-if="can('servers.create')" #right>
-          <UButton icon="i-lucide-plus" label="New server" to="/servers/new" />
+        <template #right>
+          <HelpButton />
+          <UButton
+            v-if="can('servers.create')"
+            icon="i-lucide-plus"
+            label="New server"
+            to="/servers/new"
+          />
         </template>
       </UDashboardNavbar>
     </template>

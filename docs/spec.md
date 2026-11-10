@@ -1,3 +1,11 @@
+---
+section: Running servers
+order: 17
+panelRoute:
+  - '/servers/:name/yaml'
+  - '/servers/from-yaml'
+---
+
 # Server YAML reference
 
 Every server can be written as one YAML document, its **spec**. The **YAML** tab shows a server's spec and lets you edit it. **New server**, **From YAML** makes a server from one. Changes go through a [plan](first-server.md#plans) like any other.

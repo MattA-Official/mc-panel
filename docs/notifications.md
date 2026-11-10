@@ -1,3 +1,11 @@
+---
+section: Running servers
+order: 16
+since: '1.1.0'
+panelRoute:
+  - '/system/notifications'
+---
+
 # Notifications
 
 Flytower can tell you when something needs attention, so you don't have to watch the panel. It sends to a **Discord** channel, to your phone through **ntfy**, or to anything else as a signed **JSON webhook**.

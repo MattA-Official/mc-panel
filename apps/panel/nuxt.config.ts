@@ -1,8 +1,28 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+let builtServer = false
+
 export default defineNuxtConfig({
   compatibilityDate: '2026-11-01',
   ssr: false,
-  modules: ['@nuxt/ui', 'nuxt-auth-utils'],
+  // The docs/ folder, shared with the website: link handling and help routing.
+  extends: ['../../packages/docs-layer'],
+  modules: ['@nuxt/ui', '@nuxt/content', 'nuxt-auth-utils'],
+  content: {
+    build: {
+      markdown: {
+        toc: { depth: 3 },
+        highlight: {
+          theme: { default: 'github-light', dark: 'github-dark' },
+          langs: ['sh', 'bash', 'yaml', 'json', 'ts', 'ini'],
+        },
+      },
+    },
+    // Help is read in the browser from a bundled copy of the docs, so the server's copy only
+    // answers the odd fallback query. Keep it in memory: the install folder isn't writable.
+    database: { type: 'sqlite', filename: ':memory:' },
+    experimental: { sqliteConnector: 'bun' },
+    watch: { enabled: false },
+  },
   css: ['~/assets/css/main.css'],
   colorMode: { preference: 'dark', fallback: 'dark' },
   app: {
@@ -113,4 +133,26 @@ export default defineNuxtConfig({
     },
   },
   typescript: { strict: true },
+  hooks: {
+    // With @nuxt/content under Bun, `nuxt build` finishes but the process never exits (nothing
+    // shows as open; a promise in the build never settles). Once Nitro has compiled the server
+    // and Nuxt has closed, end the process with whatever exit code it has. Prepare and
+    // typecheck never compile Nitro, so they're untouched.
+    // Nuxt Content asks Nitro to prerender each collection's dump, which boots the server
+    // app (and opens the panel's database) at build time. The dump has a server route anyway,
+    // so serve it from there instead.
+    'nitro:config': (config) => {
+      for (const [route, rules] of Object.entries(config.routeRules ?? {})) {
+        if (route.startsWith('/__nuxt_content/')) delete rules.prerender
+      }
+    },
+    'nitro:init': (nitro) => {
+      nitro.hooks.hook('compiled', () => {
+        builtServer = true
+      })
+    },
+    close: () => {
+      if (builtServer) setTimeout(() => process.exit(), 1000).unref()
+    },
+  },
 })
