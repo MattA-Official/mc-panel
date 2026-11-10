@@ -9,6 +9,7 @@ pub mod events;
 pub mod exec;
 pub mod fetch;
 pub mod handlers;
+pub mod release;
 pub mod server;
 pub mod time;
 pub mod units;

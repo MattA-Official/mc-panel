@@ -43,9 +43,25 @@ const BASE: [&str; 8] = [
     "600",
 ];
 
+/// Plain HTTP is allowed only to this machine, where the end-to-end tests serve releases.
+/// Releases are signed, so even that can't hand over anything Flytower didn't build.
+fn loopback(url: &str) -> bool {
+    [
+        "http://127.0.0.1:",
+        "http://127.0.0.1/",
+        "http://localhost:",
+        "http://[::1]:",
+    ]
+    .iter()
+    .any(|p| url.starts_with(p))
+}
+
 impl Curl {
     fn run(&self, url: &str, extra: &[&str]) -> Result<String, String> {
         let mut args: Vec<&str> = BASE.to_vec();
+        if loopback(url) {
+            args[5] = "=http,https";
+        }
         args.extend(["--user-agent", USER_AGENT]);
         args.extend(extra);
         args.push("--");
@@ -149,5 +165,15 @@ mod tests {
         let ran = fake.ran();
         assert!(ran[0].starts_with("curl --fail --silent --show-error --location --proto =https"));
         assert!(ran[0].ends_with("--output /tmp/a -- https://x.example/a"));
+        for url in [
+            "http://127.0.0.1:8765/x",
+            "http://evil.example/127.0.0.1:1",
+            "http://127.0.0.1.evil.example/",
+        ] {
+            fake.clear();
+            let _ = curl.text(url);
+            let allowed = fake.ran()[0].contains("--proto =http,https");
+            assert_eq!(allowed, url.starts_with("http://127.0.0.1:"), "{url}");
+        }
     }
 }
