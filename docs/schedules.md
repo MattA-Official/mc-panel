@@ -10,7 +10,7 @@ Press **Add task** and choose what it does:
 
 - **Restart**: warns anyone online, saves the world, then restarts the server.
 - **Command**: runs a console command, such as `save-all` or `whitelist reload`. Write it without the slash. Its reply is kept, and shows when you point at the task's last result.
-- **Announcement**: shows a line of text in everyone's chat, in gold.
+- **Announcement**: shows a line of text in everyone's chat, in gold (or your [brand colour](branding.md)).
 
 Then choose when: every day at a time, every week on a day, every hour, every few minutes, or a cron expression for anything else. Cron has five parts: minute, hour, day of the month, month, and day of the week. `0 5 * * *` is 05:00 every day, and `30 3 * * 1-5` is 03:30 on weekdays. The form shows the next three times it would run.
 

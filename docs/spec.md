@@ -125,7 +125,7 @@ Restarts, console commands and announcements the server runs by itself. See [Sch
 | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `restart: '0 5 * * *'`                               | Restart at these times. `warn` lists when to warn players beforehand, like `[15m, 5m, 1m, 10s]` (the default), up to `2h`; `[]` for none. `skipWarningsWhenEmpty` (default `true`) restarts straight away when nobody is online. |
 | `command: save-all`<br>`cron: '*/30 * * * *'`        | Run a console command, without the slash. It can't be `stop`; use a restart instead.                                                                                                                                             |
-| `announce: 'Restart at 5am'`<br>`cron: '0 22 * * *'` | Show a line in everyone's chat, in gold. At most 256 characters.                                                                                                                                                                 |
+| `announce: 'Restart at 5am'`<br>`cron: '0 22 * * *'` | Show a line in everyone's chat, in gold or the brand colour. At most 256 characters.                                                                                                                                             |
 
 Applying changed schedules never restarts the server. The plan lists tasks added and removed under **Schedules**.
 
