@@ -1,7 +1,7 @@
 <script setup lang="ts">
-useHead({ title: 'People' })
+useHead({ title: 'Roles' })
 </script>
 
 <template>
-  <PeopleList />
+  <RolesList />
 </template>

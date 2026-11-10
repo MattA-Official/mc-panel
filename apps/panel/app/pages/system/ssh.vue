@@ -1,8 +1,7 @@
 <script setup lang="ts">
-useHead({ title: 'Account and security' })
+useHead({ title: 'SSH' })
 </script>
 
 <template>
-  <AccountSecurity />
   <SshAccess />
 </template>

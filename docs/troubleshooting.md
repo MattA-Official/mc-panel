@@ -8,7 +8,7 @@
 
 ## Logs
 
-You'll need a shell on the machine: SSH (open it for a while from **System**, **Account and security**), or your provider's web console.
+You'll need a shell on the machine: SSH (open it for a while from **System**, **SSH**), or your provider's web console.
 
 ```sh
 journalctl -u flytower-panel -u flytower-agent -n 200 --no-pager   # the panel and agent
@@ -27,7 +27,7 @@ A server's own logs are also on its **Logs** tab, and in `/srv/flytower/servers/
 
 ## SSH
 
-The installer leaves SSH open. Once the panel works and you have a passkey, close it from **System**, **Account and security**, **Server access (SSH)**. You can open it again for a set time (15 minutes to 24 hours). It closes by itself when the time is up, even across reboots.
+The installer leaves SSH open. Once the panel works and you have a passkey, close it from **System**, **SSH**. You can open it again for a set time (15 minutes to 24 hours). It closes by itself when the time is up, even across reboots.
 
 If the panel itself is broken and SSH is closed, use your VPS provider's web console.
 

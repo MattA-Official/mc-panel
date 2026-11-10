@@ -1,45 +1,6 @@
 <script setup lang="ts">
+import type { GrantView, InviteView, PeopleView, Person } from '~/utils/people'
 /** Everyone who can sign in, what they can do, and invite links nobody has used yet. */
-interface GrantView {
-  roleId: string
-  server: string | null
-}
-interface Person {
-  id: number
-  name: string
-  joinedAt: string
-  lastSignIn: string | null
-  passkeys: number
-  grants: GrantView[]
-}
-interface InviteView {
-  id: number
-  roleId: string
-  server: string | null
-  note: string | null
-  invitedBy: string | null
-  createdAt: string
-  expiresAt: string
-}
-interface RoleView {
-  id: string
-  name: string
-  builtIn: boolean
-}
-interface PeopleView {
-  people: Person[]
-  invites: InviteView[]
-  roles: RoleView[]
-  you: number
-}
-
-const ROLE_HELP: Record<string, string> = {
-  owner: 'Everything, including people, updates, SSH and off-site storage.',
-  admin: 'Everything on their servers: settings, files, backups, worlds and deleting.',
-  operator: 'Start and stop, the console, players and taking backups.',
-  viewer: "Status and who's online. No console or logs.",
-}
-
 const toast = useToast()
 const withElevation = useElevation()
 const { data, refresh } = await useFetch<PeopleView>('/api/people')
@@ -54,9 +15,13 @@ const roleItems = computed(() =>
   (data.value?.roles ?? []).map((r) => ({
     label: r.name,
     value: r.id,
-    description: ROLE_HELP[r.id],
+    description: roleHelp(r),
   })),
 )
+const selectedRoleHelp = (id: string) => {
+  const r = data.value?.roles.find((x) => x.id === id)
+  return r ? roleHelp(r) : undefined
+}
 const scopeItems = computed(() => [
   { label: 'All servers', value: '*' },
   ...servers.value.map((s) => ({ label: s.displayName, value: s.name })),
@@ -295,7 +260,7 @@ async function remove() {
           <UFormField label="Who it's for" hint="Optional" description="Only you see this.">
             <UInput v-model="invite.note" maxlength="60" class="w-full" placeholder="Sam" />
           </UFormField>
-          <UFormField label="Role" :description="ROLE_HELP[invite.roleId]">
+          <UFormField label="Role" :description="selectedRoleHelp(invite.roleId)">
             <USelect
               v-model="invite.roleId"
               :items="roleItems"

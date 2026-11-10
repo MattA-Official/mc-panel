@@ -45,7 +45,7 @@ export default defineEventHandler(async (event) => {
   if (!session.user && session.inviteId !== undefined && ENROL_ROUTES.has(path)) return
   if (!session.user) throw createError({ statusCode: 401, statusMessage: 'Sign in first.' })
   // Someone removed since signing in is signed out at once, whatever their cookie says.
-  const access = loadAccess(useDb(), session.user.id)
+  const access = loadAccess(useDb(), session.user.id, session.sessionVersion)
   if (!access) {
     await clearUserSession(event)
     throw createError({ statusCode: 401, statusMessage: 'Sign in first.' })

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { createInvite } from '../../../auth/people'
+import { createInvite, roleNameOf } from '../../../auth/people'
 
 const Body = z.object({
   roleId: z.string().min(1).max(64),
@@ -17,6 +17,7 @@ export default defineEventHandler(async (event) => {
   audit(user.id, 'people.invited', null, {
     person: body.note ?? null,
     role: body.roleId,
+    roleName: roleNameOf(db, body.roleId),
     server: body.server,
   })
   return {

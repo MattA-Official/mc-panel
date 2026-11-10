@@ -18,13 +18,14 @@ export function rolePermissions(role: { id: string; permissions: Permission[] })
  * What a person can do right now, read from the database on every request so a change of
  * role or a removal takes effect at once. Null when the person no longer exists.
  */
-export function loadAccess(db: Db, userId: number): Access | null {
+export function loadAccess(db: Db, userId: number, sessionVersion = 0): Access | null {
   const user = db
-    .select({ id: schema.users.id })
+    .select({ id: schema.users.id, sessionVersion: schema.users.sessionVersion })
     .from(schema.users)
     .where(eq(schema.users.id, userId))
     .get()
-  if (!user) return null
+  // Gone, or signed out everywhere since this session began.
+  if (!user || user.sessionVersion !== sessionVersion) return null
   const rows = db
     .select({
       server: schema.grants.server,

@@ -1,5 +1,11 @@
 <script setup lang="ts">
 const { server, status } = useServerContext()
+const route = useRoute()
+// Without the console, the server opens on its players instead.
+const can = useCan()
+if (!can('console.read', String(route.params.name))) {
+  await navigateTo(`/servers/${String(route.params.name)}/players`, { replace: true })
+}
 
 const address = computed(() =>
   server.value ? connectAddress(server.value, location.hostname) : '',

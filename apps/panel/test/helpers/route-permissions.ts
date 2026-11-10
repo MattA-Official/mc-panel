@@ -30,6 +30,8 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   // Anyone signed in: their own account, look-ups, and lists filtered to what they can see.
   'account/index.get.ts': 'signed-in',
   'account/recovery-codes.post.ts': 'signed-in',
+  'account/index.patch.ts': 'signed-in',
+  'account/sign-out-everywhere.post.ts': 'signed-in',
   'passkeys/[id].delete.ts': 'signed-in',
   'audit/index.get.ts': 'signed-in',
   'jobs/[id].get.ts': 'signed-in',
@@ -65,6 +67,9 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   'people/invites/[id].delete.ts': 'people.manage',
   'people/[id]/grants.put.ts': 'people.manage',
   'people/[id].delete.ts': 'people.manage',
+  'people/roles/index.post.ts': 'people.manage',
+  'people/roles/[id].put.ts': 'people.manage',
+  'people/roles/[id].delete.ts': 'people.manage',
 
   // The install.
   'system/backup-targets/[id].delete.ts': 'system.manage',

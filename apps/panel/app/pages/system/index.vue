@@ -2,12 +2,13 @@
 useHead({ title: 'System' })
 const { data: health, refresh } = await useFetch('/api/health')
 const updates = useLiveUpdates()
+const can = useCan()
 const flytower = computed(() => updates.value?.flytower?.summary?.latest ?? null)
 </script>
 
 <template>
   <UAlert
-    v-if="flytower"
+    v-if="flytower && can('system.manage')"
     color="info"
     variant="subtle"
     icon="i-lucide-arrow-up-circle"

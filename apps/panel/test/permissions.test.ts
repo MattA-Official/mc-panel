@@ -221,3 +221,13 @@ test('update findings only name the servers a person can see', async () => {
   const a = foldGrants([{ permissions: BUILT_IN_ROLES.viewer.permissions, server: 'survival' }])
   expect(Object.keys(visibleUpdates(snap, a).servers)).toEqual(['survival'])
 })
+
+test('signing out everywhere ends sessions from before', () => {
+  const db = openDb(':memory:')
+  const id = db.insert(schema.users).values({ name: 'Matt' }).returning().get().id
+  grantRole(db, id, 'owner')
+  expect(loadAccess(db, id, 0)).not.toBeNull()
+  db.update(schema.users).set({ sessionVersion: 1 }).where(eq(schema.users.id, id)).run()
+  expect(loadAccess(db, id, 0)).toBeNull()
+  expect(loadAccess(db, id, 1)).not.toBeNull()
+})

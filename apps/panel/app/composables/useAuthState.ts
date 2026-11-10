@@ -6,6 +6,7 @@ export interface AuthState {
   user: { id: number; name: string } | null
   /** What this person can do; null when signed out. */
   access: Access | null
+  theme: 'system' | 'light' | 'dark'
   mustEnrolPasskey: boolean
   elevated: boolean
 }
