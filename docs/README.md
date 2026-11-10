@@ -16,6 +16,7 @@ These pages are also in the panel itself, for the version you have installed: **
 - [Your first server](first-server.md): creating, starting and joining a server.
 - [Your account, passkeys and recovery codes](account.md): signing in, extra devices, your name and appearance, and what to do if you lose them.
 - [People and roles](people.md): inviting people as Admins, Operators or Viewers, for one server or all of them.
+- [Keyboard shortcuts](shortcuts.md): G then a letter to jump about, J and K through lists, and ? to list them.
 
 ## Running servers
 

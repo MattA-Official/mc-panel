@@ -1,28 +1,11 @@
 /**
  * The per-browser switch for Flytower's right-click menus (#106), from Account. The ⋯
- * buttons stay whichever way it's set. Off is stored; on is the default.
+ * buttons stay whichever way it's set.
  */
-export function useRightClickMenus() {
-  const enabled = useState('right-click-menus', () => true)
-  onMounted(() => {
-    enabled.value = rightClickEnabled(safeStorage())
-  })
-  function set(on: boolean) {
-    enabled.value = on
-    try {
-      if (on) localStorage.removeItem(RIGHT_CLICK_KEY)
-      else localStorage.setItem(RIGHT_CLICK_KEY, 'off')
-    } catch {
-      // Private windows can refuse storage; the switch still holds for this page.
-    }
-  }
-  return { enabled: readonly(enabled), set }
-}
+export const useRightClickMenus = () => useBrowserSwitch(RIGHT_CLICK_KEY)
 
-function safeStorage(): Storage | null {
-  try {
-    return localStorage
-  } catch {
-    return null
-  }
-}
+/**
+ * The per-browser switch for single-key and G-then-letter shortcuts (#108), as WCAG 2.1.4
+ * asks for. Ctrl/⌘ + K and Ctrl/⌘ + S stay on.
+ */
+export const useKeyboardShortcuts = () => useBrowserSwitch(SHORTCUTS_KEY)

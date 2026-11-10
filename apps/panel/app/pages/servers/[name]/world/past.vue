@@ -1,10 +1,14 @@
 <script setup lang="ts">
-const { server } = useServerContext()
+// Past worlds is now a section of World.
+definePageMeta({
+  redirect: (to) => ({
+    path: `/servers/${String(to.params.name)}/world`,
+    query: to.query,
+    hash: '#past',
+  }),
+})
 </script>
 
 <template>
-  <div v-if="server" class="mx-auto w-full max-w-5xl space-y-6">
-    <WorldPastWorlds :server="server.name" />
-    <WorldExports :server="server.name" />
-  </div>
+  <div />
 </template>

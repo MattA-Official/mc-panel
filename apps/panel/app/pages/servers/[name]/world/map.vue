@@ -1,5 +1,14 @@
+<script setup lang="ts">
+// The web map is now a section of World.
+definePageMeta({
+  redirect: (to) => ({
+    path: `/servers/${String(to.params.name)}/world`,
+    query: to.query,
+    hash: '#map',
+  }),
+})
+</script>
+
 <template>
-  <div class="mx-auto w-full max-w-5xl space-y-6">
-    <WorldMap />
-  </div>
+  <div />
 </template>

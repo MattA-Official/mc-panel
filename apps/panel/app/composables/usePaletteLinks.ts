@@ -11,6 +11,7 @@ export function usePaletteLinks(navigation: Ref<{ label: string; icon: string; t
     server: false,
   })
   const { data: health } = useFetch('/api/health', { key: 'palette-health', server: false })
+  const sheet = useShortcutSheet()
   const actionsFor = useServerActions(() => health.value?.agent.ok ?? true)
 
   const current = computed(() =>
@@ -60,6 +61,12 @@ export function usePaletteLinks(navigation: Ref<{ label: string; icon: string; t
       ? [{ label: 'Notifications', icon: 'i-lucide-bell', to: '/system/notifications' }]
       : []),
     { label: 'Your account', icon: 'i-lucide-user', to: '/account' },
+    {
+      label: 'Keyboard shortcuts',
+      icon: 'i-lucide-keyboard',
+      kbds: ['?'],
+      onSelect: () => (sheet.value = true),
+    },
   ])
 
   const ordered = computed(() =>

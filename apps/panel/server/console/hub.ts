@@ -71,7 +71,12 @@ export class ConsoleHub {
   async command(
     name: string,
     command: string,
-    opts: { echo?: boolean; timeoutMs?: number } = {},
+    opts: {
+      echo?: boolean
+      timeoutMs?: number
+      /** Echo this instead: the command as typed and what to show for the reply. */
+      echoAs?: { command: string; reply: (reply: string) => string[] }
+    } = {},
   ): Promise<string> {
     const target = this.deps.rconTarget(name)
     if (!target) throw new RconError(`No server called ${name}.`)
@@ -84,7 +89,14 @@ export class ConsoleHub {
       rcon.close()
       throw err
     }
-    if (opts.echo !== false) this.push(name, [`> ${command}`, ...(reply ? reply.split('\n') : [])])
+    if (opts.echo !== false) {
+      this.push(
+        name,
+        opts.echoAs
+          ? [`> ${opts.echoAs.command}`, ...opts.echoAs.reply(reply)]
+          : [`> ${command}`, ...(reply ? reply.split('\n') : [])],
+      )
+    }
     return reply
   }
 
