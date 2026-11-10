@@ -21,11 +21,15 @@ a code change, say so in your reply and stop.
 
 ## Tokens
 
-`gh` is already signed in through `GH_TOKEN`. When Matt has added the `PROJECTS_TOKEN`
-secret it is his classic token (`repo` and `project` scopes), so board and release changes
-show as made by him. Without it, `GH_TOKEN` is the workflow's own token, which can edit
-releases, issues and pull requests but can't reach a user-owned Projects board; if a board
-request fails for that reason, say that `PROJECTS_TOKEN` is missing rather than retrying.
+Plain `gh` is signed in with the workflow's own token. Use it for releases, issues, pull
+requests, labels and milestones; those changes show as made by the workflow.
+
+For anything on the Projects board (`gh project ...`, or `gh api graphql` calls that touch a
+ProjectV2), run `.github/assistant/gh-projects` instead of `gh`, with the same arguments,
+for example `.github/assistant/gh-projects project list --owner MattA-Official`. It runs gh
+with Matt's `PROJECTS_TOKEN` (classic, `repo` and `project` scopes), because the workflow's
+own token can't reach a board owned by a user account. If it says `PROJECTS_TOKEN` isn't
+set, report that rather than retrying.
 
 Never print, echo or write either token anywhere.
 
