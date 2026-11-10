@@ -37,26 +37,20 @@ const items = computed<NavigationMenuItem[]>(() => [
     <UDashboardGroup class="relative inset-auto min-h-0 flex-1">
       <UDashboardSidebar collapsible :ui="{ footer: 'border-t border-default' }">
         <template #header="{ collapsed }">
-          <NuxtLink to="/" class="flex min-w-0 items-center gap-2 px-1" :title="productName">
+          <NuxtLink to="/" class="flex w-full min-w-0 items-center gap-2 px-1">
             <img
               :src="brand?.logo ?? '/flytower-mark.svg'"
               alt=""
               class="h-7 w-auto max-w-24 shrink-0 object-contain"
             />
-            <span
-              v-if="!collapsed"
-              class="truncate font-display font-extrabold uppercase tracking-wide"
-              :class="productName.length > 10 ? 'text-lg' : 'text-2xl'"
-            >
-              {{ productName }}
-            </span>
+            <BrandName v-if="!collapsed" :name="productName" class="flex-1" />
           </NuxtLink>
         </template>
         <template #default="{ collapsed }">
           <UNavigationMenu :collapsed="collapsed" :items="items" orientation="vertical" />
         </template>
         <template #footer="{ collapsed }">
-          <div class="flex w-full flex-col gap-1">
+          <div class="flex w-full flex-col gap-2">
             <div class="flex w-full items-center gap-2">
               <span v-if="!collapsed" class="truncate text-sm text-muted">{{
                 state?.user?.name
@@ -70,13 +64,7 @@ const items = computed<NavigationMenuItem[]>(() => [
                 @click="signOut"
               />
             </div>
-            <p
-              v-if="!collapsed && brand && showPoweredBy(brand)"
-              class="px-1 text-xs text-dimmed"
-              data-e2e="powered-by"
-            >
-              Powered by Flytower
-            </p>
+            <PoweredBy v-if="!collapsed && brand && showPoweredBy(brand)" />
           </div>
         </template>
       </UDashboardSidebar>
