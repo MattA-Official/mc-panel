@@ -14,6 +14,7 @@ import {
   type WantedContent,
 } from '@flytower/providers'
 import { mbToMemory, type ServerSpec } from '../../shared/spec'
+import { describeTask, sameTask, toTask, type TaskSpec } from '../../shared/schedules'
 import type { schema } from '../db'
 import { formatBytes } from '../backups/service'
 import { contentDir, type Lock, type LockedItem } from './lock'
@@ -21,7 +22,7 @@ import { contentDir, type Lock, type LockedItem } from './lock'
 type ServerRow = typeof schema.servers.$inferSelect
 
 export interface Change {
-  area: 'content' | 'settings' | 'properties' | 'backups'
+  area: 'content' | 'settings' | 'properties' | 'backups' | 'schedules'
   action: 'add' | 'update' | 'remove' | 'reinstall' | 'set'
   label: string
   from?: string
@@ -50,6 +51,10 @@ export interface SettingsChange {
   /** Off-site storage to copy backups to; null for none. */
   offsiteTarget?: number | null
   restartWhenUnresponsive?: boolean
+  /** The whole list of scheduled tasks, in order, when it changes. */
+  schedules?: TaskSpec[]
+  /** The time zone schedules are read in. */
+  timezone?: string
   content: ServerSpec['content']
 }
 
@@ -97,6 +102,8 @@ export interface PlanInput {
   modrinth: ContentProvider
   vanillatweaks?: VanillaTweaksProvider
   hangar?: ContentProvider
+  /** The server's scheduled tasks as they stand. */
+  tasks?: TaskSpec[]
   /** Off-site storage that backups can be copied to. */
   offsiteTargets?: { id: number; name: string }[]
   /** Why this server can't have that much memory, if it can't. */
@@ -257,6 +264,8 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
       }
     }
   }
+
+  planSchedules(input, settings, changes)
 
   // Content.
   const accepts: readonly string[] = ACCEPTS[target.loader]
@@ -485,6 +494,43 @@ async function planServer(
     return undefined
   }
   return { ...resolved, loader: want.type, minecraft: want.minecraft }
+}
+
+/** Lines for added and removed tasks, and the time zone. */
+function planSchedules(input: PlanInput, settings: SettingsChange, changes: Change[]) {
+  const { row, spec } = input
+  if (spec.timezone !== undefined && spec.timezone !== row.timezone) {
+    settings.timezone = spec.timezone
+    changes.push({
+      area: 'schedules',
+      action: 'set',
+      label: 'Time zone',
+      from: row.timezone,
+      to: spec.timezone,
+    })
+  }
+  if (!spec.schedules) return
+  const before = input.tasks ?? []
+  const after = spec.schedules.map(toTask)
+  const same = before.length === after.length && before.every((t, i) => sameTask(t, after[i]!))
+  if (same) return
+  settings.schedules = after
+  const left = [...before]
+  let listed = 0
+  for (const t of after) {
+    const i = left.findIndex((o) => sameTask(o, t))
+    if (i >= 0) {
+      left.splice(i, 1)
+      continue
+    }
+    changes.push({ area: 'schedules', action: 'add', label: describeTask(t) })
+    listed++
+  }
+  for (const t of left) {
+    changes.push({ area: 'schedules', action: 'remove', label: describeTask(t) })
+    listed++
+  }
+  if (!listed) changes.push({ area: 'schedules', action: 'set', label: 'Order of tasks' })
 }
 
 function describeBackups(schedule: string | null, tz: string, keep: number[]) {

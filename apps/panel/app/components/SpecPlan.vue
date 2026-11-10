@@ -1,6 +1,6 @@
 <script setup lang="ts">
 export interface PlanChange {
-  area: 'content' | 'settings' | 'properties' | 'backups'
+  area: 'content' | 'settings' | 'properties' | 'backups' | 'schedules'
   action: 'add' | 'update' | 'remove' | 'reinstall' | 'set'
   label: string
   from?: string
@@ -26,6 +26,7 @@ const AREAS = [
   { key: 'settings', title: 'Settings' },
   { key: 'properties', title: 'server.properties' },
   { key: 'backups', title: 'Backups' },
+  { key: 'schedules', title: 'Schedules' },
 ] as const
 
 const groups = computed(() =>

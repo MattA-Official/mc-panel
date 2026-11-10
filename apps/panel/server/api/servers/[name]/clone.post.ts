@@ -45,7 +45,12 @@ export default defineEventHandler(async (event) => {
         },
       },
     )
-    void done.then(() => syncBackupSchedules())
+    // The copy runs the same scheduled tasks, in the same time zone.
+    const tasks = useSchedules().tasks(from.name)
+    void done.then((job) => {
+      syncBackupSchedules()
+      if (job.state === 'succeeded') useSchedules().replace(body.name, tasks, from.timezone)
+    })
     audit(user.id, 'server.clone', body.name, { from: from.name, withWorld: body.withWorld })
     setResponseStatus(event, 202)
     return { jobId }

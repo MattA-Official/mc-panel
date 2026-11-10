@@ -9,6 +9,11 @@ const Params = z.object({ name: z.string().max(40) })
 export default defineEventHandler(async (event) => {
   await requireUserSession(event)
   const { name } = await getValidatedRouterParams(event, Params.parse)
-  const spec = specFromServer(findServer(name), await readProperties(name), useOffsite().targets())
+  const spec = specFromServer(
+    findServer(name),
+    await readProperties(name),
+    useOffsite().targets(),
+    useSchedules().tasks(name),
+  )
   return { spec, yaml: toYaml(spec, new URL(SPEC_SCHEMA_PATH, relyingParty(event).origin).href) }
 })
