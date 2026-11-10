@@ -3,6 +3,34 @@ export type ServiceState =
 
 export type LoaderId = 'vanilla' | 'fabric' | 'paper'
 
+/** Trouble Flytower has noticed: crashed, stopped after crashing repeatedly, or stuck. */
+export type Condition = 'crashed' | 'crash-loop' | 'unresponsive' | null
+export type ServerEventKind = 'crash' | 'oom' | 'crash-loop' | 'unresponsive' | 'recovered'
+
+export interface CrashSummary {
+  id: number
+  at: string
+  kind: ServerEventKind
+  cause: string | null
+  /** Relative to the server folder, like crash-reports/crash-….txt. */
+  crashReport: string | null
+}
+
+export interface Health {
+  condition: Condition
+  crash: CrashSummary | null
+}
+
+/** A link that opens a crash report in the Files tab. */
+export function crashReportLink(server: string, report: string) {
+  const i = report.lastIndexOf('/')
+  const dir = i < 0 ? '/' : `/${report.slice(0, i)}`
+  return {
+    path: `/servers/${server}/files`,
+    query: { ...(dir === '/' ? {} : { path: dir }), open: report.slice(i + 1) },
+  }
+}
+
 /** How each loader is named and described in the UI. */
 export const LOADERS: Record<
   LoaderId,
@@ -11,7 +39,7 @@ export const LOADERS: Record<
   fabric: { label: 'Fabric', description: 'Runs Fabric mods', versionLabel: 'Fabric loader' },
   paper: {
     label: 'Paper',
-    description: 'Faster vanilla, with plugins to come',
+    description: 'Faster vanilla, runs plugins',
     versionLabel: 'Paper build',
   },
   vanilla: { label: 'Vanilla', description: 'Plain Minecraft', versionLabel: null },
@@ -33,7 +61,9 @@ export interface Server {
   port: number
   hostname: string | null
   createdAt: string
+  restartWhenUnresponsive: boolean
   status: ServiceState
+  health: Health
 }
 
 /** Live systemd states for every server, kept current over the shared socket. */
@@ -41,6 +71,13 @@ export function useLiveStatuses() {
   const statuses = ref<Record<string, ServiceState>>({})
   useTopic<Record<string, ServiceState>>('servers', (m) => (statuses.value = m))
   return statuses
+}
+
+/** Live crash health for every server, kept current over the shared socket. */
+export function useLiveHealth() {
+  const health = ref<Record<string, Health>>({})
+  useTopic<Record<string, Health>>('health', (m) => (health.value = m))
+  return health
 }
 
 export const loaderLabel = (s: Pick<Server, 'loader' | 'mcVersion'>) =>

@@ -50,9 +50,14 @@ describe('parseLogLine', () => {
 function setup() {
   const dir = mkdtempSync(join(tmpdir(), 'ft-lw-'))
   const notes: NotifyEvent[] = []
+  const resolved: NotifyEvent[] = []
   let now = 1_000_000
-  const w = new LogWatcher({ notify: (e) => notes.push(e) }, dir, () => now)
-  return { dir, notes, w, tick: (ms: number) => (now += ms) }
+  const w = new LogWatcher(
+    { notify: (e) => notes.push(e), resolve: (e) => resolved.push(e) },
+    dir,
+    () => now,
+  )
+  return { dir, notes, resolved, w, tick: (ms: number) => (now += ms) }
 }
 
 describe('LogWatcher', () => {
@@ -118,5 +123,25 @@ describe('LogWatcher', () => {
     w.restartFailed('survival')
     w.lines('survival', [line('Done (5s)! For help, type "help"')])
     expect(notes.at(-1)?.title).toBe('Server started')
+  })
+
+  it('says a crashed server is back up once players can join, not that it started', () => {
+    const { notes, resolved, w } = setup()
+    w.crashed('survival')
+    w.lines('survival', [line('Done (5s)! For help, type "help"')])
+    expect(notes).toEqual([])
+    expect(resolved).toMatchObject([
+      { kind: 'server.crashed', title: 'Server is back up', severity: 'ok' },
+    ])
+    // The next start is an ordinary start again.
+    w.lines('survival', [line('Done (5s)! For help, type "help"')])
+    expect(notes.at(-1)?.title).toBe('Server started')
+  })
+
+  it("restarts quietly for a server that stopped responding, then says it's back", () => {
+    const { notes, w } = setup()
+    w.restartPressed('survival', false)
+    w.lines('survival', [line('Stopping the server'), line('Done (5s)! For help, type "help"')])
+    expect(notes.map((n) => n.title)).toEqual(['Server restarted'])
   })
 })

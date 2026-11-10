@@ -28,7 +28,14 @@ const FIELDS: Field[] = [
     type: 'select',
     options: ['survival', 'creative', 'adventure', 'spectator'],
   },
-  { key: 'max-players', label: 'Max players', type: 'number', min: 1, max: 1000 },
+  {
+    key: 'max-players',
+    label: 'Max players',
+    type: 'number',
+    min: 1,
+    max: 1000,
+    help: 'How many can be on at once.',
+  },
   {
     key: 'view-distance',
     label: 'View distance',
@@ -53,26 +60,31 @@ const FIELDS: Field[] = [
     max: 1000,
     help: 'Radius only operators can build in.',
   },
-  { key: 'pvp', label: 'PvP', type: 'bool' },
+  { key: 'pvp', label: 'PvP', type: 'bool', help: 'Players can hurt each other.' },
+  {
+    key: 'hardcore',
+    label: 'Hardcore',
+    type: 'bool',
+    help: 'Hardest difficulty, and dying bans you from the server.',
+  },
   {
     key: 'allow-flight',
     label: 'Allow flight',
     type: 'bool',
     help: 'Needed by some mods; stops "kicked for flying".',
   },
-  { key: 'hardcore', label: 'Hardcore', type: 'bool' },
+  {
+    key: 'online-mode',
+    label: 'Online mode',
+    type: 'bool',
+    help: 'Checks accounts with Mojang. Turning this off lets anyone join as anyone.',
+  },
   { key: 'white-list', label: 'Whitelist', type: 'bool', help: 'Only listed players can join.' },
   {
     key: 'enforce-whitelist',
     label: 'Enforce whitelist',
     type: 'bool',
     help: 'Kick players removed from the whitelist.',
-  },
-  {
-    key: 'online-mode',
-    label: 'Online mode',
-    type: 'bool',
-    help: 'Checks accounts with Mojang. Turning this off lets anyone join as anyone.',
   },
 ]
 const FIELD_KEYS = new Set(FIELDS.map((f) => f.key))
@@ -156,14 +168,12 @@ async function save() {
 }
 
 const showAll = ref(false)
+const discard = () => (draft.value = { ...base.value })
 </script>
 
 <template>
   <section class="rounded-lg border border-default p-5">
-    <div class="flex items-center justify-between gap-4">
-      <h2 class="font-display text-lg tracking-wide uppercase">Game settings</h2>
-      <UButton label="Save" :disabled="!dirty" :loading="saving" @click="save" />
-    </div>
+    <h2 class="text-base font-semibold">Game settings</h2>
     <p v-if="!data" class="mt-4 text-sm text-muted">Loading…</p>
     <div v-else class="mt-4 grid gap-x-6 gap-y-5 sm:grid-cols-2">
       <template v-for="f in FIELDS" :key="f.key">
@@ -216,6 +226,30 @@ const showAll = ref(false)
             :title="managed.has(key) ? 'Managed by Flytower' : undefined"
           />
         </div>
+      </div>
+    </div>
+
+    <div
+      v-if="dirty"
+      class="sticky bottom-4 z-10 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/40 bg-elevated p-3 shadow-lg"
+      data-e2e="unsaved-bar"
+    >
+      <p class="text-sm">
+        {{
+          Object.keys(changes).length === 1
+            ? '1 unsaved change'
+            : `${Object.keys(changes).length} unsaved changes`
+        }}
+      </p>
+      <div class="flex gap-2">
+        <UButton
+          label="Discard"
+          color="neutral"
+          variant="ghost"
+          :disabled="saving"
+          @click="discard"
+        />
+        <UButton label="Save" :loading="saving" @click="save" />
       </div>
     </div>
   </section>

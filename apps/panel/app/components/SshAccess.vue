@@ -48,7 +48,7 @@ const ports = computed(() => ssh.value?.ports.join(', ') ?? '22')
 </script>
 
 <template>
-  <UCard class="max-w-xl">
+  <UCard>
     <template #header>
       <div class="flex items-center justify-between gap-3">
         <h2 class="font-semibold">Server access (SSH)</h2>
@@ -104,9 +104,7 @@ const ports = computed(() => ssh.value?.ports.join(', ') ?? '22')
       <template v-else-if="ssh.open">
         <p>
           SSH on port {{ ports }} is open for emergencies. It closes by itself at
-          {{
-            new Date(ssh.closesAt!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          }}, even if the panel restarts.
+          {{ formatTime(ssh.closesAt!) }}, even if the panel restarts.
         </p>
         <div class="flex flex-wrap gap-2">
           <UButton

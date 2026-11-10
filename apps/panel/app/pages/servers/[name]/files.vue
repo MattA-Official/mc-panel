@@ -47,8 +47,7 @@ function size(n: number) {
   if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)} MB`
   return `${(n / 1024 ** 3).toFixed(2)} GB`
 }
-const when = (ms: number) =>
-  new Date(ms).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+const when = (ms: number) => formatDateTime(ms)
 const icon = (e: Entry) =>
   e.type === 'dir'
     ? 'i-lucide-folder'
@@ -82,7 +81,9 @@ const loadingFile = ref<string | null>(null)
 async function open(e: Entry) {
   if (e.type === 'dir') return go(join(path.value, e.name))
   if (e.type !== 'file') return
-  const p = join(path.value, e.name)
+  await openPath(join(path.value, e.name))
+}
+async function openPath(p: string) {
   loadingFile.value = p
   try {
     const { content } = await $fetch<{ content: string }>(`${base.value}/read` as string, {
@@ -95,6 +96,12 @@ async function open(e: Entry) {
     loadingFile.value = null
   }
 }
+// Links such as a crash banner's open a file straight away: ?path=/crash-reports&open=crash-….txt
+onMounted(() => {
+  const name = route.query.open
+  if (typeof name === 'string' && /^[^/]+$/.test(name)) void openPath(join(path.value, name))
+})
+
 const dirty = computed(() => !!editing.value && editing.value.content !== editing.value.original)
 function closeEditor() {
   if (dirty.value && !confirm('Discard your unsaved changes?')) return
@@ -246,10 +253,9 @@ function onDrop(e: DragEvent) {
         icon="i-lucide-folder-plus"
         color="neutral"
         variant="outline"
-        size="sm"
         @click="newFolder = ''"
       />
-      <UButton label="Upload" icon="i-lucide-upload" size="sm" @click="fileInput?.click()" />
+      <UButton label="Upload" icon="i-lucide-upload" @click="fileInput?.click()" />
       <input
         ref="fileInput"
         type="file"

@@ -31,7 +31,7 @@ async function save() {
 
 <template>
   <section v-if="server" class="rounded-lg border border-default p-5">
-    <h2 class="font-display text-lg tracking-wide uppercase">Address</h2>
+    <h2 class="text-base font-semibold">Address</h2>
     <p class="mt-1 text-sm text-muted">
       A name players connect with instead of an IP address and port. You'll need DNS records for it
       with whoever runs your domain.

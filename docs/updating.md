@@ -2,7 +2,7 @@
 
 ## From the panel
 
-**System**, **Flytower** shows the version you're on and offers any newer release, with its notes. **Update** asks for your passkey, then:
+**System**, **Updates** shows the version you're on and offers any newer release, with its notes. **Update** asks for your passkey, then:
 
 1. downloads the release and checks its signature against Flytower's release key;
 2. copies the panel's database aside;

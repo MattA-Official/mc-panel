@@ -50,7 +50,7 @@ async function copy() {
   <section v-if="server" class="rounded-lg border border-default p-5">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <h2 class="font-display text-lg tracking-wide uppercase">Copy a world in</h2>
+        <h2 class="text-base font-semibold">Copy a world in</h2>
         <p class="mt-1 max-w-lg text-sm text-muted">
           Replaces this server's world with a copy of another server's. A backup is taken first, and
           this server keeps its own datapacks. To copy into a new server, use Clone in Settings.

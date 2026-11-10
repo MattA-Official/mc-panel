@@ -88,12 +88,20 @@ See [Mods, plugins and datapacks](content.md).
 
 Left out entirely, a server's backup settings stay as they are. When present:
 
-| Field      | Meaning                                                                                                                            |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `schedule` | A cron expression (minute hour day month weekday), such as `'0 4 * * *'` for 4am daily, or `null` for no schedule.                 |
-| `timezone` | The time zone the schedule runs in, such as `Europe/London`. Defaults to UTC.                                                      |
-| `keep`     | `last` (default 6), `daily` (7) and `weekly` (4): how many scheduled backups to keep. See [Backups](backups.md#how-many-are-kept). |
-| `offsite`  | The name of [off-site storage](backups.md#off-site-copies) from the System page, or `null` for none. Left out, it stays.           |
+| Field      | Meaning                                                                                                                                   |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `schedule` | A cron expression (minute hour day month weekday), such as `'0 4 * * *'` for 4am daily, or `null` for no schedule.                        |
+| `timezone` | The time zone the schedule runs in, such as `Europe/London`. Defaults to UTC.                                                             |
+| `keep`     | `last` (default 6), `daily` (7) and `weekly` (4): how many scheduled backups to keep. See [Backups](backups.md#how-many-are-kept).        |
+| `offsite`  | The name of [off-site storage](backups.md#off-site-copies) from **System**, **Off-site storage**, or `null` for none. Left out, it stays. |
+
+### `recovery`
+
+What Flytower does when the server gets stuck. Left out, the current setting stays.
+
+| Field                     | Meaning                                                                                                                                             |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `restartWhenUnresponsive` | `true` to restart the server once when its console hasn't answered for five minutes. Defaults to `false`. See [Crashes](crashes.md#not-responding). |
 
 ## Errors
 

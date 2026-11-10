@@ -82,7 +82,7 @@ try {
         return new Response('ok')
       },
     })
-    await view.navigate(`${base}/system`)
+    await view.navigate(`${base}/system/notifications`)
     await waitForText(view, 'Notifications')
     await clickButton(view, 'Add channel')
     await waitForText(view, 'Add a notification channel')
@@ -158,6 +158,43 @@ try {
     )
     if (!/players online/.test(reply)) throw new Error(`unexpected RCON reply: ${reply}`)
     step(`RCON answered: ${reply}`)
+
+    // Crash detection: kill Java outright. systemd restarts it after 15 seconds; Flytower
+    // records the crash, shows the banner, and the console answers again afterwards.
+    const killed = Bun.spawnSync(['docker', 'exec', 'vps', 'pkill', '-KILL', '-u', 'mc-smoke'])
+    if (killed.exitCode !== 0) throw new Error(`couldn't kill the server: ${killed.stderr}`)
+    type Health = { condition: string | null; crash: { id: number; cause: string } | null }
+    const crash = await until(
+      'the crash to be recorded',
+      async () => {
+        const r = await api<{ health: Health }>(view, '/api/servers/smoke')
+        return r.body.health.crash
+      },
+      60_000,
+      2000,
+    )
+    if (!/SIGKILL/.test(crash.cause)) throw new Error(`unexpected crash cause: ${crash.cause}`)
+    await waitForText(view, 'Crashed at', 30_000)
+    await shot('2b-crash-banner')
+    await until(
+      'systemd to restart it',
+      async () => {
+        const r = await api<{ reply: string }>(view, '/api/servers/smoke/command', {
+          body: { command: 'list' },
+        })
+        return r.status === 200 && /players online/.test(r.body.reply) ? true : null
+      },
+      5 * 60_000,
+      3000,
+    )
+    const after = await api<{ status: string; health: Health }>(view, '/api/servers/smoke')
+    if (after.body.status !== 'active' || after.body.health.condition !== null) {
+      throw new Error(`not back to normal after the crash: ${JSON.stringify(after.body)}`)
+    }
+    const dismissed = await api(view, `/api/servers/smoke/events/${crash.id}/dismiss`, { body: {} })
+    if (dismissed.status !== 200)
+      throw new Error(`dismiss failed: ${JSON.stringify(dismissed.body)}`)
+    step(`a killed server was noticed (${crash.cause}) and restarted by systemd`)
 
     // Backups: a block placed before the backup survives a change and a restore.
     const rcon = async (command: string) => {
@@ -255,7 +292,7 @@ try {
       if (!id) throw new Error(`no field labelled ${text}`)
       return `[id="${id}"]`
     }
-    await view.navigate(`${base}/system`)
+    await view.navigate(`${base}/system/storage`)
     await waitForText(view, 'Off-site backups', 30_000)
     await clickButton(view, 'Add storage')
     await waitForText(view, 'Secret access key')
@@ -634,7 +671,7 @@ try {
     )
 
     // Update channel: choose Beta on the System page, and it sticks after a reload.
-    await view.navigate(`${base}/system`)
+    await view.navigate(`${base}/system/updates`)
     await waitForText(view, 'Update channel', 30_000)
     await view.evaluate(`(() => {
       const group = document.querySelector('[data-e2e=update-channel]')
@@ -648,7 +685,7 @@ try {
       30_000,
       500,
     )
-    await view.navigate(`${base}/system`)
+    await view.navigate(`${base}/system/updates`)
     await waitForText(view, 'Update channel', 30_000)
     const checked = await view.evaluate<string | null>(`(() => {
       const r = document.querySelector('[data-e2e=update-channel] [role=radio][aria-checked=true]')

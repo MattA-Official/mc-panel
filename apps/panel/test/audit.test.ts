@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { auditKind, describeAudit, safeDetail } from '../shared/utils/audit'
+import { auditActor, auditKind, describeAudit, safeDetail } from '../shared/utils/audit'
 
 describe('audit', () => {
   it('describes actions as sentences', () => {
@@ -33,5 +33,18 @@ describe('audit', () => {
     expect(safeDetail({ rconPassword: 'x', token: 'y', apiKey: 'z', path: 'ok' })).toEqual({
       path: 'ok',
     })
+  })
+
+  it('describes crashes, credited to Flytower', () => {
+    expect(describeAudit('server.crashed', 'survival', { cause: 'It exited with code 1.' })).toBe(
+      'survival crashed. It exited with code 1.',
+    )
+    expect(describeAudit('server.unresponsive', 'survival', { restarted: true })).toBe(
+      'survival stopped responding, so it was restarted',
+    )
+    expect(auditKind('server.crash_loop')).toBe('servers')
+    expect(auditActor('server.crashed', null)).toBe('Flytower')
+    expect(auditActor('server.stop', null)).toBeNull()
+    expect(auditActor('server.stop', 'Matt')).toBe('Matt')
   })
 })

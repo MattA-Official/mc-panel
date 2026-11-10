@@ -63,7 +63,7 @@ const isOp = (n: string) => data.value?.ops.some((o) => o.name.toLowerCase() ===
 </script>
 
 <template>
-  <div v-if="data" class="mx-auto w-full max-w-4xl space-y-6">
+  <div v-if="data" class="mx-auto w-full max-w-5xl space-y-6">
     <UAlert
       v-if="!data.running"
       color="neutral"
@@ -83,7 +83,7 @@ const isOp = (n: string) => data.value?.ops.some((o) => o.name.toLowerCase() ===
 
     <section v-if="data.running" class="rounded-lg border border-default p-5">
       <div class="flex items-baseline justify-between">
-        <h2 class="font-display text-lg tracking-wide uppercase">Online now</h2>
+        <h2 class="text-base font-semibold">Online now</h2>
         <span v-if="data.online" class="text-sm text-muted"
           >{{ data.online.count }} of {{ data.online.max }}</span
         >
@@ -119,7 +119,7 @@ const isOp = (n: string) => data.value?.ops.some((o) => o.name.toLowerCase() ===
 
     <div class="grid gap-6 lg:grid-cols-3">
       <section class="rounded-lg border border-default p-5">
-        <h2 class="font-display text-lg tracking-wide uppercase">Whitelist</h2>
+        <h2 class="text-base font-semibold">Whitelist</h2>
         <p class="mt-1 text-sm text-muted">
           {{ data.whitelistEnabled ? 'On: only these players can join.' : 'Off: anyone can join.' }}
           <NuxtLink :to="`/servers/${server?.name}/settings`" class="text-primary">Change</NuxtLink>
@@ -156,7 +156,7 @@ const isOp = (n: string) => data.value?.ops.some((o) => o.name.toLowerCase() ===
       </section>
 
       <section class="rounded-lg border border-default p-5">
-        <h2 class="font-display text-lg tracking-wide uppercase">Operators</h2>
+        <h2 class="text-base font-semibold">Operators</h2>
         <p class="mt-1 text-sm text-muted">Can run commands in game.</p>
         <form class="mt-3 flex gap-2" @submit.prevent="add('ops')">
           <UInput
@@ -190,7 +190,7 @@ const isOp = (n: string) => data.value?.ops.some((o) => o.name.toLowerCase() ===
       </section>
 
       <section class="rounded-lg border border-default p-5">
-        <h2 class="font-display text-lg tracking-wide uppercase">Banned</h2>
+        <h2 class="text-base font-semibold">Banned</h2>
         <p class="mt-1 text-sm text-muted">Can't join at all.</p>
         <form class="mt-3 space-y-2" @submit.prevent="add('banned')">
           <div class="flex gap-2">

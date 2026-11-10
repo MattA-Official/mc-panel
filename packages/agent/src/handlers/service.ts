@@ -20,6 +20,15 @@ async function assertKnown(ctx: AgentContext, server: string) {
   if (r.stdout.trim() !== 'loaded') throw new AgentError('not_found', `no server called ${server}`)
 }
 
+/** ExecMainCode, from siginfo: CLD_EXITED, CLD_KILLED, CLD_DUMPED. */
+const EXIT_KINDS: Record<string, 'exited' | 'killed' | 'dumped'> = {
+  '1': 'exited',
+  '2': 'killed',
+  '3': 'dumped',
+}
+
+const int = (v: string | undefined) => (v && /^\d+$/.test(v) ? Number(v) : null)
+
 export async function status(
   p: Params<'service.status'>,
   ctx: AgentContext,
@@ -28,25 +37,39 @@ export async function status(
   const r = await ctx.exec('systemctl', [
     'show',
     unitName(p.server),
-    '--property=ActiveState,ActiveEnterTimestamp',
+    '--property=ActiveState,ActiveEnterTimestamp,Result,NRestarts,ExecMainCode,ExecMainStatus',
   ])
-  const props = Object.fromEntries(
-    r.stdout
-      .split('\n')
-      .filter((l) => l.includes('='))
-      .map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1)]),
-  )
-  const state = props.ActiveState as string | undefined
+  const props = parseShow(r.stdout)[0] ?? {}
+  const state = props.ActiveState
   const active = (ACTIVE_STATES as readonly string[]).includes(state ?? '')
     ? (state as (typeof ACTIVE_STATES)[number])
     : 'unknown'
-  return { active, since: props.ActiveEnterTimestamp || null }
+  const exitKind = EXIT_KINDS[props.ExecMainCode ?? ''] ?? null
+  return {
+    active,
+    since: props.ActiveEnterTimestamp || null,
+    result: props.Result || null,
+    restarts: int(props.NRestarts),
+    exitKind,
+    exitStatus: exitKind ? int(props.ExecMainStatus) : null,
+  }
+}
+
+export async function wait(
+  p: Params<'service.wait'>,
+  ctx: AgentContext,
+): Promise<Result<'service.wait'>> {
+  if (!ctx.unitEvents) return { cursor: '', changed: p.servers, following: false }
+  return ctx.unitEvents.wait(p.servers, p.after, p.timeoutMs)
 }
 
 const action =
   (verb: 'start' | 'stop' | 'restart') =>
   async (p: { server: string }, ctx: AgentContext): Promise<Record<string, never>> => {
     await assertKnown(ctx, p.server)
+    // A server left stopped after a crash loop has hit its start limit, and systemd refuses
+    // to start it until that is cleared. Starting it from the panel is the person saying so.
+    if (verb !== 'stop') await ctx.exec('systemctl', ['reset-failed', unitName(p.server)])
     await systemctl(ctx, [verb, unitName(p.server)])
     return {}
   }

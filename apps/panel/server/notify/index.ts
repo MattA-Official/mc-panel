@@ -41,6 +41,10 @@ export const SENDERS: Record<ChannelKind, Sender> = {
 export const QUIET_MS: Partial<Record<EventKind, number>> = {
   'backup.failed': 30 * 60_000,
   'offsite.failed': 30 * 60_000,
+  // Quiet only while it's still down; once it's back up, the next crash is sent.
+  'server.crashed': 10 * 60_000,
+  'server.crash_loop': 30 * 60_000,
+  'server.unresponsive': 30 * 60_000,
 }
 
 /** Disk warnings: at 85% and 95%, and back to normal below 80%. */
@@ -304,7 +308,7 @@ export class NotifyService {
       title: 'Test message from Flytower',
       detail: `If you can read this, “${input.name}” is set up. You'll hear about the events you ticked.`,
       severity: 'info',
-      link: '/system',
+      link: '/system/notifications',
     })
     try {
       await SENDERS[input.kind](msg, to, this.fetch)

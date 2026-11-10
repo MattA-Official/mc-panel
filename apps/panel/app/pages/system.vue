@@ -1,49 +1,45 @@
 <script setup lang="ts">
-useHead({ title: 'System' })
-const { data: health, refresh } = await useFetch('/api/health')
+/** System is split into sections, so health, updates, storage, alerts and sign-in each get a page. */
+const sections = [
+  { label: 'Overview', icon: 'i-lucide-gauge', to: '/system', exact: true },
+  { label: 'Updates', icon: 'i-lucide-arrow-up-circle', to: '/system/updates' },
+  { label: 'Off-site storage', icon: 'i-lucide-cloud', to: '/system/storage' },
+  { label: 'Notifications', icon: 'i-lucide-bell', to: '/system/notifications' },
+  { label: 'Account and security', icon: 'i-lucide-shield', to: '/system/account' },
+]
+const route = useRoute()
+const current = computed(
+  () =>
+    [...sections]
+      .reverse()
+      .find((s) => (s.exact ? route.path === s.to : route.path.startsWith(s.to))) ?? sections[0]!,
+)
+const menu = computed(() => [
+  sections.map((s) => ({ ...s, type: 'link' as const, active: s.to === current.value.to })),
+])
 </script>
 
 <template>
   <UDashboardPanel id="system">
     <template #header>
       <UDashboardNavbar title="System" />
+      <UDashboardToolbar>
+        <UNavigationMenu :items="sections" highlight class="-mx-1 hidden flex-1 lg:flex" />
+        <UDropdownMenu :items="menu" :content="{ align: 'start' }" class="lg:hidden">
+          <UButton
+            :label="current.label"
+            :icon="current.icon"
+            trailing-icon="i-lucide-chevron-down"
+            color="neutral"
+            variant="ghost"
+            class="-mx-2.5 my-1"
+          />
+        </UDropdownMenu>
+      </UDashboardToolbar>
     </template>
     <template #body>
-      <div class="space-y-6">
-        <UCard v-if="health" class="max-w-xl">
-          <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
-            <dt class="text-muted">Panel version</dt>
-            <dd class="font-mono">{{ health.version }}</dd>
-            <dt class="text-muted">System helper</dt>
-            <dd>
-              <UBadge
-                :color="health.agent.ok ? 'success' : 'error'"
-                variant="subtle"
-                :label="health.agent.ok ? `Running, ${health.agent.version}` : 'Not reachable'"
-              />
-            </dd>
-          </dl>
-          <template #footer>
-            <UButton
-              variant="outline"
-              icon="i-lucide-refresh-cw"
-              label="Check again"
-              @click="refresh()"
-            />
-          </template>
-        </UCard>
-        <UCard>
-          <template #header><h2 class="font-medium">This machine</h2></template>
-          <MetricsHistory />
-        </UCard>
-        <FlytowerUpdates />
-        <OffsiteTargets />
-        <NotifyChannels />
-        <UCard class="max-w-xl">
-          <MemoryBudget detailed />
-        </UCard>
-        <AccountSecurity />
-        <SshAccess />
+      <div class="mx-auto w-full max-w-5xl space-y-6">
+        <NuxtPage />
       </div>
     </template>
   </UDashboardPanel>

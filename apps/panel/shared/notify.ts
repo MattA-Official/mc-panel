@@ -24,6 +24,21 @@ export const EVENT_KINDS = {
     label: 'Copying a backup off-site failed',
     perServer: true,
   },
+  'server.crashed': {
+    group: 'problems',
+    label: 'A server crashed (and when it is back up)',
+    perServer: true,
+  },
+  'server.crash_loop': {
+    group: 'problems',
+    label: 'A server kept crashing and was left stopped',
+    perServer: true,
+  },
+  'server.unresponsive': {
+    group: 'problems',
+    label: 'A server stopped responding',
+    perServer: true,
+  },
   'disk.full': { group: 'problems', label: 'The disk is nearly full (85% and 95%)' },
   'update.flytower': { group: 'updates', label: 'A new version of Flytower is out' },
   'update.content': {

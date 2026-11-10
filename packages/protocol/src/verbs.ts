@@ -39,6 +39,18 @@ export const verbs = {
     result: z.object({
       active: z.enum(['active', 'inactive', 'activating', 'deactivating', 'failed', 'unknown']),
       since: z.string().nullable(),
+      /**
+       * How the last run ended, as systemd's `Result`: `success`, `exit-code`, `signal`,
+       * `core-dump`, `oom-kill`, `timeout`, `watchdog` or `start-limit-hit`. Optional because
+       * agents before 1.1 don't send it, nor the fields below.
+       */
+      result: z.string().nullable().optional(),
+      /** Automatic restarts since the last explicit start (`NRestarts`). */
+      restarts: z.number().int().nullable().optional(),
+      /** How the main process last ended: by exiting, by a signal, or by a signal with a core dump. */
+      exitKind: z.enum(['exited', 'killed', 'dumped']).nullable().optional(),
+      /** The exit code, or the signal number when it was killed. */
+      exitStatus: z.number().int().nullable().optional(),
     }),
   },
   /** CPU time and memory systemd has counted for each server, for the metrics history. */
@@ -54,6 +66,26 @@ export const verbs = {
           memoryBytes: z.number().nullable(),
         }),
       ),
+    }),
+  },
+  /**
+   * Waits until a server changes state (systemd's journal says so), or `timeoutMs` passes, so
+   * the panel hears about crashes without polling. Pass back `cursor` as `after`. `servers`
+   * is what comes back as changed when the agent can't tell, such as on the first call.
+   * `following` is false when the agent can't follow the journal; then poll instead.
+   */
+  'service.wait': {
+    params: z
+      .object({
+        servers: z.array(ServerName).max(100),
+        after: z.string().max(64).nullable(),
+        timeoutMs: z.number().int().min(1000).max(300_000),
+      })
+      .strict(),
+    result: z.object({
+      cursor: z.string(),
+      changed: z.array(z.string()),
+      following: z.boolean(),
     }),
   },
   'service.start': { params: z.object({ server: ServerName }).strict(), result: z.object({}) },

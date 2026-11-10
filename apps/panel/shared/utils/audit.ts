@@ -23,6 +23,14 @@ export function auditKind(action: string): AuditKind {
   return 'servers'
 }
 
+/** Things Flytower records by itself, with nobody signed in behind them. */
+const BY_FLYTOWER = ['server.crashed', 'server.crash_loop', 'server.unresponsive']
+
+/** Who to show for an entry with no user: Flytower for its own, otherwise a removed person. */
+export function auditActor(action: string, user: string | null): string | null {
+  return user ?? (BY_FLYTOWER.includes(action) ? 'Flytower' : null)
+}
+
 /** Detail keys that never leave the server. */
 const SECRET = /pass|token|secret|key/i
 
@@ -82,6 +90,16 @@ export function describeAudit(
       return `Deleted ${t}`
     case 'server.start':
       return `Started ${t}`
+    case 'server.crashed':
+      return `${t} crashed${d.cause ? `. ${str(d.cause)}` : ''}`
+    case 'server.crash_loop':
+      return `${t} kept crashing, so it was left stopped`
+    case 'server.unresponsive':
+      return `${t} stopped responding${d.restarted ? ', so it was restarted' : ''}`
+    case 'server.recovery':
+      return d.restartWhenUnresponsive
+        ? `Set ${t} to restart when it stops responding`
+        : `Set ${t} not to restart when it stops responding`
     case 'server.stop':
       return `Stopped ${t}`
     case 'server.restart':

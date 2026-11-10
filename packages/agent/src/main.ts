@@ -1,5 +1,7 @@
+import { UnitEvents } from './events.ts'
 import { realExec } from './exec.ts'
 import { handlers } from './handlers/index.ts'
+import { refreshTemplate } from './handlers/server.ts'
 import { restoreSsh } from './handlers/ssh.ts'
 import { listen } from './server.ts'
 
@@ -27,7 +29,9 @@ const ctx = {
   panelGroup: env('FLYTOWER_PANEL_GROUP', 'flytower'),
   // stdout goes to the journal; one JSON line per request.
   log: (e: unknown) => console.log(JSON.stringify({ audit: e })),
+  unitEvents: new UnitEvents(),
 }
+ctx.unitEvents.start()
 
 if (process.getuid?.() !== 0) {
   console.error('flytower-agent must run as root')
@@ -45,6 +49,10 @@ const server = await listen(
 console.log(`flytower-agent ${ctx.version} listening`)
 // An emergency SSH opening must end on time even if the agent restarted in between.
 await restoreSsh(ctx).catch((err) => console.error('restoring the SSH timer failed', err))
+await refreshTemplate(ctx).then(
+  (changed) => changed && console.log('updated the server unit template'),
+  (err) => console.error('updating the server unit template failed', err),
+)
 
 for (const sig of ['SIGTERM', 'SIGINT'] as const) {
   process.on(sig, () => {

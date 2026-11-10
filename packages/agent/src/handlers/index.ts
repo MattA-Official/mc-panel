@@ -10,6 +10,7 @@ export const handlers: Handlers = {
   ping: async (_p, ctx) => protocolInfo(ctx.version),
   'service.status': service.status,
   'service.usage': service.usage,
+  'service.wait': service.wait,
   'service.start': service.start,
   'service.stop': service.stop,
   'service.restart': service.restart,

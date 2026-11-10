@@ -1,11 +1,12 @@
 import { eq } from 'drizzle-orm'
 import { schema } from '../db'
 import type { ServiceState } from '../jobs/status'
+import type { Health } from '../crashes/monitor'
 
 type Row = typeof schema.servers.$inferSelect
 
 /** A server as the browser sees it. The RCON password stays on the server. */
-export function publicServer(row: Row, status: ServiceState) {
+export function publicServer(row: Row, status: ServiceState, health?: Health) {
   return {
     name: row.name,
     displayName: row.displayName,
@@ -17,7 +18,9 @@ export function publicServer(row: Row, status: ServiceState) {
     port: row.port,
     hostname: row.hostname,
     createdAt: row.createdAt,
+    restartWhenUnresponsive: row.restartWhenUnresponsive,
     status,
+    health: health ?? { condition: null, crash: null },
   }
 }
 

@@ -93,7 +93,7 @@ async function addChunky() {
 
 <template>
   <section v-if="server" class="rounded-lg border border-default p-5">
-    <h2 class="font-display text-lg tracking-wide uppercase">Pre-generate</h2>
+    <h2 class="text-base font-semibold">Pre-generate</h2>
     <p class="mt-1 text-sm text-muted">
       Generates the world ahead of time with Chunky, so exploring doesn't lag. It runs in the
       background; after a restart, Continue paused picks it up again.
@@ -144,7 +144,7 @@ async function addChunky() {
         <div class="flex flex-wrap items-baseline justify-between gap-2 text-sm">
           <span class="font-medium">{{ dimensionLabel(t.world) }}</span>
           <span class="text-muted tabular-nums">
-            {{ t.percent.toFixed(1) }}% · {{ t.chunks.toLocaleString('en-GB') }} chunks
+            {{ t.percent.toFixed(1) }}% · {{ t.chunks.toLocaleString() }} chunks
             <template v-if="t.eta"> · {{ t.eta }} left</template>
             <template v-if="t.rate"> · {{ t.rate }}/s</template>
           </span>
@@ -204,7 +204,7 @@ async function addChunky() {
         </div>
         <div class="flex flex-wrap items-center justify-between gap-2">
           <p class="text-xs text-muted">
-            About {{ chunks.toLocaleString('en-GB') }} chunks. Players can stay on while it runs.
+            About {{ chunks.toLocaleString() }} chunks. Players can stay on while it runs.
           </p>
           <div class="flex gap-2">
             <UButton

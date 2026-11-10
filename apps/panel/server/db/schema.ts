@@ -2,6 +2,7 @@ import type { ContentItem } from '../../shared/spec'
 import { sql } from 'drizzle-orm'
 import {
   blob,
+  index,
   integer,
   primaryKey,
   real,
@@ -80,6 +81,10 @@ export const servers = sqliteTable(
     offsiteTarget: integer('offsite_target'),
     /** The spec's content list as written; the lockfile in the server folder pins it. */
     content: text('content', { mode: 'json' }).$type<ContentItem[]>().notNull().default([]),
+    /** Restart once, automatically, when the console stops answering for five minutes. */
+    restartWhenUnresponsive: integer('restart_when_unresponsive', { mode: 'boolean' })
+      .notNull()
+      .default(false),
     createdAt: createdAt(),
   },
   (t) => [
@@ -242,3 +247,31 @@ export const notifyState = sqliteTable('notify_state', {
   /** Kind-specific memory, like the disk level last warned about or the versions offered. */
   value: text('value'),
 })
+
+/**
+ * Crashes and other trouble Flytower noticed, per server, kept for 30 days. A crash keeps
+ * the crash report's file name (in the server's crash-reports folder) and the last lines
+ * of the log, since the log is rotated when the server starts again.
+ */
+export const serverEvents = sqliteTable(
+  'server_events',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    server: text('server').notNull(),
+    at: integer('at', { mode: 'timestamp_ms' }).notNull().default(now),
+    kind: text('kind', {
+      enum: ['crash', 'oom', 'crash-loop', 'unresponsive', 'recovered'],
+    }).notNull(),
+    /** A sentence on the cause, like "Exited with code 1" or the crash report's description. */
+    cause: text('cause'),
+    /** systemd's Result for the run that ended, like `exit-code` or `oom-kill`. */
+    result: text('result'),
+    exitStatus: integer('exit_status'),
+    /** The crash report's file name, if Minecraft wrote one. */
+    crashReport: text('crash_report'),
+    logTail: text('log_tail', { mode: 'json' }).$type<string[]>(),
+    /** When someone closed its banner. */
+    dismissedAt: integer('dismissed_at', { mode: 'timestamp_ms' }),
+  },
+  (t) => [index('server_events_server_at').on(t.server, t.at)],
+)

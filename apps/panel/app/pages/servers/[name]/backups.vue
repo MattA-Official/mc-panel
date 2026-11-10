@@ -145,8 +145,7 @@ function size(n: number) {
   if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)} MB`
   return `${(n / 1024 ** 3).toFixed(2)} GB`
 }
-const when = (iso: string) =>
-  new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+const when = (iso: string) => formatDateTime(iso)
 const kinds = {
   manual: { label: 'Manual', color: 'primary' },
   scheduled: { label: 'Scheduled', color: 'neutral' },
@@ -293,8 +292,6 @@ function menu(b: BackupRow) {
     <BackupSchedule v-if="data" :server="name" :schedule="data.schedule" @saved="refresh" />
 
     <BackupOffsite v-if="data" :server="name" :target="data.offsiteTarget" @saved="refresh" />
-
-    <WorldExports :server="name" :disabled="running || data?.busy" />
 
     <UModal v-model:open="noteOpen" title="Back up now">
       <template #body>

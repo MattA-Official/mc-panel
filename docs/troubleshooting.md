@@ -8,7 +8,7 @@
 
 ## Logs
 
-You'll need a shell on the machine: SSH (open it for a while from **System**, **Server access**), or your provider's web console.
+You'll need a shell on the machine: SSH (open it for a while from **System**, **Account and security**), or your provider's web console.
 
 ```sh
 journalctl -u flytower-panel -u flytower-agent -n 200 --no-pager   # the panel and agent
@@ -23,10 +23,11 @@ A server's own logs are also on its **Logs** tab, and in `/srv/flytower/servers/
 - Its **Console** and **Logs** tabs show Minecraft's own error. The usual causes are a mod or plugin that doesn't suit the version, or a broken config file.
 - Remove the content you added last (or restore the backup taken before it), then start it again.
 - Out of memory: lower other servers' memory or raise this one's within the budget.
+- If it crashed, the **Console** tab's banner links to the crash report, and **Logs**, **Crashes** has the log from just before it. After three crashes in ten minutes it's left stopped; **Start** tries again. See [Crashes](crashes.md).
 
 ## SSH
 
-The installer leaves SSH open. Once the panel works and you have a passkey, close it from **System**, **Server access (SSH)**. You can open it again for a set time (15 minutes to 24 hours). It closes by itself when the time is up, even across reboots.
+The installer leaves SSH open. Once the panel works and you have a passkey, close it from **System**, **Account and security**, **Server access (SSH)**. You can open it again for a set time (15 minutes to 24 hours). It closes by itself when the time is up, even across reboots.
 
 If the panel itself is broken and SSH is closed, use your VPS provider's web console.
 
