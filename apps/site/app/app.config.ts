@@ -22,7 +22,13 @@ export default defineAppConfig({
     },
     {
       title: 'Running servers',
-      pages: ['/docs/content', '/docs/backups', '/docs/addresses', '/docs/notifications'],
+      pages: [
+        '/docs/content',
+        '/docs/backups',
+        '/docs/addresses',
+        '/docs/crashes',
+        '/docs/notifications',
+      ],
     },
     { title: 'Looking after the machine', pages: ['/docs/updating', '/docs/troubleshooting'] },
     { title: 'Reference', pages: ['/docs/spec'] },
