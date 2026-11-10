@@ -39,7 +39,7 @@ export interface CommandContext {
   interaction: Interaction
   /** The options given, by name. */
   options: Record<string, OptionValue>
-  /** What the caller may do in Flytower. Nothing yet: role mapping comes later. */
+  /** What the caller may do in Flytower, from their mapped Discord roles. */
   access: Access
   /** The caller's Discord user and, in a server, their role IDs. */
   discordUserId: string | null
@@ -152,11 +152,17 @@ export function toResponse(reply: Reply) {
   }
 }
 
+export interface RouteHooks {
+  /** Someone used a command they don't have access to. */
+  refused?(ctx: CommandContext, command: DiscordCommand): void
+}
+
 /** Answers one verified interaction through the registry. */
 export async function route(
   registry: CommandRegistry,
   interaction: Interaction,
   accessFor: (interaction: Interaction) => Access,
+  hooks: RouteHooks = {},
 ): Promise<unknown> {
   if (interaction.type === InteractionType.Ping) return { type: ResponseType.Pong }
   const data = (interaction.data ?? {}) as CommandData
@@ -192,7 +198,14 @@ export async function route(
     return { type: ResponseType.AutocompleteResult, data: { choices: choices.slice(0, 25) } }
   }
   if (!allowed(ctx.access, command.permission)) {
-    return ephemeral('You don’t have access to that in Flytower.')
+    try {
+      hooks.refused?.(ctx, command)
+    } catch (err) {
+      console.error('[flytower] recording a refused Discord command failed', err)
+    }
+    return ephemeral(
+      'Sorry, you can’t use that. Ask whoever runs the Minecraft server to give your Discord role access in Flytower.',
+    )
   }
   try {
     return toResponse(await command.handle(ctx))

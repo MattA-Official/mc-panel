@@ -2,6 +2,10 @@ import { deriveSecret } from 'nuxt/server'
 import { sealer } from '../backups/offsite'
 import { eq } from 'drizzle-orm'
 import { schema } from '../db'
+import { getSetting } from '../settings'
+import { rolePermissions } from '../auth/access'
+import { discordAccess } from '../discord/roles'
+import type { Interaction } from '../discord/interactions'
 import { readPublicPage, showsLeaderboard } from '../../shared/public-page'
 import { can, type Access } from '../../shared/permissions'
 import { leaderboardCommand, statsCommand, type StatsSource } from '../discord/commands/stats'
@@ -88,6 +92,23 @@ export async function syncDiscordCommands(force = false) {
     .catch(() => 'failed' as const)
   if (result === 'failed') console.warn('[flytower] Discord didn’t take the command list')
   return result
+}
+
+/** The Discord role mappings, as saved on the Discord card. */
+export function discordRoleMappings() {
+  return getSetting(useDb(), 'discord.roles') ?? []
+}
+
+/** What the member behind an interaction may do, read fresh so a change applies at once. */
+export function discordAccessFor(interaction: Interaction): Access {
+  const roles = new Map(
+    useDb()
+      .select({ id: schema.roles.id, permissions: schema.roles.permissions })
+      .from(schema.roles)
+      .all()
+      .map((r) => [r.id, rolePermissions(r)] as const),
+  )
+  return discordAccess(discordRoleMappings(), interaction, (id) => roles.get(id) ?? null)
 }
 
 /**

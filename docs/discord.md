@@ -39,13 +39,27 @@ Leave out `server` to get every server at once; as you type it, Discord suggests
 
 Both answer from the same information as the [public status page](status-page.md), so the server itself is never asked and the page's settings apply: a server whose page shows only a count shows only a count in Discord, and one that hides players or its version hides them here too.
 
-**Which servers show.** Servers with their **public page** turned on. Everything else stays hidden: asking for it answers the same as a server that doesn't exist. Mapping Discord roles to Flytower roles, so staff can see and run more, comes in a later version.
+**Which servers show.** Servers with their **public page** turned on, plus any server the caller can see through their [Discord role](#discord-roles). Everything else stays hidden: asking for it answers the same as a server that doesn't exist.
 
 **Leaderboards and stats.** `/leaderboard` and `/stats` use the same figures as the server's [Stats tab](stats.md). They only cover servers whose public page shows leaderboards (which needs the page to show player names, and the server to keep stats). Players left out of stats never appear, and `/stats` never says when someone last played. With more than one such server, pick one with `server`.
 
 Answers are posted in the channel for everyone to see, except "no such server" and similar, which only the person who asked sees. Player names can never ping anyone.
 
 Flytower sends Discord its command list when you connect, and again after an update if the list changed. If Discord didn't take it, the card says so, with **Send them again**.
+
+## Discord roles
+
+Staff commands use the access of a Flytower role. Under **Discord roles** on the card, give a Discord role a Flytower role, for all servers or one server, and its members can do in Discord what that role can do in the panel. Discord sends the caller's roles with every command, so nobody has to link their Discord account.
+
+1. In Discord, turn on **Developer Mode** (User Settings, Advanced).
+2. In your Discord server's **Server Settings**, **Roles**, right-click the role and choose **Copy Role ID**.
+3. On the card, press **Give a Discord role access**, paste the ID, give it a name you'll recognise (Discord doesn't tell the app role names), and pick the Flytower role and servers.
+
+A member with several mapped roles gets all of them together. Changes apply to the next command. Owner can't be given out through Discord. Saving needs **Manage Flytower**, **Manage people** and your passkey, and is in **Activity**.
+
+Anyone without a mapped role who tries a staff command gets a private "Sorry, you can't use that", and the attempt is in **Activity**. Commands used in a direct message with the app only get what everyone gets.
+
+Everything done through Discord is in **Activity** as "_Name_ via Discord", using the member's nickname in your Discord server.
 
 ## If the endpoint isn't set
 
