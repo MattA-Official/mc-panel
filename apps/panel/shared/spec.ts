@@ -10,6 +10,23 @@ export const SPEC_SCHEMA_PATH = '/schema/server-v1.json'
 /** Keys Flytower manages itself; edit them through their own settings. */
 export const MANAGED_PROPERTIES = ['server-port', 'enable-rcon', 'rcon.port', 'rcon.password']
 
+/** Secrets Minecraft keeps in server.properties that Flytower knows by name. */
+export const SECRET_PROPERTIES = ['rcon.password', 'management-server-secret']
+
+/**
+ * True for a property that holds a credential. Besides the known ones, any key ending in
+ * `secret` or `password` counts, so a secret added by a later Minecraft version is hidden
+ * from the start. Secrets never go into a spec, the properties API or a clone; the Files
+ * tab still shows server.properties as it is.
+ */
+export function isSecretProperty(key: string): boolean {
+  return SECRET_PROPERTIES.includes(key) || /(^|[.-])(secret|password)$/i.test(key)
+}
+
+/** True for a property a spec or the Settings form can't set. */
+export const isManagedProperty = (key: string) =>
+  MANAGED_PROPERTIES.includes(key) || isSecretProperty(key)
+
 export const MIN_MEMORY_MB = 1024
 export const MAX_MEMORY_MB = 65536
 export const DEFAULT_MEMORY_MB = 4096
@@ -93,14 +110,16 @@ const Properties = z
   )
   .superRefine((props, ctx) => {
     for (const key of Object.keys(props)) {
-      if (MANAGED_PROPERTIES.includes(key)) {
+      if (isManagedProperty(key)) {
         ctx.addIssue({
           code: 'custom',
           path: [key],
           message:
             key === 'server-port'
               ? 'Set the port with "port", not in properties.'
-              : `${key} is managed by Flytower.`,
+              : isSecretProperty(key)
+                ? `${key} is a secret, so it's managed by Flytower and never kept in a spec.`
+                : `${key} is managed by Flytower.`,
         })
       }
     }

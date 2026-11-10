@@ -1,5 +1,5 @@
 /** Builds a server's spec from what the panel knows: its database row and server.properties. */
-import { MANAGED_PROPERTIES, type ServerSpec } from '../../shared/spec'
+import { isManagedProperty, type ServerSpec } from '../../shared/spec'
 import type { schema } from '../db'
 
 type ServerRow = typeof schema.servers.$inferSelect
@@ -84,7 +84,8 @@ export function specFromServer(
 ): ServerSpec {
   const properties: ServerSpec['properties'] = {}
   for (const [key, value] of Object.entries(props).sort(([a], [b]) => a.localeCompare(b))) {
-    if (MANAGED_PROPERTIES.includes(key)) continue
+    // Managed keys belong to Flytower, and secrets must never reach a shared spec.
+    if (isManagedProperty(key)) continue
     // `level-type` is stored escaped by some versions and not others.
     const def = PROPERTY_DEFAULTS[key]
     if (def !== undefined && (value === def || value === def.replace(/\\:/g, ':'))) continue

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { z } from 'zod'
-import { compactSpec, memoryToMb, ServerSpec } from '../shared/spec'
+import { compactSpec, isSecretProperty, memoryToMb, ServerSpec } from '../shared/spec'
 import { specFromServer, typedValue } from '../server/spec/from-server'
 import { lineOf, parseSpec, toYaml } from '../server/spec/yaml'
 
@@ -63,6 +63,40 @@ describe('spec', () => {
     const back = parseSpec(yaml)
     expect(back.ok).toBe(true)
     if (back.ok) expect(back.spec).toEqual(spec)
+  })
+
+  test('secrets never go into a spec', () => {
+    const spec = specFromServer(row as never, {
+      ...props,
+      'management-server-enabled': 'true',
+      'management-server-secret': 'hunter2hunter2',
+      'future-thing.password': 'pw',
+    })
+    expect(spec.properties['management-server-enabled']).toBe(true)
+    expect(Object.keys(spec.properties).filter(isSecretProperty)).toEqual([])
+    expect(toYaml(spec, 'https://panel.example/schema/server-v1.json')).not.toContain('hunter2')
+  })
+
+  test('secret keys are known by name and by pattern', () => {
+    for (const k of [
+      'rcon.password',
+      'management-server-secret',
+      'some-new-secret',
+      'proxy.password',
+      'secret',
+    ]) {
+      expect(isSecretProperty(k)).toBe(true)
+    }
+    for (const k of [
+      'management-server-enabled',
+      'management-server-port',
+      'secret-santa',
+      'passwordless-login',
+      'motd',
+      'rcon.port',
+    ]) {
+      expect(isSecretProperty(k)).toBe(false)
+    }
   })
 
   test('restarting when not responding reads back, and is left out when off', () => {
@@ -133,6 +167,15 @@ describe('spec', () => {
     )
     expect(i!.path).toBe('properties.server-port')
     expect(i!.message).toContain('"port"')
+    expect(i!.line).toBe(5)
+  })
+
+  test('secret properties are refused on their own line', () => {
+    const [i] = issues(
+      'name: ab\nloader: { type: vanilla, minecraft: "26.3" }\nproperties:\n  motd: hi\n  management-server-secret: abc\n',
+    )
+    expect(i!.path).toBe('properties.management-server-secret')
+    expect(i!.message).toContain('managed by Flytower')
     expect(i!.line).toBe(5)
   })
 
