@@ -17,6 +17,7 @@ import {
 } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { setAgentExecStart } from './entry-points.ts'
 import type { Exec } from './exec.ts'
 
 export interface UpdateRecord {
@@ -67,7 +68,10 @@ async function pointAt(prefix: string, version: string) {
   await rename(tmp, join(prefix, 'current'))
 }
 
-/** Rewrites the version lines the installer wrote, so health checks see the right one. */
+/**
+ * Rewrites the version lines the installer wrote, so health checks see the right one, and
+ * points the agent unit at the release's entry point (see entry-points.ts).
+ */
 async function setVersion(d: UpdaterDeps, version: string) {
   const env = join(d.config, 'panel.env')
   await writeFile(
@@ -82,6 +86,7 @@ async function setVersion(d: UpdaterDeps, version: string) {
       `Environment=FLYTOWER_VERSION=${version}`,
     ),
   )
+  await setAgentExecStart(d.systemd, d.prefix, join(d.prefix, 'releases', version))
 }
 
 async function panelPort(config: string) {
