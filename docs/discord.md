@@ -25,6 +25,22 @@ Last, press **Add to a Discord server** and pick the server. The app only needs 
 | `/status [server]`  | Whether the server is online, starting or offline, its address, how many are on, and its version. |
 | `/players [server]` | Who's on right now.                                                                               |
 
+### Staff commands
+
+These need a [Discord role](#discord-roles) mapped to a Flytower role with the permission shown, on the server picked.
+
+| Command                               | Needs                 | Does                                                                                      |
+| ------------------------------------- | --------------------- | ----------------------------------------------------------------------------------------- |
+| `/whitelist add <player> [server]`    | Manage players        | Lets a player join. Works while the server is stopped too, like the Players tab.          |
+| `/whitelist remove <player> [server]` | Manage players        | Takes a player off the whitelist.                                                         |
+| `/restart [server]`                   | Start and stop        | Says "Restarting" at once, then "back up" once players can join again (or why it failed). |
+| `/backup [server] [note]`             | Take backups          | Says "Backing up" at once, then the size when it's done (or why it failed).               |
+| `/say <message> [server]`             | Send console commands | Shows `[Discord] Your name: message` to everyone in the game.                             |
+
+You can leave out `server` when your role only covers one server; otherwise Discord suggests the ones you can act on. Every staff command is in **Activity** as "_Name_ via Discord".
+
+`/say` sends plain text only: Minecraft formatting codes and line breaks are taken out, and nothing in the message can run a command or add a click action.
+
 Leave out `server` to get every server at once; as you type it, Discord suggests the servers you can see.
 
 Both answer from the same information as the [public status page](status-page.md), so the server itself is never asked and the page's settings apply: a server whose page shows only a count shows only a count in Discord, and one that hides players or its version hides them here too.
