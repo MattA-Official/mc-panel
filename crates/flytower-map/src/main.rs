@@ -8,15 +8,17 @@ use std::fmt::Write as _;
 use std::io::Write as _;
 use std::path::PathBuf;
 use std::process::ExitCode;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
 use flytower_map::palette::Palette;
+use flytower_map::region;
 use flytower_map::render::{self, Options};
 use flytower_map::{manifest, quote, world};
 
 const USAGE: &str = "\
 usage: flytower-map render --world DIR --out DIR [--palette FILE] [--dimension ID]...
-                           [--full] [--threads N] [--levels N]
+                           [--full] [--threads N] [--levels N] [--progress]
        flytower-map dimensions --world DIR
        flytower-map palette --jar CLIENT.JAR --out FILE";
 
@@ -52,6 +54,7 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, String> {
             "--jar" => parsed.jar = Some(value()?.into()),
             "--dimension" => parsed.only.push(value()?.to_string_lossy().into_owned()),
             "--full" => parsed.opts.full = true,
+            "--progress" => parsed.opts.progress = true,
             "--threads" => match value()?.to_str().and_then(|n| n.parse().ok()) {
                 Some(n @ 1..=64) => parsed.opts.threads = n,
                 _ => return Err("--threads takes a number from 1 to 64".into()),
@@ -153,11 +156,24 @@ fn run(args: &Args) -> Result<String, String> {
     let out = args.out.as_deref().unwrap_or(std::path::Path::new("."));
     let started = Instant::now();
     json.push_str("\"dimensions\":[");
-    let chosen = dims
+    let chosen: Vec<_> = dims
         .iter()
-        .filter(|d| args.only.is_empty() || args.only.contains(&d.id));
-    for (i, dim) in chosen.enumerate() {
-        let r = render::render(dim, out, &palette, args.opts)
+        .filter(|d| args.only.is_empty() || args.only.contains(&d.id))
+        .collect();
+    let total: usize = chosen.iter().map(|d| region_files(&d.regions)).sum();
+    let done = AtomicUsize::new(0);
+    let report_progress = || {
+        if args.opts.progress {
+            let n = done.fetch_add(1, Ordering::Relaxed) + 1;
+            // One short line per region; the panel reads them as they come.
+            eprintln!("progress {} {total}", n.min(total));
+        }
+    };
+    if args.opts.progress {
+        eprintln!("progress 0 {total}");
+    }
+    for (i, dim) in chosen.into_iter().enumerate() {
+        let r = render::render_with(dim, out, &palette, args.opts, &report_progress)
             .map_err(|e| format!("{}: {e}", dim.id))?;
         let comma = if i == 0 { "" } else { "," };
         let first_error = r.first_error.as_deref().map_or("null".into(), quote);
@@ -180,6 +196,16 @@ fn run(args: &Args) -> Result<String, String> {
     .map_err(|e| format!("maps.json: {e}"))?;
     let _ = writeln!(json, "],\"ms\":{}}}", started.elapsed().as_millis());
     Ok(json)
+}
+
+/// Region files in a folder, as a pass will count them.
+fn region_files(dir: &std::path::Path) -> usize {
+    std::fs::read_dir(dir).map_or(0, |entries| {
+        entries
+            .flatten()
+            .filter(|e| e.file_name().to_str().and_then(region::coords).is_some())
+            .count()
+    })
 }
 
 /// Makes a palette from the client jar and writes it, checking it reads back first.
