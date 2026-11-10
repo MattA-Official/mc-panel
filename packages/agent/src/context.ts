@@ -23,6 +23,8 @@ export interface AgentContext {
     prefix?: string // /opt/flytower
     /** The panel's data folder, holding its database. */
     panelData?: string // /var/lib/flytower
+    /** The Caddyfile the installer wrote. */
+    caddyfile?: string // /etc/caddy/Caddyfile
   }
   /** Where releases are downloaded from: Flytower's GitHub releases, or a test server. */
   releasesUrl?: string
