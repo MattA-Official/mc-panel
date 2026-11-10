@@ -4,6 +4,41 @@ import { Sessions } from '../stats/sessions'
 import { StatsSnapshot } from '../stats/snapshot'
 import { parseList } from '../players'
 import { schema } from '../db'
+import { eq } from 'drizzle-orm'
+import { readStatsSettings, type StatsSettings } from '../../shared/stats-settings'
+
+/** A server's player stats settings, with defaults filled in. */
+export function statsSettings(server: string): StatsSettings {
+  const row = useDb()
+    .select({ stats: schema.servers.stats })
+    .from(schema.servers)
+    .where(eq(schema.servers.name, server))
+    .get()
+  return readStatsSettings(row?.stats)
+}
+
+/** Whether stats are kept on a server, and (given a UUID) for that player. */
+export function statsInclude(server: string, uuid: string | null): boolean {
+  const s = statsSettings(server)
+  if (!s.enabled) return false
+  return !uuid || !s.leaveOut.some((p) => p.uuid === uuid)
+}
+
+/**
+ * After a server's stats settings change: turning them off ends the visits under way, and a
+ * player newly left out has everything kept about them on that server deleted.
+ */
+export function statsChanged(server: string, before: unknown) {
+  const was = readStatsSettings(before)
+  const now = statsSettings(server)
+  if (was.enabled && !now.enabled) void useSessions().stopRecording(server)
+  const had = new Set(was.leaveOut.map((p) => p.uuid))
+  for (const p of now.leaveOut) {
+    if (had.has(p.uuid)) continue
+    void useSessions().forgetPlayer(server, p.uuid)
+    useStatsSnapshot().forget(server, p.uuid)
+  }
+}
 
 let sessions: Sessions | undefined
 
@@ -12,6 +47,7 @@ export function useSessions(): Sessions {
   if (!sessions) {
     const s = new Sessions({
       db: useDb(),
+      include: statsInclude,
       lookupUuid: async (server, name) => {
         const cache = await readUserCache(server)
         if (Array.isArray(cache)) {
@@ -70,6 +106,7 @@ let snapshot: StatsSnapshot | undefined
 export function useStatsSnapshot(): StatsSnapshot {
   snapshot ??= new StatsSnapshot({
     db: useDb(),
+    include: statsInclude,
     worldDir: async (server) => {
       const level = (await readProperties(server).catch(() => ({}) as Record<string, string>))[
         'level-name'
@@ -109,7 +146,7 @@ export async function takeStatsSnapshots() {
     } catch {
       due = hourIn('UTC', now) === SNAPSHOT_HOUR
     }
-    if (!due) continue
+    if (!due || !statsInclude(name, null)) continue
     try {
       await useStatsSnapshot().take(name, tz)
     } catch (err) {

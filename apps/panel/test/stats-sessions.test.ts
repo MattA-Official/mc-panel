@@ -188,4 +188,45 @@ describe('Sessions', () => {
     expect(rows()).toEqual([])
     expect(db.select().from(schema.playerNames).all()).toEqual([])
   })
+
+  it('records nothing for a server with stats off or a player left out', async () => {
+    const off = new Set<string>()
+    const leftOut = new Set<string>()
+    const lookups: string[] = []
+    const gated = new Sessions({
+      db,
+      lookupUuid: async (_s, name) => (lookups.push(name), STEVE),
+      include: (server, uuid) => !off.has(server) && !(uuid && leftOut.has(uuid)),
+      now: () => clock,
+    })
+    off.add('survival')
+    await gated.observe('survival', { kind: 'joined', player: 'Steve' })
+    // Stats off: it doesn't even look the player up.
+    expect(lookups).toEqual([])
+    off.clear()
+    leftOut.add(STEVE)
+    gated.line('survival', uuidLine('Steve', STEVE))
+    await gated.observe('survival', { kind: 'joined', player: 'Steve' })
+    expect(rows()).toEqual([])
+  })
+
+  it('ends visits under way when stats are turned off', async () => {
+    await join('Steve', STEVE)
+    minutes(10)
+    await s.stopRecording('survival')
+    expect(rows()[0]).toMatchObject({ endedBy: 'off' })
+    expect(rows()[0]!.leftAt!.getTime()).toBe(clock)
+  })
+
+  it('forgets one player on one server', async () => {
+    await join('Steve', STEVE)
+    await join('Alex', ALEX)
+    await join('Steve', STEVE, 'creative')
+    await s.forgetPlayer('survival', STEVE)
+    expect(rows().map((r) => [r.server, r.name])).toEqual([
+      ['survival', 'Alex'],
+      ['creative', 'Steve'],
+    ])
+    expect(s.summary('survival').map((p) => p.name)).toEqual(['Alex'])
+  })
 })

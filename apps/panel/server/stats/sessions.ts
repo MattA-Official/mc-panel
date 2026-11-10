@@ -15,7 +15,7 @@ import { schema, type Db } from '../db'
 import type { LogEvent } from '../notify/watchers'
 
 /** Why a session ended. */
-export type EndedBy = 'left' | 'stopped' | 'crashed' | 'lost' | 'rejoined'
+export type EndedBy = 'left' | 'stopped' | 'crashed' | 'lost' | 'rejoined' | 'off'
 
 // `[12:34:56] [User Authenticator #1/INFO]: UUID of player Steve is 069a79f4-…`, or Paper's
 // `[12:34:56 INFO]: …`. Like the join line, the message must start straight after the prefix,
@@ -36,6 +36,8 @@ export interface SessionDeps {
   db: Db
   /** The player's UUID from usercache.json (or the offline UUID on an offline server). */
   lookupUuid: (server: string, name: string) => Promise<string | null>
+  /** Whether stats are kept for this player (and the server at all); everyone by default. */
+  include?: (server: string, uuid: string | null) => boolean
   now?: () => number
 }
 
@@ -117,6 +119,26 @@ export class Sessions {
     await Promise.all([...this.queues.values()])
   }
 
+  /** Stats were turned off for a server: ends the visits under way now. */
+  stopRecording(server: string) {
+    return this.queue(server, () => void this.closeAll(server, this.now(), 'off'))
+  }
+
+  /** A player was left out of stats: deletes their sessions and name on that server. */
+  forgetPlayer(server: string, uuid: string) {
+    return this.queue(server, () => {
+      const { db } = this.deps
+      const s = schema.playerSessions
+      const n = schema.playerNames
+      db.delete(s)
+        .where(and(eq(s.server, server), eq(s.uuid, uuid)))
+        .run()
+      db.delete(n)
+        .where(and(eq(n.server, server), eq(n.uuid, uuid)))
+        .run()
+    })
+  }
+
   /** Forgets a deleted server's sessions and names. */
   forget(server: string) {
     const { db } = this.deps
@@ -176,7 +198,10 @@ export class Sessions {
   }
 
   private async joined(server: string, name: string, at: number) {
-    const uuid = this.takeUuid(server, name) ?? (await this.deps.lookupUuid(server, name))
+    const remembered = this.takeUuid(server, name)
+    if (this.deps.include && !this.deps.include(server, null)) return
+    const uuid = remembered ?? (await this.deps.lookupUuid(server, name))
+    if (uuid && this.deps.include && !this.deps.include(server, uuid)) return
     if (!uuid) {
       console.warn(`[flytower] no UUID for ${name} on ${server}; their visit isn't counted`)
       return
