@@ -135,7 +135,13 @@ watch([open, sheetOpen], ([menu, sheet], [wasMenu, wasSheet]) => {
 function choose(item: ActionItem) {
   sheetOpen.value = false
   if (item.onSelect) item.onSelect()
-  else if (item.to) void navigateTo(item.to)
+  else if (typeof item.href === 'string') {
+    // Downloads are plain links; the sheet's rows are buttons, so follow it by hand.
+    const a = document.createElement('a')
+    a.href = item.href
+    if (typeof item.download === 'string') a.download = item.download
+    a.click()
+  } else if (item.to) void navigateTo(item.to)
 }
 
 /** Sub-menus have no room on a sheet, so their items show under a heading instead. */

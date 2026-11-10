@@ -161,3 +161,64 @@ export function serverActions(ctx: ServerActionContext): ActionItem[][] {
 
   return groups
 }
+
+/** Where to read about an installed mod, plugin or datapack, if it has a page. */
+export function contentPage(item: { source: string; slug: string }): string | null {
+  if (item.source === 'modrinth') return `https://modrinth.com/project/${item.slug}`
+  if (item.source === 'vanillatweaks') return 'https://vanillatweaks.net/picker/datapacks/'
+  return null
+}
+
+export interface ContentActionContext {
+  item: { title: string; source: string; slug: string; versionNumber: string; asked: boolean }
+  /** The version an update would bring, if there is one. */
+  updateTo: string | null
+  update: () => void
+  remove: () => void
+  copy: (text: string, what: string) => void
+  openInNewTab: (url: string) => void
+}
+
+/** Actions for one installed item on Content, for its ⋯ button and right-click menu. */
+export function contentActions(ctx: ContentActionContext): ActionItem[][] {
+  const { item } = ctx
+  const page = contentPage(item)
+  const groups: ActionItem[][] = []
+  if (ctx.updateTo) {
+    groups.push([
+      {
+        label: `Update to ${ctx.updateTo}`,
+        icon: 'i-lucide-arrow-up',
+        onSelect: () => ctx.update(),
+      },
+    ])
+  }
+  groups.push([
+    ...(page
+      ? [
+          {
+            label: 'Open project page',
+            icon: 'i-lucide-external-link',
+            onSelect: () => ctx.openInNewTab(page),
+          },
+        ]
+      : []),
+    {
+      label: 'Copy version',
+      icon: 'i-lucide-copy',
+      onSelect: () => ctx.copy(item.versionNumber, 'Version'),
+    },
+  ])
+  // Items pulled in by another one go when it does, so they can't be removed alone.
+  if (item.asked) {
+    groups.push([
+      {
+        label: 'Remove…',
+        icon: 'i-lucide-trash-2',
+        color: 'error',
+        onSelect: () => ctx.remove(),
+      },
+    ])
+  }
+  return groups
+}
