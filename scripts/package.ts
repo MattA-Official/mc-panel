@@ -91,7 +91,7 @@ await chmod(bunTarget, 0o755)
 const rustTarget = arch === 'amd64' ? 'x86_64-unknown-linux-musl' : 'aarch64-unknown-linux-musl'
 const crates = join(repo, 'crates')
 await $`cargo build --release --locked --target ${rustTarget}`.cwd(crates)
-for (const bin of ['flytower-du']) {
+for (const bin of ['flytower-du', 'flytower-map']) {
   await cp(join(crates, 'target', rustTarget, 'release', bin), join(stage, 'bin', bin))
   await chmod(join(stage, 'bin', bin), 0o755)
 }
