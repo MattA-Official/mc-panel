@@ -45,6 +45,20 @@ async function save(patch: Partial<MapSettings>, done: string) {
 }
 
 const pageOn = computed(() => !!server.value?.publicPage.enabled)
+const path = computed(() => `/s/${encodeURIComponent(name.value)}/map/`)
+// The address to share: on the server's own hostname when it has one and the map is public.
+const shareUrl = computed(() => {
+  if (!server.value?.map.public || !pageOn.value) return null
+  return server.value.hostname
+    ? `https://${server.value.hostname}/map/`
+    : `${useRequestURL().origin}${path.value}`
+})
+const copied = ref(false)
+async function copy(text: string) {
+  await navigator.clipboard.writeText(text).catch(() => {})
+  copied.value = true
+  setTimeout(() => (copied.value = false), 1500)
+}
 </script>
 
 <template>
@@ -92,6 +106,27 @@ const pageOn = computed(() => !!server.value?.publicPage.enabled)
       <p v-if="!data.ready" class="mt-4 text-sm text-muted" data-e2e="map-waiting">
         squaremap makes the map the next time the server starts.
       </p>
+      <div v-else class="mt-4 flex flex-wrap items-center gap-2">
+        <UButton
+          :to="path"
+          target="_blank"
+          external
+          label="Open map"
+          icon="i-lucide-map"
+          data-e2e="map-open"
+        />
+        <template v-if="shareUrl">
+          <code class="truncate rounded bg-elevated px-2 py-1 text-xs">{{ shareUrl }}</code>
+          <UButton
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            :icon="copied ? 'i-lucide-check' : 'i-lucide-copy'"
+            :aria-label="copied ? 'Copied' : 'Copy the map\'s address'"
+            @click="copy(shareUrl)"
+          />
+        </template>
+      </div>
       <div class="mt-4 space-y-4">
         <USwitch
           :model-value="server.map.players"
