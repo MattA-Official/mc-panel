@@ -4,6 +4,8 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'bun:test'
 import { MapService, parseReport, type MapDeps, type MapStatus } from '../server/map/service'
 import { DEFAULT_MAP, type MapSettings } from '../shared/map-settings'
+import { mapAccess, mapFile, viewerPage } from '../server/map/serve'
+import { parseDimension, parsePos, PlayerPositions } from '../server/map/players'
 
 const REPORT = JSON.stringify({
   version: 1,
@@ -230,5 +232,116 @@ describe('parseReport', () => {
       ms: 5,
       firstError: null,
     })
+  })
+})
+
+describe('serving the map', () => {
+  const root = '/var/lib/flytower/maps/servers/survival'
+
+  it('serves only the manifest and tiles, never state or anything outside', () => {
+    expect(mapFile(root, 'maps.json')).toEqual({
+      file: `${root}/maps.json`,
+      type: 'application/json',
+      cache: 'no-cache',
+    })
+    expect(mapFile(root, 'tiles/minecraft/overworld/0/-1_2.png')).toMatchObject({
+      type: 'image/png',
+      cache: 'public, max-age=60',
+    })
+    for (const bad of [
+      '',
+      'state/minecraft/overworld.txt',
+      'last-pass.json',
+      'tiles/../state/x.png',
+      'tiles/./a.png',
+      'tiles//a.png',
+      'tiles/.hidden.png',
+      'tiles/a.png\0',
+      'tiles\\a.png',
+      'tiles/a.txt',
+      '../servers/other/maps.json',
+    ]) {
+      expect(mapFile(root, bad)).toBeNull()
+    }
+  })
+
+  it('decides who may open a map', () => {
+    const on = { ...DEFAULT_MAP, enabled: true }
+    expect(mapAccess({ map: DEFAULT_MAP, publicPage: true, canView: true })).toBe('not-found')
+    expect(mapAccess({ map: { ...on, public: true }, publicPage: true, canView: null })).toBe(
+      'allow',
+    )
+    // Public needs the public page too.
+    expect(mapAccess({ map: { ...on, public: true }, publicPage: false, canView: null })).toBe(
+      'sign-in',
+    )
+    expect(mapAccess({ map: on, publicPage: true, canView: null })).toBe('sign-in')
+    expect(mapAccess({ map: on, publicPage: false, canView: true })).toBe('allow')
+    expect(mapAccess({ map: on, publicPage: false, canView: false })).toBe('not-found')
+  })
+
+  it("escapes the server's name in the page", () => {
+    const html = viewerPage({ title: '<Survival & "co">', version: '1.3.0' })
+    expect(html).toContain('<title>&lt;Survival &amp; &quot;co&quot;&gt; · Map</title>')
+    expect(html).toContain('src="/_map/viewer.js?v=1.3.0"')
+    expect(html).not.toContain('<Survival')
+  })
+})
+
+describe('player positions', () => {
+  it('reads positions and dimensions from the data command', () => {
+    expect(parsePos('Steve has the following entity data: [12.5d, 64.0d, -3.25d]')).toEqual([
+      12.5, 64, -3.25,
+    ])
+    expect(parsePos('Steve has the following entity data: [1.0E-4d, 70.0d, 5.0d]')).toEqual([
+      0.0001, 70, 5,
+    ])
+    expect(parsePos('No entity was found')).toBeNull()
+    expect(parseDimension('Steve has the following entity data: "minecraft:the_nether"')).toBe(
+      'minecraft:the_nether',
+    )
+    expect(parseDimension('No entity was found')).toBeNull()
+  })
+
+  it('asks at most once every few seconds, and skips odd names', async () => {
+    const asked: string[] = []
+    const positions = new PlayerPositions({
+      online: async () => [
+        { name: 'Steve', uuid: 'u1' },
+        { name: 'bad name; op me', uuid: null },
+        { name: 'Gone', uuid: null },
+      ],
+      rcon: async (_server, command) => {
+        asked.push(command)
+        if (command.includes('Gone')) return 'No entity was found'
+        return command.endsWith('Pos')
+          ? 'Steve has the following entity data: [1.5d, 2.0d, 3.5d]'
+          : 'Steve has the following entity data: "minecraft:overworld"'
+      },
+      ttlMs: 1000,
+    })
+    const first = await positions.get('survival')
+    expect(first).toEqual([
+      { name: 'Steve', uuid: 'u1', dimension: 'minecraft:overworld', x: 1.5, y: 2, z: 3.5 },
+    ])
+    await positions.get('survival')
+    expect(asked).toEqual([
+      'data get entity Steve Pos',
+      'data get entity Steve Dimension',
+      'data get entity Gone Pos',
+    ])
+    positions.forget('survival')
+    await positions.get('survival')
+    expect(asked.length).toBe(6)
+  })
+
+  it('gives nobody when the server cannot be asked', async () => {
+    const positions = new PlayerPositions({
+      online: async () => {
+        throw new Error('stopped')
+      },
+      rcon: async () => '',
+    })
+    expect(await positions.get('survival')).toEqual([])
   })
 })

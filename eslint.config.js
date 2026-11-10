@@ -9,4 +9,6 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   { languageOptions: { globals: { ...globals.node } } },
+  // The web map viewer runs in the browser on its own, without Nuxt.
+  { files: ['apps/panel/public/_map/**'], languageOptions: { globals: { ...globals.browser } } },
 )

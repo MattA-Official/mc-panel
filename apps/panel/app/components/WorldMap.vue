@@ -69,6 +69,20 @@ async function draw(full: boolean) {
 
 const busy = computed(() => status.value?.state === 'drawing' || status.value?.state === 'queued')
 const pageOn = computed(() => !!server.value?.publicPage.enabled)
+const path = computed(() => `/s/${encodeURIComponent(name.value)}/map/`)
+// The address to share: on the server's own hostname when it has one and the map is public.
+const shareUrl = computed(() => {
+  if (!server.value?.map.public || !pageOn.value) return null
+  return server.value.hostname
+    ? `https://${server.value.hostname}/map/`
+    : `${useRequestURL().origin}${path.value}`
+})
+const copied = ref(false)
+async function copy(text: string) {
+  await navigator.clipboard.writeText(text).catch(() => {})
+  copied.value = true
+  setTimeout(() => (copied.value = false), 1500)
+}
 
 const plural = (n: number, one: string, many = `${one}s`) =>
   `${n.toLocaleString()} ${n === 1 ? one : many}`
@@ -148,8 +162,18 @@ const lastLine = computed(() => {
           :description="status.error"
         />
 
-        <div v-if="canDraw" class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           <UButton
+            v-if="status?.lastPass"
+            :to="path"
+            target="_blank"
+            external
+            label="Open map"
+            icon="i-lucide-map"
+            data-e2e="map-open"
+          />
+          <UButton
+            v-if="canDraw"
             label="Draw now"
             icon="i-lucide-brush"
             color="neutral"
@@ -159,6 +183,7 @@ const lastLine = computed(() => {
             @click="draw(false)"
           />
           <UButton
+            v-if="canDraw"
             label="Redraw everything"
             icon="i-lucide-refresh-cw"
             color="neutral"
@@ -166,6 +191,17 @@ const lastLine = computed(() => {
             :disabled="busy"
             data-e2e="map-redraw"
             @click="draw(true)"
+          />
+        </div>
+        <div v-if="shareUrl" class="flex items-center gap-2">
+          <code class="truncate rounded bg-elevated px-2 py-1 text-xs">{{ shareUrl }}</code>
+          <UButton
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            :icon="copied ? 'i-lucide-check' : 'i-lucide-copy'"
+            :aria-label="copied ? 'Copied' : 'Copy the map\'s address'"
+            @click="copy(shareUrl)"
           />
         </div>
 
