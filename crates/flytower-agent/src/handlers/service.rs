@@ -147,10 +147,10 @@ pub fn usage(servers: &[String], ctx: &Context) -> Value {
     json!({ "usage": out })
 }
 
-/// `service.wait`. Following the journal isn't ported yet, so this says so straight away and
-/// the panel polls instead, as it does with any agent that can't follow.
+/// `service.wait` when the journal isn't being followed: says so straight away, and the panel
+/// polls instead.
 #[must_use]
-pub fn wait(servers: &[String]) -> Value {
+pub fn not_following(servers: &[String]) -> Value {
     json!({ "cursor": "", "changed": servers, "following": false })
 }
 
@@ -218,6 +218,7 @@ mod tests {
             Context {
                 version: "test".into(),
                 exec,
+                events: None,
             },
             ran,
         )
@@ -350,7 +351,7 @@ mod tests {
 
     #[test]
     fn wait_falls_back_to_polling() {
-        let w = wait(&["survival".into()]);
+        let w = not_following(&["survival".into()]);
         assert_eq!(
             w,
             json!({ "cursor": "", "changed": ["survival"], "following": false })

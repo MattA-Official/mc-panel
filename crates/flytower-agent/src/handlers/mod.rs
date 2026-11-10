@@ -4,9 +4,13 @@
 
 pub mod service;
 
+use std::sync::Arc;
+use std::time::Duration;
+
 use serde_json::{Value, json};
 
 use crate::envelope::{AgentError, ErrorCode, PROTOCOL_VERSION};
+use crate::events::UnitEvents;
 use crate::exec::Exec;
 use crate::verbs::Params;
 
@@ -15,6 +19,8 @@ use crate::verbs::Params;
 pub struct Context {
     pub version: String,
     pub exec: Box<dyn Exec>,
+    /// Unit changes from the journal; `None` makes `service.wait` tell the panel to poll.
+    pub events: Option<Arc<UnitEvents>>,
 }
 
 /// Runs one checked request.
@@ -26,7 +32,13 @@ pub fn handle(params: &Params, ctx: &Context) -> Result<Value, AgentError> {
         Params::Ping => Ok(json!({ "agentVersion": ctx.version, "protocol": PROTOCOL_VERSION })),
         Params::ServiceStatus(p) => service::status(&p.server, ctx),
         Params::ServiceUsage(p) => Ok(service::usage(&p.servers, ctx)),
-        Params::ServiceWait(p) => Ok(service::wait(&p.servers)),
+        Params::ServiceWait(p) => Ok(match &ctx.events {
+            Some(events) => {
+                let timeout = Duration::from_millis(u64::try_from(p.timeout_ms).unwrap_or(0));
+                events.wait(&p.servers, p.after.as_deref(), timeout)
+            }
+            None => service::not_following(&p.servers),
+        }),
         Params::ServiceStart(p) => service::action("start", &p.server, ctx),
         Params::ServiceStop(p) => service::action("stop", &p.server, ctx),
         Params::ServiceRestart(p) => service::action("restart", &p.server, ctx),
