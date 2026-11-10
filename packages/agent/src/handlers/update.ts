@@ -1,11 +1,12 @@
 import { existsSync } from 'node:fs'
-import { mkdir, readdir, rename, rm } from 'node:fs/promises'
+import { mkdir, readdir, realpath, rename, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { AgentError, type Params, type Result } from '@flytower/protocol'
 import type { AgentContext } from '../context.ts'
 import { sumFor, verifySums } from '../release.ts'
 import { currentVersion, readRecord } from '../updater.ts'
 import { downloadVerified } from '../download.ts'
+import { hasUpdater, setAgentExecStart, updaterCommand } from '../entry-points.ts'
 
 const RELEASES = 'https://github.com/MattA-Official/mc-panel/releases/download'
 const prefixOf = (ctx: AgentContext) => ctx.paths.prefix ?? '/opt/flytower'
@@ -36,9 +37,14 @@ async function busy(ctx: AgentContext) {
   }
 }
 
-/** Hands over to the new release's updater, in its own unit so it survives our restart. */
+/**
+ * Hands over to the new release's updater, in its own unit so it survives our restart. The
+ * agent unit is pointed at that release's entry point first, because an updater from before
+ * the wrappers existed doesn't know to do it.
+ */
 async function startUpdater(ctx: AgentContext, version: string, manual: boolean) {
   const release = join(prefixOf(ctx), 'releases', version)
+  await setAgentExecStart(ctx.paths.systemd, prefixOf(ctx), release)
   const unit = `flytower-update-${version.replace(/[^0-9a-z]/gi, '-')}-${Date.now()}`
   const r = await ctx.exec('systemd-run', [
     `--unit=${unit}`,
@@ -53,8 +59,7 @@ async function startUpdater(ctx: AgentContext, version: string, manual: boolean)
     ]
       .filter((k) => process.env[k])
       .map((k) => `--setenv=${k}=${process.env[k]}`),
-    join(release, 'bin', 'bun'),
-    join(release, 'agent', 'updater.js'),
+    ...updaterCommand(release),
     version,
     ...(manual ? ['--manual'] : []),
   ])
@@ -98,7 +103,7 @@ export async function install(
     const tar = await ctx.exec('tar', ['-xzf', join(work, name), '-C', join(work, 'unpack')])
     if (tar.code !== 0) throw new AgentError('failed', `unpacking failed: ${tar.stderr.trim()}`)
     const root = join(work, 'unpack', `flytower-${p.version}`)
-    if (!existsSync(join(root, 'VERSION')) || !existsSync(join(root, 'agent', 'updater.js'))) {
+    if (!existsSync(join(root, 'VERSION')) || !hasUpdater(root)) {
       throw new AgentError('failed', `${name} isn't a Flytower release this agent can install`)
     }
     const dest = join(prefix, 'releases', p.version)
@@ -124,4 +129,18 @@ export async function rollback(
   }
   await startUpdater(ctx, p.version, true)
   return { started: true }
+}
+
+/**
+ * Points the agent's own unit at the running release's entry point when the agent starts, so
+ * installs from before the wrappers existed move over on their first update. Takes effect
+ * from the agent's next restart; nothing is restarted here.
+ */
+export async function refreshAgentUnit(ctx: AgentContext): Promise<boolean> {
+  const prefix = prefixOf(ctx)
+  const release = await realpath(join(prefix, 'current')).catch(() => null)
+  if (!release || !(await setAgentExecStart(ctx.paths.systemd, prefix, release))) return false
+  const r = await ctx.exec('systemctl', ['daemon-reload'])
+  if (r.code !== 0) throw new Error(`systemctl daemon-reload: ${r.stderr.trim() || 'failed'}`)
+  return true
 }
