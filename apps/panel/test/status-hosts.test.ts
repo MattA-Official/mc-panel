@@ -59,6 +59,7 @@ describe('server hostnames', () => {
       expect(at(p)).toBe('allow')
     }
     expect(at('/s/survivalx/map/')).toBe('not-found')
+    expect(at('/_map/viewer.js')).toBe('allow')
     expect(at('/s/creative/map/')).toBe('not-found')
     expect(
       routeHost({

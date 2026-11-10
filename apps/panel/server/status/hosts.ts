@@ -7,7 +7,7 @@
 export type HostDecision =
   { kind: 'panel' } | { kind: 'redirect'; to: string } | { kind: 'allow' } | { kind: 'not-found' }
 
-const STATIC = /^\/(_nuxt|_fonts|_icons)\//
+const STATIC = /^\/(_nuxt|_fonts|_icons|_map)\//
 const ROOT_FILE = /^\/[\w.-]+\.(svg|ico|png|webmanifest|woff2?)$/
 
 export function routeHost(input: {
