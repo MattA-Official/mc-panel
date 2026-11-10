@@ -14,6 +14,7 @@ useHead({ title: 'Your account' })
         <AccountProfile />
         <AccountSecurity />
         <AccountSessions />
+        <AccountBrowser />
       </div>
     </template>
   </UDashboardPanel>
