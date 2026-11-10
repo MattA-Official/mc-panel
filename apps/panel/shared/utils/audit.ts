@@ -151,6 +151,13 @@ export function describeAudit(
       if (d.enabled === false && d.was !== false) return `Turned off player stats on ${t}`
       if (d.enabled === true && d.was === false) return `Turned on player stats on ${t}`
       return `Changed who is left out of player stats on ${t}`
+    case 'server.map': {
+      const was = (d.was ?? {}) as { public?: boolean; players?: boolean }
+      if (d.public !== was.public) {
+        return d.public ? `Made ${t}'s map public` : `Made ${t}'s map private`
+      }
+      return d.players ? `Turned on players on ${t}'s map` : `Turned off players on ${t}'s map`
+    }
     case 'server.public_page':
       if (d.enabled === false) return `Turned off ${t}'s public page`
       return d.was === false ? `Turned on ${t}'s public page` : `Changed ${t}'s public page`
