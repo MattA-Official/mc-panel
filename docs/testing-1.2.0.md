@@ -40,3 +40,24 @@ On a server with a world you don't mind resetting, ideally with a datapack or tw
 - [ ] Reset again with **Keep the old world** unticked: nothing is added to Past worlds, and the job says the old one is in Backups.
 - [ ] Fill the disk until the world won't fit twice (or test on a small VPS), then reset with a past world: the reset fails saying there isn't room, the server comes back up, and the old world is untouched.
 - [ ] Delete a server that has a past world. **Import**, **A past world** still lists it.
+
+## Branding
+
+On **System**, **Branding**. See [Branding](branding.md). Have an SVG and a PNG logo to hand; your society's will do.
+
+- [ ] Before changing anything, the panel looks exactly as it did: amber, Big Shoulders, the batten logo, no "Powered by" line.
+- [ ] Change the name and pick a colour (try your real brand colour, then something awkward like a pale yellow or a dark navy). The shade strip and the light and dark previews update as you type, each showing a contrast ratio of 4.5:1 or more.
+- [ ] **Save** asks for your passkey (unless you confirmed one in the last five minutes). The whole panel changes straight away, with no reload: buttons, links, the selected menu item, the tab title and the name in the menu. **Activity** shows the change.
+- [ ] Switch between light and dark mode (the button by your name). Buttons and links are easy to read in both.
+- [ ] Reload the page: it opens in your colours, with no flash of amber first.
+- [ ] Pick each font. Titles and server names change, and Fraunces and Space Grotesk aren't forced into capitals. Body text stays the same.
+- [ ] Upload an SVG logo. It shows in the menu and on the form. Upload a PNG favicon; the browser tab's icon changes. **Remove** each and the Flytower ones come back (the logo is the favicon while there's no favicon).
+- [ ] Try to upload a JPEG, a PNG over 1024 pixels wide, and an SVG saved with a `<!DOCTYPE …>` line. Each is refused with a reason.
+- [ ] Optional, for the security-minded: upload an SVG containing `<script>alert(1)</script>` and an `onload="alert(1)"`. It's accepted, nothing pops up, and opening the logo's address on its own shows the image with the script gone.
+- [ ] Sign out. The sign-in page shows your name and logo, and "Powered by Flytower" underneath. Turn the switch off on the form and it goes from there and from under the menu.
+- [ ] With another tab open on the panel, save a change in the first. The other tab changes by itself.
+- [ ] Discord: **Send test** on a Discord channel. The message comes from your name (and your logo, if it's a PNG), and the footer has your name.
+- [ ] In-game: add an **Announcement** on a server's **Schedules** tab and **Run now**. It appears in your accent colour, not gold. A restart's countdown does too.
+- [ ] Register a new passkey (**System**, **Account and security**): the browser's prompt names your panel. Old passkeys still sign in.
+- [ ] **Reset to Flytower** asks first, then puts everything back.
+- [ ] The browser's console shows no content security policy errors on any page.

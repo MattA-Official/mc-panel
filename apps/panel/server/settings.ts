@@ -2,6 +2,7 @@
 import { eq } from 'drizzle-orm'
 import { schema, type DbOrTx } from './db'
 import type { DiskReport } from '../shared/disk'
+import type { BrandingSettings, ImageType } from '../shared/branding'
 
 export type UpdateChannel = 'stable' | 'beta'
 
@@ -10,6 +11,17 @@ export interface Settings {
   'update.channel': UpdateChannel
   /** The last disk use measurement, so the System page has figures straight after a restart. */
   'disk.usage': DiskReport
+  /** The install's own name, colour and font. Missing fields mean Flytower's own. */
+  branding: Partial<BrandingSettings>
+  /** Cleaned uploads, base64, with a hash for cache busting. */
+  'branding.logo': StoredImage
+  'branding.favicon': StoredImage
+}
+
+export interface StoredImage {
+  type: ImageType
+  data: string
+  hash: string
 }
 
 export function getSetting<K extends keyof Settings>(db: DbOrTx, key: K): Settings[K] | undefined {
@@ -22,4 +34,8 @@ export function setSetting<K extends keyof Settings>(db: DbOrTx, key: K, value: 
     .values({ key, value })
     .onConflictDoUpdate({ target: schema.settings.key, set: { value, updatedAt: new Date() } })
     .run()
+}
+
+export function deleteSetting(db: DbOrTx, key: keyof Settings) {
+  db.delete(schema.settings).where(eq(schema.settings.key, key)).run()
 }
