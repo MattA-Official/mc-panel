@@ -48,6 +48,21 @@ You need two servers, one running and one stopped.
 - [ ] Help pages still show once you type, below servers and pages.
 - [ ] Signed in as a Viewer: no Start, Stop, Back up now, Clone or Delete, and no New server.
 
+## Console autocomplete
+
+On a running Fabric server, open the **Console**.
+
+- [ ] The first time a console opens for a Minecraft version, vanilla commands appear after 10 to 30 seconds (the panel runs the game's own command report once and keeps it). Until then, and on later visits straight away, commands from `help` complete.
+- [ ] Type `gi`: **give** is suggested, with `give <targets> <item> [<count>]` under the list.
+- [ ] `give ` suggests online players and `@p`, `@r`, `@s`, `@a`. `give <you> dia` suggests diamond items, and a greyed-out ending shows in the box.
+- [ ] **Tab** fills in the highlighted suggestion; Tab again moves to the next, **Shift+Tab** back. **→** takes the greyed-out ending. **Escape** closes the list.
+- [ ] **Up** and **Down** move in the list while it's open, and walk your command history when it's closed. Walking history doesn't open the list.
+- [ ] `effect give @a ` lists effects, `gamemode ` the four game modes, `execute as @a run tp ` completes again after `run`.
+- [ ] A mod command (`spark`, `chunky`) completes by name and shows its usage.
+- [ ] A player who joins shows up in player suggestions without reloading. After a restart with a new mod, its command appears.
+- [ ] On a phone, suggestions are a row of buttons above the box, and tapping one fills it in.
+- [ ] Signed in as a Viewer: no command box and no suggestions.
+
 ## System-wide disk use
 
 You need a test VPS on this build with at least one server. Test with the Bun agent first, then again with the Rust one (`echo rust > /etc/flytower/agent`, then `systemctl restart flytower-agent`). See [Disk space](../disk.md).

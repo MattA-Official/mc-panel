@@ -91,11 +91,12 @@ await chmod(bunTarget, 0o755)
 const rustTarget = arch === 'amd64' ? 'x86_64-unknown-linux-musl' : 'aarch64-unknown-linux-musl'
 const crates = join(repo, 'crates')
 await $`cargo build --release --locked --target ${rustTarget}`.cwd(crates)
-// The Rust agent goes in as flytower-agent-rust, behind the flytower-agent wrapper, which
-// starts it only when it's switched on (see packages/agent/bin/flytower-agent).
+// The Rust agent and updater go in as *-rust, behind the wrappers, which start them only
+// when they're switched on (see packages/agent/bin/flytower-agent).
 for (const [bin, as] of [
   ['flytower-du', 'flytower-du'],
   ['flytower-agent', 'flytower-agent-rust'],
+  ['flytower-updater', 'flytower-updater-rust'],
   ['flytower-map', 'flytower-map'],
 ] as const) {
   await cp(join(crates, 'target', rustTarget, 'release', bin), join(stage, 'bin', as))

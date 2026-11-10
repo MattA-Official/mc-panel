@@ -142,6 +142,7 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   'servers/[name]/logs/view.get.ts': 'console.read',
   'servers/[name]/logs/download.get.ts': 'console.read',
   'servers/[name]/command.post.ts': 'console.command',
+  'servers/[name]/commands.get.ts': 'console.command',
 
   'servers/[name]/players.post.ts': 'players.manage',
 

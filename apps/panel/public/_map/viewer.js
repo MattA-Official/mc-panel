@@ -48,6 +48,12 @@
   let rev = Date.now()
   let players = []
   const tiles = new Map()
+  // How often players are asked for, and how long a marker takes to glide to its new place.
+  const PLAYERS_MS = 1000
+  // Further than this in one step is a teleport or portal: jump there, don't glide.
+  const GLIDE_MAX = 64
+  const markerEls = new Map()
+  let gliding = 0
 
   const scale = () => 2 ** view.zoom
   const dims = () => (manifest ? manifest.dimensions : [])
@@ -149,21 +155,50 @@
 
   // --- Players ---
 
+  // Where a player is drawn right now: part of the way from where they were to where they are.
+  function at(p, now) {
+    const t = Math.min(1, (now - p.since) / PLAYERS_MS)
+    return { x: p.fromX + (p.x - p.fromX) * t, z: p.fromZ + (p.z - p.fromZ) * t }
+  }
+
   function drawPlayers() {
     const d = current()
-    markers.replaceChildren()
-    if (!d) return
     const s = scale()
     const w = root.clientWidth
     const h = root.clientHeight
+    const now = performance.now()
+    const shown = new Set()
     for (const p of players) {
-      if (p.dimension !== d.id) continue
-      const m = el('div', 'player')
-      m.style.left = `${(p.x - view.x) * s + w / 2}px`
-      m.style.top = `${(p.z - view.z) * s + h / 2}px`
-      m.append(head(p), el('span', 'name', p.name))
-      markers.append(m)
+      if (!d || p.dimension !== d.id) continue
+      shown.add(p.name)
+      let m = markerEls.get(p.name)
+      if (!m) {
+        m = el('div', 'player')
+        m.append(head(p), el('span', 'name', p.name))
+        markerEls.set(p.name, m)
+        markers.append(m)
+      }
+      const pos = at(p, now)
+      m.style.left = `${(pos.x - view.x) * s + w / 2}px`
+      m.style.top = `${(pos.z - view.z) * s + h / 2}px`
     }
+    for (const [name, m] of markerEls) {
+      if (!shown.has(name)) {
+        m.remove()
+        markerEls.delete(name)
+      }
+    }
+  }
+
+  // Redraws the markers each frame until everyone has arrived.
+  function glide() {
+    if (gliding) return
+    const step = () => {
+      drawPlayers()
+      const now = performance.now()
+      gliding = players.some((p) => now - p.since < PLAYERS_MS) ? requestAnimationFrame(step) : 0
+    }
+    gliding = requestAnimationFrame(step)
   }
 
   function head(p) {
@@ -202,12 +237,20 @@
     try {
       const res = await fetch('players.json', { cache: 'no-store' })
       if (!res.ok) throw new Error(String(res.status))
-      players = (await res.json()).players || []
+      const now = performance.now()
+      const before = new Map(players.map((p) => [p.name, p]))
+      players = ((await res.json()).players || []).map((p) => {
+        const last = before.get(p.name)
+        const from = last && last.dimension === p.dimension ? at(last, now) : null
+        const near = from && Math.hypot(p.x - from.x, p.z - from.z) <= GLIDE_MAX
+        return { ...p, fromX: near ? from.x : p.x, fromZ: near ? from.z : p.z, since: now }
+      })
     } catch {
       players = []
     }
     listPlayers()
     drawPlayers()
+    glide()
   }
 
   // --- Moving around ---
@@ -367,7 +410,7 @@
     if (dims().length < 2) picker.hidden = true
     draw()
     void refreshPlayers()
-    setInterval(refreshPlayers, 3000)
+    setInterval(refreshPlayers, PLAYERS_MS)
     setInterval(refreshManifest, 60_000)
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
