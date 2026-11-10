@@ -382,3 +382,14 @@ describe('where the brand shows up', () => {
     expect(warningCommands(5, '#2F6FD0').every((c) => c.includes('#2F6FD0'))).toBe(true)
   })
 })
+
+describe('activity', () => {
+  it('describes branding changes and files them under Flytower', async () => {
+    const { auditKind, describeAudit } = await import('../shared/utils/audit')
+    expect(describeAudit('branding.update', null, { name: 'NNT', accent: '#2f6fd0' })).toBe(
+      'Changed the branding (NNT, #2f6fd0)',
+    )
+    expect(describeAudit('branding.reset', null, null)).toBe("Reset the branding to Flytower's own")
+    expect(auditKind('branding.logo')).toBe('system')
+  })
+})
