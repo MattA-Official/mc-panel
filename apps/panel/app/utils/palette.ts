@@ -1,4 +1,5 @@
 import type { ActionItem } from './server-actions'
+import { jumpKbds } from './shortcuts'
 
 /**
  * What the command palette (#107) offers besides the help pages: each server, with its
@@ -12,6 +13,8 @@ export interface PaletteLink {
   to?: string
   description?: string
   disabled?: boolean
+  /** Its keyboard shortcut (#108), shown at the end of the row. */
+  kbds?: string[]
   onSelect?: () => void
   children?: PaletteLink[]
 }
@@ -110,11 +113,14 @@ export function serverGroups(
   const groups: PaletteGroup[] = []
   for (const { server, link } of servers) {
     if (!typing && server.name !== current) continue
+    // G-jumps go to the server you're on, so only its rows show them.
+    const here = server.name === current
     groups.push({
       id: `server-${server.name}`,
       label: server.displayName,
       items: (link.children ?? []).map((c) => ({
         ...c,
+        ...(here && jumpKbds(c.label) ? { kbds: jumpKbds(c.label) } : {}),
         label: `${server.displayName} › ${c.label}`,
         suffix: c.description,
         description: undefined,
