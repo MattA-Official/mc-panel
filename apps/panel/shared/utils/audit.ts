@@ -17,7 +17,9 @@ export function auditKind(action: string): AuditKind {
   if (action.startsWith('world.')) return 'world'
   if (action.startsWith('players.')) return 'players'
   if (action.startsWith('files.')) return 'files'
-  if (action === 'server.apply' || action === 'server.properties') return 'content'
+  if (action === 'server.apply' || action === 'server.properties' || action === 'server.icon') {
+    return 'content'
+  }
   if (/^(auth|passkey|recovery|setup|ssh)\./.test(action)) return 'access'
   if (/^(update|notify|branding)\./.test(action)) return 'system'
   return 'servers'
@@ -123,6 +125,8 @@ export function describeAudit(
       return `Ran /${str(d.command).replace(/^\//, '')} on ${t}`
     case 'server.properties':
       return `Changed ${t}'s settings${Array.isArray(d.keys) ? ` (${d.keys.join(', ')})` : ''}`
+    case 'server.icon':
+      return d.removed ? `Removed ${t}'s icon` : `Changed ${t}'s icon`
     case 'server.resources': {
       const bits = [
         d.memoryMb ? `memory ${Number(d.memoryMb) / 1024} GB` : '',

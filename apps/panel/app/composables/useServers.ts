@@ -67,6 +67,8 @@ export interface Server {
   publicPage: PublicPage
   status: ServiceState
   health: Health
+  /** The server's icon, if it has one; the URL changes when the icon does. */
+  icon: string | null
 }
 
 /** Live systemd states for every server, kept current over the shared socket. */

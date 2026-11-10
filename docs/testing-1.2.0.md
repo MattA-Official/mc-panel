@@ -77,3 +77,17 @@ On any server, in **Settings**, **Game settings**. Have Minecraft open on the mu
 - [ ] The **YAML** tab shows the same `motd:` string, and a server made **From YAML** with a two-line `motd` gets both lines.
 - [ ] On a phone, the toolbar wraps, the preview shrinks to fit, and selecting text then tapping a button still applies to the selection.
 - [ ] The browser's console shows no content security policy errors.
+
+## Server icon
+
+On any server, in **Settings**, **Game settings**, with Minecraft open on the multiplayer screen.
+
+- [ ] **Upload** a JPEG photo that isn't square. The crop dialog starts on the largest centred square; dragging moves it, the slider zooms in, and the 64×64 result and the list preview follow straight away.
+- [ ] **Save icon**. The icon shows next to **Server icon**, and **Activity** says the icon was changed. Restart the server: the multiplayer list shows the same icon.
+- [ ] The **Files** tab shows `server-icon.png`. Download it: it's 64×64, and a tool such as `exiftool` or `pngcheck -t` shows no text or metadata, even if the picture you uploaded had some.
+- [ ] Try a PNG with transparency, and a WebP. Both work, and transparency is kept.
+- [ ] Picking a GIF, an SVG or a file over 10 MB gives a clear message and opens nothing.
+- [ ] **Change** replaces the icon, and the page shows the new one at once (no stale cached picture).
+- [ ] **Remove** takes it away; after a restart the list shows the default icon again.
+- [ ] Clone a server that has an icon: the clone has it too.
+- [ ] On a phone, the crop dialog fits the screen and dragging the picture works with a finger.
