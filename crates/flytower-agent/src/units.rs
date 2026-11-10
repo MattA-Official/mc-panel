@@ -18,6 +18,8 @@ pub struct Paths {
     pub prefix: String,
     /// The panel's data folder, holding its database.
     pub panel_data: String,
+    /// The Caddyfile the installer wrote.
+    pub caddyfile: String,
 }
 
 impl Paths {
@@ -36,6 +38,7 @@ impl Paths {
             state: env("FLYTOWER_AGENT_STATE_DIR", "/var/lib/flytower/agent"),
             prefix: env("FLYTOWER_PREFIX", "/opt/flytower"),
             panel_data: env("FLYTOWER_PANEL_DATA", "/var/lib/flytower"),
+            caddyfile: env("FLYTOWER_CADDYFILE", "/etc/caddy/Caddyfile"),
         }
     }
 
@@ -52,6 +55,7 @@ impl Paths {
             state: at("state"),
             prefix: at("prefix"),
             panel_data: at("panel"),
+            caddyfile: at("Caddyfile"),
         }
     }
 }
