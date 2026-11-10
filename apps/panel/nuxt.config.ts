@@ -7,7 +7,12 @@ export default defineNuxtConfig({
   colorMode: { preference: 'dark', fallback: 'dark' },
   app: {
     head: {
-      link: [{ rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
+      link: [
+        // Branding: an uploaded favicon (or Flytower's), and the brand's colours and font as a
+        // stylesheet, so they apply before the first paint instead of flashing amber.
+        { rel: 'icon', href: '/branding/favicon' },
+        { rel: 'stylesheet', href: '/branding/theme.css' },
+      ],
     },
   },
   // Fonts come from @fontsource imports in main.css; stop @nuxt/fonts fetching from the web.

@@ -8,5 +8,5 @@ import type { RelyingParty } from '../auth/passkeys'
 export function relyingParty(event: H3Event): RelyingParty {
   const url = getRequestURL(event, { xForwardedProto: true, xForwardedHost: true })
   const { rpId } = useRuntimeConfig()
-  return { id: rpId || url.hostname, name: 'Flytower', origin: url.origin }
+  return { id: rpId || url.hostname, name: useBranding().settings().name, origin: url.origin }
 }

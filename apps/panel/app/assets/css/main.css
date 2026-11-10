@@ -8,6 +8,9 @@
 @import '@fontsource/ibm-plex-mono/400.css';
 @import '@fontsource/ibm-plex-mono/600.css';
 @import '@fontsource-variable/big-shoulders-display';
+/* Display fonts a brand can choose. Browsers only download a face once a page uses it. */
+@import '@fontsource-variable/fraunces';
+@import '@fontsource-variable/space-grotesk';
 
 @theme static {
   /* Fonts: self-hosted from @fontsource (imported above) */
@@ -77,12 +80,13 @@
   --ft-info: #7a9ff5;
 }
 
-/* Display type: server names and page titles only */
+/* Display type: server names and page titles only. A brand's font sets its own weight, case
+   and spacing through these variables (see /branding/theme.css). */
 .font-display {
   font-family: var(--font-display);
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  font-weight: var(--ft-display-weight, 800);
+  text-transform: var(--ft-display-case, uppercase);
+  letter-spacing: var(--ft-display-tracking, 0.02em);
 }
 .tabular {
   font-variant-numeric: tabular-nums;

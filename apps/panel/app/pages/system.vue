@@ -2,7 +2,7 @@
 import { systemUpdateCount } from '#shared/updates'
 
 const updates = useLiveUpdates()
-/** System is split into sections, so health, updates, storage, alerts and sign-in each get a page. */
+/** System is split into sections, so health, updates, storage, alerts, branding and sign-in each get a page. */
 const sections = computed(() => [
   { label: 'Overview', icon: 'i-lucide-gauge', to: '/system', exact: true },
   {
@@ -21,6 +21,7 @@ const sections = computed(() => [
   },
   { label: 'Off-site storage', icon: 'i-lucide-cloud', to: '/system/storage' },
   { label: 'Notifications', icon: 'i-lucide-bell', to: '/system/notifications' },
+  { label: 'Branding', icon: 'i-lucide-palette', to: '/system/branding' },
   { label: 'Account and security', icon: 'i-lucide-shield', to: '/system/account' },
 ])
 const route = useRoute()

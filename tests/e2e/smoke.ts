@@ -72,6 +72,40 @@ try {
   }
 
   {
+    // Branding: a name and colour saved on System reach the theme, the title and sign-in page.
+    await view.navigate(`${base}/system/branding`)
+    await waitForText(view, 'Name, colour and font', 30_000)
+    await fill(
+      view,
+      '[data-e2e=branding-name] input, input[data-e2e=branding-name]',
+      'Smoke Theatre',
+    )
+    await fill(view, '[data-e2e=branding-accent] input, input[data-e2e=branding-accent]', '#2f6fd0')
+    await clickButton(view, 'Save')
+    await until(
+      'the branding saved',
+      async () =>
+        (await api<{ name: string }>(view, '/api/branding')).body?.name === 'Smoke Theatre',
+      30_000,
+      500,
+    )
+    const css = await (await fetch(`${base}/branding/theme.css`)).text()
+    if (!css.includes('--ui-color-primary-500')) throw new Error(`theme not applied: ${css}`)
+    await until('the title to follow the name', () =>
+      view.evaluate<boolean>(`document.title.endsWith('Smoke Theatre')`),
+    )
+    await shot('branding')
+    const reset = await api<{ isDefault: boolean }>(view, '/api/system/branding', {
+      method: 'DELETE',
+    })
+    if (!reset.body?.isDefault) throw new Error(`branding not reset: ${reset.status}`)
+    if ((await (await fetch(`${base}/branding/theme.css`)).text()) !== '') {
+      throw new Error('theme left behind after a reset')
+    }
+    step('branding saved through the UI, applied to the theme and title, and reset')
+  }
+
+  {
     // Notifications: a JSON webhook channel added through the form gets one signed test POST.
     const got: { signature: string | null; body: string }[] = []
     using receiver = Bun.serve({
