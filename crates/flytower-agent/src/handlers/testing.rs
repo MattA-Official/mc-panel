@@ -40,7 +40,8 @@ impl Fake {
     pub fn context(&self, paths: &Paths) -> Context {
         Context {
             version: "0.0.0-test".into(),
-            exec: Box::new(self.clone()),
+            exec: Arc::new(self.clone()),
+            now: super::system_clock(),
             events: None,
             paths: paths.clone(),
             panel_group: "flytower".into(),

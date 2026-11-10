@@ -5,11 +5,12 @@
 mod files;
 pub mod server;
 pub mod service;
+pub mod ssh;
 #[cfg(test)]
 pub mod testing;
 
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use serde_json::{Value, json};
 
@@ -19,11 +20,20 @@ use crate::exec::Exec;
 use crate::units::Paths;
 use crate::verbs::Params;
 
+/// What time it is. Tests set their own.
+pub type Clock = Arc<dyn Fn() -> SystemTime + Send + Sync>;
+
+#[must_use]
+pub fn system_clock() -> Clock {
+    Arc::new(SystemTime::now)
+}
+
 /// Everything a handler may touch, from the same environment variables as the TypeScript
 /// agent. Tests swap `exec` for a fake.
 pub struct Context {
     pub version: String,
-    pub exec: Box<dyn Exec>,
+    pub exec: Arc<dyn Exec>,
+    pub now: Clock,
     /// Unit changes from the journal; `None` makes `service.wait` tell the panel to poll.
     pub events: Option<Arc<UnitEvents>>,
     pub paths: Paths,
@@ -56,6 +66,8 @@ pub fn handle(params: &Params, ctx: &Context) -> Result<Value, AgentError> {
         }
         Params::ServerPermissions(p) => server::permissions(&p.name, ctx),
         Params::ServerDelete(p) => server::remove(&p.name, ctx),
+        Params::SshStatus => Ok(ssh::status(ctx)),
+        Params::SshSet(p) => ssh::set(p.open, p.minutes, ctx),
         _ => Err(AgentError::new(
             ErrorCode::Failed,
             "not ported to the Rust agent yet; use the TypeScript agent",
