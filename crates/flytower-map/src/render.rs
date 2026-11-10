@@ -33,6 +33,9 @@ pub struct Options {
     pub full: bool,
     /// Zoomed-out levels above the full-detail one.
     pub levels: u8,
+    /// Report how far the pass has got on standard error, as `progress DONE TOTAL` lines
+    /// counted in region files.
+    pub progress: bool,
 }
 
 impl Default for Options {
@@ -43,6 +46,7 @@ impl Default for Options {
             threads: cpus.div_ceil(2).clamp(1, 4),
             full: false,
             levels: 4,
+            progress: false,
         }
     }
 }
@@ -73,6 +77,22 @@ pub struct Report {
 /// When the region folder can't be listed or the state can't be saved. Problems with single
 /// regions or chunks are counted in the report instead.
 pub fn render(dim: &Dimension, out: &Path, palette: &Palette, opts: Options) -> io::Result<Report> {
+    render_with(dim, out, palette, opts, &|| {})
+}
+
+/// [`render`], calling `region_done` once for every region file as it's finished with:
+/// skipped as unchanged, drawn, or given up on. Called from the drawing threads.
+///
+/// # Errors
+///
+/// As [`render`].
+pub fn render_with(
+    dim: &Dimension,
+    out: &Path,
+    palette: &Palette,
+    opts: Options,
+    region_done: &(dyn Fn() + Sync),
+) -> io::Result<Report> {
     let mut report = Report {
         id: dim.id.clone(),
         ..Report::default()
@@ -105,6 +125,7 @@ pub fn render(dim: &Dimension, out: &Path, palette: &Palette, opts: Options) -> 
             Ok(h) => fnv(&h),
             Err(e) => {
                 note(&mut report, format!("{}: {e}", path.display()));
+                region_done();
                 continue;
             }
         };
@@ -115,6 +136,7 @@ pub fn render(dim: &Dimension, out: &Path, palette: &Palette, opts: Options) -> 
         {
             report.unchanged += 1;
             state.insert((x, z), (hash, empty));
+            region_done();
         } else {
             todo.push((x, z, hash, path.clone()));
         }
@@ -131,7 +153,9 @@ pub fn render(dim: &Dimension, out: &Path, palette: &Palette, opts: Options) -> 
     }
 
     let results = parallel(&todo, opts.threads, |(x, z, _, path)| {
-        draw_one(path, *x, *z, &tile_dir, palette, dim)
+        let drawn = draw_one(path, *x, *z, &tile_dir, palette, dim);
+        region_done();
+        drawn
     });
     for ((x, z, hash, _), result) in todo.iter().zip(results) {
         dirty.insert((*x, *z));
