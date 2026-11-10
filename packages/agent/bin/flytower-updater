@@ -1,0 +1,6 @@
+#!/bin/sh
+# Starts the Flytower updater: flytower-updater <version> [--manual]. The agent runs this
+# path rather than Bun itself, so a later release can put a different program here
+# (docs/decisions/0001-rust-and-go.md).
+here=$(dirname "$(readlink -f "$0")")
+exec "$here/bun" "$here/../agent/updater.js" "$@"

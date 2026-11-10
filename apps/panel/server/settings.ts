@@ -6,7 +6,7 @@ import type { BrandingSettings, ImageType } from '../shared/branding'
 import type { DiscordApp } from './discord/service'
 import type { DiscordRoleMapping } from '../shared/discord'
 
-export type UpdateChannel = 'stable' | 'beta'
+export type UpdateChannel = 'stable' | 'beta' | 'native'
 
 export interface Settings {
   /** Which releases are offered: stable only, or betas too. Unset until someone chooses. */

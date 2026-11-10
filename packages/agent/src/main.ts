@@ -3,6 +3,7 @@ import { realExec } from './exec.ts'
 import { handlers } from './handlers/index.ts'
 import { refreshTemplate } from './handlers/server.ts'
 import { restoreSsh } from './handlers/ssh.ts'
+import { refreshAgentUnit } from './handlers/update.ts'
 import { listen } from './server.ts'
 
 const env = (name: string, fallback: string) => process.env[name] ?? fallback
@@ -52,6 +53,10 @@ await restoreSsh(ctx).catch((err) => console.error('restoring the SSH timer fail
 await refreshTemplate(ctx).then(
   (changed) => changed && console.log('updated the server unit template'),
   (err) => console.error('updating the server unit template failed', err),
+)
+await refreshAgentUnit(ctx).then(
+  (changed) => changed && console.log('pointed the agent unit at bin/flytower-agent'),
+  (err) => console.error('updating the agent unit failed', err),
 )
 
 for (const sig of ['SIGTERM', 'SIGINT'] as const) {

@@ -9,9 +9,14 @@
  * Symlinks are never followed, and folders the panel can't read are counted as unreadable
  * rather than failing the walk. Sizes are the space files take on disk (allocated blocks),
  * so sparse region files count for what they really use.
+ *
+ * The walking itself is done by `flytower-du` (crates/flytower-du), a Rust program shipped
+ * next to Bun in each release, which gives the same numbers many times faster. When it isn't
+ * there (development) or fails, the TypeScript walk below does the job instead.
  */
+import { existsSync } from 'node:fs'
 import { lstat, readdir } from 'node:fs/promises'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import type { DiskGroup, DiskReport, ServerDisk } from '../shared/disk'
 
 export { DISK_GROUPS, type DiskGroup, type DiskReport, type ServerDisk } from '../shared/disk'
@@ -75,6 +80,59 @@ export async function measure(path: string, seen = new Set<string>()): Promise<M
   return out
 }
 
+/** Measures each path in turn, counting a hard-linked file once across all of them. */
+export type MeasureMany = (paths: string[]) => Promise<Measured[]>
+
+/** The TypeScript walk, one path after another. */
+export const measureInTs: MeasureMany = async (paths) => {
+  const seen = new Set<string>()
+  const out: Measured[] = []
+  for (const path of paths) out.push(await measure(path, seen))
+  return out
+}
+
+/** Where the Rust walker is: next to Bun in the release's bin/, or wherever FLYTOWER_DU says. */
+export const duBinary = () =>
+  process.env.FLYTOWER_DU || join(dirname(process.execPath), 'flytower-du')
+
+/** The Rust walker. Throws if it fails or answers in a way this panel doesn't understand. */
+export function measureWithBinary(bin: string): MeasureMany {
+  return async (paths) => {
+    const proc = Bun.spawn([bin, '--', ...paths], {
+      stdin: 'ignore',
+      stdout: 'pipe',
+      stderr: 'pipe',
+    })
+    const [out, err, code] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ])
+    if (code !== 0) throw new Error(`flytower-du exited with ${code}: ${err.trim()}`)
+    const parsed = JSON.parse(out) as { version?: unknown; results?: Measured[] }
+    if (parsed.version !== 1 || parsed.results?.length !== paths.length) {
+      throw new Error("flytower-du's answer isn't one this panel understands")
+    }
+    return parsed.results
+  }
+}
+
+let warned = false
+
+/** Measures with the Rust walker when it's there, and the TypeScript walk otherwise. */
+export async function measureMany(paths: string[], bin = duBinary()): Promise<Measured[]> {
+  if (paths.length === 0) return []
+  if (existsSync(bin)) {
+    try {
+      return await measureWithBinary(bin)(paths)
+    } catch (err) {
+      if (!warned) console.error('[flytower] flytower-du failed; measuring the slower way', err)
+      warned = true
+    }
+  }
+  return measureInTs(paths)
+}
+
 export interface DiskDeps {
   /** Every server's name. */
   names: () => string[]
@@ -88,11 +146,13 @@ export interface DiskDeps {
   load?: () => DiskReport | null
   save?: (report: DiskReport) => void
   now?: () => Date
+  /** How to walk; `measureMany` unless a test says otherwise. */
+  measure?: MeasureMany
 }
 
 /** Measures one server: its folder by group, plus its backups and exports. */
 export async function measureServer(
-  deps: Pick<DiskDeps, 'serverDir' | 'backupsDir' | 'exportsDir' | 'levelName'>,
+  deps: Pick<DiskDeps, 'serverDir' | 'backupsDir' | 'exportsDir' | 'levelName' | 'measure'>,
   server: string,
   at: Date,
 ): Promise<ServerDisk> {
@@ -107,26 +167,23 @@ export async function measureServer(
   let unreadable = 0
   const dir = deps.serverDir(server)
   const level = await deps.levelName(server).catch(() => null)
-  const seen = new Set<string>()
   let entries: string[] = []
   try {
     entries = await readdir(dir)
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') unreadable++
   }
-  for (const entry of entries) {
-    const m = await measure(join(dir, entry), seen)
-    groups[groupOf(entry, level)] += m.bytes
-    unreadable += m.unreadable
-  }
-  for (const [group, root] of [
-    ['backups', deps.backupsDir],
-    ['exports', deps.exportsDir],
-  ] as const) {
-    const m = await measure(join(root, server), seen)
-    groups[group] += m.bytes
-    unreadable += m.unreadable
-  }
+  // One walk for everything, so a file hard-linked into a backup is counted once.
+  const labelled: [DiskGroup, string][] = [
+    ...entries.map((e): [DiskGroup, string] => [groupOf(e, level), join(dir, e)]),
+    ['backups', join(deps.backupsDir, server)],
+    ['exports', join(deps.exportsDir, server)],
+  ]
+  const results = await (deps.measure ?? measureMany)(labelled.map(([, path]) => path))
+  labelled.forEach(([group], i) => {
+    groups[group] += results[i]!.bytes
+    unreadable += results[i]!.unreadable
+  })
   const bytes = Object.values(groups).reduce((a, b) => a + b, 0)
   return { server, bytes, groups, unreadable, measuredAt: at.toISOString() }
 }
@@ -230,10 +287,11 @@ export class DiskUsage {
   }
 
   private async measureShared() {
-    const [imports, archive] = await Promise.all([
-      measure(this.deps.importsDir),
-      measure(this.deps.archiveDir),
-    ])
+    const walk = this.deps.measure ?? measureMany
+    const [[imports], [archive]] = (await Promise.all([
+      walk([this.deps.importsDir]),
+      walk([this.deps.archiveDir]),
+    ])) as [[Measured], [Measured]]
     const at = this.now().toISOString()
     this.report = {
       ...this.report,
