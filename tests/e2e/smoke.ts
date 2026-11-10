@@ -82,7 +82,7 @@ try {
         return new Response('ok')
       },
     })
-    await view.navigate(`${base}/system`)
+    await view.navigate(`${base}/system/notifications`)
     await waitForText(view, 'Notifications')
     await clickButton(view, 'Add channel')
     await waitForText(view, 'Add a notification channel')
@@ -292,7 +292,7 @@ try {
       if (!id) throw new Error(`no field labelled ${text}`)
       return `[id="${id}"]`
     }
-    await view.navigate(`${base}/system`)
+    await view.navigate(`${base}/system/storage`)
     await waitForText(view, 'Off-site backups', 30_000)
     await clickButton(view, 'Add storage')
     await waitForText(view, 'Secret access key')
@@ -671,7 +671,7 @@ try {
     )
 
     // Update channel: choose Beta on the System page, and it sticks after a reload.
-    await view.navigate(`${base}/system`)
+    await view.navigate(`${base}/system/updates`)
     await waitForText(view, 'Update channel', 30_000)
     await view.evaluate(`(() => {
       const group = document.querySelector('[data-e2e=update-channel]')
@@ -685,7 +685,7 @@ try {
       30_000,
       500,
     )
-    await view.navigate(`${base}/system`)
+    await view.navigate(`${base}/system/updates`)
     await waitForText(view, 'Update channel', 30_000)
     const checked = await view.evaluate<string | null>(`(() => {
       const r = document.querySelector('[data-e2e=update-channel] [role=radio][aria-checked=true]')

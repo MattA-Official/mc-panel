@@ -308,7 +308,7 @@ export class NotifyService {
       title: 'Test message from Flytower',
       detail: `If you can read this, “${input.name}” is set up. You'll hear about the events you ticked.`,
       severity: 'info',
-      link: '/system',
+      link: '/system/notifications',
     })
     try {
       await SENDERS[input.kind](msg, to, this.fetch)

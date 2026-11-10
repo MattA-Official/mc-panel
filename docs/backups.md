@@ -34,4 +34,4 @@ The secret key is encrypted with the panel's app secret (in `/etc/flytower/panel
 
 ## Sharing a world
 
-**World exports** makes a zip of just the world, ready for single player. **Share** gives a link anyone can download it from, without signing in, for as long as you choose. Revoke a link to stop it working.
+**World**, **Export world** makes a zip of just the world, ready for single player. **Share** gives a link anyone can download it from, without signing in, for as long as you choose. Revoke a link to stop it working.

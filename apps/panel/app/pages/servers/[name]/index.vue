@@ -2,11 +2,7 @@
 const { server, status } = useServerContext()
 
 const address = computed(() =>
-  server.value
-    ? server.value.port === 25565
-      ? location.hostname
-      : `${location.hostname}:${server.value.port}`
-    : '',
+  server.value ? connectAddress(server.value, location.hostname) : '',
 )
 const copied = ref(false)
 async function copy(text: string) {
@@ -65,9 +61,7 @@ async function copy(text: string) {
           <div>
             <dt class="text-xs text-muted">Created</dt>
             <dd>
-              {{
-                new Date(server.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })
-              }}
+              {{ formatDate(server.createdAt) }}
             </dd>
           </div>
         </dl>

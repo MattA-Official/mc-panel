@@ -60,8 +60,7 @@ function size(n: number) {
   if (n < 1024 ** 2) return `${(n / 1024).toFixed(1)} KB`
   return `${(n / 1024 ** 2).toFixed(1)} MB`
 }
-const when = (ms: number) =>
-  new Date(ms).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+const when = (ms: number) => formatDateTime(ms)
 const count = (n: number) => n.toLocaleString()
 
 /** Splits a line around the search term so matches can be highlighted. */

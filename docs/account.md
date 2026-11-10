@@ -8,7 +8,7 @@ The installer gives you a **setup token** (or uses the one you chose). The first
 
 ## More than one device
 
-On **System**, **Your passkeys**:
+On **System**, **Account and security**, **Your passkeys**:
 
 - **Add a passkey** creates one on the device you're using, or on a security key. Add at least two, so losing one device doesn't lock you out. Passkeys in iCloud Keychain, Google Password Manager, 1Password and similar sync between your devices by themselves.
 - Remove a passkey you no longer use, or one on a lost device. Your last passkey can't be removed.
@@ -17,7 +17,7 @@ On **System**, **Your passkeys**:
 
 On the sign-in page, choose **Lost your passkeys? Use a recovery code**. Each code works once. After signing in with one, you're asked to add a new passkey straight away, before anything else.
 
-Down to your last few codes? **System**, **Your passkeys**, **Make new codes** gives you a fresh set of ten. The old ones stop working.
+Down to your last few codes? **System**, **Account and security**, **Make new codes** gives you a fresh set of ten. The old ones stop working.
 
 ## If you lose your passkeys and your codes
 

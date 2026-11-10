@@ -74,8 +74,10 @@ async function save() {
       variant="subtle"
       icon="i-lucide-cloud"
       title="No storage set up yet"
-      description="Add an S3-compatible bucket (Backblaze B2, Cloudflare R2, Wasabi, AWS) on the System page first."
-      :actions="[{ label: 'System', to: '/system', color: 'neutral', variant: 'outline' }]"
+      description="Add an S3-compatible bucket (Backblaze B2, Cloudflare R2, Wasabi, AWS) in System first."
+      :actions="[
+        { label: 'Set up storage', to: '/system/storage', color: 'neutral', variant: 'outline' },
+      ]"
     />
   </UCard>
 </template>

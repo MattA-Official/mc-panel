@@ -250,10 +250,22 @@ async function reviewVt() {
   vtOpen.value = false
   await change.value?.propose(spec, { title: 'Vanilla Tweaks' })
 }
+
+/** "a", "a and b", "a, b and c". */
+const andList = (xs: string[]) =>
+  xs.length < 2 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`
+const pendingTitle = computed(() => {
+  const n = data.value?.pending.length ?? 0
+  return n === 1 ? "1 item isn't installed yet" : `${n} items aren't installed yet`
+})
+const pendingText = computed(() => {
+  const names = (data.value?.pending ?? []).map(pendingLabel)
+  return `The spec lists ${andList(names)}, but ${names.length === 1 ? "it hasn't" : "they haven't"} been installed. Review the plan to install ${names.length === 1 ? 'it' : 'them'}.`
+})
 </script>
 
 <template>
-  <div v-if="server" class="mx-auto w-full max-w-4xl space-y-6">
+  <div v-if="server" class="mx-auto w-full max-w-5xl space-y-6">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <p class="text-sm text-muted">
         {{
@@ -286,15 +298,14 @@ async function reviewVt() {
 
     <UAlert
       v-if="data?.pending.length"
-      color="info"
+      color="primary"
       variant="subtle"
       icon="i-lucide-package"
-      title="Not installed yet"
-      :description="`The spec lists ${data.pending.map(pendingLabel).join(', ')}, which hasn't been installed. Review the plan to install it.`"
+      :title="pendingTitle"
+      :description="pendingText"
       :actions="[
         {
-          label: 'Review',
-          color: 'info',
+          label: 'Review and install',
           variant: 'outline',
           onClick: () => change?.propose(null, { title: 'Install content' }),
         },

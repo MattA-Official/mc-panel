@@ -11,7 +11,7 @@ curl -fsSL https://github.com/MattA-Official/mc-panel/releases/download/pr-<numb
   | sudo bash -s -- --pr <number> --domain panel.example.com
 ```
 
-It installs over what's there and keeps your data and sign-in, like any re-run of the installer. **System** then shows a version like `1.1.0-pr.70.3`. Test builds are never offered as updates, and **Go back to** on the System page returns to the release you had before. A test build is deleted when its pull request closes.
+It installs over what's there and keeps your data and sign-in, like any re-run of the installer. **System** then shows a version like `1.1.0-pr.70.3`. Test builds are never offered as updates, and **Go back to** on **System**, **Updates** returns to the release you had before. A test build is deleted when its pull request closes.
 
 ## 1. Notifications
 
@@ -51,3 +51,19 @@ You need a test server you don't mind crashing. SSH in (System, **SSH access**) 
 ## Reporting feedback
 
 Open an issue with the **[Feedback](https://github.com/MattA-Official/mc-panel/issues/new?template=feedback.yml)** template, or comment on the pull request you're testing.
+
+## UI pass
+
+Check these on a computer and on a phone.
+
+- [ ] **Servers** on a phone: every card fits the screen, with its status and memory showing.
+- [ ] A server with a hostname: the **Address** card on **Console** shows the hostname, the same as the header.
+- [ ] Dates and times look the same on every page (Logs, Files, Backups, Activity, passkeys), in your own locale.
+- [ ] **System**, **Updates**: release notes show as headings, lists and links, not Markdown.
+- [ ] **Content** with mods in the spec that aren't installed: the notice names them and reads naturally.
+- [ ] Every server tab is the same width, and card headings look the same everywhere.
+- [ ] Disabled buttons (for example **Create server** before the EULA is ticked) look grey, not a duller amber.
+- [ ] On a phone, the server header shows the full name (or "…"), the status sits next to the tab menu, and **Power** offers Start, Restart or Stop. The tab menu lists every tab.
+- [ ] **Settings**: change something and a bar with **Discard** and **Save** stays at the bottom while you scroll.
+- [ ] **System** has five sections: Overview, Updates, Off-site storage, Notifications, and Account and security. Links from notifications and from a server's **Backups** tab land on the right one.
+- [ ] **World** now holds **Export world**, next to Copy and Reset.

@@ -64,12 +64,11 @@ function downloadCodes() {
   URL.revokeObjectURL(url)
 }
 
-const day = (iso: string) =>
-  new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+const day = (iso: string) => formatDate(iso)
 </script>
 
 <template>
-  <UCard class="max-w-xl" data-e2e="account-security">
+  <UCard data-e2e="account-security">
     <template #header>
       <h2 class="font-semibold">Your passkeys</h2>
     </template>

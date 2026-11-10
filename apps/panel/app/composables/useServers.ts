@@ -39,7 +39,7 @@ export const LOADERS: Record<
   fabric: { label: 'Fabric', description: 'Runs Fabric mods', versionLabel: 'Fabric loader' },
   paper: {
     label: 'Paper',
-    description: 'Faster vanilla, with plugins to come',
+    description: 'Faster vanilla, runs plugins',
     versionLabel: 'Paper build',
   },
   vanilla: { label: 'Vanilla', description: 'Plain Minecraft', versionLabel: null },

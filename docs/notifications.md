@@ -86,7 +86,7 @@ Answer with any 2xx status. Anything else counts as a failed delivery.
 
 Flytower tries each message four times over about two and a half minutes. If Discord says to slow down, it waits as long as Discord asks. An address that says it doesn't exist (404) or refuses the token (401, 403) isn't retried.
 
-A channel whose last delivery failed shows the error in red under it on the System page, until a message gets through. The error is also in the panel's log (`journalctl -u flytower-panel`). A failed notification never sets off another one.
+A channel whose last delivery failed shows the error in red under it on **System**, **Notifications**, until a message gets through. The error is also in the panel's log (`journalctl -u flytower-panel`). A failed notification never sets off another one.
 
 ## Security
 

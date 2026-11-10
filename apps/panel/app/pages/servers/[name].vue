@@ -35,7 +35,7 @@ async function act(action: 'start' | 'stop' | 'restart') {
 
 provideServerContext({ server, status, health, refresh })
 
-const tabs = computed(() => [
+const tabs = computed<{ label: string; icon: string; to: string; exact?: boolean }[]>(() => [
   { label: 'Console', icon: 'i-lucide-terminal', to: `/servers/${name.value}`, exact: true },
   { label: 'Logs', icon: 'i-lucide-scroll-text', to: `/servers/${name.value}/logs` },
   { label: 'Players', icon: 'i-lucide-users', to: `/servers/${name.value}/players` },
@@ -47,28 +47,71 @@ const tabs = computed(() => [
   { label: 'Settings', icon: 'i-lucide-sliders-horizontal', to: `/servers/${name.value}/settings` },
   { label: 'YAML', icon: 'i-lucide-file-code', to: `/servers/${name.value}/yaml` },
 ])
+
+/** The tab being shown, for the phone-sized tab menu. */
+const currentTab = computed(
+  () =>
+    [...tabs.value]
+      .reverse()
+      .find((t) => (t.exact ? route.path === t.to : route.path.startsWith(t.to))) ?? tabs.value[0]!,
+)
+const tabMenu = computed(() => [
+  tabs.value.map((t) => ({ ...t, type: 'link' as const, active: t.to === currentTab.value.to })),
+])
+
+/** On phones, Start, Restart and Stop live in one labelled menu instead of bare icons. */
+const powerMenu = computed(() => [
+  running.value
+    ? [
+        {
+          label: 'Restart',
+          icon: 'i-lucide-rotate-cw',
+          onSelect: () => (confirming.value = 'restart'),
+        },
+        {
+          label: 'Stop',
+          icon: 'i-lucide-square',
+          color: 'error' as const,
+          onSelect: () => (confirming.value = 'stop'),
+        },
+      ]
+    : [{ label: 'Start', icon: 'i-lucide-play', onSelect: () => act('start') }],
+])
 </script>
 
 <template>
   <UDashboardPanel id="server">
     <template #header>
-      <UDashboardNavbar :title="server?.displayName ?? name">
+      <UDashboardNavbar :ui="{ left: 'min-w-0', title: 'min-w-0' }">
+        <template #title>
+          <span class="truncate">{{ server?.displayName ?? name }}</span>
+        </template>
         <template #leading>
           <UButton icon="i-lucide-arrow-left" variant="ghost" color="neutral" to="/" />
         </template>
         <template #trailing>
-          <StatusBadge v-if="server" :status="status" :condition="health.condition" />
-          <CopyAddress
-            v-if="server"
-            :server="server"
-            class="hidden text-sm text-muted md:inline-flex"
-          />
+          <span v-if="server" class="hidden sm:contents"
+            ><StatusBadge :status="status" :condition="health.condition"
+          /></span>
+          <span v-if="server" class="hidden min-w-0 text-sm text-muted md:block">
+            <CopyAddress :server="server" />
+          </span>
         </template>
         <template v-if="server" #right>
+          <UDropdownMenu :items="powerMenu" :content="{ align: 'end' }" class="sm:hidden">
+            <UButton
+              label="Power"
+              icon="i-lucide-power"
+              trailing-icon="i-lucide-chevron-down"
+              color="neutral"
+              variant="outline"
+              :loading="!!busy"
+            />
+          </UDropdownMenu>
           <UButton
             v-if="!running"
+            class="hidden sm:inline-flex"
             label="Start"
-            :ui="{ label: 'sr-only sm:not-sr-only' }"
             icon="i-lucide-play"
             :loading="busy === 'start'"
             :disabled="!!busy"
@@ -76,8 +119,8 @@ const tabs = computed(() => [
           />
           <template v-else>
             <UButton
+              class="hidden sm:inline-flex"
               label="Restart"
-              :ui="{ label: 'sr-only sm:not-sr-only' }"
               icon="i-lucide-rotate-cw"
               color="neutral"
               variant="outline"
@@ -86,8 +129,8 @@ const tabs = computed(() => [
               @click="confirming = 'restart'"
             />
             <UButton
+              class="hidden sm:inline-flex"
               label="Stop"
-              :ui="{ label: 'sr-only sm:not-sr-only' }"
               icon="i-lucide-square"
               color="error"
               variant="soft"
@@ -99,7 +142,21 @@ const tabs = computed(() => [
         </template>
       </UDashboardNavbar>
       <UDashboardToolbar v-if="server">
-        <UNavigationMenu :items="tabs" highlight class="-mx-1 flex-1" />
+        <UNavigationMenu :items="tabs" highlight class="-mx-1 hidden flex-1 xl:flex" />
+        <UDropdownMenu :items="tabMenu" :content="{ align: 'start' }" class="xl:hidden">
+          <UButton
+            :label="currentTab.label"
+            :icon="currentTab.icon"
+            trailing-icon="i-lucide-chevron-down"
+            color="neutral"
+            variant="ghost"
+            class="-mx-2.5 my-1"
+            data-e2e="tab-menu"
+          />
+        </UDropdownMenu>
+        <span class="ml-auto flex items-center sm:hidden"
+          ><StatusBadge :status="status" :condition="health.condition"
+        /></span>
       </UDashboardToolbar>
     </template>
 
