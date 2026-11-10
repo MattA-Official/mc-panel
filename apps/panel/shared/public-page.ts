@@ -147,4 +147,6 @@ export interface PublicStatus {
   version: { minecraft: string; loader: string } | null
   /** The players' modpack download, when the server offers one. */
   pack: { url: string; filename: string } | null
+  /** The web map, when it's public and squaremap has made it. */
+  map: { url: string } | null
 }

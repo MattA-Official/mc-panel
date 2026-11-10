@@ -100,6 +100,7 @@ const base = (over: Partial<PageInput> = {}): PageInput => ({
   motd: '§6Hello',
   icon: null,
   hasPack: false,
+  hasMap: false,
   maxPlayers: 30,
   withUuids: (names) => names.map((name) => ({ name, uuid: `uuid-${name}` })),
   ...over,
@@ -138,6 +139,7 @@ describe('public status', () => {
         'description',
         'displayName',
         'icon',
+        'map',
         'motd',
         'name',
         'pack',
@@ -259,6 +261,11 @@ describe('pack on the page', () => {
     expect(publicStatus(base({ hasPack: true, row: { ...row, loader: 'paper' } })).pack).toBeNull()
     const page = PublicPage.parse({ enabled: true, pack: { enabled: false } })
     expect(publicStatus(base({ hasPack: true, page })).pack).toBeNull()
+  })
+
+  test('the map is linked only when it is public and made', () => {
+    expect(publicStatus(base({ hasMap: true })).map).toEqual({ url: '/s/survival/map/' })
+    expect(publicStatus(base()).map).toBeNull()
   })
 
   test('extras round-trip in the spec', () => {
