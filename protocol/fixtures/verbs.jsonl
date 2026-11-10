@@ -81,3 +81,25 @@
 {"verb":"server.delete","kind":"params","valid":false,"note":"unknown key","value":{"name":"survival","force":true}}
 {"verb":"server.delete","kind":"result","valid":true,"value":{"archivedTo":"/var/lib/flytower/archive/survival-2026-11-10.tar.zst"}}
 {"verb":"server.delete","kind":"result","valid":true,"value":{"archivedTo":null}}
+{"verb":"disk.usage","kind":"params","valid":true,"value":{"servers":["survival","creative"],"system":true}}
+{"verb":"disk.usage","kind":"params","valid":true,"note":"only servers","value":{"servers":["survival"],"system":false}}
+{"verb":"disk.usage","kind":"params","valid":false,"note":"a path, not a server name","value":{"servers":["../etc"],"system":false}}
+{"verb":"disk.usage","kind":"params","valid":false,"note":"never takes paths","value":{"servers":[],"system":true,"paths":["/"]}}
+{"verb":"disk.usage","kind":"params","valid":false,"note":"system is required","value":{"servers":[]}}
+{"verb":"disk.usage","kind":"result","valid":true,"value":{"servers":{"survival":{"groups":{"world":4096,"logs":0,"content":512,"map":0,"backups":8192,"exports":0,"other":1024},"unreadable":0}},"shared":{"imports":0,"archive":0,"unreadable":0},"system":{"java":200000000,"flytower":90000000,"logs":50000000,"temp":1000,"unreadable":2,"journal":40000000,"aptCache":0,"oldReleases":45000000}}}
+{"verb":"disk.usage","kind":"result","valid":true,"note":"servers only","value":{"servers":{},"shared":null,"system":null}}
+{"verb":"disk.usage","kind":"result","valid":false,"note":"a group missing","value":{"servers":{"survival":{"groups":{"world":1},"unreadable":0}},"shared":null,"system":null}}
+{"verb":"disk.usage","kind":"result","valid":false,"note":"negative bytes","value":{"servers":{},"shared":{"imports":-1,"archive":0,"unreadable":0},"system":null}}
+{"verb":"disk.vacuum-journal","kind":"params","valid":true,"value":{"maxMb":200}}
+{"verb":"disk.vacuum-journal","kind":"params","valid":false,"note":"below 16 MB","value":{"maxMb":1}}
+{"verb":"disk.vacuum-journal","kind":"params","valid":false,"note":"not a whole number","value":{"maxMb":200.5}}
+{"verb":"disk.vacuum-journal","kind":"params","valid":false,"note":"missing maxMb","value":{}}
+{"verb":"disk.vacuum-journal","kind":"result","valid":true,"value":{"freedBytes":123456}}
+{"verb":"disk.vacuum-journal","kind":"result","valid":false,"note":"missing freedBytes","value":{}}
+{"verb":"disk.clean-apt","kind":"params","valid":true,"value":{}}
+{"verb":"disk.clean-apt","kind":"params","valid":false,"note":"takes nothing","value":{"all":true}}
+{"verb":"disk.clean-apt","kind":"result","valid":true,"value":{"freedBytes":0}}
+{"verb":"disk.prune-flytower","kind":"params","valid":true,"value":{}}
+{"verb":"disk.prune-flytower","kind":"params","valid":false,"note":"can't name releases","value":{"keep":["1.2.0"]}}
+{"verb":"disk.prune-flytower","kind":"result","valid":true,"value":{"freedBytes":45000000,"removed":["1.1.0"]}}
+{"verb":"disk.prune-flytower","kind":"result","valid":false,"note":"removed must be a list","value":{"freedBytes":0,"removed":"1.1.0"}}

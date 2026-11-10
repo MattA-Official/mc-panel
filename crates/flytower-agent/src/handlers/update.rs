@@ -68,7 +68,7 @@ fn current_version(ctx: &Context) -> String {
         .unwrap_or_else(|| ctx.version.clone())
 }
 
-fn read_record(ctx: &Context) -> Option<UpdateRecord> {
+pub(crate) fn read_record(ctx: &Context) -> Option<UpdateRecord> {
     let text = read(&Path::new(&ctx.paths.state).join("update.json"))?;
     serde_json::from_str(&text).ok()
 }
@@ -83,8 +83,9 @@ pub fn status(ctx: &Context) -> Value {
     })
 }
 
-/// A record left running for over 10 minutes is from an updater that died.
-fn busy(ctx: &Context) -> Result<(), AgentError> {
+/// Refuses while an update is running. A record left running for over 10 minutes is from
+/// an updater that died.
+pub(crate) fn busy(ctx: &Context) -> Result<(), AgentError> {
     let Some(r) = read_record(ctx) else {
         return Ok(());
     };

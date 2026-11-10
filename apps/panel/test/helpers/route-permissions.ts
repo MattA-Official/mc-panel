@@ -84,6 +84,7 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   'system/branding/[slot].put.ts': 'system.branding',
   'system/branding/index.delete.ts': 'system.branding',
   'system/branding/index.put.ts': 'system.branding',
+  'system/disk/clean.post.ts': 'system.updates',
   'system/disk/refresh.post.ts': 'system.updates',
   'system/discord/commands.post.ts': 'system.integrations',
   'system/discord/endpoint.post.ts': 'system.integrations',
