@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { serverUpdateCount } from '#shared/updates'
+import { NuxtLink } from '#components'
 
 useHead({ title: 'Servers' })
 const { data: health } = await useFetch('/api/health')
@@ -55,63 +56,58 @@ const actionsFor = useServerActions(() => health.value?.agent.ok ?? true)
             :key="s.name"
             :items="actionsFor(s)"
             :label="s.displayName"
+            :as="NuxtLink"
+            :to="`/servers/${s.name}`"
+            class="group min-w-0 rounded-lg border border-default bg-elevated/40 p-4 transition-colors hover:border-primary/60 focus-visible:outline-2 focus-visible:outline-primary"
+            data-e2e="server-card"
           >
-            <NuxtLink
-              :to="`/servers/${s.name}`"
-              class="group min-w-0 rounded-lg border border-default bg-elevated/40 p-4 transition-colors hover:border-primary/60 focus-visible:outline-2 focus-visible:outline-primary"
-              data-e2e="server-card"
-            >
-              <div class="flex items-start justify-between gap-3">
-                <div class="min-w-0">
-                  <h2 class="truncate font-display text-xl tracking-wide uppercase">
-                    {{ s.displayName }}
-                  </h2>
-                  <p class="text-xs text-muted"><CopyAddress :server="s" /></p>
-                </div>
-                <div class="flex shrink-0 items-center gap-2">
-                  <UTooltip
-                    v-if="healthOf(s).crash"
-                    :text="`Crashed ${when(healthOf(s).crash!.at)}`"
-                  >
-                    <span
-                      class="size-2 rounded-full bg-error"
-                      role="img"
-                      :aria-label="`Crashed ${when(healthOf(s).crash!.at)}`"
-                      data-e2e="crash-dot"
-                    />
-                  </UTooltip>
-                  <UTooltip
-                    v-if="updatesOf(s)"
-                    :text="`${updatesOf(s)} update${updatesOf(s) === 1 ? '' : 's'} for installed content`"
-                  >
-                    <UBadge
-                      color="info"
-                      variant="subtle"
-                      icon="i-lucide-arrow-up-circle"
-                      :label="String(updatesOf(s))"
-                      :aria-label="`${updatesOf(s)} update${updatesOf(s) === 1 ? '' : 's'} available`"
-                      data-e2e="update-badge"
-                    />
-                  </UTooltip>
-                  <StatusBadge :status="statusOf(s)" :condition="healthOf(s).condition" />
-                  <ActionMenuButton :items="actionsFor(s)" :label="s.displayName" />
-                </div>
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <h2 class="truncate font-display text-xl tracking-wide uppercase">
+                  {{ s.displayName }}
+                </h2>
+                <p class="text-xs text-muted"><CopyAddress :server="s" /></p>
               </div>
-              <dl class="mt-4 grid grid-cols-3 gap-2 text-sm">
-                <div>
-                  <dt class="text-xs text-muted">Version</dt>
-                  <dd>{{ loaderLabel(s) }}</dd>
-                </div>
-                <div>
-                  <dt class="text-xs text-muted">Port</dt>
-                  <dd class="font-mono">{{ s.port }}</dd>
-                </div>
-                <div>
-                  <dt class="text-xs text-muted">Memory</dt>
-                  <dd>{{ formatMemory(s.memoryMb) }}</dd>
-                </div>
-              </dl>
-            </NuxtLink>
+              <div class="flex shrink-0 items-center gap-2">
+                <UTooltip v-if="healthOf(s).crash" :text="`Crashed ${when(healthOf(s).crash!.at)}`">
+                  <span
+                    class="size-2 rounded-full bg-error"
+                    role="img"
+                    :aria-label="`Crashed ${when(healthOf(s).crash!.at)}`"
+                    data-e2e="crash-dot"
+                  />
+                </UTooltip>
+                <UTooltip
+                  v-if="updatesOf(s)"
+                  :text="`${updatesOf(s)} update${updatesOf(s) === 1 ? '' : 's'} for installed content`"
+                >
+                  <UBadge
+                    color="info"
+                    variant="subtle"
+                    icon="i-lucide-arrow-up-circle"
+                    :label="String(updatesOf(s))"
+                    :aria-label="`${updatesOf(s)} update${updatesOf(s) === 1 ? '' : 's'} available`"
+                    data-e2e="update-badge"
+                  />
+                </UTooltip>
+                <StatusBadge :status="statusOf(s)" :condition="healthOf(s).condition" />
+                <ActionMenuButton :items="actionsFor(s)" :label="s.displayName" />
+              </div>
+            </div>
+            <dl class="mt-4 grid grid-cols-3 gap-2 text-sm">
+              <div>
+                <dt class="text-xs text-muted">Version</dt>
+                <dd>{{ loaderLabel(s) }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-muted">Port</dt>
+                <dd class="font-mono">{{ s.port }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-muted">Memory</dt>
+                <dd>{{ formatMemory(s.memoryMb) }}</dd>
+              </div>
+            </dl>
           </ActionTarget>
         </div>
       </template>

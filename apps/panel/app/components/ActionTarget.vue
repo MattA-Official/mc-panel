@@ -12,15 +12,28 @@
  * The same `items` should feed a visible ⋯ button (ActionMenuButton), so right-click is
  * only ever a shortcut.
  */
-const props = defineProps<{
-  items: ActionItem[][]
-  /** What the actions are for, e.g. the server's name. Titles the bottom sheet. */
-  label: string
-}>()
+import type { Component } from 'vue'
+
+defineOptions({ inheritAttrs: false })
+const props = withDefaults(
+  defineProps<{
+    items: ActionItem[][]
+    /** What the actions are for, e.g. the server's name. Titles the bottom sheet. */
+    label: string
+    /** The element (or component, like NuxtLink) to render: a card, a `tr`, a `li`. */
+    as?: string | Component
+  }>(),
+  { as: 'div' },
+)
 
 const { enabled } = useRightClickMenus()
 const pressDelay = LONG_PRESS_MS
-const root = useTemplateRef<HTMLElement>('root')
+const rootRef = useTemplateRef<HTMLElement | { $el: HTMLElement }>('root')
+/** The rendered element, also when `as` is a component. */
+const rootEl = () => {
+  const r = rootRef.value
+  return r instanceof HTMLElement ? r : (r?.$el ?? null)
+}
 const open = ref(false)
 const sheetOpen = ref(false)
 
@@ -44,9 +57,10 @@ function onPointerDown(e: PointerEvent) {
 
 function onContextMenu(e: MouseEvent) {
   if (synthetic) return
-  if (!enabled.value || wantsBrowserMenu(e, root.value!, window.getSelection())) {
-    // Stop it here, before the menu's trigger sees it, and leave the default alone.
-    e.stopPropagation()
+  if (!enabled.value || wantsBrowserMenu(e, rootEl()!, window.getSelection())) {
+    // This element is also the menu's trigger. Capture listeners run first, so stopping
+    // here keeps the trigger from seeing it, and the default (the browser menu) stands.
+    e.stopImmediatePropagation()
   }
 }
 
@@ -87,7 +101,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onClick, true))
 
 function onKeydown(e: KeyboardEvent) {
   if (!enabled.value || !isMenuKey(e)) return
-  const target = root.value?.firstElementChild as HTMLElement | null
+  const target = rootEl()
   if (!target) return
   e.preventDefault()
   returnFocus = document.activeElement as HTMLElement | null
@@ -137,52 +151,53 @@ const sheetGroups = computed(() =>
 </script>
 
 <template>
-  <div
-    ref="root"
-    class="contents"
-    @contextmenu.capture="onContextMenu"
-    @pointerdown.capture="onPointerDown"
-    @keydown="onKeydown"
+  <UContextMenu
+    :items="menuItems"
+    :open="open"
+    :disabled="!enabled"
+    :press-open-delay="pressDelay"
+    @update:open="onOpenChange"
   >
-    <UContextMenu
-      :items="menuItems"
-      :open="open"
-      :disabled="!enabled"
-      :press-open-delay="pressDelay"
+    <component
+      :is="as"
+      ref="root"
+      v-bind="$attrs"
       class="pointer-coarse:select-none"
-      @update:open="onOpenChange"
+      @contextmenu.capture="onContextMenu"
+      @pointerdown.capture="onPointerDown"
+      @keydown="onKeydown"
     >
       <slot />
-    </UContextMenu>
-    <UDrawer v-model:open="sheetOpen" :title="label" :ui="{ body: 'pb-6' }">
-      <template #body>
-        <div class="space-y-3" data-e2e="action-sheet">
-          <div v-for="(group, i) in sheetGroups" :key="i">
-            <p v-if="group.heading" class="px-3 pb-1 text-xs font-medium text-muted">
-              {{ group.heading }}
-            </p>
-            <UButton
-              v-for="item in group.items"
-              :key="item.label"
-              block
-              size="xl"
-              variant="ghost"
-              :color="item.color === 'error' ? 'error' : 'neutral'"
-              :icon="item.icon"
-              :disabled="item.disabled"
-              class="justify-start"
-              @click="choose(item)"
-            >
-              <span class="flex min-w-0 flex-col text-left">
-                <span>{{ item.label }}</span>
-                <span v-if="item.description" class="text-xs font-normal text-muted">{{
-                  item.description
-                }}</span>
-              </span>
-            </UButton>
-          </div>
+    </component>
+  </UContextMenu>
+  <UDrawer v-model:open="sheetOpen" :title="label" :ui="{ body: 'pb-6' }">
+    <template #body>
+      <div class="space-y-3" data-e2e="action-sheet">
+        <div v-for="(group, i) in sheetGroups" :key="i">
+          <p v-if="group.heading" class="px-3 pb-1 text-xs font-medium text-muted">
+            {{ group.heading }}
+          </p>
+          <UButton
+            v-for="item in group.items"
+            :key="item.label"
+            block
+            size="xl"
+            variant="ghost"
+            :color="item.color === 'error' ? 'error' : 'neutral'"
+            :icon="item.icon"
+            :disabled="item.disabled"
+            class="justify-start"
+            @click="choose(item)"
+          >
+            <span class="flex min-w-0 flex-col text-left">
+              <span>{{ item.label }}</span>
+              <span v-if="item.description" class="text-xs font-normal text-muted">{{
+                item.description
+              }}</span>
+            </span>
+          </UButton>
         </div>
-      </template>
-    </UDrawer>
-  </div>
+      </div>
+    </template>
+  </UDrawer>
 </template>
