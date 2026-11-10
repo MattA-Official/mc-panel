@@ -15,7 +15,7 @@ export function nextRun(expr: string, tz: string, from = new Date()): Date | nul
     throw new Error(`Unknown time zone ${tz}.`)
   }
   try {
-    return Bun.cron.parse(expr, from)
+    return Bun.cron.parse(expr, from, { tz })
   } catch (err) {
     throw new Error(`That schedule isn't valid: ${(err as Error).message}`, { cause: err })
   }
