@@ -33,12 +33,17 @@ export interface ImportMeta {
 
 export class ImportError extends JobError {}
 
+/** Where an import comes from when it isn't an upload. */
+export type ImportSource = { url: string } | { archive: string } | { pastWorld: number } | null
+
 const ID = /^[a-f0-9]{24}$/
 
 export interface ImportDeps {
   importsDir: string
   /** Where the agent leaves archives of deleted servers. */
   archiveDir: string
+  /** The zip of a past world, by id; throws if there's no such past world. */
+  pastWorldPath?: (id: number) => string
   jobs: { track(kind: string, server: string | null, steps: readonly string[]): JobTracker }
   fetch?: typeof fetch
   now?: () => number
@@ -159,10 +164,7 @@ export class ImportService {
    * Fetches (for URL and archive imports), unpacks and inspects, as a job. `source` is
    * where the archive comes from when it isn't an upload.
    */
-  unpack(
-    id: string,
-    source: { url: string } | { archive: string } | null,
-  ): { jobId: number; done: Promise<JobEvent> } {
+  unpack(id: string, source: ImportSource): { jobId: number; done: Promise<JobEvent> } {
     if (this.busy.has(id)) throw new ImportError('This import is already being worked on.')
     this.busy.add(id)
     const job = this.deps.jobs.track('server.import.unpack', null, UNPACK_STEPS)
@@ -177,11 +179,7 @@ export class ImportService {
     return { jobId: job.id, done }
   }
 
-  private async runUnpack(
-    id: string,
-    source: { url: string } | { archive: string } | null,
-    job: JobTracker,
-  ) {
+  private async runUnpack(id: string, source: ImportSource, job: JobTracker) {
     let meta = await this.get(id)
     job.step(0)
     let archive = this.file(id)
@@ -192,6 +190,15 @@ export class ImportService {
       archive = join(this.deps.archiveDir, name)
       if (!(await stat(archive).catch(() => null))?.isFile()) {
         throw new ImportError('That archive has gone.')
+      }
+    } else if (source && 'pastWorld' in source) {
+      try {
+        archive = this.deps.pastWorldPath!(source.pastWorld)
+      } catch {
+        throw new ImportError('That past world has gone.')
+      }
+      if (!(await stat(archive).catch(() => null))?.isFile()) {
+        throw new ImportError('That past world has gone.')
       }
     } else if (meta.state !== 'received') {
       throw new ImportError("The upload hasn't finished.")

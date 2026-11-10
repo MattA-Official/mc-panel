@@ -46,39 +46,6 @@ function onFinished(e: JobEvent) {
 
 // Sharing
 const sharing = ref<WorldExport | null>(null)
-const ttl = ref<'1h' | '24h' | '7d'>('24h')
-const ttls = [
-  { label: '1 hour', value: '1h' },
-  { label: '24 hours', value: '24h' },
-  { label: '7 days', value: '7d' },
-]
-const link = ref<string | null>(null)
-async function makeLink() {
-  if (!sharing.value) return
-  try {
-    const res = await $fetch<{ url: string }>(
-      `${base.value}/${sharing.value.id}/shares` as string,
-      { method: 'POST', body: { ttl: ttl.value } },
-    )
-    link.value = res.url
-    refresh()
-  } catch (err) {
-    toast.add({ title: "Couldn't make a link", description: errorMessage(err), color: 'error' })
-  }
-}
-async function copy() {
-  if (!link.value) return
-  try {
-    await navigator.clipboard.writeText(link.value)
-    toast.add({ title: 'Link copied', color: 'success' })
-  } catch {
-    toast.add({ title: 'Select the link and copy it', color: 'neutral' })
-  }
-}
-function closeShare() {
-  sharing.value = null
-  link.value = null
-}
 
 async function revoke(e: WorldExport, s: ShareLink) {
   try {
@@ -200,38 +167,11 @@ function until(iso: string) {
       </li>
     </ul>
 
-    <UModal
-      :open="sharing !== null"
-      title="Share this world"
-      @update:open="(v) => !v && closeShare()"
-    >
-      <template #body>
-        <div v-if="!link" class="space-y-4">
-          <p class="text-sm text-muted">
-            Anyone with the link can download the world, without an account, until it ends or you
-            turn it off.
-          </p>
-          <UFormField label="Link works for">
-            <URadioGroup v-model="ttl" :items="ttls" orientation="horizontal" />
-          </UFormField>
-        </div>
-        <div v-else class="space-y-3">
-          <p class="text-sm">Here's the link. It's only shown once, so copy it now.</p>
-          <div class="flex gap-2">
-            <UInput :model-value="link" readonly class="flex-1 font-mono" aria-label="Share link" />
-            <UButton label="Copy" icon="i-lucide-copy" @click="copy" />
-          </div>
-        </div>
-      </template>
-      <template #footer>
-        <div class="flex w-full justify-end gap-2">
-          <template v-if="!link">
-            <UButton label="Cancel" color="neutral" variant="ghost" @click="closeShare" />
-            <UButton label="Make link" icon="i-lucide-link" @click="makeLink" />
-          </template>
-          <UButton v-else label="Done" @click="closeShare" />
-        </div>
-      </template>
-    </UModal>
+    <WorldShareModal
+      :base="base"
+      :export-id="sharing?.id ?? null"
+      @close="sharing = null"
+      @shared="refresh()"
+    />
   </UCard>
 </template>

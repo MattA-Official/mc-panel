@@ -11,7 +11,7 @@ Flytower is a web panel for running Minecraft servers on your own VPS. You insta
 ## Running servers
 
 - [Mods, plugins and datapacks](content.md): Modrinth, Hangar, Vanilla Tweaks, and your own files.
-- [Backups](backups.md): schedules, retention, restoring, and off-site copies.
+- [Backups](backups.md): schedules, retention, restoring, off-site copies, and past worlds.
 - [Addresses and DNS](addresses.md): giving each server its own hostname.
 - [Scheduled tasks](schedules.md): restarts with an in-game countdown, console commands and announcements.
 - [Crashes](crashes.md): crash reports, crash loops, and servers that stop responding.
