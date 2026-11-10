@@ -34,6 +34,7 @@ function tree() {
     exportsDir: join(base, 'exports'),
     importsDir: join(base, 'imports'),
     archiveDir: join(base, 'archive'),
+    mapsDir: join(base, 'maps'),
   }
   const file = (path: string, bytes: number) => {
     mkdirSync(join(path, '..'), { recursive: true })
@@ -105,7 +106,7 @@ describe('measuring', () => {
     }
   })
 
-  it("splits a server's space into groups, with its backups and exports", async () => {
+  it("splits a server's space into groups, with its backups, exports and map", async () => {
     const { dirs, file } = tree()
     const dir = join(dirs.serversDir, 'survival')
     file(join(dir, 'survival-2026', 'region', 'r.0.0.mca'), 400 * KB)
@@ -115,11 +116,13 @@ describe('measuring', () => {
     file(join(dirs.backupsDir, 'survival', 'b.tar.zst'), 300 * KB)
     file(join(dirs.exportsDir, 'survival', 'w.zip'), 120 * KB)
     file(join(dirs.backupsDir, 'other', 'b.tar.zst'), 900 * KB)
+    file(join(dirs.mapsDir, 'servers', 'survival', 'tiles', '0_0.png'), 50 * KB)
     const s = await measureServer(
       {
         serverDir: (n) => join(dirs.serversDir, n),
         backupsDir: dirs.backupsDir,
         exportsDir: dirs.exportsDir,
+        mapsDir: dirs.mapsDir,
         levelName: async () => 'survival-2026',
       },
       'survival',
@@ -131,6 +134,7 @@ describe('measuring', () => {
     about(s.groups.other, 80 * KB)
     about(s.groups.backups, 300 * KB)
     about(s.groups.exports, 120 * KB)
+    about(s.groups.map, 50 * KB)
     expect(s.bytes).toBe(Object.values(s.groups).reduce((a, b) => a + b, 0))
     expect(s.unreadable).toBe(0)
   })
