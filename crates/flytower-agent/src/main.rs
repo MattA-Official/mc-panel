@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use flytower_agent::dispatch::dispatch;
+use flytower_agent::exec::RealExec;
 use flytower_agent::handlers::{Context, handle};
 use flytower_agent::server::{ListenOptions, bind, group_id, serve};
 
@@ -19,6 +20,7 @@ fn main() -> ExitCode {
     }
     let ctx = Context {
         version: env("FLYTOWER_VERSION", "0.0.0-dev"),
+        exec: Box::new(RealExec::default()),
     };
     let group = env("FLYTOWER_PANEL_GROUP", "flytower");
     let gid = match group_id(&group, Path::new("/etc/group")) {
