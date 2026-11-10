@@ -22,7 +22,7 @@ use crate::tiles;
 use crate::world::Dimension;
 
 /// Bump when drawing changes, so every map is redrawn once.
-pub const RENDERER: u32 = 1;
+pub const RENDERER: u32 = 2;
 
 /// How to run a pass.
 #[derive(Debug, Clone, Copy)]
