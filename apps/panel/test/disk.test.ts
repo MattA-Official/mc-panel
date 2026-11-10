@@ -57,6 +57,7 @@ describe('grouping', () => {
     expect(groupOf('mods', null)).toBe('content')
     expect(groupOf('plugins', null)).toBe('content')
     expect(groupOf('config', null)).toBe('content')
+    expect(groupOf('squaremap', null)).toBe('map')
     expect(groupOf('libraries', null)).toBe('other')
     expect(groupOf('server.jar', null)).toBe('other')
   })
@@ -68,7 +69,7 @@ describe('grouping', () => {
   })
 
   it('names the largest group', () => {
-    const groups = { world: 5, backups: 9, exports: 0, logs: 1, content: 0, other: 0 }
+    const groups = { world: 5, backups: 9, exports: 0, logs: 1, content: 0, map: 0, other: 0 }
     expect(largestGroup({ groups })).toBe('backups')
     expect(largestGroup({ groups: { ...groups, world: 0, backups: 0, logs: 0 } })).toBeNull()
   })
@@ -133,6 +134,32 @@ describe('measuring', () => {
     about(s.groups.exports, 120 * KB)
     expect(s.bytes).toBe(Object.values(s.groups).reduce((a, b) => a + b, 0))
     expect(s.unreadable).toBe(0)
+  })
+
+  it('counts the web map apart from content, on Fabric and on Paper', async () => {
+    const { dirs, file } = tree()
+    const fabric = join(dirs.serversDir, 'fabric')
+    file(join(fabric, 'mods', 'squaremap.jar'), 40 * KB)
+    file(join(fabric, 'squaremap', 'web', 'tiles', 'a.png'), 200 * KB)
+    const paper = join(dirs.serversDir, 'paper')
+    file(join(paper, 'plugins', 'squaremap.jar'), 40 * KB)
+    file(join(paper, 'plugins', 'Chunky', 'config.yml'), 8 * KB)
+    file(join(paper, 'plugins', 'squaremap', 'web', 'tiles', 'a.png'), 200 * KB)
+    const deps = {
+      serverDir: (n: string) => join(dirs.serversDir, n),
+      backupsDir: dirs.backupsDir,
+      exportsDir: dirs.exportsDir,
+      levelName: async () => 'world',
+    }
+    for (const [name, content] of [
+      ['fabric', 40 * KB],
+      ['paper', 48 * KB],
+    ] as const) {
+      const s = await measureServer(deps, name, new Date(0))
+      about(s.groups.map, 200 * KB)
+      about(s.groups.content, content)
+      expect(s.bytes).toBe(Object.values(s.groups).reduce((a, b) => a + b, 0))
+    }
   })
 })
 

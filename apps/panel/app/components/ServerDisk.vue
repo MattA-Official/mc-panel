@@ -9,11 +9,11 @@ const { data } = await useFetch(() => `/api/servers/${name.value}/disk`, { watch
 const rows = computed(() => {
   const u = data.value?.usage
   if (!u) return []
-  return (Object.keys(DISK_GROUPS) as DiskGroup[]).map((g, i) => ({
+  return (Object.keys(DISK_GROUPS) as DiskGroup[]).map((g) => ({
     group: g,
     label: DISK_GROUPS[g],
     bytes: u.groups[g],
-    swatch: `disk-g${i + 1}`,
+    swatch: `disk-${g}`,
   }))
 })
 const total = computed(() => data.value?.usage?.bytes ?? 0)
@@ -86,37 +86,43 @@ const summary = computed(() =>
 </template>
 
 <style>
-.disk-g1 {
+.disk-world {
   background: #2a78d6;
 }
-.disk-g2 {
+.disk-backups {
   background: #1baf7a;
 }
-.disk-g3 {
+.disk-exports {
   background: #e87ba4;
 }
-.disk-g4 {
+.disk-logs {
   background: #6250d6;
 }
-.disk-g5 {
+.disk-content {
   background: #eb6834;
 }
-.disk-g6 {
+.disk-map {
+  background: #b8901c;
+}
+.disk-other {
   background: var(--ui-text-muted);
 }
-.dark .disk-g1 {
+.dark .disk-world {
   background: #3987e5;
 }
-.dark .disk-g2 {
+.dark .disk-backups {
   background: #199e70;
 }
-.dark .disk-g3 {
+.dark .disk-exports {
   background: #d55181;
 }
-.dark .disk-g4 {
+.dark .disk-logs {
   background: #9085e9;
 }
-.dark .disk-g5 {
+.dark .disk-content {
   background: #d95926;
+}
+.dark .disk-map {
+  background: #d4a929;
 }
 </style>

@@ -29,6 +29,8 @@ export function groupOf(
   const level = levelName?.split('/')[0]?.trim()
   if ((level && entry === level) || entry.startsWith('world')) return 'world'
   if (entry === 'logs' || entry === 'crash-reports') return 'logs'
+  // squaremap's folder on Fabric. On Paper it's plugins/squaremap; see measureServer.
+  if (entry === 'squaremap') return 'map'
   if (entry === 'mods' || entry === 'plugins' || entry === 'config') return 'content'
   return 'other'
 }
@@ -162,6 +164,7 @@ export async function measureServer(
     exports: 0,
     logs: 0,
     content: 0,
+    map: 0,
     other: 0,
   }
   let unreadable = 0
@@ -173,9 +176,23 @@ export async function measureServer(
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') unreadable++
   }
+  // Paper keeps the web map under plugins/, so that folder is split in two.
+  const paperMap = join(dir, 'plugins', 'squaremap')
+  const splitPlugins = entries.includes('plugins') && existsSync(paperMap)
+  const plugins = splitPlugins
+    ? (await readdir(join(dir, 'plugins')).catch(() => [] as string[])).map(
+        (e): [DiskGroup, string] => [
+          e === 'squaremap' ? 'map' : 'content',
+          join(dir, 'plugins', e),
+        ],
+      )
+    : []
   // One walk for everything, so a file hard-linked into a backup is counted once.
   const labelled: [DiskGroup, string][] = [
-    ...entries.map((e): [DiskGroup, string] => [groupOf(e, level), join(dir, e)]),
+    ...entries
+      .filter((e) => !(splitPlugins && e === 'plugins'))
+      .map((e): [DiskGroup, string] => [groupOf(e, level), join(dir, e)]),
+    ...plugins,
     ['backups', join(deps.backupsDir, server)],
     ['exports', join(deps.exportsDir, server)],
   ]
