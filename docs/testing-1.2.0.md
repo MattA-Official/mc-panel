@@ -144,12 +144,15 @@ On a server with a hostname whose A record points at the VPS, on a box where the
 - [ ] Turn the public page off: `https://<hostname>` is "Not found". `curl -s -o /dev/null -w '%{http_code}' 'http://127.0.0.1:3000/api/public/tls-ask?domain=<hostname>'` on the box gives 404, and 200 once it's back on.
 - [ ] `https://made-up-name.<your domain>` (if you have a wildcard record) never gets a certificate: the browser shows a TLS error, and Caddy's log (`journalctl -u caddy`) says the ask was refused.
 
-## Roles (groundwork)
+## People and roles
 
-The first part of roles adds permissions behind the scenes. Nothing looks different yet: everyone who could sign in before is now an **Owner**, who can do everything.
-
-1. Update an existing install. Sign in and check that every page and action works as before: start and stop, console, files, backups, settings, System pages and Activity.
-2. Set up a fresh install. The person who finishes setup is the Owner, and everything works.
-3. Leave a tab open on a server's console while you test. Live output and server status keep updating.
-
-Inviting people and choosing their role arrive in the next part.
+1. **Setup link**: on a fresh install, open the setup link the installer prints. You go straight to creating your passkey, and the address bar no longer shows the token. Also try typing the token on `/setup` instead.
+2. Go to **System**, **People**. You're listed as Owner on all servers.
+3. Choose **Invite someone**, pick **Operator** on one server, and make the link (your passkey is asked for). Open it in a private window or on another device. You see who invited you and as what. Pick a name, create a passkey, save the codes.
+4. As the new person: that server shows, others don't. Start and stop and the console work; Files, Settings changes and System pages say you don't have permission.
+5. As the Owner, change them to **Viewer**. Without reloading, their next click can't reach the console.
+6. Remove them. Their next click signs them out.
+7. Try making yourself an Admin while you're the only Owner. It's refused.
+8. Make an invite and cancel it. The link then says it can't be used. An old link (over 7 days) or a used one says the same.
+9. **Activity**, **Sign-ins and access** lists each invite, join, change and removal.
+10. Existing install updated from an earlier beta: you're the Owner, and everything works as before.

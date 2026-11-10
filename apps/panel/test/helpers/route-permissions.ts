@@ -17,6 +17,7 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   'setup/token.post.ts': 'open',
   'passkeys/register-options.post.ts': 'open',
   'passkeys/register.post.ts': 'open',
+  'join/index.post.ts': 'open',
   'public/servers/[name].get.ts': 'open',
   'public/servers/[name]/icon.get.ts': 'open',
   'public/servers/[name]/pack.mrpack.get.ts': 'open',
@@ -57,6 +58,13 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   'imports/[id]/index.get.ts': 'servers.create',
   'imports/[id]/unpack.post.ts': 'servers.create',
   'servers/[name]/clone.post.ts': 'servers.create',
+
+  // People.
+  'people/index.get.ts': 'people.manage',
+  'people/invites/index.post.ts': 'people.manage',
+  'people/invites/[id].delete.ts': 'people.manage',
+  'people/[id]/grants.put.ts': 'people.manage',
+  'people/[id].delete.ts': 'people.manage',
 
   // The install.
   'system/backup-targets/[id].delete.ts': 'system.manage',

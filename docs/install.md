@@ -24,7 +24,7 @@ You need:
 
 3. Once the server shows its IPv4 address, add a DNS **A record** for your panel domain pointing at it. If your DNS is on Cloudflare, leave it **DNS only** (grey cloud).
 4. Wait two or three minutes, then open `https://panel.example.com`. If the certificate isn't ready yet, give it another minute: Caddy keeps retrying once DNS resolves.
-5. Enter the setup token, create your passkey, and save your recovery codes.
+5. Open the setup link the installer prints (or enter the setup token), create your passkey, and save your recovery codes.
 
 ## Option B: an existing server over SSH
 
@@ -33,7 +33,7 @@ curl -fsSL https://github.com/MattA-Official/mc-panel/releases/latest/download/i
   | sudo bash -s -- --domain panel.example.com
 ```
 
-The installer prints a setup token at the end. It works once, within 24 hours. Lost it before finishing setup? Run the same command again for a new one.
+The installer prints a setup link and a setup token at the end. Open the link to go straight to creating your passkey, or open the panel and type the token if the link won't open where you are (on another device, say). Either works once, within 24 hours. Lost them before finishing setup? Run the same command again for new ones.
 
 ## What the installer does
 

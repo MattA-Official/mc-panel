@@ -362,3 +362,23 @@ export const grants = sqliteTable(
   },
   (t) => [index('grants_user').on(t.userId)],
 )
+
+/**
+ * One-time invite links. Only a SHA-256 of the token is kept (the token is 32 random bytes,
+ * so a slow hash adds nothing). A link is gone once used, revoked or past `expiresAt`.
+ */
+export const invites = sqliteTable('invites', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  tokenHash: text('token_hash').notNull().unique(),
+  roleId: text('role_id')
+    .notNull()
+    .references(() => roles.id, { onDelete: 'cascade' }),
+  server: text('server').references(() => servers.name, { onDelete: 'cascade' }),
+  /** Who it's for, as the inviter wrote it; the person picks their own name when joining. */
+  note: text('note'),
+  createdBy: integer('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: createdAt(),
+  expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+  usedAt: integer('used_at', { mode: 'timestamp_ms' }),
+  usedBy: integer('used_by').references(() => users.id, { onDelete: 'set null' }),
+})

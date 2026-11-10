@@ -7,6 +7,7 @@ Flytower is a web panel for running Minecraft servers on your own VPS. You insta
 - [Installing Flytower](install.md): what you need, the installer, and its options.
 - [Your first server](first-server.md): creating, starting and joining a server.
 - [Passkeys and recovery codes](account.md): signing in, extra devices, and what to do if you lose them.
+- [People and roles](people.md): inviting people as Admins, Operators or Viewers, for one server or all of them.
 
 ## Running servers
 

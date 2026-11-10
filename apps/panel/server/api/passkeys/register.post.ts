@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { PasskeyError, saveCredential, verifyRegistration } from '../../auth/passkeys'
 import { grantRole } from '../../auth/access'
+import { acceptInvite } from '../../auth/people'
 import { issueCodes } from '../../auth/recovery'
 import { markTokenUsed, needsSetup } from '../../auth/setup-token'
 import { audit as auditTable, users } from '../../db/schema'
@@ -22,9 +23,12 @@ export default defineEventHandler(async (event) => {
   if (firstRun && !session.setupVerified) {
     throw createError({ statusCode: 403, statusMessage: 'Enter the setup token first.' })
   }
-  if (!firstRun && !session.user)
+  const joining = !firstRun && !session.user && session.inviteId !== undefined
+  if (joining && !body.name)
+    throw createError({ statusCode: 400, statusMessage: 'Enter your name.' })
+  if (!firstRun && !session.user && !joining)
     throw createError({ statusCode: 401, statusMessage: 'Sign in first.' })
-  if (!firstRun && !session.mustEnrolPasskey) await requireElevated(event)
+  if (!firstRun && !joining && !session.mustEnrolPasskey) await requireElevated(event)
 
   let cred
   try {
@@ -51,6 +55,26 @@ export default defineEventHandler(async (event) => {
       tx.insert(auditTable).values({ userId: u.id, action: 'setup.completed' }).run()
       return u
     })
+    const recoveryCodes = await issueCodes(db, user.id)
+    await replaceUserSession(event, { user: { id: user.id, name: user.name } })
+    return { recoveryCodes }
+  }
+
+  if (joining) {
+    const user = peopleCall(() =>
+      db.transaction((tx) => {
+        const { user, invite } = acceptInvite(tx, session.inviteId!, body.name!)
+        saveCredential(tx, user.id, cred, body.nickname)
+        tx.insert(auditTable)
+          .values({
+            userId: user.id,
+            action: 'people.joined',
+            detail: { role: invite.roleId, server: invite.server },
+          })
+          .run()
+        return user
+      }),
+    )
     const recoveryCodes = await issueCodes(db, user.id)
     await replaceUserSession(event, { user: { id: user.id, name: user.name } })
     return { recoveryCodes }

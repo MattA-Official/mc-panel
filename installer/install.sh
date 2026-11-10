@@ -355,14 +355,19 @@ done
 curl -fsS "http://127.0.0.1:$PANEL_PORT/api/health" >/dev/null ||
   die "the panel didn't start; see: journalctl -u flytower-panel -n 50"
 
+# A token you chose yourself may hold characters a link can't.
+token_url="$(FLYTOWER_TOKEN="$setup_token" "$bun" -e 'process.stdout.write(encodeURIComponent(process.env.FLYTOWER_TOKEN))')"
+
 cat <<EOF
 
   Flytower $version is installed.
 
-  Open        https://$domain
+  Set up      https://$domain/setup#token=$token_url
   Setup token $setup_token
 
-  The token works once, within 24 hours. If you've already finished setup, ignore it.
+  Open the link to start, or open https://$domain and type the token if the link won't open
+  where you are. Either works once, within 24 hours. If you've already finished setup,
+  ignore them.
   Lost it? Run this installer again for a new one.
 
 EOF
