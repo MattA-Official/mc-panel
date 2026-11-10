@@ -128,6 +128,24 @@ const playersLine = computed(() => {
       </p>
     </section>
 
+    <section v-if="data.pack" class="rounded-lg border border-default p-5" data-e2e="status-pack">
+      <h2 class="font-semibold">Mods for players</h2>
+      <p class="mt-1 text-sm text-muted">
+        This server uses mods you need too. The modpack sets up everything at the right versions:
+        open it in the <strong>Modrinth app</strong> or <strong>Prism Launcher</strong> (Add
+        Instance, Import), then play from that instance.
+      </p>
+      <UButton
+        class="mt-3"
+        :href="data.pack.url"
+        :download="data.pack.filename"
+        external
+        icon="i-lucide-download"
+        label="Download the modpack"
+        data-e2e="status-pack-download"
+      />
+    </section>
+
     <section
       v-if="data.players && playersLine"
       class="rounded-lg border border-default p-5"

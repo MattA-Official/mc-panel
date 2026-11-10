@@ -99,6 +99,7 @@ const base = (over: Partial<PageInput> = {}): PageInput => ({
   machine: 'panel.example.com',
   motd: '§6Hello',
   icon: null,
+  hasPack: false,
   maxPlayers: 30,
   withUuids: (names) => names.map((name) => ({ name, uuid: `uuid-${name}` })),
   ...over,
@@ -139,6 +140,7 @@ describe('public status', () => {
         'icon',
         'motd',
         'name',
+        'pack',
         'players',
         'state',
         'version',
@@ -171,6 +173,7 @@ describe('public page settings', () => {
       enabled: false,
       description: '',
       show: { players: 'count', version: true },
+      pack: { enabled: true, extras: [] },
     })
     expect(compactPublicPage(defaultPublicPage())).toBeNull()
     expect(describePublicPage(defaultPublicPage())).toBe('Off')
@@ -242,5 +245,28 @@ describe('link previews', () => {
     })
     expect(tags.join('')).toContain('Join Survival, a Minecraft server.')
     expect(tags.join('')).toContain('og:image" content="https://x/logo"')
+  })
+})
+
+describe('pack on the page', () => {
+  test('offered on Fabric servers with something in it', () => {
+    const row = { ...base().row }
+    expect(publicStatus(base({ hasPack: true })).pack).toEqual({
+      url: '/api/public/servers/survival/pack.mrpack',
+      filename: 'Survival.mrpack',
+    })
+    expect(publicStatus(base({ hasPack: false })).pack).toBeNull()
+    expect(publicStatus(base({ hasPack: true, row: { ...row, loader: 'paper' } })).pack).toBeNull()
+    const page = PublicPage.parse({ enabled: true, pack: { enabled: false } })
+    expect(publicStatus(base({ hasPack: true, page })).pack).toBeNull()
+  })
+
+  test('extras round-trip in the spec', () => {
+    const page = PublicPage.parse({ enabled: true, pack: { extras: [{ modrinth: 'iris' }] } })
+    expect(compactPublicPage(page)).toEqual({
+      enabled: true,
+      pack: { extras: [{ modrinth: 'iris' }] },
+    })
+    expect(PublicPage.safeParse({ pack: { extras: [{ modrinth: '../x' }] } }).success).toBe(false)
   })
 })

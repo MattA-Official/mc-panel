@@ -4,6 +4,7 @@
  */
 import type { PublicPage, PublicStatus } from '../../shared/public-page'
 import type { RosterView } from './roster'
+import { packFilename } from './mrpack'
 
 const LOADERS: Record<string, string> = { vanilla: 'Vanilla', fabric: 'Fabric', paper: 'Paper' }
 
@@ -24,6 +25,8 @@ export interface PageInput {
   machine: string
   /** The public URL of the server's icon, or null. */
   icon: string | null
+  /** Whether the server has anything for players to install (Modrinth mods or extras). */
+  hasPack: boolean
   /** `motd` from server.properties. */
   motd: string
   /** `max-players` from server.properties, when it's a number. */
@@ -61,6 +64,13 @@ export function publicStatus(input: PageInput): PublicStatus {
     address: joinAddress(row, input.machine),
     state,
     players,
+    pack:
+      input.hasPack && page.pack.enabled && row.loader === 'fabric'
+        ? {
+            url: `/api/public/servers/${encodeURIComponent(row.name)}/pack.mrpack`,
+            filename: packFilename(row.displayName),
+          }
+        : null,
     version: page.show.version
       ? { minecraft: row.mcVersion, loader: LOADERS[row.loader] ?? row.loader }
       : null,
