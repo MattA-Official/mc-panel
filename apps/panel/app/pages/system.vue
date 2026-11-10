@@ -54,7 +54,9 @@ const menu = computed(() => [
 <template>
   <UDashboardPanel id="system">
     <template #header>
-      <UDashboardNavbar title="System" />
+      <UDashboardNavbar title="System">
+        <template #right><HelpButton /></template>
+      </UDashboardNavbar>
       <UDashboardToolbar>
         <UNavigationMenu :items="sections" highlight class="-mx-1 hidden flex-1 lg:flex" />
         <UDropdownMenu :items="menu" :content="{ align: 'start' }" class="lg:hidden">
