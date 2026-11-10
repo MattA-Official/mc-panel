@@ -94,7 +94,7 @@ Each server can post what players say in game to a Discord channel. This only ne
 1. In Discord, open the channel's settings, **Integrations**, **Webhooks**, press **New Webhook** and **Copy Webhook URL**.
 2. In Flytower, open the server, **Settings**, **Community**, **Discord chat**, paste the URL and press **Turn on**. You're asked for your passkey. **Send a test** posts a line first if you'd like to check.
 
-Chat (and `/me`) is posted under the player's name with their face as the picture. Joins, leaves, deaths and advancements are posted the same way, in italics (`joined the game`, `was slain by Zombie`, `has made the advancement [Stone Age]`). Everything is plain text, unlike notifications, which use embeds. Turn any of the four off with the switches. Lines come from the server's log the moment Minecraft writes them, including chat that mods like No Chat Reports turn into system messages.
+Chat (and `/me`) is posted under the player's name with their face as the picture. `say` and `me` from the panel's console are posted under `[Server]` and the name of whoever sent them. Joins, leaves, deaths and advancements are posted the same way, in italics (`joined the game`, `was slain by Zombie`, `has made the advancement [Stone Age]`). Everything is plain text, unlike notifications, which use embeds. Turn any of the four off with the switches. Lines come from the server's log the moment Minecraft writes them, including chat that mods like No Chat Reports turn into system messages.
 
 Nothing typed in game can ping anyone: every message has mentions switched off, and Markdown, `@everyone`, `<@…>` and similar show exactly as typed. Links still work but don't get a preview.
 

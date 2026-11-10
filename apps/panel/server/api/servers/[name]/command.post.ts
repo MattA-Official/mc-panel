@@ -1,5 +1,6 @@
 import { RconError } from '@flytower/rcon'
 import { z } from 'zod'
+import { eq } from 'drizzle-orm'
 import { schema } from '../../../db'
 
 const Params = z.object({ name: z.string().max(40) })
@@ -12,7 +13,10 @@ const Body = z.object({
     .transform((c) => c.replace(/^\//, '')),
 })
 
-/** Runs a console command over RCON. The reply is also echoed to every open console. */
+/**
+ * Runs a console command over RCON. The reply is also echoed to every open console. Chat
+ * commands go out under the signed-in person's name (see runConsoleCommand).
+ */
 export default defineEventHandler(async (event) => {
   await requireServerPermission(event, 'console.command')
   const { user } = await requireUserSession(event)
@@ -24,7 +28,14 @@ export default defineEventHandler(async (event) => {
     .values({ userId: user.id, action: 'server.command', target: name, detail: { command } })
     .run()
   try {
-    return { reply: await useConsole().command(name, command) }
+    // The current name, in case they've changed it since signing in.
+    const sender =
+      useDb()
+        .select({ name: schema.users.name })
+        .from(schema.users)
+        .where(eq(schema.users.id, user.id))
+        .get()?.name ?? user.name
+    return { reply: await runConsoleCommand(name, command, sender) }
   } catch (err) {
     if (err instanceof RconError) throw createError({ statusCode: 502, statusMessage: err.message })
     throw err
