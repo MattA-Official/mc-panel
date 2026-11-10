@@ -6,5 +6,6 @@
 pub mod dispatch;
 pub mod envelope;
 pub mod handlers;
+pub mod server;
 pub mod time;
 pub mod verbs;
