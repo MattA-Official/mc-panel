@@ -22,7 +22,7 @@ You need a test VPS on this build with at least one server. Test with the Bun ag
 - [ ] Compare with the machine over SSH: `sudo du -sxh /opt/flytower/runtimes /var/log /var/cache/apt` should be close to Java runtimes, System logs and most of Package cache (give or take what was written since).
 - [ ] The parts and the servers add up to the used space at the top; nothing is negative, and **Operating system and everything else** is a sensible size (usually 1 to 3 GB).
 - [ ] If `/tmp` is a tmpfs (`findmnt /tmp`), it doesn't count towards anything.
-- [ ] **Clean up** shows on System logs, Package cache and Flytower, and each row says how much can be freed. Signed in as someone who can't manage Flytower, there's no button.
+- [ ] **Clean up** shows on System logs, Package cache and Flytower, and each row says how much can be freed (for System logs, how big the journal is). Signed in as someone who can't manage Flytower, there's no button.
 - [ ] **System logs**, **Clean up**: pick 100 MB. The dialog says how much it should free. Press **Shrink the journal**: you're asked for your passkey, then a toast says how much was freed. `journalctl --disk-usage` agrees. The System logs row is smaller after a few seconds.
 - [ ] **Package cache**, **Clean up**: run `sudo apt-get update && sudo apt-get install --download-only cowsay` first so there's something to clear. The dialog shows it, and afterwards `/var/cache/apt/archives` has no `.deb` files.
 - [ ] **Flytower**, **Clean up** after a couple of updates (or install two PR builds): it lists what it would free. Afterwards `ls /opt/flytower/releases` shows only the running version and the one **Go back to** offers, and **Go back to** still works.

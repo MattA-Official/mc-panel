@@ -278,6 +278,11 @@ async function measureNow() {
               Uploads waiting to be imported, and deleted servers kept so they can be restored
             </td>
           </tr>
+          <tr v-if="parts.length">
+            <th colspan="4" class="pt-4 pb-1.5 text-left text-xs font-medium text-muted">
+              The rest of the machine
+            </th>
+          </tr>
           <tr v-for="p in parts" :key="p.key" data-e2e="disk-part">
             <td class="py-1.5 pe-4">
               <span class="flex items-center gap-1.5">
@@ -290,7 +295,11 @@ async function measureNow() {
             </td>
             <td class="hidden py-1.5 pe-4 text-muted sm:table-cell">
               <template v-if="p.cleanUp && freeable(p.cleanUp) > 0">
-                {{ humanBytes(freeable(p.cleanUp)) }} can be freed
+                {{
+                  p.cleanUp === 'journal'
+                    ? `The journal uses ${humanBytes(freeable(p.cleanUp))}`
+                    : `${humanBytes(freeable(p.cleanUp))} can be freed`
+                }}
               </template>
             </td>
             <td class="py-1.5 text-right whitespace-nowrap">
