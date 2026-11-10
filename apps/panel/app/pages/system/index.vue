@@ -35,4 +35,7 @@ const { data: health, refresh } = await useFetch('/api/health')
   <UCard>
     <MemoryBudget detailed />
   </UCard>
+  <UCard>
+    <DiskUse />
+  </UCard>
 </template>
