@@ -58,6 +58,8 @@ async function clone() {
     starting.value = false
   }
 }
+
+useOpenFromQuery('clone', () => void begin())
 </script>
 
 <template>

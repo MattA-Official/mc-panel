@@ -1,0 +1,163 @@
+import type { Permission } from '../../shared/permissions'
+
+/**
+ * The actions for one server, as menu groups. The ⋯ button on a server card and its
+ * right-click menu both come from here, so they can't drift apart (#106). The command
+ * palette (#107) will use the same list.
+ */
+
+/** The shape Nuxt UI's dropdown and context menus take. */
+export interface ActionItem {
+  label?: string
+  icon?: string
+  description?: string
+  color?: 'error'
+  disabled?: boolean
+  type?: 'label' | 'separator'
+  to?: string
+  target?: string
+  children?: ActionItem[]
+  onSelect?: (e?: Event) => void
+  [key: string]: unknown
+}
+
+/** Where each part of a server page lives. One place to change when the tabs move (#177). */
+export const serverRoutes = (name: string) => {
+  const base = `/servers/${name}`
+  return {
+    console: base,
+    logs: `${base}/logs`,
+    players: `${base}/players`,
+    backups: `${base}/backups`,
+    backupNow: `${base}/backups?backup=now`,
+    content: `${base}/content`,
+    world: `${base}/world`,
+    files: `${base}/files`,
+    settings: `${base}/settings`,
+    clone: `${base}/settings?clone=1`,
+    delete: `${base}/settings?delete=1`,
+  }
+}
+
+export interface ServerActionContext {
+  server: { name: string; displayName: string }
+  /** Whether it's running or starting, so Restart and Stop make sense. */
+  running: boolean
+  /** Content updates waiting, from the update badge (#59). */
+  updates: number
+  /** Whether the system helper is up. Power actions need it. */
+  agentOk: boolean
+  can: (permission: Permission, server?: string) => boolean
+  /** The page's own origin, for copying a link to the server. */
+  origin: string
+  go: (to: string) => void
+  openInNewTab: (to: string) => void
+  copy: (text: string, what: string) => void
+  /** Copies the address players connect with. */
+  copyAddress: () => void
+  power: (action: 'start' | 'restart' | 'stop') => void
+}
+
+export function serverActions(ctx: ServerActionContext): ActionItem[][] {
+  const { server, can } = ctx
+  const name = server.name
+  const r = serverRoutes(name)
+  const groups: ActionItem[][] = []
+
+  groups.push([
+    { label: 'Open console', icon: 'i-lucide-terminal', onSelect: () => ctx.go(r.console) },
+    {
+      label: 'Open in new tab',
+      icon: 'i-lucide-external-link',
+      onSelect: () => ctx.openInNewTab(r.console),
+    },
+    {
+      label: 'Copy link',
+      icon: 'i-lucide-link',
+      onSelect: () => ctx.copy(`${ctx.origin}${r.console}`, 'Link'),
+    },
+  ])
+
+  if (can('server.power', name)) {
+    const helperDown = ctx.agentOk
+      ? {}
+      : { disabled: true, description: "The system helper isn't running" }
+    groups.push(
+      ctx.running
+        ? [
+            {
+              label: 'Restart',
+              icon: 'i-lucide-rotate-cw',
+              ...helperDown,
+              onSelect: () => ctx.power('restart'),
+            },
+            {
+              label: 'Stop',
+              icon: 'i-lucide-square',
+              ...helperDown,
+              onSelect: () => ctx.power('stop'),
+            },
+          ]
+        : [
+            {
+              label: 'Start',
+              icon: 'i-lucide-play',
+              ...helperDown,
+              onSelect: () => ctx.power('start'),
+            },
+          ],
+    )
+  }
+
+  const quick: ActionItem[] = [
+    { label: 'Copy address', icon: 'i-lucide-copy', onSelect: () => ctx.copyAddress() },
+  ]
+  if (can('backups.create', name)) {
+    quick.push({
+      label: 'Back up now',
+      icon: 'i-lucide-archive',
+      onSelect: () => ctx.go(r.backupNow),
+    })
+  }
+  if (ctx.updates > 0) {
+    quick.push({
+      label: 'Review updates',
+      icon: 'i-lucide-arrow-up-circle',
+      description: `${ctx.updates} update${ctx.updates === 1 ? '' : 's'} available`,
+      onSelect: () => ctx.go(r.content),
+    })
+  }
+  groups.push(quick)
+
+  const goTo: ActionItem[] = [
+    ...(can('console.read', name)
+      ? [{ label: 'Logs', icon: 'i-lucide-scroll-text', onSelect: () => ctx.go(r.logs) }]
+      : []),
+    { label: 'Players', icon: 'i-lucide-users', onSelect: () => ctx.go(r.players) },
+    { label: 'Backups', icon: 'i-lucide-archive', onSelect: () => ctx.go(r.backups) },
+    { label: 'Content', icon: 'i-lucide-package', onSelect: () => ctx.go(r.content) },
+    { label: 'World', icon: 'i-lucide-globe', onSelect: () => ctx.go(r.world) },
+    ...(can('files.read', name)
+      ? [{ label: 'Files', icon: 'i-lucide-folder-open', onSelect: () => ctx.go(r.files) }]
+      : []),
+    { label: 'Settings', icon: 'i-lucide-sliders-horizontal', onSelect: () => ctx.go(r.settings) },
+  ]
+  groups.push([{ label: 'Go to', icon: 'i-lucide-corner-down-right', children: goTo }])
+
+  // Nothing destructive runs from here: both open the page's own confirm.
+  const manage: ActionItem[] = []
+  if (can('servers.create')) {
+    manage.push({ label: 'Clone…', icon: 'i-lucide-copy-plus', onSelect: () => ctx.go(r.clone) })
+  }
+  if (can('server.delete', name)) {
+    manage.push({
+      label: 'Delete…',
+      icon: 'i-lucide-trash-2',
+      color: 'error',
+      onSelect: () => ctx.go(r.delete),
+    })
+  }
+  if (manage.length) groups.push(manage)
+
+  return groups
+}

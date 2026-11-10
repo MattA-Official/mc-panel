@@ -51,3 +51,9 @@ Click your name at the bottom of the sidebar to open **Your account**:
 - **Profile**: change your name (it shows in Activity and on Access) and pick **Appearance**: light, dark or system. Your choice is saved for you, so it follows you to every device. The sun and moon button in the sidebar switches too.
 - **Your passkeys** and **recovery codes**, as above.
 - **Sign out everywhere else**: for a lost phone or a shared computer. Every other browser signed in as you is signed out on its next click; this one stays signed in. It asks for your passkey.
+
+## This browser
+
+Some settings live in the browser rather than on your account, so each device can be different. They're under **This browser** on **Your account**.
+
+- **Use Flytower's right-click menus.** Right-click a server card for its actions: open, start or stop, back up, go to a tab, clone or delete. Shift + right-click always shows the browser's own menu, as do text you've selected and any field. On a phone, press and hold a card instead. Turn this off to keep the browser's menu everywhere; the ⋯ button on each card offers the same actions either way.
