@@ -11,6 +11,8 @@ declare module '#auth-utils' {
     mustEnrolPasskey?: boolean
     /** Epoch ms until which destructive actions are allowed without another passkey tap. */
     elevatedUntil?: number
+    /** Opened a valid invite link: may create a passkey to join with it. */
+    inviteId?: number
   }
 }
 
