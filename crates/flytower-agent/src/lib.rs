@@ -3,5 +3,8 @@
 //! (`packages/agent`), which it will replace a verb at a time. See
 //! `docs/decisions/0001-rust-and-go.md`.
 
+pub mod dispatch;
 pub mod envelope;
+pub mod handlers;
+pub mod time;
 pub mod verbs;
