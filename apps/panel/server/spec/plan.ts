@@ -26,6 +26,12 @@ import {
   sameStatsSettings,
   type StatsSettings,
 } from '../../shared/stats-settings'
+import {
+  describeMap,
+  readMapSettings,
+  sameMapSettings,
+  type MapSettings,
+} from '../../shared/map-settings'
 import { describeTask, sameTask, toTask, type TaskSpec } from '../../shared/schedules'
 import type { schema } from '../db'
 import { formatBytes } from '../backups/service'
@@ -71,6 +77,8 @@ export interface SettingsChange {
   publicPage?: PublicPage
   /** Player stats settings. */
   stats?: StatsSettings
+  /** Web map settings. */
+  map?: MapSettings
   content: ServerSpec['content']
 }
 
@@ -310,6 +318,20 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
         label: 'Player stats',
         from: describeStats(was),
         to: describeStats(spec.stats),
+      })
+    }
+  }
+
+  if (spec.map) {
+    const was = readMapSettings(row.map)
+    if (!sameMapSettings(was, spec.map)) {
+      settings.map = spec.map
+      changes.push({
+        area: 'settings',
+        action: 'set',
+        label: 'Web map',
+        from: describeMap(was),
+        to: describeMap(spec.map),
       })
     }
   }

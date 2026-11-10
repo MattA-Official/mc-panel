@@ -135,6 +135,21 @@ describe('spec', () => {
     ).toBeUndefined()
   })
 
+  test('map settings read back, and are left out at their defaults', () => {
+    const map = { public: true, players: false }
+    const yaml = toYaml(
+      specFromServer({ ...row, map } as never, props),
+      'https://panel.example/schema/server-v1.json',
+    )
+    expect(yaml).toContain('map:')
+    const back = parseSpec(yaml)
+    expect(back.ok && back.spec.map).toEqual(map)
+    expect(specFromServer(row as never, props).map).toBeUndefined()
+    expect(
+      specFromServer({ ...row, map: { public: false, players: true } } as never, props).map,
+    ).toBeUndefined()
+  })
+
   test('compact specs leave defaults out', () => {
     const spec = ServerSpec.parse({ name: 'ab', loader: { type: 'vanilla', minecraft: '26.3' } })
     expect(compactSpec(spec)).toEqual({
