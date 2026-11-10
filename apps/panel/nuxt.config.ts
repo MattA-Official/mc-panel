@@ -31,7 +31,8 @@ export default defineNuxtConfig({
   routeRules: {
     // Moved out of System in 1.2.0.
     '/system/account': { redirect: '/account' },
-    '/system/people': { redirect: '/people' },
+    '/system/people': { redirect: '/access' },
+    '/people': { redirect: '/access' },
     // The panel loads nothing from other sites except content icons (Modrinth, Hangar).
     '/**': {
       headers: {
