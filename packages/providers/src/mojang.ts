@@ -50,6 +50,16 @@ export class Mojang {
     return { url: client.url, hash: { algorithm: 'sha1', value: client.sha1 } }
   }
 
+  /**
+   * The vanilla server for a version. The console's command completion runs its data
+   * generator for the game's own list of commands.
+   */
+  async serverJar(mc: string): Promise<{ url: string; hash: ExpectedHash }> {
+    const server = (await this.versionJson(mc)).downloads?.server
+    if (!server) throw new ProviderError(`Minecraft ${mc} has no server download.`)
+    return { url: server.url, hash: { algorithm: 'sha1', value: server.sha1 } }
+  }
+
   async javaMajor(mc: string): Promise<number> {
     const major = (await this.versionJson(mc)).javaVersion?.majorVersion
     // Versions before 1.17 omit it; they all run on Java 8.
