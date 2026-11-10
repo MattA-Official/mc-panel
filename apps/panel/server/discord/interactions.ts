@@ -35,15 +35,3 @@ export function ephemeral(content: string) {
     data: { content, flags: EPHEMERAL, allowed_mentions: { parse: [] } },
   }
 }
-
-/** Answers one verified interaction. Commands arrive in a later part of the Discord app work. */
-export async function answer(interaction: Interaction): Promise<unknown> {
-  switch (interaction.type) {
-    case InteractionType.Ping:
-      return { type: ResponseType.Pong }
-    case InteractionType.Autocomplete:
-      return { type: ResponseType.AutocompleteResult, data: { choices: [] } }
-    default:
-      return ephemeral('Flytower can’t answer that yet.')
-  }
-}
