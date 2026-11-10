@@ -34,6 +34,7 @@ const CATALOGUE: Record<
     kind?: 'mod' | 'plugin' | 'datapack'
     /** Versions for Minecraft other than 26.3. */
     other?: Record<string, string[]>
+    clientOnly?: boolean
   }
 > = {
   lithium: {
@@ -45,6 +46,7 @@ const CATALOGUE: Record<
   'fabric-api': { title: 'Fabric API', versions: ['0.100'] },
   terralith: { title: 'Terralith', versions: ['2.5'], kind: 'datapack' },
   essentials: { title: 'EssentialsX', versions: ['2.21'], kind: 'plugin' },
+  voxy: { title: 'Voxy', versions: ['0.2'], clientOnly: true },
 }
 
 function fakeModrinth(opts: { badHash?: string } = {}): ContentProvider {
@@ -68,6 +70,7 @@ function fakeModrinth(opts: { badHash?: string } = {}): ContentProvider {
       size: 100,
       dependencies: (p.deps ?? []).map((d) => ({ projectId: `id-${d}`, versionId: null })),
       incompatible: [],
+      ...(p.clientOnly ? { clientOnly: true } : {}),
     }
   }
   return {
@@ -423,6 +426,21 @@ describe('plan', () => {
     const plan = await service.plan('survival', spec({ content: [{ modrinth: 'lithium' }] }))
     expect(plan.unmanaged).toEqual(['mods/lithium-0.19.jar', 'mods/other.jar'])
     expect(plan.problems[0]).toContain('added by hand')
+  })
+})
+
+describe('client-only content', () => {
+  it('plans and installs a client-only mod with a warning, and locks it', async () => {
+    const { service, spec, dir } = setup()
+    const plan = await service.plan('survival', spec({ content: [{ modrinth: 'voxy' }] }))
+    expect(plan.problems).toEqual([])
+    expect(plan.warnings).toEqual([
+      "Modrinth marks Voxy as client-only. It's installed because you asked for it; remove it if the server won't start.",
+    ])
+    const { done } = await service.apply('survival', plan.id)
+    expect(await done).toMatchObject({ state: 'succeeded' })
+    expect(existsSync(join(dir, 'mods', 'voxy-0.2.jar'))).toBe(true)
+    expect((await readLock(dir)).content.map((l) => l.slug)).toEqual(['voxy'])
   })
 })
 

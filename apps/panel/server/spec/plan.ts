@@ -69,6 +69,8 @@ export interface Plan {
   changes: Change[]
   /** Anything here stops apply. */
   problems: string[]
+  /** Worth knowing before applying, but doesn't stop it. */
+  warnings: string[]
   restart: boolean
   backup: boolean
   downloadBytes: number
@@ -292,6 +294,7 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
     hangar: input.hangar,
   })
   problems.push(...resolved.problems)
+  const warnings = resolved.warnings
   for (const item of resolved.items) {
     if (!accepts.includes(item.kind)) {
       problems.push(`${item.title} is a ${item.kind}, which a ${target.loader} server can't run.`)
@@ -377,6 +380,7 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
     server: row.name,
     changes,
     problems: [...new Set(problems)],
+    warnings: [...new Set(warnings)],
     restart,
     backup: contentChanged || server !== undefined,
     downloadBytes: downloads.reduce((n, d) => n + (d.size ?? 0), 0),
