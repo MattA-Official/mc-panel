@@ -166,16 +166,17 @@ async function main() {
     user: {
       projectV2: {
         id: string
-        field: { id: string; options: { id: string; name: string }[] } | null
-        startField: { id: string } | null
-        targetField: { id: string } | null
+        // Asking for a field by a name the board doesn't have is an error, so list them all.
+        fields: {
+          nodes: { id?: string; name?: string; options?: { id: string; name: string }[] }[]
+        }
         items: {
           pageInfo: { hasNextPage: boolean; endCursor: string | null }
           nodes: {
             id: string
-            status: { name: string } | null
-            start: { date: string } | null
-            target: { date: string } | null
+            fieldValues: {
+              nodes: { field?: { name: string }; name?: string; date?: string }[]
+            }
             content: ContentNode | null
           }[]
         }
@@ -194,16 +195,22 @@ async function main() {
         user(login: $owner) {
           projectV2(number: $number) {
             id
-            field(name: "Status") { ... on ProjectV2SingleSelectField { id options { id name } } }
-            startField: field(name: "Start date") { ... on ProjectV2Field { id } }
-            targetField: field(name: "Target date") { ... on ProjectV2Field { id } }
+            fields(first: 50) {
+              nodes {
+                ... on ProjectV2FieldCommon { id name }
+                ... on ProjectV2SingleSelectField { options { id name } }
+              }
+            }
             items(first: 100, after: $after) {
               pageInfo { hasNextPage endCursor }
               nodes {
                 id
-                status: fieldValueByName(name: "Status") { ... on ProjectV2ItemFieldSingleSelectValue { name } }
-                start: fieldValueByName(name: "Start date") { ... on ProjectV2ItemFieldDateValue { date } }
-                target: fieldValueByName(name: "Target date") { ... on ProjectV2ItemFieldDateValue { date } }
+                fieldValues(first: 30) {
+                  nodes {
+                    ... on ProjectV2ItemFieldSingleSelectValue { name field { ... on ProjectV2FieldCommon { name } } }
+                    ... on ProjectV2ItemFieldDateValue { date field { ... on ProjectV2FieldCommon { name } } }
+                  }
+                }
                 content { ${CONTENT} }
               }
             }
@@ -214,18 +221,21 @@ async function main() {
     )
     const project = page.user.projectV2
     projectId = project.id
-    field = project.field
-    startFieldId = project.startField?.id
-    targetFieldId = project.targetField?.id
+    const byName = (name: string) => project.fields.nodes.find((f) => f.name === name)
+    const status = byName('Status')
+    field = status?.id && status.options ? { id: status.id, options: status.options } : null
+    startFieldId = byName('Start date')?.id
+    targetFieldId = byName('Target date')?.id
     for (const node of project.items.nodes) {
       const c = node.content
       if (!c || !('number' in c) || c.repository.nameWithOwner !== `${OWNER}/${REPO}`) continue
+      const value = (name: string) => node.fieldValues.nodes.find((v) => v.field?.name === name)
       onBoard.set(c.id, {
         itemId: node.id,
         item: {
-          ...toItem(c, node.status?.name ?? null),
-          start: node.start?.date ?? null,
-          target: node.target?.date ?? null,
+          ...toItem(c, value('Status')?.name ?? null),
+          start: value('Start date')?.date ?? null,
+          target: value('Target date')?.date ?? null,
         },
       })
     }
