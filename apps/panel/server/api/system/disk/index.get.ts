@@ -1,3 +1,4 @@
+import { schema } from '../../../db'
 import { diskLevel } from '../../../../shared/disk'
 
 /**
@@ -7,5 +8,18 @@ import { diskLevel } from '../../../../shared/disk'
 export default defineEventHandler(async (event) => {
   await requireUserSession(event)
   const fullness = diskFullness()
-  return { ...fullness, level: diskLevel(fullness.percent), ...useDiskUsage().current() }
+  const report = useDiskUsage().current()
+  const names = new Map(
+    useDb()
+      .select({ name: schema.servers.name, displayName: schema.servers.displayName })
+      .from(schema.servers)
+      .all()
+      .map((r) => [r.name, r.displayName]),
+  )
+  return {
+    ...fullness,
+    level: diskLevel(fullness.percent),
+    ...report,
+    servers: report.servers.map((s) => ({ ...s, displayName: names.get(s.server) ?? s.server })),
+  }
 })

@@ -17,10 +17,10 @@ import type { DiskGroup, DiskReport, ServerDisk } from '../shared/disk'
 export { DISK_GROUPS, type DiskGroup, type DiskReport, type ServerDisk } from '../shared/disk'
 
 /** Which group a top-level entry of a server folder belongs to. */
-export function groupOf(entry: string, levelName: string | null): Exclude<
-  DiskGroup,
-  'backups' | 'exports'
-> {
+export function groupOf(
+  entry: string,
+  levelName: string | null,
+): Exclude<DiskGroup, 'backups' | 'exports'> {
   const level = levelName?.split('/')[0]?.trim()
   if ((level && entry === level) || entry.startsWith('world')) return 'world'
   if (entry === 'logs' || entry === 'crash-reports') return 'logs'
