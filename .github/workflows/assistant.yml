@@ -9,7 +9,9 @@ name: Assistant
 # Actions tab (or the API) with a written request. Only the repository owner can start it.
 #
 # Secrets:
-#   ANTHROPIC_API_KEY   required. An Anthropic API key.
+#   CLAUDE_CODE_OAUTH_TOKEN  a Claude subscription token from `claude setup-token`, or
+#   ANTHROPIC_API_KEY        an Anthropic API key. One of the two is required; the
+#                            subscription token wins when both are set.
 #   PROJECTS_TOKEN      optional. A classic personal access token with the `repo` and
 #                       `project` scopes, needed for the user-owned Projects board.
 #                       Without it, gh uses this workflow's own token, which can edit
@@ -66,7 +68,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PROJECTS_TOKEN || github.token }}
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ !secrets.CLAUDE_CODE_OAUTH_TOKEN && secrets.ANTHROPIC_API_KEY || '' }}
           # Progress comments come from the workflow's own bot, not from Matt.
           github_token: ${{ github.token }}
           # Dispatched runs carry their own request; comment runs read it from the comment.
