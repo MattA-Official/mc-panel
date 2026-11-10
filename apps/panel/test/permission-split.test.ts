@@ -15,6 +15,9 @@ import {
 } from '../shared/permissions'
 import * as v1 from './fixtures/permissions-v1'
 import { ROUTE_PERMISSIONS } from './helpers/route-permissions'
+import { SERVER_PERMISSIONS } from '../shared/permissions'
+
+const SERVER_KEYS = new Set<string>(SERVER_PERMISSIONS)
 import { ROUTE_PERMISSIONS_V1 } from './fixtures/route-permissions-v1'
 
 describe('expandPermissions and withImplied', () => {
@@ -225,5 +228,30 @@ describe('nobody gains or loses access in the upgrade', () => {
       }
     }
     expect(BUILT_IN_ROLES.owner.permissions).toEqual([...ALL_PERMISSIONS])
+  })
+})
+
+describe('role editor helpers', () => {
+  test('every permission is in exactly one area', async () => {
+    const { PERMISSION_AREAS } = await import('../shared/permissions')
+    const listed = PERMISSION_AREAS.flatMap((a) => a.permissions)
+    expect([...listed].sort()).toEqual([...ALL_PERMISSIONS].sort())
+    for (const a of PERMISSION_AREAS) {
+      for (const p of a.permissions) expect(a.install).toBe(!SERVER_KEYS.has(p))
+    }
+  })
+
+  test('says which permission brings each implied one', async () => {
+    const { impliedBy } = await import('../shared/permissions')
+    expect(impliedBy(['spec.edit'])).toMatchObject({
+      'settings.edit': 'spec.edit',
+      'content.manage': 'spec.edit',
+      'server.view': 'spec.edit',
+    })
+    expect(impliedBy(['console.command'])).toEqual({
+      'console.read': 'console.command',
+      'server.view': 'console.command',
+    })
+    expect(impliedBy(['servers.create'])).toEqual({})
   })
 })

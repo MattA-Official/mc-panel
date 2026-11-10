@@ -320,13 +320,49 @@ export function saveRole(
       throw new PeopleError("You can't change a role with more access than you have.", 403)
     }
     db.update(schema.roles).set({ name, permissions }).where(eq(schema.roles.id, input.id)).run()
-    return { id: input.id, name, permissions }
+    const before = rolePermissions(existing)
+    return {
+      id: input.id,
+      name,
+      permissions,
+      added: permissions.filter((p) => !before.includes(p)),
+      removed: before.filter((p) => !permissions.includes(p)),
+    }
   }
   const total = db.select({ n: count() }).from(schema.roles).get()?.n ?? 0
   if (total >= MAX_ROLES) throw new PeopleError(`There can be at most ${MAX_ROLES} roles.`)
   const id = `custom-${Buffer.from(crypto.getRandomValues(new Uint8Array(4))).toString('hex')}`
   db.insert(schema.roles).values({ id, name, builtIn: false, permissions }).run()
   return { id, name, permissions }
+}
+
+/** A grant as Activity shows it: the role's and the server's names, not their ids. */
+export interface GrantText {
+  role: string
+  server: string | null
+}
+
+/** What changed between two sets of grants, by name, for Activity. */
+export function grantChanges(db: DbOrTx, before: GrantInput[], after: GrantInput[]) {
+  const key = (g: GrantInput) => `${g.roleId}\u0000${g.server ?? ''}`
+  const had = new Set(before.map(key))
+  const has = new Set(after.map(key))
+  const servers = new Map(
+    db
+      .select({ name: schema.servers.name, displayName: schema.servers.displayName })
+      .from(schema.servers)
+      .all()
+      .map((r) => [r.name, r.displayName ?? r.name]),
+  )
+  const text = (g: GrantInput): GrantText => ({
+    role: roleNameOf(db, g.roleId),
+    server: g.server === null ? null : (servers.get(g.server) ?? g.server),
+  })
+  const unique = (gs: GrantInput[]) => [...new Map(gs.map((g) => [key(g), g])).values()]
+  return {
+    added: unique(after.filter((g) => !had.has(key(g)))).map(text),
+    removed: unique(before.filter((g) => !has.has(key(g)))).map(text),
+  }
 }
 
 /** A role's display name, for activity entries. */

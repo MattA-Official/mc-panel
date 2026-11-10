@@ -120,3 +120,15 @@ Do this on a box that was on 1.3 first, with at least one custom role, so the up
 - [ ] Make a role with **Send console commands** only and save it: it now also lists **Read the console and logs**. One with **Change files** also gets **Read files**.
 - [ ] A role with **Manage notifications** across Flytower shows only **Notifications** on **System** (plus the overview). **Updates**, **Branding** and **SSH** are hidden and their pages refuse.
 - [ ] A role with **Invite people** but not **Manage people** can open **Access** and make invite links, but has no pencil or remove buttons on people and no **New role**.
+
+## Role editor
+
+- [ ] **Access**, **Roles**: under each role it says how many people have it and where ("1 on all servers, 2 on Survival", or "Nobody has it."). Delete is off for a role someone has.
+- [ ] The copy button on **Operator** opens **New role** as "Copy of Operator" with its boxes ticked. Change **Start from** to **Viewer**: the boxes follow.
+- [ ] Tick **Edit the YAML**: every setting above it is ticked, greyed out and says "Included with Edit the YAML". Untick it and they clear again. **Send console commands** does the same for reading the console, **Change files** for reading files.
+- [ ] Console commands, changing files, content, the YAML, people, roles, updates and SSH carry a **Powerful** badge, and a line in orange says why once ticked.
+- [ ] **All** next to an area ticks everything in it; press it again to clear.
+- [ ] As someone with **Manage roles** but not **Open SSH**, the SSH box is off and says you don't have it yourself.
+- [ ] Editing a saved role shows the extras locked again, not as separate ticks.
+- [ ] **People**: the checklist button by each person lists what they can do on all servers, on each server they have extra on, and across Flytower.
+- [ ] Change a role and someone's roles, then open **Activity**: "Changed the X role: added …; removed …" and "Gave Alex … on Survival, and took away … on all servers".

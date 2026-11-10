@@ -73,3 +73,39 @@ describe('audit', () => {
     expect(auditActor('schedule.run', 'Matt')).toBe('Matt')
   })
 })
+
+describe('access changes in Activity', () => {
+  it('says which roles someone was given or lost', () => {
+    const op = { role: 'Operator', server: 'Survival' }
+    const viewer = { role: 'Viewer', server: null }
+    expect(
+      describeAudit('people.changed', null, { person: 'Alex', added: [op], removed: [] }),
+    ).toBe('Gave Alex Operator on Survival')
+    expect(
+      describeAudit('people.changed', null, { person: 'Alex', added: [op], removed: [viewer] }),
+    ).toBe('Gave Alex Operator on Survival, and took away Viewer on all servers')
+    expect(
+      describeAudit('people.changed', null, { person: 'Sam', added: [], removed: [viewer] }),
+    ).toBe('Took Viewer on all servers away from Sam')
+    // Entries from before 1.4.0 had no lists.
+    expect(describeAudit('people.changed', null, { person: 'Sam', grants: [] })).toBe(
+      'Changed what Sam can do',
+    )
+  })
+
+  it('says which permissions a role gained or lost', () => {
+    expect(
+      describeAudit('people.role_saved', null, {
+        name: 'Mods',
+        created: false,
+        added: ['files.read', 'files.write'],
+        removed: ['console.read'],
+      }),
+    ).toBe(
+      'Changed the Mods role: added Read files and Change files; removed Read the console and logs',
+    )
+    expect(describeAudit('people.role_saved', null, { name: 'Mods', created: true })).toBe(
+      'Made the Mods role',
+    )
+  })
+})

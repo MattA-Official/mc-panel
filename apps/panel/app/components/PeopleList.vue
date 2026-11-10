@@ -1,4 +1,11 @@
 <script setup lang="ts">
+import {
+  foldGrants,
+  INSTALL_PERMISSIONS,
+  PERMISSION_LABELS,
+  SERVER_PERMISSIONS,
+  type Permission,
+} from '#shared/permissions'
 import type { GrantView, InviteView, PeopleView, Person } from '~/utils/people'
 /** Everyone who can sign in, what they can do, and invite links nobody has used yet. */
 const toast = useToast()
@@ -29,6 +36,34 @@ const scopeItems = computed(() => [
 ])
 const toScope = (server: string | null) => server ?? '*'
 const fromScope = (scope: string) => (scope === '*' ? null : scope)
+
+// ------------------------------------------------------------------ what they can do
+
+const looking = ref<Person | null>(null)
+
+/** One row per place: everything they can do on all servers, then extra on single ones. */
+const effective = computed(() => {
+  const p = looking.value
+  if (!p) return []
+  const roles = data.value?.roles ?? []
+  const access = foldGrants(
+    p.grants.map((g) => ({
+      permissions: roles.find((r) => r.id === g.roleId)?.permissions ?? [],
+      server: g.server,
+    })),
+  )
+  const labels = (ps: readonly Permission[]) => ps.map((x) => PERMISSION_LABELS[x].label)
+  const rows: { place: string; can: string[] }[] = []
+  const everywhere = SERVER_PERMISSIONS.filter((x) => access.all.includes(x))
+  if (everywhere.length) rows.push({ place: 'All servers', can: labels(everywhere) })
+  for (const [server, ps] of Object.entries(access.servers)) {
+    const extra = ps.filter((x) => !access.all.includes(x))
+    if (extra.length) rows.push({ place: serverName(server), can: labels(extra) })
+  }
+  const install = INSTALL_PERMISSIONS.filter((x) => access.all.includes(x))
+  if (install.length) rows.push({ place: 'Across Flytower', can: labels(install) })
+  return rows
+})
 
 async function act(fn: () => Promise<unknown>, done: string) {
   try {
@@ -192,8 +227,17 @@ async function remove() {
             · {{ p.passkeys }} {{ p.passkeys === 1 ? 'passkey' : 'passkeys' }}
           </p>
         </div>
-        <div v-if="can('people.manage')" class="flex shrink-0 gap-1">
+        <div class="flex shrink-0 gap-1">
           <UButton
+            icon="i-lucide-list-checks"
+            color="neutral"
+            variant="ghost"
+            :aria-label="`What ${p.name} can do`"
+            :data-e2e="`person-can-${p.name}`"
+            @click="looking = p"
+          />
+          <UButton
+            v-if="can('people.manage')"
             icon="i-lucide-pencil"
             color="neutral"
             variant="ghost"
@@ -201,7 +245,7 @@ async function remove() {
             @click="edit(p)"
           />
           <UButton
-            v-if="p.id !== data?.you"
+            v-if="can('people.manage') && p.id !== data?.you"
             icon="i-lucide-user-minus"
             color="neutral"
             variant="ghost"
@@ -320,6 +364,26 @@ async function remove() {
             <UButton type="submit" label="Save" :loading="busy" />
           </div>
         </form>
+      </template>
+    </UModal>
+
+    <UModal
+      :open="!!looking"
+      :title="`What ${looking?.name} can do`"
+      description="Everything their roles add up to."
+      @update:open="(o: boolean) => !o && (looking = null)"
+    >
+      <template #body>
+        <p v-if="!effective.length" class="text-sm text-muted">Nothing: they have no roles.</p>
+        <dl v-else class="space-y-3 text-sm" data-e2e="person-can">
+          <div v-for="row in effective" :key="row.place">
+            <dt class="font-medium">{{ row.place }}</dt>
+            <dd class="text-muted">{{ row.can.join(', ') }}</dd>
+          </div>
+        </dl>
+        <p v-if="effective.length > 1" class="mt-3 text-xs text-muted">
+          A server listed on its own adds to what they can do on all servers.
+        </p>
       </template>
     </UModal>
 

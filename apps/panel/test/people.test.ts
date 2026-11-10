@@ -281,3 +281,27 @@ describe('custom roles', () => {
     fails(() => deleteRole(db, access(owner), 'owner'), /Built-in roles/)
   })
 })
+
+describe('access changes for Activity', () => {
+  test('lists the grants given and taken by name', async () => {
+    const { grantChanges } = await import('../server/auth/people')
+    const { db } = setup()
+    expect(
+      grantChanges(
+        db,
+        [
+          { roleId: 'viewer', server: null },
+          { roleId: 'admin', server: 'creative' },
+        ],
+        [
+          { roleId: 'operator', server: 'survival' },
+          { roleId: 'admin', server: 'creative' },
+          { roleId: 'operator', server: 'survival' },
+        ],
+      ),
+    ).toEqual({
+      added: [{ role: 'Operator', server: expect.any(String) }],
+      removed: [{ role: 'Viewer', server: null }],
+    })
+  })
+})
