@@ -7,7 +7,7 @@ const withElevation = useElevation()
 const { data: discord, error } = await useFetch<DiscordState>('/api/system/discord')
 
 const token = ref('')
-const busy = ref<'connect' | 'test' | 'endpoint' | 'disconnect' | null>(null)
+const busy = ref<'connect' | 'test' | 'endpoint' | 'commands' | 'disconnect' | null>(null)
 const confirming = ref(false)
 
 async function run(
@@ -57,6 +57,13 @@ const retryEndpoint = () =>
     () => $fetch<DiscordState>('/api/system/discord/endpoint', { method: 'POST' }),
     (s) => (s.connected && s.endpointSet ? 'Discord accepted the endpoint' : 'Tried again'),
     "Couldn't set the endpoint",
+  )
+const resendCommands = () =>
+  run(
+    'commands',
+    () => $fetch<DiscordState>('/api/system/discord/commands', { method: 'POST' }),
+    (s) => (s.connected && !s.commandsError ? 'Discord took the commands' : 'Tried again'),
+    "Couldn't send the commands",
   )
 async function disconnect() {
   const ok = await run(
@@ -176,6 +183,17 @@ async function copyEndpoint() {
             @click="copyEndpoint"
           />
         </dd>
+        <dt class="text-muted">Commands</dt>
+        <dd class="flex flex-wrap gap-1">
+          <UBadge
+            v-for="c in discord.commands"
+            :key="c"
+            :label="`/${c}`"
+            color="neutral"
+            variant="soft"
+            class="font-mono"
+          />
+        </dd>
         <dt class="text-muted">Connected</dt>
         <dd>{{ formatDateTime(discord.connectedAt) }}</dd>
       </dl>
@@ -193,6 +211,26 @@ async function copyEndpoint() {
             Discord has to reach this panel from the internet. Fix that and try again, or paste the
             endpoint above into Interactions Endpoint URL on the app's General Information page.
           </p>
+        </template>
+      </UAlert>
+
+      <UAlert
+        v-if="discord.commandsError"
+        color="warning"
+        variant="subtle"
+        icon="i-lucide-triangle-alert"
+        title="Discord didn't take the commands"
+        :description="discord.commandsError"
+      >
+        <template #actions>
+          <UButton
+            label="Send them again"
+            size="sm"
+            color="neutral"
+            variant="outline"
+            :loading="busy === 'commands'"
+            @click="resendCommands"
+          />
         </template>
       </UAlert>
 

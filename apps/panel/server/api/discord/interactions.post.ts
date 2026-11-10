@@ -1,4 +1,6 @@
-import { answer, type Interaction } from '../../discord/interactions'
+import type { Interaction } from '../../discord/interactions'
+import { route } from '../../discord/registry'
+import { NO_ACCESS } from '../../../shared/permissions'
 import { verifyInteraction } from '../../discord/verify'
 
 /**
@@ -26,5 +28,6 @@ export default defineEventHandler(async (event) => {
   if (interaction.application_id !== app.applicationId) {
     throw createError({ statusCode: 401, statusMessage: 'Not for this app.' })
   }
-  return answer(interaction)
+  // Nobody from Discord has access in Flytower yet; mapping Discord roles comes later.
+  return route(useCommands(), interaction, () => NO_ACCESS)
 })
