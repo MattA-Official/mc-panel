@@ -81,7 +81,11 @@ export const migrations: { tag: string; sql: string }[] = [
     "sql": "ALTER TABLE `servers` ADD `stats` text;"
   },
   {
-    "tag": "0020_map_settings",
+    "tag": "0020_discord_relay",
+    "sql": "ALTER TABLE `servers` ADD `discord_relay` text;"
+  },
+  {
+    "tag": "0021_map_settings",
     "sql": "ALTER TABLE `servers` ADD `map` text;"
   }
 ]

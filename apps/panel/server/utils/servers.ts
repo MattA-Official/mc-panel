@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { readPublicPage, type PublicPage } from '../../shared/public-page'
 import { readStatsSettings } from '../../shared/stats-settings'
 import { readMapSettings } from '../../shared/map-settings'
+import { relayView } from '../../shared/discord-relay'
 import { eq } from 'drizzle-orm'
 import { schema } from '../db'
 import type { ServiceState } from '../jobs/status'
@@ -28,6 +29,7 @@ export function publicServer(row: Row, status: ServiceState, health?: Health) {
     publicPage: readPublicPage(row.publicPage),
     stats: readStatsSettings(row.stats),
     map: readMapSettings(row.map),
+    discordRelay: relayView(row.discordRelay),
     status,
     health: health ?? { condition: null, crash: null },
     icon: iconUrl(row.name),

@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "d12963d4-867b-473e-b648-a4228241f9ed",
+  "id": "1f1f0b40-cc29-46bc-939b-9c496214dc7a",
   "prevId": "83495fd3-60e8-49d3-bfa5-163715081331",
   "tables": {
     "audit": {
@@ -1608,8 +1608,8 @@
           "notNull": false,
           "autoincrement": false
         },
-        "map": {
-          "name": "map",
+        "discord_relay": {
+          "name": "discord_relay",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
