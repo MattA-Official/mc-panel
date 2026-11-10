@@ -216,3 +216,56 @@ test('activity describes people changes', () => {
   )
   expect(describeAudit('people.removed', null, { person: 'Sam' })).toBe('Removed Sam')
 })
+
+describe('custom roles', () => {
+  test('a custom role can be made, given out and changed', async () => {
+    const { saveRole } = await import('../server/auth/people')
+    const { db, owner, person, access } = setup()
+    const mod = saveRole(db, access(owner), {
+      name: 'Moderator',
+      permissions: ['players.manage', 'console.read'],
+    })
+    // Seeing the server comes with anything done on it.
+    expect(mod.permissions).toEqual(['server.view', 'console.read', 'players.manage'])
+    const sam = person('Sam', mod.id, 'survival')
+    expect(can(access(sam), 'players.manage', 'survival')).toBe(true)
+    saveRole(db, access(owner), { id: mod.id, name: 'Moderator', permissions: ['server.view'] })
+    expect(can(access(sam), 'players.manage', 'survival')).toBe(false)
+  })
+
+  test('names are unique, built-in roles are fixed, and nobody makes a role beyond themselves', async () => {
+    const { saveRole } = await import('../server/auth/people')
+    const { db, owner, person, access } = setup()
+    fails(
+      () => saveRole(db, access(owner), { name: 'admin', permissions: ['server.view'] }),
+      /already a role/,
+    )
+    fails(
+      () =>
+        saveRole(db, access(owner), {
+          id: 'viewer',
+          name: 'Watcher',
+          permissions: ['server.view'],
+        }),
+      /Built-in roles/,
+    )
+    const adminAll = person('Ada', 'admin')
+    fails(
+      () => saveRole(db, access(adminAll), { name: 'Boss', permissions: ['system.manage'] }),
+      /more access than you have/,
+    )
+  })
+
+  test('a role in use cannot be deleted; deleting an unused one cancels its invites', async () => {
+    const { saveRole, deleteRole } = await import('../server/auth/people')
+    const { db, owner, person, access } = setup()
+    const mod = saveRole(db, access(owner), { name: 'Moderator', permissions: ['players.manage'] })
+    const sam = person('Sam', mod.id, 'survival')
+    fails(() => deleteRole(db, access(owner), mod.id), /1 person has this role/)
+    setGrants(db, access(owner), sam, [{ roleId: 'viewer', server: 'survival' }])
+    createInvite(db, access(owner), { roleId: mod.id, server: null, createdBy: owner })
+    deleteRole(db, access(owner), mod.id)
+    expect(db.select().from(schema.invites).all()).toEqual([])
+    fails(() => deleteRole(db, access(owner), 'owner'), /Built-in roles/)
+  })
+})
