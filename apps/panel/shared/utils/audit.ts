@@ -1,5 +1,6 @@
 /** Turning audit rows into sentences, and grouping their actions for filtering. */
 import { humanBytes } from './format'
+import { isPermission, PERMISSION_LABELS, type Permission } from '../permissions'
 
 export const AUDIT_KINDS = {
   servers: 'Servers',
@@ -77,6 +78,30 @@ function roleText(d: Record<string, unknown>): string {
   return `${role} on ${d.server ? String(d.server) : 'all servers'}`
 }
 
+/** "Operator on Survival and Viewer on all servers", from a grant change's detail. */
+function grantList(v: unknown): string {
+  if (!Array.isArray(v) || !v.length) return ''
+  return listText(
+    v.map((g: { role?: unknown; server?: unknown }) =>
+      roleText({ roleName: g.role, server: g.server ?? null }),
+    ),
+  )
+}
+
+/** "Read files and Change files", from a role change's detail. */
+function permissionList(v: unknown): string {
+  if (!Array.isArray(v) || !v.length) return ''
+  return listText(
+    v.map((p) => (isPermission(String(p)) ? PERMISSION_LABELS[p as Permission].label : String(p))),
+  )
+}
+
+function listText(items: string[]): string {
+  return items.length < 2
+    ? (items[0] ?? '')
+    : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`
+}
+
 const str = (v: unknown) => (v === undefined || v === null ? '' : String(v))
 
 /** A short sentence, without the person (shown alongside). */
@@ -104,12 +129,23 @@ export function describeAudit(
       return `Cancelled an invite link${d.person ? ` for ${str(d.person)}` : ''}`
     case 'people.joined':
       return `Joined as ${roleText(d)}`
-    case 'people.changed':
-      return `Changed what ${str(d.person)} can do`
+    case 'people.changed': {
+      const gave = grantList(d.added)
+      const took = grantList(d.removed)
+      if (!gave && !took) return `Changed what ${str(d.person)} can do`
+      if (!gave) return `Took ${took} away from ${str(d.person)}`
+      return `Gave ${str(d.person)} ${gave}${took ? `, and took away ${took}` : ''}`
+    }
     case 'people.removed':
       return `Removed ${str(d.person)}`
-    case 'people.role_saved':
-      return `${d.created ? 'Made' : 'Changed'} the ${str(d.name)} role`
+    case 'people.role_saved': {
+      const base = `${d.created ? 'Made' : 'Changed'} the ${str(d.name)} role`
+      if (d.created) return base
+      const added = permissionList(d.added)
+      const removed = permissionList(d.removed)
+      const parts = [added && `added ${added}`, removed && `removed ${removed}`].filter(Boolean)
+      return parts.length ? `${base}: ${parts.join('; ')}` : base
+    }
     case 'people.permissions_split':
       return 'Split permissions into finer ones; custom roles kept everything they could do'
     case 'people.role_deleted':
