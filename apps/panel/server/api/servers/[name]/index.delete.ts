@@ -43,6 +43,7 @@ export default defineEventHandler(async (event) => {
   useDiskUsage().forget(name)
   forgetNotifyServer(name)
   useSessions().forget(name)
+  useStatsSnapshot().forget(name)
   useUpdates().forget(name)
   syncBackupSchedules()
   useSchedules().remove(name)

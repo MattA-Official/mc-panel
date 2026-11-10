@@ -424,3 +424,22 @@ export const playerNames = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.server, t.uuid] })],
 )
+
+/**
+ * A short list of each player's vanilla stats (from the world's stats files), once a day and
+ * only when they changed. Week and month figures are the difference between two rows. Rows
+ * older than 90 days are thinned to the last one in each week.
+ */
+export const playerStats = sqliteTable(
+  'player_stats',
+  {
+    server: text('server').notNull(),
+    uuid: text('uuid').notNull(),
+    /** The day in the server's time zone, as YYYY-MM-DD. */
+    day: text('day').notNull(),
+    /** When the stats file was read. */
+    takenAt: integer('taken_at', { mode: 'timestamp_ms' }).notNull(),
+    stats: text('stats', { mode: 'json' }).$type<Record<string, number>>().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.server, t.uuid, t.day] })],
+)

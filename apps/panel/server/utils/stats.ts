@@ -1,5 +1,7 @@
 import { offlineUuid } from '@flytower/providers'
+import { join } from 'node:path'
 import { Sessions } from '../stats/sessions'
+import { StatsSnapshot } from '../stats/snapshot'
 import { parseList } from '../players'
 import { schema } from '../db'
 
@@ -60,4 +62,58 @@ export async function reconcileSessions() {
       await s.reconcile(server, online)
     }),
   )
+}
+
+let snapshot: StatsSnapshot | undefined
+
+/** The daily stats snapshot. */
+export function useStatsSnapshot(): StatsSnapshot {
+  snapshot ??= new StatsSnapshot({
+    db: useDb(),
+    worldDir: async (server) => {
+      const level = (await readProperties(server).catch(() => ({}) as Record<string, string>))[
+        'level-name'
+      ]
+      return join(serverDir(server), level || 'world')
+    },
+  })
+  return snapshot
+}
+
+/** The local hour each server's snapshot is taken in. */
+export const SNAPSHOT_HOUR = 3
+
+/** The hour (0-23) it is now in a time zone. */
+function hourIn(tz: string, at: number): number {
+  return Number(
+    new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', hourCycle: 'h23' }).format(
+      at,
+    ),
+  )
+}
+
+/**
+ * Called every hour at half past: takes the snapshot for each server where it's now 03:xx in
+ * the server's own time zone.
+ */
+export async function takeStatsSnapshots() {
+  const now = Date.now()
+  const rows = useDb()
+    .select({ name: schema.servers.name, tz: schema.servers.timezone })
+    .from(schema.servers)
+    .all()
+  for (const { name, tz } of rows) {
+    let due: boolean
+    try {
+      due = hourIn(tz, now) === SNAPSHOT_HOUR
+    } catch {
+      due = hourIn('UTC', now) === SNAPSHOT_HOUR
+    }
+    if (!due) continue
+    try {
+      await useStatsSnapshot().take(name, tz)
+    } catch (err) {
+      console.error(`[flytower] stats snapshot for ${name} failed`, err)
+    }
+  }
 }
