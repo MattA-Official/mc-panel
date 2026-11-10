@@ -153,6 +153,9 @@ async function doDelete() {
   }
 }
 
+const copy = useCopy()
+
+/** A row's actions, for its ⋯ button and its right-click menu (#106). */
 function rowMenu(e: Entry) {
   const p = join(path.value, e.name)
   return [
@@ -173,6 +176,7 @@ function rowMenu(e: Entry) {
         icon: 'i-lucide-text-cursor-input',
         onSelect: () => (renaming.value = { from: p, to: e.name }),
       },
+      { label: 'Copy path', icon: 'i-lucide-copy', onSelect: () => void copy(p, 'Path') },
     ],
     [
       {
@@ -293,7 +297,14 @@ function onDrop(e: DragEvent) {
               </button>
             </td>
           </tr>
-          <tr v-for="e in entries" :key="e.name" class="group hover:bg-elevated/40">
+          <ActionTarget
+            v-for="e in entries"
+            :key="e.name"
+            as="tr"
+            :items="rowMenu(e)"
+            :label="e.name"
+            class="group hover:bg-elevated/40"
+          >
             <td class="px-3 py-1.5">
               <button
                 type="button"
@@ -327,7 +338,7 @@ function onDrop(e: DragEvent) {
                 />
               </UDropdownMenu>
             </td>
-          </tr>
+          </ActionTarget>
           <tr v-if="entries.length === 0">
             <td colspan="4" class="px-3 py-6 text-center text-muted">This folder is empty.</td>
           </tr>

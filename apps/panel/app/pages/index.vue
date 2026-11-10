@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { serverUpdateCount } from '#shared/updates'
+import { NuxtLink } from '#components'
 
 useHead({ title: 'Servers' })
 const { data: health } = await useFetch('/api/health')
@@ -13,6 +14,7 @@ const updatesOf = (s: Server) => serverUpdateCount(updates.value, s.name)
 const when = (iso: string) =>
   new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 const can = useCan()
+const actionsFor = useServerActions(() => health.value?.agent.ok ?? true)
 </script>
 
 <template>
@@ -49,11 +51,15 @@ const can = useCan()
       <template v-else>
         <MemoryBudget class="mb-6 max-w-md" />
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <NuxtLink
+          <ActionTarget
             v-for="s in servers"
             :key="s.name"
+            :items="actionsFor(s)"
+            :label="s.displayName"
+            :as="NuxtLink"
             :to="`/servers/${s.name}`"
-            class="group min-w-0 rounded-lg border border-default bg-elevated/40 p-4 transition-colors hover:border-primary/60"
+            class="group min-w-0 rounded-lg border border-default bg-elevated/40 p-4 transition-colors hover:border-primary/60 focus-visible:outline-2 focus-visible:outline-primary"
+            data-e2e="server-card"
           >
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
@@ -85,6 +91,7 @@ const can = useCan()
                   />
                 </UTooltip>
                 <StatusBadge :status="statusOf(s)" :condition="healthOf(s).condition" />
+                <ActionMenuButton :items="actionsFor(s)" :label="s.displayName" />
               </div>
             </div>
             <dl class="mt-4 grid grid-cols-3 gap-2 text-sm">
@@ -101,7 +108,7 @@ const can = useCan()
                 <dd>{{ formatMemory(s.memoryMb) }}</dd>
               </div>
             </dl>
-          </NuxtLink>
+          </ActionTarget>
         </div>
       </template>
     </template>

@@ -35,6 +35,11 @@ async function remove() {
     deleting.value = false
   }
 }
+
+useOpenFromQuery('delete', () => {
+  typed.value = ''
+  confirmOpen.value = true
+})
 </script>
 
 <template>
