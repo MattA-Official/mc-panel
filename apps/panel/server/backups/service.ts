@@ -113,6 +113,26 @@ export class BackupService {
     return this.busy.has(server)
   }
 
+  /** Waiting for a server's lock to be let go, by server. */
+  private waiters = new Map<string, Set<() => void>>()
+
+  /** Resolves when nothing holds the server's lock (straight away if nothing does). */
+  whenFree(server: string): Promise<void> {
+    if (!this.busy.has(server)) return Promise.resolve()
+    return new Promise((resolve) => {
+      let set = this.waiters.get(server)
+      if (!set) this.waiters.set(server, (set = new Set()))
+      set.add(resolve)
+    })
+  }
+
+  private free(server: string) {
+    this.busy.delete(server)
+    const set = this.waiters.get(server)
+    this.waiters.delete(server)
+    for (const resolve of set ?? []) resolve()
+  }
+
   /**
    * Backups for a server, newest first. The folder is the truth: files without a row are
    * adopted (say, copied in by hand) and rows without a file are dropped.
@@ -169,7 +189,7 @@ export class BackupService {
       await this.deps.offsite?.removeCopy(row)
       return row
     } finally {
-      this.busy.delete(server)
+      this.free(server)
     }
   }
 
@@ -206,7 +226,7 @@ export class BackupService {
         })
         return failed
       })
-      .finally(() => this.busy.delete(server))
+      .finally(() => this.free(server))
     return { jobId: job.id, done }
   }
 
@@ -218,7 +238,7 @@ export class BackupService {
     const done = this.runRestore(row, job)
       .then(() => job.succeed(`Restored the backup taken ${describeTime(row.createdAt)}.`))
       .catch((err) => job.fail(err))
-      .finally(() => this.busy.delete(server))
+      .finally(() => this.free(server))
     return { jobId: job.id, done }
   }
 
@@ -367,7 +387,7 @@ export class BackupService {
   /** Takes the per-server lock for an outside operation; call `release` when done. */
   lock(server: string) {
     this.claim(server)
-    return () => void this.busy.delete(server)
+    return () => this.free(server)
   }
 
   /** Throws unless there is room for `bytes` more on the disk holding `dir`. */
