@@ -34,6 +34,7 @@ export const serverRoutes = (name: string) => {
     world: `${base}/world`,
     files: `${base}/files`,
     settings: `${base}/settings`,
+    yaml: `${base}/settings/yaml`,
     clone: `${base}/settings/maintenance?clone=1`,
     delete: `${base}/settings/maintenance?delete=1`,
   }

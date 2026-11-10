@@ -118,6 +118,14 @@ function reset() {
   issues.value = []
 }
 
+// Ctrl/⌘ + S reviews the changes, the first step of applying them (#108).
+defineShortcuts({
+  meta_s: {
+    usingInput: true,
+    handler: () => dirty.value && !planning.value && !plan.value && void review(),
+  },
+})
+
 function download() {
   const url = URL.createObjectURL(new Blob([text.value], { type: 'application/yaml' }))
   const a = Object.assign(document.createElement('a'), {

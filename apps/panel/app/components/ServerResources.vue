@@ -42,6 +42,11 @@ async function save() {
     saving.value = false
   }
 }
+
+// Ctrl/⌘ + S saves, from a field too (#108).
+defineShortcuts({
+  meta_s: { usingInput: true, handler: () => dirty.value && !saving.value && void save() },
+})
 </script>
 
 <template>

@@ -8,6 +8,8 @@
  *   hands focus back.
  * - Press and hold on a touch screen opens the same actions as a bottom sheet.
  * - Account has a per-browser off switch.
+ * - It's a row for keyboard movement (#108): J/K or the arrows move between rows, Enter
+ *   opens, `.` opens the menu and Shift + Delete starts the delete (with its confirm).
  *
  * The same `items` should feed a visible ⋯ button (ActionMenuButton), so right-click is
  * only ever a shortcut.
@@ -27,6 +29,7 @@ const props = withDefaults(
 )
 
 const { enabled } = useRightClickMenus()
+const shortcuts = useKeyboardShortcuts()
 const pressDelay = LONG_PRESS_MS
 const rootRef = useTemplateRef<HTMLElement | { $el: HTMLElement }>('root')
 /** The rendered element, also when `as` is a component. */
@@ -99,10 +102,52 @@ function onClick(e: MouseEvent) {
 onMounted(() => document.addEventListener('click', onClick, true))
 onBeforeUnmount(() => document.removeEventListener('click', onClick, true))
 
+/** The first delete-like (error-coloured) action, sub-menus included. */
+function dangerItem(): ActionItem | undefined {
+  const flat = props.items.flat().flatMap((i) => [i, ...(i.children ?? [])])
+  return flat.find((i) => i.color === 'error' && !i.disabled)
+}
+
+/** Keys for the row itself, only while it (not a button or field inside it) has focus. */
+function onRowKey(e: KeyboardEvent, target: HTMLElement): boolean {
+  if (e.target !== target || e.ctrlKey || e.metaKey || e.altKey) return false
+  if (e.key === 'Enter') {
+    // Open: the row's own link or open button. Rows with neither open their menu.
+    const opener = target.querySelector<HTMLElement>('[data-row-open], a[href]')
+    if (!opener) return false
+    opener.click()
+    return true
+  }
+  if (e.key === 'Delete' && e.shiftKey) {
+    const item = dangerItem()
+    if (!item) return false
+    choose(item)
+    return true
+  }
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    const rows = [...document.querySelectorAll<HTMLElement>(ROW_SELECTOR)].filter(
+      (r) => r.offsetParent !== null,
+    )
+    const next = rows[stepRow(rows.length, rows.indexOf(target), e.key === 'ArrowDown' ? 1 : -1)]
+    next?.focus()
+    next?.scrollIntoView({ block: 'nearest' })
+    return true
+  }
+  return false
+}
+
 function onKeydown(e: KeyboardEvent) {
-  if (!enabled.value || !isMenuKey(e)) return
   const target = rootEl()
   if (!target) return
+  if (onRowKey(e, target)) {
+    e.preventDefault()
+    return
+  }
+  // `.` is a character key, so the shortcuts switch covers it; the Menu key is the
+  // keyboard's own and only follows the right-click one.
+  const onRow = e.target === target
+  const dot = e.key === '.' && onRow && shortcuts.enabled.value
+  if (!enabled.value || !(isMenuKey(e) || dot || (e.key === 'Enter' && onRow))) return
   e.preventDefault()
   returnFocus = document.activeElement as HTMLElement | null
   lastPointer = 'keyboard'
@@ -168,7 +213,9 @@ const sheetGroups = computed(() =>
       :is="as"
       ref="root"
       v-bind="$attrs"
-      class="pointer-coarse:select-none"
+      tabindex="-1"
+      data-action-row
+      class="pointer-coarse:select-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
       @contextmenu.capture="onContextMenu"
       @pointerdown.capture="onPointerDown"
       @keydown="onKeydown"
