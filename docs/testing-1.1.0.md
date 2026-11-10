@@ -67,3 +67,11 @@ Check these on a computer and on a phone.
 - [ ] **Settings**: change something and a bar with **Discard** and **Save** stays at the bottom while you scroll.
 - [ ] **System** has five sections: Overview, Updates, Off-site storage, Notifications, and Account and security. Links from notifications and from a server's **Backups** tab land on the right one.
 - [ ] **World** now holds **Export world**, next to Copy and Reset.
+
+## Backups with files Flytower can't read
+
+On a server running spark (or any server, using the steps below):
+
+- [ ] Start a spark profile in the console with `spark profiler start`, then **Back up now** while it runs. The backup finishes, and its job says nothing about skipped files: spark's `config/spark/tmp` folder is left out. Stop the profile with `spark profiler stop`.
+- [ ] SSH in and make a file only the server can read: `sudo -u mc-<name> sh -c 'echo x > /srv/flytower/servers/<name>/private.txt && chmod 600 /srv/flytower/servers/<name>/private.txt'`. **Back up now** finishes, and its job ends with "Left out 1 file Flytower couldn't read: private.txt (Permission denied)." Delete the file afterwards.
+- [ ] A file ending in `.tmp` anywhere in the server folder isn't in the backup (download it and look, or restore it on a test server).

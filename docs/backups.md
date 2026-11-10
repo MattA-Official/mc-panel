@@ -10,6 +10,8 @@ Everything here is on a server's **Backups** tab.
 
 Backups are `.tar.zst` archives of the whole server folder. They live in `/var/lib/flytower/backups/<server>`, and you can download them.
 
+Some things are left out because they're never worth restoring: `logs`, `crash-reports`, spark's scratch folder `config/spark/tmp`, and any file ending in `.tmp`. If a file can't be read, for example because a mod made it private to the server, the backup leaves that file out rather than failing, and the backup's job says which files it skipped.
+
 ## How many are kept
 
 Scheduled backups are thinned out by the **keep** settings. By default Flytower keeps the newest 6, plus the newest from each of the last 7 days and the last 4 weeks. The three newest safety backups are kept. Backups you take yourself are never deleted automatically.
