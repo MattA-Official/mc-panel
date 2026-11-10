@@ -355,6 +355,8 @@ mod tests {
                 ..root.paths.clone()
             },
             panel_group: "flytower".into(),
+            releases_url: String::new(),
+            release_key: String::new(),
         };
         Setup {
             _root: root,

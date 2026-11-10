@@ -10,7 +10,8 @@ use flytower_agent::dispatch::dispatch;
 use flytower_agent::events::{Journal, UnitEvents};
 use flytower_agent::exec::{Exec, RealExec};
 use flytower_agent::fetch::Curl;
-use flytower_agent::handlers::{Context, handle, server, ssh, system_clock};
+use flytower_agent::handlers::{Context, handle, server, ssh, system_clock, update};
+use flytower_agent::release::RELEASE_KEY;
 use flytower_agent::server::{ListenOptions, bind, group_id, serve};
 use flytower_agent::units::Paths;
 
@@ -37,6 +38,8 @@ fn main() -> ExitCode {
         events: Some(events),
         paths: Paths::from_env(),
         panel_group: env("FLYTOWER_PANEL_GROUP", "flytower"),
+        releases_url: env("FLYTOWER_RELEASES_URL", update::RELEASES),
+        release_key: RELEASE_KEY.into(),
     };
     let group = ctx.panel_group.clone();
     let gid = match group_id(&group, Path::new("/etc/group")) {
@@ -69,6 +72,11 @@ fn main() -> ExitCode {
         Ok(true) => println!("updated the server unit template"),
         Ok(false) => {}
         Err(e) => eprintln!("updating the server unit template failed: {}", e.message),
+    }
+    match update::refresh_agent_unit(&ctx) {
+        Ok(true) => println!("pointed the agent unit at bin/flytower-agent"),
+        Ok(false) => {}
+        Err(e) => eprintln!("updating the agent unit failed: {}", e.message),
     }
     serve(&listener, Some(gid), move |line| {
         // stdout goes to the journal; one JSON line per request.

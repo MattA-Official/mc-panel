@@ -41,6 +41,8 @@ fn answers_in_order_over_a_socket() {
         events: None,
         paths: Paths::under(&dir),
         panel_group: "flytower".into(),
+        releases_url: String::new(),
+        release_key: String::new(),
     };
     thread::spawn(move || {
         serve(&listener, None, move |line| {
