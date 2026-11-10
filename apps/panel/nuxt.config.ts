@@ -91,6 +91,8 @@ export default defineNuxtConfig({
     archiveDir: '/var/lib/flytower/archive',
     /** Player skins from Mojang, cached for drawing heads. */
     skinsDir: '/var/lib/flytower/skins',
+    /** Web map tiles, drawn by flytower-map. Outside the servers, so never in backups. */
+    mapsDir: '/var/lib/flytower/maps',
     /** Players' modpacks for public pages, rebuilt when a server's content changes. */
     packsDir: '/var/lib/flytower/packs',
     /** Where the agent installs Java; the panel reads which versions are there. */
@@ -125,6 +127,7 @@ export default defineNuxtConfig({
       importsDir: '.data/imports',
       archiveDir: '.data/archive',
       skinsDir: '.data/skins',
+      mapsDir: '.data/maps',
       packsDir: '.data/packs',
       runtimesDir: '.data/runtimes',
       agentSocket: '.data/agent.sock',

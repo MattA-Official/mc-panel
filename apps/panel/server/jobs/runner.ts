@@ -58,6 +58,7 @@ export interface SpecExtras {
   recovery?: ServerSpec['recovery']
   publicPage?: ServerSpec['public']
   stats?: ServerSpec['stats']
+  map?: ServerSpec['map']
 }
 
 export interface RunnerDeps {
@@ -380,6 +381,7 @@ export class JobRunner {
           restartWhenUnresponsive: extras.recovery?.restartWhenUnresponsive ?? false,
           publicPage: extras.publicPage ?? null,
           stats: extras.stats ?? null,
+          map: extras.map ?? null,
         })
         .run()
 

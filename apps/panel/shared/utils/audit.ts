@@ -159,6 +159,16 @@ export function describeAudit(
       return d.restartWhenUnresponsive
         ? `Set ${t} to restart when it stops responding`
         : `Set ${t} not to restart when it stops responding`
+    case 'server.map': {
+      const was = (d.was ?? {}) as { enabled?: boolean; public?: boolean; players?: boolean }
+      if (d.enabled !== was.enabled) {
+        return d.enabled ? `Turned on ${t}'s web map` : `Turned off ${t}'s web map`
+      }
+      if (d.public !== was.public) {
+        return d.public ? `Made ${t}'s map public` : `Made ${t}'s map private`
+      }
+      return d.players ? `Turned on players on ${t}'s map` : `Turned off players on ${t}'s map`
+    }
     case 'server.stats':
       if (d.enabled === false && d.was !== false) return `Turned off player stats on ${t}`
       if (d.enabled === true && d.was === false) return `Turned on player stats on ${t}`

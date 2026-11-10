@@ -6,6 +6,7 @@ const resets = ref(0)
 
 <template>
   <div class="mx-auto w-full max-w-5xl space-y-6">
+    <WorldMap />
     <WorldPregen />
     <WorldCopy />
     <WorldExports v-if="server" :server="server.name" />

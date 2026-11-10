@@ -139,6 +139,8 @@ export interface DiskDeps {
   serverDir: (name: string) => string
   backupsDir: string
   exportsDir: string
+  /** Where web maps live; each server's map counts towards it. */
+  mapsDir?: string
   importsDir: string
   archiveDir: string
   /** The server's `level-name`, from server.properties. */
@@ -152,7 +154,10 @@ export interface DiskDeps {
 
 /** Measures one server: its folder by group, plus its backups and exports. */
 export async function measureServer(
-  deps: Pick<DiskDeps, 'serverDir' | 'backupsDir' | 'exportsDir' | 'levelName' | 'measure'>,
+  deps: Pick<
+    DiskDeps,
+    'serverDir' | 'backupsDir' | 'exportsDir' | 'mapsDir' | 'levelName' | 'measure'
+  >,
   server: string,
   at: Date,
 ): Promise<ServerDisk> {
@@ -162,6 +167,7 @@ export async function measureServer(
     exports: 0,
     logs: 0,
     content: 0,
+    map: 0,
     other: 0,
   }
   let unreadable = 0
@@ -178,6 +184,9 @@ export async function measureServer(
     ...entries.map((e): [DiskGroup, string] => [groupOf(e, level), join(dir, e)]),
     ['backups', join(deps.backupsDir, server)],
     ['exports', join(deps.exportsDir, server)],
+    ...(deps.mapsDir
+      ? [['map', join(deps.mapsDir, 'servers', server)] as [DiskGroup, string]]
+      : []),
   ]
   const results = await (deps.measure ?? measureMany)(labelled.map(([, path]) => path))
   labelled.forEach(([group], i) => {

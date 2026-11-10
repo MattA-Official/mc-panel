@@ -10,6 +10,7 @@ export const DISK_GROUPS = {
   exports: 'World exports',
   logs: 'Logs and crash reports',
   content: 'Mods, plugins and config',
+  map: 'Web map',
   other: 'Other',
 } as const
 export type DiskGroup = keyof typeof DISK_GROUPS

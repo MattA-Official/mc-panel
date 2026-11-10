@@ -18,6 +18,7 @@ export function useDiskUsage(): DiskUsage {
     serverDir,
     backupsDir: config.backupsDir,
     exportsDir: config.exportsDir,
+    mapsDir: config.mapsDir,
     importsDir: config.importsDir,
     archiveDir: config.archiveDir,
     levelName: async (name) => (await readProperties(name))['level-name'] ?? null,

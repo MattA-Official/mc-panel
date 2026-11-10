@@ -96,6 +96,7 @@ await $`cargo build --release --locked --target ${rustTarget}`.cwd(crates)
 for (const [bin, as] of [
   ['flytower-du', 'flytower-du'],
   ['flytower-agent', 'flytower-agent-rust'],
+  ['flytower-map', 'flytower-map'],
 ] as const) {
   await cp(join(crates, 'target', rustTarget, 'release', bin), join(stage, 'bin', as))
   await chmod(join(stage, 'bin', as), 0o755)
