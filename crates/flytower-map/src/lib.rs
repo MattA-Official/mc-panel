@@ -12,5 +12,7 @@
 //! - `maps.json`: the dimensions that have tiles, where they are and how far they reach.
 //! - `state/`: what was drawn, so the next pass knows what changed.
 
+pub mod chunk;
 pub mod nbt;
+pub mod palette;
 pub mod region;
