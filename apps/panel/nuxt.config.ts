@@ -138,6 +138,14 @@ export default defineNuxtConfig({
     // shows as open; a promise in the build never settles). Once Nitro has compiled the server
     // and Nuxt has closed, end the process with whatever exit code it has. Prepare and
     // typecheck never compile Nitro, so they're untouched.
+    // Nuxt Content asks Nitro to prerender each collection's dump, which boots the server
+    // app (and opens the panel's database) at build time. The dump has a server route anyway,
+    // so serve it from there instead.
+    'nitro:config': (config) => {
+      for (const [route, rules] of Object.entries(config.routeRules ?? {})) {
+        if (route.startsWith('/__nuxt_content/')) delete rules.prerender
+      }
+    },
     'nitro:init': (nitro) => {
       nitro.hooks.hook('compiled', () => {
         builtServer = true
