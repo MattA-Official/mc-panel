@@ -3,8 +3,11 @@
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+use std::sync::Arc;
+use std::time::Duration;
 
 use flytower_agent::dispatch::dispatch;
+use flytower_agent::events::{Journal, UnitEvents};
 use flytower_agent::exec::RealExec;
 use flytower_agent::handlers::{Context, handle};
 use flytower_agent::server::{ListenOptions, bind, group_id, serve};
@@ -18,9 +21,12 @@ fn main() -> ExitCode {
         eprintln!("flytower-agent must run as root");
         return ExitCode::FAILURE;
     }
+    let events = UnitEvents::new(Arc::new(Journal::default()), Duration::from_secs(5));
+    events.start();
     let ctx = Context {
         version: env("FLYTOWER_VERSION", "0.0.0-dev"),
         exec: Box::new(RealExec::default()),
+        events: Some(events),
     };
     let group = env("FLYTOWER_PANEL_GROUP", "flytower");
     let gid = match group_id(&group, Path::new("/etc/group")) {

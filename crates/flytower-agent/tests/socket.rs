@@ -29,6 +29,7 @@ fn answers_in_order_over_a_socket() {
     let ctx = Context {
         version: "1.2.0-test".into(),
         exec: Box::new(RealExec::default()),
+        events: None,
     };
     thread::spawn(move || {
         serve(&listener, None, move |line| {
