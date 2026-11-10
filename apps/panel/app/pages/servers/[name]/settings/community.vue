@@ -1,7 +1,14 @@
+<script setup lang="ts">
+// Community is now a section of Settings.
+definePageMeta({
+  redirect: (to) => ({
+    path: `/servers/${String(to.params.name)}/settings`,
+    query: to.query,
+    hash: '#community',
+  }),
+})
+</script>
+
 <template>
-  <div class="mx-auto w-full max-w-5xl space-y-6">
-    <ServerPublicPage />
-    <ServerStats />
-    <ServerDiscordChat />
-  </div>
+  <div />
 </template>

@@ -81,7 +81,7 @@ const sinceLabel = computed(() =>
                 label: 'Settings',
                 color: 'neutral',
                 variant: 'outline',
-                to: `/servers/${server.name}/settings/community`,
+                to: `/servers/${server.name}/settings#community`,
               },
             ]
           : []

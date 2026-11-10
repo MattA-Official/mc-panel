@@ -28,14 +28,15 @@ export const serverRoutes = (name: string) => {
     console: base,
     logs: `${base}?logs=`,
     players: `${base}/players`,
-    backups: `${base}/world`,
-    backupNow: `${base}/world?backup=now`,
+    backups: `${base}/world#backups`,
+    backupNow: `${base}/world?backup=now#backups`,
     content: `${base}/content`,
     world: `${base}/world`,
     files: `${base}/files`,
     settings: `${base}/settings`,
-    clone: `${base}/settings/maintenance?clone=1`,
-    delete: `${base}/settings/maintenance?delete=1`,
+    yaml: `${base}/settings/yaml`,
+    clone: `${base}/settings?clone=1#maintenance`,
+    delete: `${base}/settings?delete=1#maintenance`,
   }
 }
 
@@ -220,5 +221,67 @@ export function contentActions(ctx: ContentActionContext): ActionItem[][] {
       },
     ])
   }
+  return groups
+}
+
+export type PlayerList = 'online' | 'whitelist' | 'ops' | 'banned'
+export type PlayerAction = 'op' | 'deop' | 'kick' | 'whitelist-remove' | 'pardon'
+
+export interface PlayerActionContext {
+  player: { name: string; uuid: string }
+  /** Which list the row is in: who's online, or an entry in a list. */
+  list: PlayerList
+  isOp: boolean
+  /** Whether the person may manage players; without it only the copy items show. */
+  canManage: boolean
+  act: (action: PlayerAction) => void
+  /** Fills the ban form with this player, so a reason can be added before banning. */
+  startBan: () => void
+  copy: (text: string, what: string) => void
+}
+
+/** Actions for a player row on Players, for its ⋯ button and right-click menu. */
+export function playerActions(ctx: PlayerActionContext): ActionItem[][] {
+  const { player, canManage } = ctx
+  const groups: ActionItem[][] = []
+  if (canManage) {
+    const manage: ActionItem[] = []
+    if (ctx.list === 'online') {
+      manage.push(
+        ctx.isOp
+          ? {
+              label: 'Remove operator',
+              icon: 'i-lucide-shield-off',
+              onSelect: () => ctx.act('deop'),
+            }
+          : { label: 'Make operator', icon: 'i-lucide-shield', onSelect: () => ctx.act('op') },
+        { label: 'Kick', icon: 'i-lucide-log-out', onSelect: () => ctx.act('kick') },
+        { label: 'Ban…', icon: 'i-lucide-ban', color: 'error', onSelect: () => ctx.startBan() },
+      )
+    } else if (ctx.list === 'whitelist') {
+      manage.push({
+        label: 'Remove from whitelist',
+        icon: 'i-lucide-x',
+        onSelect: () => ctx.act('whitelist-remove'),
+      })
+    } else if (ctx.list === 'ops') {
+      manage.push({
+        label: 'Remove operator',
+        icon: 'i-lucide-shield-off',
+        onSelect: () => ctx.act('deop'),
+      })
+    } else {
+      manage.push({ label: 'Unban', icon: 'i-lucide-undo-2', onSelect: () => ctx.act('pardon') })
+    }
+    groups.push(manage)
+  }
+  groups.push([
+    { label: 'Copy name', icon: 'i-lucide-copy', onSelect: () => ctx.copy(player.name, 'Name') },
+    {
+      label: 'Copy UUID',
+      icon: 'i-lucide-fingerprint',
+      onSelect: () => ctx.copy(player.uuid, 'UUID'),
+    },
+  ])
   return groups
 }

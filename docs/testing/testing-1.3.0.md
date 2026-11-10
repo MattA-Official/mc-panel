@@ -51,6 +51,8 @@ You need a Discord channel you can add webhooks to and a running Fabric or Paper
 - [ ] Join the server: "_joined the game_" appears in the channel within a second, in plain text under your name with your face. Leave: "_left the game_" appears the same way.
 - [ ] Say something: it appears under your name with your face. Say `**bold** @everyone <@1> # big https://example.com`: it shows exactly as typed, nobody is pinged, and the link works without a preview.
 - [ ] `/me waves` appears in italics.
+- [ ] From the panel's console, `say hello`: the game shows `[Server] <your name>: hello` (tag in the brand colour, not `[Rcon]`), the console shows the same line, and the channel gets `hello` under `[Server] <your name>` with no face. `me waves` shows `[Server] * <your name> waves` in game and in italics in Discord.
+- [ ] `msg <player> hi` from the console: only that player sees "[Server] <your name> whispers to you: hi", the console shows "You whisper to <player>: hi", and nothing is posted to Discord. `msg Nobody hi` shows "No player was found".
 - [ ] Send ten lines quickly (or paste them): they all arrive, joined into fewer messages, in order.
 - [ ] Die (fall from a height): "_fell from a high place_" appears under your name. Make an advancement (craft a stone pickaxe): "_has made the advancement [Stone Age]_".
 - [ ] Turn **Chat** off and save: chat stops, joins and leaves still post. Turn **Joins and leaves** off: they stop too.

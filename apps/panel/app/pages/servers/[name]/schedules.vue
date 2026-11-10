@@ -1,10 +1,10 @@
 <script setup lang="ts">
-// Schedules moved into Settings.
+// Schedules is now a section of Settings.
 definePageMeta({
   redirect: (to) => ({
-    path: `/servers/${String(to.params.name)}/settings/schedules`,
+    path: `/servers/${String(to.params.name)}/settings`,
     query: to.query,
-    hash: to.hash,
+    hash: '#schedules',
   }),
 })
 </script>

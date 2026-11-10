@@ -169,6 +169,11 @@ async function save() {
 
 const showAll = ref(false)
 const discard = () => (draft.value = { ...base.value })
+
+// Ctrl/⌘ + S saves, from a field too (#108).
+defineShortcuts({
+  meta_s: { usingInput: true, handler: () => dirty.value && !saving.value && void save() },
+})
 </script>
 
 <template>

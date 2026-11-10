@@ -260,7 +260,9 @@ function cellStyle(style: MotdStyle) {
 </script>
 
 <template>
-  <div class="space-y-3" data-e2e="motd-editor">
+  <!-- Sized by the space it's given, never by its contents: the preview starts at its widest
+       and the text box doesn't wrap, so without this a phone's settings grid grows to fit them. -->
+  <div class="min-w-0 space-y-3 [contain:inline-size]" data-e2e="motd-editor">
     <div
       class="flex flex-wrap items-center gap-1 rounded-md border border-default bg-elevated p-1"
       role="toolbar"
@@ -430,6 +432,17 @@ function cellStyle(style: MotdStyle) {
 }
 .motd-raw {
   color: #d3dae5;
+}
+/* Below 16px, iPhones zoom the whole page in when the box is focused. */
+@media (max-width: 639px) {
+  .motd-input,
+  .motd-mirror {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+  .motd-mirror-line {
+    min-height: 1.5rem;
+  }
 }
 .motd-input::placeholder {
   color: #6b7280;

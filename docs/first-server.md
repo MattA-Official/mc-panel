@@ -36,14 +36,16 @@ Players connect to your VPS's address, with `:port` if it isn't 25565. To give e
 
 ## The server's tabs
 
-| Tab      | What it's for                                                                                                                                                                                                                                           |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Console  | Live output, and commands (without the `/`). Start, stop and restart are in the header. **View logs** opens today's log and older ones to search or download, and **Crashes** lists recent crashes.                                                     |
-| Players  | **People**: who's online; kick, ban, operators, and the whitelist. **Stats**: leaderboards and a card for every player (see [Stats](stats.md)).                                                                                                         |
-| Content  | Mods, plugins and datapacks. See [Content](content.md).                                                                                                                                                                                                 |
-| World    | **Backups** (taking, restoring, schedule, off-site copies), the **Web map**, **Past worlds** and world exports, and **Tools**: pre-generating chunks, copying another server's world in, and resetting.                                                 |
-| Files    | The server folder: edit, upload, rename, delete.                                                                                                                                                                                                        |
-| Settings | **General**: `server.properties`, memory, version and loader, address. **Community**: public page, player stats, Discord chat. **Schedules**. **Maintenance**: crashes, disk use, cloning, deleting. **YAML**: the whole server as one [spec](spec.md). |
+| Tab      | What it's for                                                                                                                                                                                                                                                                 |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Console  | Live output, and commands (without the `/`). Start, stop and restart are in the header. **View logs** opens today's log and older ones to search or download, and **Crashes** lists recent crashes.                                                                           |
+| Players  | **People**: who's online; kick, ban, operators, and the whitelist. **Stats**: leaderboards and a card for every player (see [Stats](stats.md)).                                                                                                                               |
+| Content  | Mods, plugins and datapacks. See [Content](content.md).                                                                                                                                                                                                                       |
+| World    | **Backups** (taking, restoring, schedule, off-site copies), the **Web map**, **Past worlds** and world exports, and **Tools**: pre-generating chunks, copying another server's world in, and resetting.                                                                       |
+| Files    | The server folder: edit, upload, rename, delete.                                                                                                                                                                                                                              |
+| Settings | **General**: `server.properties`, memory, version and loader, address. **Community**: public page, player stats, Discord chat. **Schedules**. **Maintenance**: crashes, disk use, cloning, deleting. **Edit as YAML** at the bottom: the whole server as one [spec](spec.md). |
+
+World and Settings list their sections on one page. Click a section's bar to open or close it; the panel remembers which ones you left open. Closed sections show a short summary on their bar, such as whether the public page is on.
 
 ## How busy a server is
 
@@ -66,6 +68,10 @@ The console suggests as you type: command names first, then what comes next, suc
 Flytower gets the vanilla commands from the game itself: the first time a console opens for a Minecraft version, it downloads that version's server from Mojang and runs its built-in command report (in the background, at low priority, with the Java the server already uses), then keeps the result. Until that's done, and if it can't be done, you still get the commands from the server's `help`. Mods' and plugins' commands come from `help` too, so they complete by name and show their usage; their arguments don't. They're read again each time the server starts.
 
 Only people who can send commands get suggestions.
+
+### Talking to players
+
+`say`, `me` and `msg` (or `tell` and `w`) from the console show under your name rather than the game's "Rcon": `say hello` shows `[Server] Your name: hello` to everyone, with the tag in your [brand colour](branding.md), and `msg Steve hi` reaches only Steve as "[Server] Your name whispers to you: hi". The message is plain text, so formatting codes are taken out and `@p` in it isn't swapped for a name. A scheduled command task shows as `[Server]` alone. If the server posts game chat to Discord, `say` and `me` go there too, under `[Server] Your name`; whispers don't.
 
 ## How it looks in the server list
 

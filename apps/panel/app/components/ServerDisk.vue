@@ -69,7 +69,7 @@ const summary = computed(() =>
           Measured {{ formatDateTime(data.usage.measuredAt) }}
         </span>
         <UButton
-          :to="`/servers/${name}/world`"
+          :to="`/servers/${name}/world#backups`"
           label="Manage backups"
           icon="i-lucide-archive"
           size="sm"

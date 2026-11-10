@@ -8,8 +8,10 @@ import {
 import {
   contentActions,
   contentPage,
+  playerActions,
   serverActions,
   type ActionItem,
+  type PlayerActionContext,
   type ServerActionContext,
 } from '../app/utils/server-actions'
 import type { Permission } from '../shared/permissions'
@@ -133,9 +135,9 @@ describe('serverActions', () => {
     find(groups, 'Clone…')!.onSelect!()
     find(groups, 'Back up now')!.onSelect!()
     expect(calls).toEqual([
-      'go /servers/survival/settings/maintenance?delete=1',
-      'go /servers/survival/settings/maintenance?clone=1',
-      'go /servers/survival/world?backup=now',
+      'go /servers/survival/settings?delete=1#maintenance',
+      'go /servers/survival/settings?clone=1#maintenance',
+      'go /servers/survival/world?backup=now#backups',
     ])
     expect(find(groups, 'Delete…')!.color).toBe('error')
   })
@@ -179,5 +181,45 @@ describe('contentActions', () => {
     expect(
       labels(contentActions({ ...base, item: { ...item, asked: false }, updateTo: null })),
     ).not.toContain('Remove…')
+  })
+})
+
+describe('playerActions', () => {
+  const calls: string[] = []
+  const ctx = (over: Partial<PlayerActionContext> = {}): PlayerActionContext => ({
+    player: { name: 'Steve', uuid: 'uuid-1' },
+    list: 'online',
+    isOp: false,
+    canManage: true,
+    act: (a) => calls.push(a),
+    startBan: () => calls.push('ban'),
+    copy: (text, what) => calls.push(`${what}:${text}`),
+    ...over,
+  })
+  const labels = (g: ActionItem[][]) => g.flat().map((i) => i.label)
+
+  test('online players can be opped, kicked or banned', () => {
+    expect(labels(playerActions(ctx()))).toEqual([
+      'Make operator',
+      'Kick',
+      'Ban…',
+      'Copy name',
+      'Copy UUID',
+    ])
+    expect(labels(playerActions(ctx({ isOp: true })))[0]).toBe('Remove operator')
+  })
+  test('list entries offer their one removal', () => {
+    expect(labels(playerActions(ctx({ list: 'whitelist' })))[0]).toBe('Remove from whitelist')
+    expect(labels(playerActions(ctx({ list: 'ops' })))[0]).toBe('Remove operator')
+    expect(labels(playerActions(ctx({ list: 'banned' })))[0]).toBe('Unban')
+  })
+  test('without permission only the copy items show', () => {
+    expect(labels(playerActions(ctx({ canManage: false })))).toEqual(['Copy name', 'Copy UUID'])
+  })
+  test('items call through with the right action', () => {
+    calls.length = 0
+    const g = playerActions(ctx({ list: 'banned' })).flat()
+    for (const i of g) i.onSelect!()
+    expect(calls).toEqual(['pardon', 'Name:Steve', 'UUID:uuid-1'])
   })
 })

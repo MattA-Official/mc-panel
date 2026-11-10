@@ -24,35 +24,13 @@ const canPower = computed(() => can('server.power', name.value))
 
 /**
  * What each view needs for changes, and what to say when that's missing. Keyed by the path
- * after the server's name (`world`, `world/map`, `settings/yaml`), most specific first.
+ * after the server's name (`content`, `settings/yaml`), most specific first.
  */
+// Settings and World say this per section, so they aren't here.
 const WRITE_NEEDS: [string, { permission: Permission; text: string }][] = [
   [
     'settings/yaml',
     { permission: 'spec.edit', text: 'You can read the YAML but not apply changes.' },
-  ],
-  [
-    'settings/schedules',
-    {
-      permission: 'schedules.manage',
-      text: 'You can see the schedules but not change or run them.',
-    },
-  ],
-  // Only people who manage access reach it, and it checks its own buttons.
-  ['settings/access', { permission: 'server.view', text: '' }],
-  [
-    'settings/community',
-    {
-      permission: 'community.manage',
-      text: "You can see this server's community features but not change them.",
-    },
-  ],
-  [
-    'settings',
-    {
-      permission: 'settings.edit',
-      text: "You can see this server's settings but not change them.",
-    },
   ],
   [
     'content',
@@ -61,19 +39,6 @@ const WRITE_NEEDS: [string, { permission: Permission; text: string }][] = [
   [
     'players',
     { permission: 'players.manage', text: 'You can see who plays here but not manage them.' },
-  ],
-  ['world/map', { permission: 'world.manage', text: 'You can see the map but not change it.' }],
-  [
-    'world/past',
-    { permission: 'world.manage', text: 'You can see past worlds but not change them.' },
-  ],
-  ['world/tools', { permission: 'world.manage', text: 'You can see the world but not change it.' }],
-  [
-    'world',
-    {
-      permission: 'backups.create',
-      text: 'You can see the backups but not take or manage them.',
-    },
   ],
 ]
 const readOnly = computed(() => {
