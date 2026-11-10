@@ -57,3 +57,4 @@ Click your name at the bottom of the sidebar to open **Your account**:
 Some settings live in the browser rather than on your account, so each device can be different. They're under **This browser** on **Your account**.
 
 - **Use Flytower's right-click menus.** Right-click a server card for its actions: open, start or stop, back up, go to a tab, clone or delete. Shift + right-click always shows the browser's own menu, as do text you've selected and any field. On a phone, press and hold a card instead. Turn this off to keep the browser's menu everywhere; the ⋯ button on each card offers the same actions either way.
+- **Use single-key shortcuts.** Keys like **G** then **S** for Servers, **J** and **K** to move through a list, and **?** to list them all (see [Keyboard shortcuts](shortcuts.md)). Turn this off if keys get pressed for you, by voice control for example. Ctrl + K and Ctrl + S work either way.

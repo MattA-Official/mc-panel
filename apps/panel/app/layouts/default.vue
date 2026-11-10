@@ -80,6 +80,9 @@ watch(searchOpen, async (open) => {
 // Servers (with their tabs and actions) and pages, from the same lists as the menus.
 const palette = usePaletteLinks(items as Ref<{ label: string; icon: string; to: string }[]>)
 watch(searchOpen, (open) => open && void palette.refresh())
+
+// G then a letter, [ and ], J and K, / and ? (#108).
+useShortcuts()
 </script>
 
 <template>
@@ -141,6 +144,7 @@ watch(searchOpen, (open) => open && void palette.refresh())
         :navigation="docsNavigation"
         :files="searchFiles"
       />
+      <ShortcutSheet />
     </UDashboardGroup>
   </div>
 </template>
