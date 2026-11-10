@@ -48,6 +48,15 @@ You need two servers, one running and one stopped.
 - [ ] Help pages still show once you type, below servers and pages.
 - [ ] Signed in as a Viewer: no Start, Stop, Back up now, Clone or Delete, and no New server.
 
+## Right-click menus: Players, World, Crashes and Notifications
+
+- [ ] **Players**: right-click someone online for **Make operator** (or **Remove operator**), **Kick**, **Ban…**, **Copy name** and **Copy UUID**; they also have a ⋯ button. **Ban…** fills in the ban form so you can add a reason first.
+- [ ] Whitelist, operator and ban entries: right-click for **Remove from whitelist**, **Remove operator** or **Unban**, plus the copy items.
+- [ ] As a Viewer, player menus only offer the copy items.
+- [ ] **World**: right-click an export for **Download**, **Share link…**, **Turn off the link** (when it has one) and **Delete**. A past world adds its ⋯ items: start a server from it, rename, delete.
+- [ ] **Console**, crashes pop-up: right-click a crash for **Open crash report**, **Copy report** (the whole file) and **Copy the log before it**.
+- [ ] **System**, **Notifications**: right-click a channel for **Send a test**, **Edit**, **Pause** or **Resume**, and **Remove…** (which still asks). Pausing asks for your passkey, and the Paused badge shows.
+
 ## Console autocomplete
 
 On a running Fabric server, open the **Console**.
