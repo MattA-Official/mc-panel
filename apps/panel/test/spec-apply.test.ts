@@ -20,6 +20,7 @@ import { SpecService } from '../server/spec/apply'
 import { writeZip } from '../server/zip'
 import { LOCK_FILE, readLock } from '../server/spec/lock'
 import { parseProperties, stringifyProperties, setProperties, toRecord } from '../server/properties'
+import type { TaskSpec } from '../shared/schedules'
 
 const sha512 = (s: string) => new Bun.CryptoHasher('sha512').update(s).digest('hex')
 
@@ -209,6 +210,7 @@ function setup(
   })
   let locked = false
   const snapshots: string[] = []
+  const scheduled: { tasks: TaskSpec[]; timezone: string } = { tasks: [], timezone: 'UTC' }
   const propsPath = join(dir, 'server.properties')
   const service = new SpecService({
     db,
@@ -247,6 +249,13 @@ function setup(
       { id: 2, name: 'R2' },
     ],
     offsiteChanged: (n) => calls.push(`offsite ${n}`),
+    tasks: {
+      tasks: () => scheduled.tasks,
+      replace: (_n, tasks, timezone) => {
+        scheduled.tasks = tasks
+        if (timezone) scheduled.timezone = timezone
+      },
+    },
     sleep: async () => {},
   })
   const spec = (extra: Partial<ServerSpecInput> = {}) =>
@@ -255,7 +264,7 @@ function setup(
       loader: { type: opts.loader ?? 'fabric', minecraft: '26.3' },
       ...extra,
     })
-  return { db, dir, service, calls, snapshots, spec }
+  return { db, dir, service, calls, snapshots, spec, scheduled }
 }
 
 describe('plan', () => {
@@ -520,6 +529,38 @@ describe('apply', () => {
     expect(props).toContain('motd=Hi')
     const row = db.select().from(schema.servers).where(eq(schema.servers.name, 'survival')).get()!
     expect(row).toMatchObject({ memoryMb: 6144, port: 25570 })
+  })
+
+  it('plans and applies scheduled tasks without a restart', async () => {
+    const { service, spec, calls, scheduled } = setup({ running: true })
+    scheduled.tasks = [
+      { kind: 'command', cron: '*/30 * * * *', text: 'save-all', warn: [], skipWhenEmpty: false },
+    ]
+    const plan = await service.plan(
+      'survival',
+      spec({ timezone: 'Europe/London', schedules: [{ restart: '0 5 * * *', warn: ['1m'] }] }),
+    )
+    expect(plan.changes.filter((c) => c.area === 'schedules')).toEqual([
+      { area: 'schedules', action: 'set', label: 'Time zone', from: 'UTC', to: 'Europe/London' },
+      { area: 'schedules', action: 'add', label: 'Restart (0 5 * * *), warning 1m' },
+      { area: 'schedules', action: 'remove', label: 'Run "save-all" (*/30 * * * *)' },
+    ])
+    expect(plan.restart).toBe(false)
+    expect(await (await service.apply('survival', plan.id)).done).toMatchObject({
+      state: 'succeeded',
+    })
+    expect(calls).not.toContain('service.stop')
+    expect(scheduled).toEqual({
+      timezone: 'Europe/London',
+      tasks: [{ kind: 'restart', cron: '0 5 * * *', text: null, warn: [60], skipWhenEmpty: true }],
+    })
+    // The YAML tab shows them, and leaving them out changes nothing.
+    const current = await service.currentSpec('survival')
+    expect(current.schedules).toEqual([
+      { restart: '0 5 * * *', warn: ['1m'], skipWarningsWhenEmpty: true },
+    ])
+    const same = await service.plan('survival', spec({ properties: {} }))
+    expect(same.changes).toEqual([])
   })
 
   it('refuses a stale, unknown or blocked plan', async () => {

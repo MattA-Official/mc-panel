@@ -1,5 +1,6 @@
 /** Builds a server's spec from what the panel knows: its database row and server.properties. */
 import { isManagedProperty, type ServerSpec } from '../../shared/spec'
+import { ScheduleItem, toItem, type TaskSpec } from '../../shared/schedules'
 import type { schema } from '../db'
 
 type ServerRow = typeof schema.servers.$inferSelect
@@ -81,6 +82,8 @@ export function specFromServer(
   props: Record<string, string>,
   /** Off-site storage names by id, to name the server's choice. */
   targets: { id: number; name: string }[] = [],
+  /** The server's scheduled tasks, in order. */
+  tasks: TaskSpec[] = [],
 ): ServerSpec {
   const properties: ServerSpec['properties'] = {}
   for (const [key, value] of Object.entries(props).sort(([a], [b]) => a.localeCompare(b))) {
@@ -113,5 +116,7 @@ export function specFromServer(
         : {}),
     },
     ...(row.restartWhenUnresponsive ? { recovery: { restartWhenUnresponsive: true } } : {}),
+    timezone: row.timezone,
+    ...(tasks.length ? { schedules: tasks.map((t) => ScheduleItem.parse(toItem(t))) } : {}),
   }
 }

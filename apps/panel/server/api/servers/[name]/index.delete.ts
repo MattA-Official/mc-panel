@@ -43,6 +43,7 @@ export default defineEventHandler(async (event) => {
   forgetNotifyServer(name)
   useUpdates().forget(name)
   syncBackupSchedules()
+  useSchedules().remove(name)
   await useExports().removeAll(name)
   db.insert(schema.audit)
     .values({ userId: user.id, action: 'server.delete', target: name, detail: { archivedTo } })

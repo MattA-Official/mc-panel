@@ -47,4 +47,15 @@ describe('audit', () => {
     expect(auditActor('server.stop', null)).toBeNull()
     expect(auditActor('server.stop', 'Matt')).toBe('Matt')
   })
+  it('describes scheduled task runs, credited to Flytower when nobody pressed Run now', () => {
+    expect(
+      describeAudit('schedule.run', 'survival', {
+        task: 'Restart (0 5 * * *)',
+        result: 'Restarted in 41s (4 warnings)',
+        ok: true,
+      }),
+    ).toBe('survival: Restart (0 5 * * *). Restarted in 41s (4 warnings)')
+    expect(auditActor('schedule.run', null)).toBe('Flytower')
+    expect(auditActor('schedule.run', 'Matt')).toBe('Matt')
+  })
 })

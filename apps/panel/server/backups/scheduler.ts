@@ -1,5 +1,8 @@
-/** Runs each server's backup schedule in-process with Bun.cron. */
+/** Runs each server's backup schedule in-process, on the shared cron timers. */
+import { CronTimers, nextRun } from '../schedules/timers'
 import type { BackupService } from './service'
+
+export { nextRun }
 
 export interface Schedule {
   name: string
@@ -7,49 +10,28 @@ export interface Schedule {
   backupTz: string
 }
 
-/** Throws a readable error for a bad expression or zone; returns the next run otherwise. */
-export function nextRun(expr: string, tz: string, from = new Date()): Date | null {
-  try {
-    new Intl.DateTimeFormat('en', { timeZone: tz })
-  } catch {
-    throw new Error(`Unknown time zone ${tz}.`)
-  }
-  try {
-    return Bun.cron.parse(expr, from)
-  } catch (err) {
-    throw new Error(`That schedule isn't valid: ${(err as Error).message}`, { cause: err })
-  }
-}
-
 export class BackupScheduler {
-  private jobs = new Map<string, { key: string; job: Bun.CronJob }>()
-
-  constructor(private service: Pick<BackupService, 'backup' | 'isBusy'>) {}
+  constructor(
+    private service: Pick<BackupService, 'backup' | 'isBusy'>,
+    private timers = new CronTimers(),
+  ) {}
 
   /** Makes the running jobs match these schedules. Safe to call as often as you like. */
   sync(servers: Schedule[]) {
-    const wanted = new Map(servers.filter((s) => s.backupSchedule).map((s) => [s.name, s] as const))
-    for (const [name, entry] of this.jobs) {
-      const s = wanted.get(name)
-      if (!s || `${s.backupSchedule}|${s.backupTz}` !== entry.key) {
-        entry.job.stop()
-        this.jobs.delete(name)
-      }
-    }
-    for (const [name, s] of wanted) {
-      if (this.jobs.has(name)) continue
-      try {
-        const job = Bun.cron(s.backupSchedule!, () => this.fire(name), { tz: s.backupTz })
-        job.unref()
-        this.jobs.set(name, { key: `${s.backupSchedule}|${s.backupTz}`, job })
-      } catch (err) {
-        console.error(`[flytower] bad backup schedule for ${name}`, err)
-      }
-    }
+    this.timers.sync(
+      servers
+        .filter((s) => s.backupSchedule)
+        .map((s) => ({
+          key: s.name,
+          cron: s.backupSchedule!,
+          tz: s.backupTz,
+          fire: () => this.fire(s.name),
+        })),
+    )
   }
 
   scheduled() {
-    return [...this.jobs.keys()]
+    return this.timers.keys()
   }
 
   private fire(name: string) {

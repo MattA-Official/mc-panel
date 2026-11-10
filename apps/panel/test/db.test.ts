@@ -88,6 +88,7 @@ describe('database', () => {
     )
     expect(events.problems).toEqual([
       'backup.failed',
+      'schedule.failed',
       'server.crash_loop',
       'server.crashed',
       'server.unresponsive',

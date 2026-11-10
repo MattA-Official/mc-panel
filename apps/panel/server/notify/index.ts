@@ -45,6 +45,7 @@ export const QUIET_MS: Partial<Record<EventKind, number>> = {
   'server.crashed': 10 * 60_000,
   'server.crash_loop': 30 * 60_000,
   'server.unresponsive': 30 * 60_000,
+  'schedule.failed': 30 * 60_000,
 }
 
 /** Disk warnings: at 85% and 95%, and back to normal below 80%. */

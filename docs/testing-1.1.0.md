@@ -116,3 +116,25 @@ See [Disk space](disk.md). To try the warnings without filling a real disk, use 
 - [ ] Past 95%, **Back up now** shows a warning and the button reads **Back up anyway**.
 - [ ] Delete the filler: the banner goes on the next page you open, and "Disk space is back to normal" arrives once it's below 80%.
 - [ ] On a phone, the banner, the bar and the table fit the screen.
+
+## Scheduled tasks
+
+On a test server you can join. See [Scheduled tasks](schedules.md).
+
+- [ ] **Schedules** (next to **Backups**), **Add task**: a **Restart** every day at a time a few minutes from now, with warnings `2m, 1m, 10s`. The form shows the next three runs, and the list shows it with its next run.
+- [ ] Set the time zone at the bottom to yours (say `Europe/London`), and check the next run still reads as your local time.
+- [ ] Stay in the game. At each warning, "Server restarting in 2 minutes" (and so on) appears in gold in chat, and the last 10 seconds also show "Restarting" in the middle of the screen. Then you're disconnected, and you can rejoin about a minute later.
+- [ ] The task's result reads like "Restarted in 41s (3 warnings)". The badge never said **Restarting after a crash**, and nothing was added under **Logs**, **Crashes**.
+- [ ] **Activity** lists the run, credited to **Flytower**.
+- [ ] Leave the game, tick **Restart straight away when nobody is online**, and press **Run now** on the restart, then confirm. With nobody online it restarts at once, and the result says "nobody was online, so no countdown".
+- [ ] Join again, press **Run now** on the restart (it asks first), then **Call off** during the countdown. Chat says "The restart has been called off", the server doesn't restart, and the result says it was cancelled.
+- [ ] Add a **Command** task, `seed`, every few minutes. Once it has run (or after **Run now**), point at its result to see the reply with the seed.
+- [ ] A command of `stop`, or one starting with `/`, is refused with a message saying why.
+- [ ] Add an **Announcement**. It appears in gold in chat when it runs.
+- [ ] Start **Back up now** on a big world and straight away **Run now** on the command task. It waits for the backup to finish, then runs. (And **Back up now** during a restart's countdown says the server is busy.)
+- [ ] **Stop** the server and **Run now** a task: it's skipped with "Skipped: the server wasn't running", and no notification is sent.
+- [ ] Tick **A scheduled restart, command or announcement failed** on a channel. Make a task fail (for example, freeze the server with `sudo pkill -STOP -u mc-<name>` and run the command task; unfreeze with `-CONT` afterwards), and check the notification arrives and links to the **Schedules** tab.
+- [ ] The **YAML** tab shows `timezone:` and `schedules:`. Edit a task there (say, change a restart's time), **Review changes**: the plan lists the old one removed and the new one added under **Schedules**, with no restart. Apply, and the **Schedules** tab shows the change. Tasks that weren't touched keep their last result.
+- [ ] **New server**, **From YAML** with a `schedules:` list: the new server starts with those tasks.
+- [ ] **Clone** a server with tasks: the copy has the same tasks and time zone.
+- [ ] After updating an existing install to this build, the backup schedule's preview on **Backups** shows times in its own time zone (it used to read the expression in the machine's zone).

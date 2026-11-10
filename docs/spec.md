@@ -33,6 +33,13 @@ backups:
   timezone: Europe/London
   keep: { last: 6, daily: 7, weekly: 4 }
   offsite: B2
+timezone: Europe/London
+schedules:
+  - restart: '0 5 * * *'
+  - command: save-all
+    cron: '*/30 * * * *'
+  - announce: 'The server restarts at 5am'
+    cron: '0 22 * * *'
 ```
 
 ## Fields
@@ -105,6 +112,22 @@ What Flytower does when the server gets stuck. Left out, the current setting sta
 | Field                     | Meaning                                                                                                                                             |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `restartWhenUnresponsive` | `true` to restart the server once when its console hasn't answered for five minutes. Defaults to `false`. See [Crashes](crashes.md#not-responding). |
+
+### `timezone`
+
+The time zone the server's [scheduled tasks](schedules.md) run in, such as `Europe/London`. Left out, it stays (UTC to begin with). Backups have their own, under `backups`.
+
+### `schedules`
+
+Restarts, console commands and announcements the server runs by itself. See [Scheduled tasks](schedules.md). When present, the whole list is replaced (tasks that haven't changed keep their last run). Left out, the current tasks stay; write `schedules: []` to remove them all. Each item is one of:
+
+| Item                                                 | Meaning                                                                                                                                                                                                                          |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `restart: '0 5 * * *'`                               | Restart at these times. `warn` lists when to warn players beforehand, like `[15m, 5m, 1m, 10s]` (the default), up to `2h`; `[]` for none. `skipWarningsWhenEmpty` (default `true`) restarts straight away when nobody is online. |
+| `command: save-all`<br>`cron: '*/30 * * * *'`        | Run a console command, without the slash. It can't be `stop`; use a restart instead.                                                                                                                                             |
+| `announce: 'Restart at 5am'`<br>`cron: '0 22 * * *'` | Show a line in everyone's chat, in gold. At most 256 characters.                                                                                                                                                                 |
+
+Applying changed schedules never restarts the server. The plan lists tasks added and removed under **Schedules**.
 
 ## Errors
 

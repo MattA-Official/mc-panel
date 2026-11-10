@@ -4,6 +4,7 @@
  * holds only the schema and pure helpers; YAML parsing lives in server/spec.
  */
 import { z } from 'zod'
+import { Schedules, toItem, toTask } from './schedules'
 
 export const SPEC_SCHEMA_PATH = '/schema/server-v1.json'
 
@@ -280,6 +281,16 @@ export const ServerSpec = z
     recovery: Recovery.optional().describe(
       'What Flytower does when the server gets stuck. Left out, the current settings stay.',
     ),
+    schedules: Schedules.optional(),
+    timezone: z
+      .string()
+      .trim()
+      .min(1)
+      .max(60)
+      .optional()
+      .describe(
+        'The time zone schedules are read in, like Europe/London. Left out, it stays (UTC at first).',
+      ),
   })
   .strict()
   .describe('A Flytower server.')
@@ -311,6 +322,8 @@ export function compactSpec(spec: ServerSpec): ServerSpecInput {
   if (Object.keys(spec.properties).length) out.properties = spec.properties
   if (spec.content.length) out.content = spec.content
   if (spec.recovery?.restartWhenUnresponsive) out.recovery = { restartWhenUnresponsive: true }
+  if (spec.timezone && spec.timezone !== 'UTC') out.timezone = spec.timezone
+  if (spec.schedules?.length) out.schedules = spec.schedules.map((s) => toItem(toTask(s)))
   const b = spec.backups
   if (!b) return out as ServerSpecInput
   const keepDefault = b.keep.last === 6 && b.keep.daily === 7 && b.keep.weekly === 4

@@ -196,6 +196,69 @@ try {
       throw new Error(`dismiss failed: ${JSON.stringify(dismissed.body)}`)
     step(`a killed server was noticed (${crash.cause}) and restarted by systemd`)
 
+    // Scheduled tasks: a restart with one 10-second warning, run with Run now. It warns,
+    // restarts the normal way (not a crash), and the console answers again afterwards.
+    {
+      type Task = { id: number; running: boolean; lastOk: boolean | null; lastResult: string }
+      const saved = await api<{ tasks: Task[] }>(view, '/api/servers/smoke/schedules', {
+        method: 'PUT',
+        body: {
+          timezone: 'Europe/London',
+          schedules: [
+            { restart: '0 5 * * *', warn: ['10s'], skipWarningsWhenEmpty: false },
+            { command: 'seed', cron: '0 4 * * *' },
+          ],
+        },
+      })
+      if (saved.status !== 200) throw new Error(`saving schedules: ${JSON.stringify(saved.body)}`)
+      const [restartTask, seedTask] = saved.body.tasks
+      const seedRun = await api(view, `/api/servers/smoke/schedules/${seedTask!.id}/run`, {
+        body: {},
+      })
+      if (seedRun.status !== 200) throw new Error(`run now: ${JSON.stringify(seedRun.body)}`)
+      const ran = await api(view, `/api/servers/smoke/schedules/${restartTask!.id}/run`, {
+        body: {},
+      })
+      if (ran.status !== 200) throw new Error(`run now: ${JSON.stringify(ran.body)}`)
+      const done = await until(
+        'the scheduled restart to finish',
+        async () => {
+          const r = await api<{ tasks: Task[] }>(view, '/api/servers/smoke/schedules')
+          const t = r.body.tasks.find((x) => x.id === restartTask!.id)
+          return t && !t.running && t.lastResult ? t : null
+        },
+        4 * 60_000,
+        2000,
+      )
+      if (done.lastOk !== true) throw new Error(`scheduled restart: ${done.lastResult}`)
+      const seed = (
+        await api<{ tasks: (Task & { lastReply: string })[] }>(view, '/api/servers/smoke/schedules')
+      ).body.tasks.find((x) => x.id === seedTask!.id)
+      if (!/Seed/.test(seed?.lastReply ?? '')) {
+        throw new Error(`the command's reply wasn't kept: ${JSON.stringify(seed)}`)
+      }
+      await until(
+        'the console to answer after the scheduled restart',
+        async () => {
+          const r = await api<{ reply: string }>(view, '/api/servers/smoke/command', {
+            body: { command: 'list' },
+          })
+          return r.status === 200 && /players online/.test(r.body.reply) ? true : null
+        },
+        5 * 60_000,
+        3000,
+      )
+      const health = await api<{ health: Health }>(view, '/api/servers/smoke')
+      if (health.body.health.crash) {
+        throw new Error(`the scheduled restart counted as a crash: ${JSON.stringify(health.body)}`)
+      }
+      await api(view, '/api/servers/smoke/schedules', {
+        method: 'PUT',
+        body: { timezone: 'Europe/London', schedules: [] },
+      })
+      step(`scheduled restart with a 10-second warning: ${done.lastResult}`)
+    }
+
     // Backups: a block placed before the backup survives a change and a restore.
     const rcon = async (command: string) => {
       const r = await api<{ reply: string }>(view, '/api/servers/smoke/command', {
