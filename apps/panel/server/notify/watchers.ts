@@ -26,7 +26,9 @@ export type LogEvent =
 // Vanilla and Fabric: `[12:34:56] [Server thread/INFO]: message`; Paper: `[12:34:56 INFO]: message`.
 // The message must start straight after the prefix, so chat like `<Bob> Steve joined the game`
 // or `[Server] Stopping the server` (from /say) never matches. Geyser names start with a dot.
-const PREFIX = /^\[[^\]]*\](?: \[[^\]]*\])?: (.*)$/
+// Minecraft 26.x logs joins and leaves as system chat: `[..]: System chat: Steve joined the game`.
+// Players can't write that: their chat is logged as `<Bob> …`, so it never starts this way.
+const PREFIX = /^\[[^\]]*\](?: \[[^\]]*\])?: (?:System chat: )?(.*)$/
 const ACTIVITY = /^([.*]?[A-Za-z0-9_]{1,16}) (joined|left) the game$/
 const READY = /^Done \([\d.,]+m?s\)! For help, type "help"/
 const STOPPING = /^Stopping (the )?server$/
