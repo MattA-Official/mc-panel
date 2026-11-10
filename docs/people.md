@@ -1,3 +1,12 @@
+---
+section: Getting started
+order: 5
+since: '1.2.0'
+panelRoute:
+  - '/access'
+  - '/access/**'
+---
+
 # People and roles
 
 Flytower can have more than one person signing in. Each person has one or more **roles**, each for one server or for all of them. Roles add up: someone can be an Operator on every server and an Admin on one.

@@ -1,3 +1,11 @@
+---
+section: Looking after the machine
+order: 21
+since: '1.1.0'
+panelRoute:
+  - '/system'
+---
+
 # Disk space
 
 A full disk is one of the few things that can corrupt a Minecraft world: if the server can't finish writing a save, the region file it was writing can be left half done. Flytower shows where the space has gone and warns you well before it runs out.

@@ -10,7 +10,7 @@ Keep every summary the same shape, so releases read alike:
   do after updating. No headings or bullet lists, since the generated list below already
   has its own **Features**, **Fixes** and other sections.
 - A last line pointing to the testing notes, for example
-  `Testing notes are in section 2 of [testing-1.1.0.md](…/blob/v1.1.0-beta.4/docs/testing-1.1.0.md).`
+  `Testing notes are in section 2 of [testing-1.2.0.md](…/blob/v1.2.0/docs/testing/testing-1.2.0.md).`
 
 The panel shows release notes with a small Markdown reader, so stick to paragraphs,
 **bold**, `code` and links.
