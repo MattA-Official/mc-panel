@@ -2,8 +2,8 @@ import { uuidHex } from '@flytower/providers'
 import { withUuids } from '../../../../../players'
 
 /**
- * The skin of a player who's online on a public server whose page shows names, for their
- * head on the page. Anyone else's skin stays behind sign-in, so the page can't be used to
+ * The skin of a player who's online on a public server whose page shows names, or who is on
+ * one of its public leaderboards, for their head on the page. Anyone else's skin stays behind sign-in, so the page can't be used to
  * look up arbitrary players through this panel.
  */
 export default defineEventHandler(async (event) => {
@@ -18,7 +18,12 @@ export default defineEventHandler(async (event) => {
   const service = (await useStatus().current())[name] ?? 'unknown'
   const roster = await useRoster().view(name, service === 'active')
   const online = withUuids(roster.players ?? [], await readUserCache(name))
-  if (!online.some((p) => uuidHex(p.uuid) === hex)) throw notFound()
+  const listed = async () => {
+    for (const uuid of await publicLeaderboardUuids(name, row.publicPage))
+      if (uuidHex(uuid) === hex) return true
+    return false
+  }
+  if (!online.some((p) => uuidHex(p.uuid) === hex) && !(await listed())) throw notFound()
   const png = await useSkins().skin(hex)
   if (!png) throw createError({ statusCode: 503, statusMessage: "Couldn't get the skin." })
   setResponseHeaders(event, {

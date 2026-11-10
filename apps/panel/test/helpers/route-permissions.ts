@@ -20,6 +20,7 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   'join/index.post.ts': 'open',
   'public/servers/[name].get.ts': 'open',
   'public/servers/[name]/icon.get.ts': 'open',
+  'public/servers/[name]/leaderboards.get.ts': 'open',
   'public/servers/[name]/pack.mrpack.get.ts': 'open',
   'public/servers/[name]/skins/[file].get.ts': 'open',
   'public/tls-ask.get.ts': 'open',

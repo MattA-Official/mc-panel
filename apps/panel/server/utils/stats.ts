@@ -6,7 +6,8 @@ import { parseList } from '../players'
 import { schema } from '../db'
 import { eq } from 'drizzle-orm'
 import { readStatsSettings, type StatsSettings } from '../../shared/stats-settings'
-import type { Period, StatsOverview } from '../../shared/leaderboards'
+import { PERIODS, type Board, type Period, type StatsOverview } from '../../shared/leaderboards'
+import { showsLeaderboard, type PublicPage } from '../../shared/public-page'
 import { buildBoards, buildCards, periodStart } from '../stats/leaderboards'
 
 /** A server's player stats settings, with defaults filled in. */
@@ -210,4 +211,39 @@ export async function statsOverview(
     boards: buildBoards(totals, nameOf, leftOut, opts.limit ?? 10),
     players: opts.cards === false ? [] : buildCards(totals, sessions, nameOf, leftOut),
   }
+}
+
+/** How many places each board shows on a public page. */
+export const PUBLIC_LIMIT = 5
+
+/**
+ * The leaderboards a public page shows, or null when it shows none. Only names and figures
+ * leave the panel; nothing about visits or who is left out.
+ */
+export async function publicLeaderboards(
+  server: string,
+  page: PublicPage,
+  period: Period,
+): Promise<{
+  period: Period
+  since: string | null
+  updatedAt: number | null
+  boards: Board[]
+} | null> {
+  if (!showsLeaderboard(page, statsSettings(server).enabled)) return null
+  const o = await statsOverview(server, period, { limit: PUBLIC_LIMIT, cards: false })
+  return { period: o.period, since: o.since, updatedAt: o.updatedAt, boards: o.boards }
+}
+
+/** Every player on any of a public page's leaderboards, for their heads. */
+export async function publicLeaderboardUuids(
+  server: string,
+  page: PublicPage,
+): Promise<Set<string>> {
+  const out = new Set<string>()
+  for (const period of PERIODS) {
+    const l = await publicLeaderboards(server, page, period)
+    for (const b of l?.boards ?? []) for (const e of b.entries) out.add(e.uuid)
+  }
+  return out
 }
