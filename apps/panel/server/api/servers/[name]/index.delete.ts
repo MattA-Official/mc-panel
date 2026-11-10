@@ -39,6 +39,7 @@ export default defineEventHandler(async (event) => {
   const db = useDb()
   db.delete(schema.servers).where(eq(schema.servers.name, name)).run()
   forgetMetrics(db, name)
+  useDiskUsage().forget(name)
   forgetNotifyServer(name)
   syncBackupSchedules()
   await useExports().removeAll(name)
