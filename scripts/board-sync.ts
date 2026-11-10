@@ -14,6 +14,14 @@
  * Open items already marked In progress or In review are left alone, so moving a card by
  * hand sticks. The current milestone is the open one with the lowest version number.
  *
+ * Dates, for the Roadmap layout (in the UK calendar):
+ *
+ *   Start date    the day the issue or pull request was opened, unless set by hand
+ *   Target date   the day it was closed or merged; while open, its milestone's due date,
+ *                 unless set by hand
+ *
+ * The Start date and Target date fields are created if the board doesn't have them.
+ *
  * PROJECTS_TOKEN must be a classic token with the `repo` and `project` scopes: the workflow
  * token can't reach a Projects board owned by a user account.
  */
@@ -27,6 +35,29 @@ export interface Item {
   state: 'OPEN' | 'CLOSED' | 'MERGED'
   milestone: string | null
   status: string | null
+  createdAt?: string
+  closedAt?: string | null
+  milestoneDue?: string | null
+  start?: string | null
+  target?: string | null
+}
+
+/** A timestamp as a calendar date in the UK, e.g. "2026-11-10". */
+export function ukDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Europe/London' })
+}
+
+/** The Start date and Target date an item should have; a field left out stays as it is. */
+export function desiredDates(item: Item): { start?: string; target?: string } {
+  const out: { start?: string; target?: string } = {}
+  if (item.createdAt && !item.start) out.start = ukDate(item.createdAt)
+  if (item.state !== 'OPEN' && item.closedAt) {
+    const closed = ukDate(item.closedAt)
+    if (item.target !== closed) out.target = closed
+  } else if (item.state === 'OPEN' && !item.target && item.milestoneDue) {
+    out.target = ukDate(item.milestoneDue)
+  }
+  return out
 }
 
 /** The Status an item should have, or null to leave it as it is. */
@@ -89,18 +120,34 @@ interface ContentNode {
   id: string
   number: number
   state: 'OPEN' | 'CLOSED' | 'MERGED'
-  milestone: { title: string } | null
+  milestone: { title: string; dueOn: string | null } | null
   repository: { nameWithOwner: string }
+  createdAt: string
+  closedAt: string | null
+}
+
+function toItem(c: ContentNode, status: string | null = null): Item {
+  return {
+    kind: c.__typename,
+    number: c.number,
+    state: c.state,
+    milestone: c.milestone?.title ?? null,
+    status,
+    createdAt: c.createdAt,
+    closedAt: c.closedAt,
+    milestoneDue: c.milestone?.dueOn ?? null,
+  }
 }
 
 // Fields of an issue or pull request, for a connection that only holds one of the two.
-const FIELDS = '__typename id number state milestone { title } repository { nameWithOwner }'
+const FIELDS =
+  '__typename id number state createdAt closedAt milestone { title dueOn } repository { nameWithOwner }'
 
 // The same fields for a board item, whose content could be either (or a draft).
 const CONTENT = `
   __typename
-  ... on Issue { id number state milestone { title } repository { nameWithOwner } }
-  ... on PullRequest { id number state milestone { title } repository { nameWithOwner } }
+  ... on Issue { ${FIELDS.replace('__typename ', '')} }
+  ... on PullRequest { ${FIELDS.replace('__typename ', '')} }
 `
 
 async function main() {
@@ -120,11 +167,15 @@ async function main() {
       projectV2: {
         id: string
         field: { id: string; options: { id: string; name: string }[] } | null
+        startField: { id: string } | null
+        targetField: { id: string } | null
         items: {
           pageInfo: { hasNextPage: boolean; endCursor: string | null }
           nodes: {
             id: string
             status: { name: string } | null
+            start: { date: string } | null
+            target: { date: string } | null
             content: ContentNode | null
           }[]
         }
@@ -133,6 +184,8 @@ async function main() {
   }
   let projectId: string | undefined
   let field: { id: string; options: { id: string; name: string }[] } | null | undefined
+  let startFieldId: string | undefined
+  let targetFieldId: string | undefined
   const onBoard = new Map<string, { itemId: string; item: Item }>()
   for (let after: string | null = null; ;) {
     const page: BoardPage = await graphql<BoardPage>(
@@ -142,11 +195,15 @@ async function main() {
           projectV2(number: $number) {
             id
             field(name: "Status") { ... on ProjectV2SingleSelectField { id options { id name } } }
+            startField: field(name: "Start date") { ... on ProjectV2Field { id } }
+            targetField: field(name: "Target date") { ... on ProjectV2Field { id } }
             items(first: 100, after: $after) {
               pageInfo { hasNextPage endCursor }
               nodes {
                 id
                 status: fieldValueByName(name: "Status") { ... on ProjectV2ItemFieldSingleSelectValue { name } }
+                start: fieldValueByName(name: "Start date") { ... on ProjectV2ItemFieldDateValue { date } }
+                target: fieldValueByName(name: "Target date") { ... on ProjectV2ItemFieldDateValue { date } }
                 content { ${CONTENT} }
               }
             }
@@ -158,17 +215,17 @@ async function main() {
     const project = page.user.projectV2
     projectId = project.id
     field = project.field
+    startFieldId = project.startField?.id
+    targetFieldId = project.targetField?.id
     for (const node of project.items.nodes) {
       const c = node.content
       if (!c || !('number' in c) || c.repository.nameWithOwner !== `${OWNER}/${REPO}`) continue
       onBoard.set(c.id, {
         itemId: node.id,
         item: {
-          kind: c.__typename,
-          number: c.number,
-          state: c.state,
-          milestone: c.milestone?.title ?? null,
-          status: node.status?.name ?? null,
+          ...toItem(c, node.status?.name ?? null),
+          start: node.start?.date ?? null,
+          target: node.target?.date ?? null,
         },
       })
     }
@@ -177,6 +234,31 @@ async function main() {
   }
   if (!projectId || !field) throw new Error('The board has no Status field')
   const optionId = new Map(field.options.map((o) => [o.name, o.id]))
+
+  // The Roadmap layout needs a start and a target date on each card.
+  const ensureDateField = async (name: string, id: string | undefined) => {
+    if (id) return id
+    console.log(`Create the "${name}" field`)
+    if (dryRun) return '(dry run)'
+    const made = await graphql<{ createProjectV2Field: { projectV2Field: { id: string } } }>(
+      token,
+      `
+        mutation ($project: ID!, $name: String!) {
+          createProjectV2Field(input: { projectId: $project, dataType: DATE, name: $name }) {
+            projectV2Field {
+              ... on ProjectV2Field {
+                id
+              }
+            }
+          }
+        }
+      `,
+      { project: projectId, name },
+    )
+    return made.createProjectV2Field.projectV2Field.id
+  }
+  startFieldId = await ensureDateField('Start date', startFieldId)
+  targetFieldId = await ensureDateField('Target date', targetFieldId)
 
   // What should be on the board: everything open, plus everything in the current milestone.
   type RepoPage = {
@@ -253,18 +335,38 @@ async function main() {
     }
     onBoard.set(c.id, {
       itemId,
-      item: {
-        kind: c.__typename,
-        number: c.number,
-        state: c.state,
-        milestone: c.milestone?.title ?? null,
-        status: null,
-      },
+      item: toItem(c),
     })
   }
 
   const counts = new Map<string, number>()
   let changed = 0
+  const setField = (itemId: string, fieldId: string, value: Record<string, string>) =>
+    graphql(
+      token,
+      `
+        mutation ($project: ID!, $item: ID!, $field: ID!, $value: ProjectV2FieldValue!) {
+          updateProjectV2ItemFieldValue(
+            input: { projectId: $project, itemId: $item, fieldId: $field, value: $value }
+          ) {
+            projectV2Item {
+              id
+            }
+          }
+        }
+      `,
+      { project: projectId, item: itemId, field: fieldId, value },
+    )
+  let datesChanged = 0
+  for (const { itemId, item } of onBoard.values()) {
+    const dates = desiredDates(item)
+    for (const [key, date] of Object.entries(dates)) {
+      console.log(`#${item.number}: ${key === 'start' ? 'Start' : 'Target'} date ${date}`)
+      datesChanged++
+      if (!dryRun) await setField(itemId, key === 'start' ? startFieldId : targetFieldId, { date })
+    }
+  }
+
   for (const { itemId, item } of onBoard.values()) {
     const want = desiredStatus(item, current)
     const final = want ?? item.status ?? '(none)'
@@ -274,31 +376,12 @@ async function main() {
     if (!option) throw new Error(`The Status field has no "${want}" option`)
     console.log(`#${item.number}: ${item.status ?? '(none)'} -> ${want}`)
     changed++
-    if (dryRun) continue
-    await graphql(
-      token,
-      `
-        mutation ($project: ID!, $item: ID!, $field: ID!, $option: String!) {
-          updateProjectV2ItemFieldValue(
-            input: {
-              projectId: $project
-              itemId: $item
-              fieldId: $field
-              value: { singleSelectOptionId: $option }
-            }
-          ) {
-            projectV2Item {
-              id
-            }
-          }
-        }
-      `,
-      { project: projectId, item: itemId, field: field.id, option },
-    )
+    if (!dryRun) await setField(itemId, field.id, { singleSelectOptionId: option })
   }
 
   console.log(`\n${dryRun ? 'Would change' : 'Changed'} ${changed} of ${onBoard.size} items.`)
   for (const [status, n] of [...counts].sort()) console.log(`  ${status}: ${n}`)
+  console.log(`${dryRun ? 'Would set' : 'Set'} ${datesChanged} dates.`)
 }
 
 if (import.meta.main) await main()
