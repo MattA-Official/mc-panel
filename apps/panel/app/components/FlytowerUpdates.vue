@@ -31,6 +31,8 @@ const working = ref<string | null>(null)
 async function check() {
   checking.value = true
   try {
+    // Everything else (content, Minecraft, Java) is checked again in the background too.
+    void $fetch('/api/updates/check', { method: 'POST' }).catch(() => {})
     data.value = await $fetch<Status>('/api/system/updates', { query: { check: true } })
   } finally {
     checking.value = false
@@ -137,7 +139,7 @@ const when = (at: string) => formatDateTime(at)
           @click="check"
         />
       </div>
-      <p v-if="data.checkError" class="text-warning">{{ data.checkError }}</p>
+      <p v-if="data.checkError" class="text-xs text-muted">{{ data.checkError }}</p>
 
       <URadioGroup
         :model-value="data.channel"
