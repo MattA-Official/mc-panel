@@ -22,6 +22,7 @@ interface Status {
   state: 'off' | 'waiting' | 'queued' | 'drawing' | 'idle'
   lastPass: Pass | null
   error: string | null
+  progress: { done: number; total: number } | null
 }
 
 const { server, refresh: refreshServer } = useServerContext()
@@ -100,6 +101,13 @@ const stateLine = computed(() => {
   }
 })
 
+// How far the pass being drawn has got, counted in region files (512×512 blocks each).
+const progress = computed(() => {
+  const p = status.value?.state === 'drawing' ? status.value.progress : null
+  if (!p || p.total === 0) return null
+  return { ...p, percent: (p.done / p.total) * 100 }
+})
+
 const lastLine = computed(() => {
   const p = status.value?.lastPass
   if (!p) return null
@@ -139,7 +147,17 @@ const lastLine = computed(() => {
           <p v-if="stateLine" class="flex items-center gap-2">
             <UIcon v-if="busy" name="i-lucide-loader-circle" class="size-4 animate-spin" />
             {{ stateLine }}
+            <span v-if="progress" class="ml-auto text-muted tabular-nums">
+              {{ progress.done.toLocaleString() }} of {{ plural(progress.total, 'region') }}
+            </span>
           </p>
+          <UProgress
+            v-if="progress"
+            :model-value="progress.percent"
+            :max="100"
+            class="py-1"
+            data-e2e="map-progress"
+          />
           <p v-if="lastLine" class="text-muted">{{ lastLine }}</p>
           <p v-if="status?.lastPass?.errors" class="text-muted">
             {{ plural(status.lastPass.errors, 'chunk') }} couldn't be read and

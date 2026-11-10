@@ -14,6 +14,7 @@ const updatesOf = (s: Server) => serverUpdateCount(updates.value, s.name)
 const when = (iso: string) =>
   new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 const can = useCan()
+const actionsFor = useServerActions(() => health.value?.agent.ok ?? true)
 
 /** Live tick time, memory and CPU for running servers, re-read when the clock moves on. */
 const metrics = useLiveMetrics()
@@ -75,10 +76,13 @@ function closeCharts() {
         <MemoryBudget class="mb-6 max-w-md" />
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <!-- The name's link covers the card, so the figures can link to their charts. -->
-          <div
+          <ActionTarget
             v-for="s in servers"
             :key="s.name"
+            :items="actionsFor(s)"
+            :label="s.displayName"
             class="group relative min-w-0 rounded-lg border border-default bg-elevated/40 p-4 transition-colors hover:border-primary/60"
+            data-e2e="server-card"
           >
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
@@ -114,6 +118,7 @@ function closeCharts() {
                   />
                 </UTooltip>
                 <StatusBadge :status="statusOf(s)" :condition="healthOf(s).condition" />
+                <ActionMenuButton :items="actionsFor(s)" :label="s.displayName" />
               </div>
             </div>
             <ServerVitals
@@ -136,7 +141,7 @@ function closeCharts() {
                 <dd>{{ formatMemory(s.memoryMb) }}</dd>
               </div>
             </dl>
-          </div>
+          </ActionTarget>
         </div>
       </template>
       <UModal
