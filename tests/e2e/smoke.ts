@@ -202,6 +202,8 @@ try {
       `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`,
     )
     step('right-click menu on a running server card')
+    // Back to the console, where the crash banner below shows.
+    await view.navigate(`${base}/servers/smoke`)
 
     const reply = await until(
       'RCON',
