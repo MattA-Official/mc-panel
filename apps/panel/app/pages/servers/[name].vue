@@ -168,47 +168,50 @@ const powerMenu = computed(() => [
             <CopyAddress :server="server" />
           </span>
         </template>
-        <template v-if="server && canPower" #right>
-          <UDropdownMenu :items="powerMenu" :content="{ align: 'end' }" class="sm:hidden">
+        <template #right>
+          <HelpButton />
+          <template v-if="server && canPower">
+            <UDropdownMenu :items="powerMenu" :content="{ align: 'end' }" class="sm:hidden">
+              <UButton
+                label="Power"
+                icon="i-lucide-power"
+                trailing-icon="i-lucide-chevron-down"
+                color="neutral"
+                variant="outline"
+                :loading="!!busy"
+              />
+            </UDropdownMenu>
             <UButton
-              label="Power"
-              icon="i-lucide-power"
-              trailing-icon="i-lucide-chevron-down"
-              color="neutral"
-              variant="outline"
-              :loading="!!busy"
-            />
-          </UDropdownMenu>
-          <UButton
-            v-if="!running"
-            class="hidden sm:inline-flex"
-            label="Start"
-            icon="i-lucide-play"
-            :loading="busy === 'start'"
-            :disabled="!!busy"
-            @click="act('start')"
-          />
-          <template v-else>
-            <UButton
+              v-if="!running"
               class="hidden sm:inline-flex"
-              label="Restart"
-              icon="i-lucide-rotate-cw"
-              color="neutral"
-              variant="outline"
-              :loading="busy === 'restart'"
+              label="Start"
+              icon="i-lucide-play"
+              :loading="busy === 'start'"
               :disabled="!!busy"
-              @click="confirming = 'restart'"
+              @click="act('start')"
             />
-            <UButton
-              class="hidden sm:inline-flex"
-              label="Stop"
-              icon="i-lucide-square"
-              color="error"
-              variant="soft"
-              :loading="busy === 'stop'"
-              :disabled="!!busy"
-              @click="confirming = 'stop'"
-            />
+            <template v-else>
+              <UButton
+                class="hidden sm:inline-flex"
+                label="Restart"
+                icon="i-lucide-rotate-cw"
+                color="neutral"
+                variant="outline"
+                :loading="busy === 'restart'"
+                :disabled="!!busy"
+                @click="confirming = 'restart'"
+              />
+              <UButton
+                class="hidden sm:inline-flex"
+                label="Stop"
+                icon="i-lucide-square"
+                color="error"
+                variant="soft"
+                :loading="busy === 'stop'"
+                :disabled="!!busy"
+                @click="confirming = 'stop'"
+              />
+            </template>
           </template>
         </template>
       </UDashboardNavbar>

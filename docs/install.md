@@ -1,3 +1,8 @@
+---
+section: Getting started
+order: 2
+---
+
 # Installing Flytower
 
 Flytower installs on a fresh **Ubuntu 24.04+** or **Debian 12+** server (amd64 or arm64). The installer sets up the panel only. Java and Minecraft are installed later, from the panel, when you create a server.

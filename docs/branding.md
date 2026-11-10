@@ -1,3 +1,11 @@
+---
+section: Looking after the machine
+order: 20
+since: '1.2.0'
+panelRoute:
+  - '/system/branding'
+---
+
 # Branding
 
 Flytower can wear your society's or community's name and colours instead of its own, without changing any code. Set it on **System**, **Branding**. Saving asks for your passkey.

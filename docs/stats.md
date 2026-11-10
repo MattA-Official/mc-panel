@@ -1,3 +1,11 @@
+---
+section: Running servers
+order: 19
+since: '1.3.0'
+panelRoute:
+  - '/servers/:name/stats'
+---
+
 # Player stats
 
 Each server has a **Stats** tab with leaderboards and a card for every player. Anyone who can see the server in the panel can see it.

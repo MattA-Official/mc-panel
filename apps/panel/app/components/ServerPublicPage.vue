@@ -121,6 +121,7 @@ const PLAYER_ITEMS: { label: string; value: PlayerVisibility; description: strin
     <p class="mt-1 text-sm text-muted">
       A page anyone can open without signing in, with the address to join, whether the server is up
       and who's on. Useful to link from a Discord server or a website.
+      <HelpLink to="status-page" />
     </p>
 
     <div

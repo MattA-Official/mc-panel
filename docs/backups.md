@@ -1,3 +1,12 @@
+---
+section: Running servers
+order: 11
+panelRoute:
+  - '/servers/:name/backups'
+  - '/servers/:name/world'
+  - '/system/storage#off-site-copies'
+---
+
 # Backups
 
 Everything here is on a server's **Backups** tab.
