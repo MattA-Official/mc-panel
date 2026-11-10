@@ -20,6 +20,19 @@ You choose what the page says about who's online:
 
 Bear in mind that Minecraft itself already tells anyone who adds your server to their multiplayer list how many people are on, and a sample of their names, unless you set `hide-online-players=true` in the server's settings.
 
+## Modpack for players
+
+On a Fabric server, the page can offer a **modpack** (`.mrpack`): one file players open in the **Modrinth app** or **Prism Launcher** to get a ready-to-play instance with the right Minecraft, Fabric and mods. It's on by default while the page is on; switch off **Offer a modpack for players** to hide it.
+
+What goes in it:
+
+- **From the server:** each Modrinth mod in the server's content that also runs on players' computers, at the exact version the server has. Mods whose Modrinth page says they don't run on clients are left out (Modrinth's own labels decide, so a mod marked "optional" on clients, like Lithium, is included as optional), and so are plugins, datapacks and files that didn't come from Modrinth.
+- **Extras for players:** client-only mods, shader packs and resource packs you add by their Modrinth slug, the last part of the project's address (`sodium`, `iris`, `complementary-reimagined`). Flytower picks the newest version for the server's Minecraft version and adds the mods they need. A shader pack needs Iris, so add `iris` too.
+
+The **Public page** card lists **What players get** and, under **Left out**, anything that wasn't added and why.
+
+The pack lists each file by its Modrinth download and checksums, as the format requires, so Flytower never copies or hosts anyone's mods: the launcher downloads them from Modrinth. It's rebuilt the first time someone asks for it after the server's content, extras or versions change, and kept under `/var/lib/flytower/packs`. Paper and vanilla servers don't get one, since their plugins and datapacks only run on the server.
+
 ## How it stays light
 
 Visitors never reach the Minecraft server. Who's online comes from the "joined the game" and "left the game" lines in the server's log, which Flytower already follows for [notifications](notifications.md). When the panel starts, it asks the console once who's already on. Whether the server is up comes from systemd, as everywhere else in the panel.

@@ -67,6 +67,8 @@ export default defineNuxtConfig({
     archiveDir: '/var/lib/flytower/archive',
     /** Player skins from Mojang, cached for drawing heads. */
     skinsDir: '/var/lib/flytower/skins',
+    /** Players' modpacks for public pages, rebuilt when a server's content changes. */
+    packsDir: '/var/lib/flytower/packs',
     /** Where the agent installs Java; the panel reads which versions are there. */
     runtimesDir: '/opt/flytower/runtimes',
     /** Modrinth's API; overridable for a mirror or for tests. */
@@ -99,6 +101,7 @@ export default defineNuxtConfig({
       importsDir: '.data/imports',
       archiveDir: '.data/archive',
       skinsDir: '.data/skins',
+      packsDir: '.data/packs',
       runtimesDir: '.data/runtimes',
       agentSocket: '.data/agent.sock',
       setupTokenFile: '.data/setup-token.hash',

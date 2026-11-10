@@ -10,7 +10,11 @@ import {
 const { server, refresh } = useServerContext()
 const toast = useToast()
 
-const copy = (p: PublicPage): PublicPage => ({ ...p, show: { ...p.show } })
+const copy = (p: PublicPage): PublicPage => ({
+  ...p,
+  show: { ...p.show },
+  pack: { ...p.pack, extras: p.pack.extras.map((e) => ({ ...e })) },
+})
 const form = ref<PublicPage | null>(server.value ? copy(server.value.publicPage) : null)
 watch(
   () => server.value?.publicPage,
@@ -51,6 +55,47 @@ async function copyLink() {
   await navigator.clipboard.writeText(url.value).catch(() => {})
   copied.value = true
   setTimeout(() => (copied.value = false), 1500)
+}
+
+// The players' modpack: what's in it, worked out by the panel from the server's content.
+interface PackPreview {
+  unavailable: string | null
+  included: { title: string; kind: string; version: string; from: 'server' | 'extra' }[]
+  skipped: { title: string; reason: string }[]
+  empty: boolean
+}
+const fabric = computed(() => server.value?.loader === 'fabric')
+const {
+  data: pack,
+  error: packError,
+  pending: packPending,
+  refresh: refreshPack,
+} = useFetch<PackPreview>(() => `/api/servers/${server.value?.name}/pack`, {
+  immediate: false,
+  server: false,
+})
+watch(
+  () => [live.value, fabric.value, server.value?.publicPage.pack.extras.length] as const,
+  ([on, f]) => on && f && refreshPack(),
+  { immediate: true },
+)
+const KIND_LABEL: Record<string, string> = {
+  mod: 'Mod',
+  shader: 'Shader pack',
+  resourcepack: 'Resource pack',
+}
+
+const newExtra = ref('')
+function addExtra() {
+  const slug = newExtra.value.trim().replace(/^https?:\/\/modrinth\.com\/[a-z]+\//, '')
+  if (!form.value || !slug || !/^[\w.-]{1,64}$/.test(slug)) return
+  if (!form.value.pack.extras.some((e) => e.modrinth === slug)) {
+    form.value.pack.extras.push({ modrinth: slug })
+  }
+  newExtra.value = ''
+}
+function removeExtra(i: number) {
+  form.value?.pack.extras.splice(i, 1)
 }
 
 const PLAYER_ITEMS: { label: string; value: PlayerVisibility; description: string }[] = [
@@ -132,6 +177,87 @@ const PLAYER_ITEMS: { label: string; value: PlayerVisibility; description: strin
           label="Show the Minecraft version and loader"
           description="Helps players pick the right version in their launcher."
         />
+        <div v-if="fabric" class="space-y-3 border-t border-default pt-5">
+          <USwitch
+            v-model="form.pack.enabled"
+            label="Offer a modpack for players"
+            description="A .mrpack with the server's mods that players need too, plus any extras below. It opens in the Modrinth app or Prism Launcher. Files are listed by their Modrinth downloads, never copied."
+            data-e2e="public-page-pack"
+          />
+          <template v-if="form.pack.enabled">
+            <UFormField
+              label="Extras for players"
+              description="Client-only mods, shader packs or resource packs from Modrinth, by their slug (the last part of the project's address), like sodium or complementary-reimagined."
+            >
+              <ul v-if="form.pack.extras.length" class="mb-2 space-y-1">
+                <li
+                  v-for="(e, i) in form.pack.extras"
+                  :key="e.modrinth"
+                  class="flex items-center justify-between gap-2 rounded-md bg-elevated px-3 py-1.5"
+                >
+                  <span class="truncate font-mono text-sm"
+                    >{{ e.modrinth
+                    }}<span v-if="e.version" class="text-muted"> {{ e.version }}</span></span
+                  >
+                  <UButton
+                    icon="i-lucide-x"
+                    :aria-label="`Remove ${e.modrinth}`"
+                    size="xs"
+                    color="neutral"
+                    variant="ghost"
+                    @click="removeExtra(i)"
+                  />
+                </li>
+              </ul>
+              <div class="flex gap-2">
+                <UInput
+                  v-model="newExtra"
+                  placeholder="sodium"
+                  class="min-w-0 flex-1 font-mono"
+                  autocomplete="off"
+                  data-e2e="public-page-extra"
+                  @keydown.enter.prevent="addExtra"
+                />
+                <UButton label="Add" color="neutral" variant="subtle" @click="addExtra" />
+              </div>
+            </UFormField>
+          </template>
+        </div>
+      </template>
+    </div>
+
+    <div
+      v-if="live && fabric && server.publicPage.pack.enabled"
+      class="mt-5 rounded-md border border-default p-4 text-sm"
+      data-e2e="public-page-pack-preview"
+    >
+      <h3 class="font-semibold">What players get</h3>
+      <p v-if="packPending" class="mt-1 text-muted">Working it out from Modrinth…</p>
+      <p v-else-if="packError" class="mt-1 text-error">
+        {{ errorMessage(packError) }}
+      </p>
+      <template v-else-if="pack">
+        <p v-if="pack.unavailable" class="mt-1 text-muted">{{ pack.unavailable }}</p>
+        <p v-else-if="pack.empty" class="mt-1 text-muted">
+          Nothing yet: none of the server's mods run on players' computers. The page won't offer a
+          modpack until there's something in it.
+        </p>
+        <ul v-else class="mt-2 space-y-0.5">
+          <li v-for="i in pack.included" :key="i.title" class="flex justify-between gap-3">
+            <span class="truncate">{{ i.title }}</span>
+            <span class="shrink-0 text-muted"
+              >{{ KIND_LABEL[i.kind] ?? i.kind }} {{ i.version }}</span
+            >
+          </li>
+        </ul>
+        <details v-if="pack.skipped.length" class="mt-3">
+          <summary class="cursor-pointer text-muted">Left out ({{ pack.skipped.length }})</summary>
+          <ul class="mt-1 space-y-0.5">
+            <li v-for="i in pack.skipped" :key="i.title">
+              {{ i.title }}: <span class="text-muted">{{ i.reason }}</span>
+            </li>
+          </ul>
+        </details>
       </template>
     </div>
 

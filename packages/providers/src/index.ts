@@ -45,3 +45,11 @@ export {
   type VtCategory,
   type VtPack,
 } from './vanillatweaks.ts'
+export {
+  CLIENT_KINDS,
+  modrinthPack,
+  type ClientKind,
+  type ModrinthPack,
+  type PackFile,
+  type PackProject,
+} from './modrinth-pack.ts'

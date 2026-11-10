@@ -121,3 +121,15 @@ On a running server, ideally one you can join with a real account and a friend's
 - [ ] Turn on branding colours and a logo: the page uses them, in light and dark mode. On a phone it fits without scrolling sideways.
 - [ ] **YAML**: the spec shows a `public:` block; change `players: names` to `count` and apply. The plan lists **Public page** and the page follows.
 - [ ] The browser's console shows no content security policy errors on the page.
+
+### Modpack for players
+
+On a Fabric server with a few Modrinth mods (Fabric API, Lithium, and ideally one Modrinth marks as server-only), with the public page on.
+
+- [ ] **Settings**, **Public page**: **What players get** lists the server's mods that run on players' computers. **Left out** names any server-only mod or non-Modrinth file, with why.
+- [ ] Add `iris` and `complementary-reimagined` as extras and save. The list gains Iris, the shader pack and Sodium "(needed by Iris)".
+- [ ] Open the page signed out: **Download the modpack** gives `<server name>.mrpack`. Open it in the Modrinth app (or Prism: Add Instance, Import). It creates an instance at the server's Minecraft and Fabric versions with those mods, and the shader pack under Shader packs.
+- [ ] Launch the instance and join the server: no missing-mod errors.
+- [ ] Add a mod to the server from the Content tab and apply. Reload the card: the new mod is listed, and a fresh download includes it.
+- [ ] Switch off **Offer a modpack for players**: the page's modpack section disappears and `/api/public/servers/<name>/pack.mrpack` is a 404.
+- [ ] A Paper server's card doesn't offer a modpack.

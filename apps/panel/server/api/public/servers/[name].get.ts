@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { publicStatus } from '../../../status/page'
 import { withUuids } from '../../../players'
+import { readLock } from '../../../spec/lock'
 
 const Params = z.object({ name: z.string().max(40) })
 
@@ -18,6 +19,13 @@ export default defineEventHandler(async (event) => {
   const props = await readProperties(name).catch(() => ({}) as Record<string, string>)
   const max = Number.parseInt(props['max-players'] ?? '', 10)
   const usercache = page.show.players === 'names' ? await readUserCache(name) : []
+  const lock = await readLock(serverDir(name)).catch(() => null)
+  // A pack built since the last change that turned out empty isn't offered.
+  const hasPack =
+    !!lock &&
+    usePacks().peek(row, lock, page.pack.extras)?.path !== null &&
+    (page.pack.extras.length > 0 ||
+      lock.content.some((i) => i.kind === 'mod' && i.source === 'modrinth'))
   setResponseHeader(event, 'cache-control', 'public, max-age=15')
   return publicStatus({
     row,
@@ -26,6 +34,7 @@ export default defineEventHandler(async (event) => {
     roster,
     machine: getRequestURL(event, { xForwardedHost: true }).hostname,
     motd: props.motd ?? '',
+    hasPack,
     icon: iconUrl(name)?.replace(`/api/servers/${name}/`, `/api/public/servers/${name}/`) ?? null,
     maxPlayers: Number.isFinite(max) ? max : null,
     withUuids: (names) => withUuids(names, usercache),

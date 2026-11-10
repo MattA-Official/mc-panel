@@ -1,5 +1,6 @@
 /** Builds a server's spec from what the panel knows: its database row and server.properties. */
 import { isManagedProperty, type ServerSpec } from '../../shared/spec'
+import { readPublicPage } from '../../shared/public-page'
 import { ScheduleItem, toItem, type TaskSpec } from '../../shared/schedules'
 import type { schema } from '../db'
 
@@ -117,7 +118,7 @@ export function specFromServer(
     },
     ...(row.restartWhenUnresponsive ? { recovery: { restartWhenUnresponsive: true } } : {}),
     timezone: row.timezone,
-    ...(row.publicPage ? { public: row.publicPage } : {}),
+    ...(row.publicPage ? { public: readPublicPage(row.publicPage) } : {}),
     ...(tasks.length ? { schedules: tasks.map((t) => ScheduleItem.parse(toItem(t))) } : {}),
   }
 }

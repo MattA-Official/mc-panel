@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { schema } from '../../../db'
-import { PublicPage, defaultPublicPage, samePublicPage } from '../../../../shared/public-page'
+import { PublicPage, readPublicPage, samePublicPage } from '../../../../shared/public-page'
 
 const Params = z.object({ name: z.string().max(40) })
 
@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
   const { name } = await getValidatedRouterParams(event, Params.parse)
   const body = await readValidatedBody(event, PublicPage.parse)
   const server = findServer(name)
-  const was = server.publicPage ?? defaultPublicPage()
+  const was = readPublicPage(server.publicPage)
   if (samePublicPage(was, body)) return { changed: false }
   useDb()
     .update(schema.servers)

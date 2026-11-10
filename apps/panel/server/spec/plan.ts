@@ -15,8 +15,8 @@ import {
 } from '@flytower/providers'
 import { mbToMemory, type ServerSpec } from '../../shared/spec'
 import {
-  defaultPublicPage,
   describePublicPage,
+  readPublicPage,
   samePublicPage,
   type PublicPage,
 } from '../../shared/public-page'
@@ -276,7 +276,7 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
   }
 
   if (spec.public) {
-    const was = row.publicPage ?? defaultPublicPage()
+    const was = readPublicPage(row.publicPage)
     if (!samePublicPage(was, spec.public)) {
       settings.publicPage = spec.public
       const from = describePublicPage(was)
