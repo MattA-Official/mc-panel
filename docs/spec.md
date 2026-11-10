@@ -126,12 +126,14 @@ What Flytower does when the server gets stuck. Left out, the current setting sta
 
 The server's [public status page](status-page.md). Left out, the current settings stay.
 
-| Field          | Meaning                                                                                                     |
-| -------------- | ----------------------------------------------------------------------------------------------------------- |
-| `enabled`      | `true` to turn the page on at `/s/<name>`. Defaults to `false`.                                             |
-| `description`  | A few lines about the server, up to 500 characters, shown as plain text with line breaks.                   |
-| `show.players` | `count` (the default) shows how many are online, `names` shows their heads and names, `none` shows nothing. |
-| `show.version` | `false` to hide the Minecraft version and loader. Defaults to `true`.                                       |
+| Field          | Meaning                                                                                                               |
+| -------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `enabled`      | `true` to turn the page on at `/s/<name>`. Defaults to `false`.                                                       |
+| `description`  | A few lines about the server, up to 500 characters, shown as plain text with line breaks.                             |
+| `show.players` | `count` (the default) shows how many are online, `names` shows their heads and names, `none` shows nothing.           |
+| `show.version` | `false` to hide the Minecraft version and loader. Defaults to `true`.                                                 |
+| `pack.enabled` | `false` to stop offering the players' [modpack](status-page.md#modpack-for-players). Defaults to `true`; Fabric only. |
+| `pack.extras`  | Client-only extras for the modpack: a list of `modrinth: <slug>`, each with an optional exact `version`.              |
 
 ```yaml
 public:
@@ -141,6 +143,10 @@ public:
     Season 3 started in September.
   show:
     players: names
+  pack:
+    extras:
+      - modrinth: iris
+      - modrinth: complementary-reimagined
 ```
 
 ### `timezone`
