@@ -88,6 +88,8 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
   'system/discord/index.delete.ts': 'system.manage',
   'system/discord/index.get.ts': 'system.manage',
   'system/discord/index.post.ts': 'system.manage',
+  'system/discord/roles.get.ts': 'system.manage',
+  'system/discord/roles.put.ts': 'people.manage',
   'system/discord/test.post.ts': 'system.manage',
   'system/notify/[id].delete.ts': 'system.manage',
   'system/notify/[id].put.ts': 'system.manage',
