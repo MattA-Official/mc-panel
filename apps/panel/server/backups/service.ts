@@ -10,7 +10,7 @@ import { and, desc, eq } from 'drizzle-orm'
 import { BACKUP_STEPS, RESTORE_STEPS, type JobEvent } from '../../shared/utils/jobs'
 import { schema, type Db } from '../db'
 import { JobError, type AgentCall, type JobTracker } from '../jobs/runner'
-import { createArchive, EXCLUDE, extractArchive } from './archive'
+import { createArchive, extractArchive, isExcluded } from './archive'
 import { toPrune } from './retention'
 import type { Notifier } from '../notify/types'
 
@@ -66,18 +66,27 @@ const describeTime = (d: Date) =>
 
 /** Bytes in a folder, skipping what backups skip and never following symlinks. */
 export async function folderBytes(dir: string): Promise<number> {
-  const skip = new Set(EXCLUDE.map((e) => e.slice(2)))
   let total = 0
-  const walk = async (d: string, top: boolean) => {
+  const walk = async (d: string, rel: string) => {
     for (const e of await readdir(d, { withFileTypes: true })) {
-      if (top && skip.has(e.name)) continue
+      const r = rel ? `${rel}/${e.name}` : e.name
+      if (isExcluded(r)) continue
       const p = join(d, e.name)
-      if (e.isDirectory()) await walk(p, false)
+      if (e.isDirectory()) await walk(p, r)
       else if (e.isFile()) total += (await lstat(p)).size
     }
   }
-  await walk(dir, true)
+  await walk(dir, '')
   return total
+}
+
+/** A sentence on files a backup had to leave out, or nothing. */
+export function describeSkipped(skipped: string[]) {
+  if (!skipped.length) return ''
+  const shown = skipped.slice(0, 3).join(', ')
+  const more = skipped.length > 3 ? ` and ${skipped.length - 3} more` : ''
+  const files = skipped.length === 1 ? 'file' : 'files'
+  return ` Left out ${skipped.length} ${files} Flytower couldn't read: ${shown}${more}.`
 }
 
 async function diskFree(dir: string) {
@@ -183,7 +192,7 @@ export class BackupService {
           severity: 'ok',
           link: `/servers/${server}/backups`,
         })
-        return job.succeed(`Backed up ${formatBytes(row.bytes)}.`)
+        return job.succeed(`Backed up ${formatBytes(row.bytes)}.${describeSkipped(row.skipped)}`)
       })
       .catch((err) => {
         const failed = job.fail(err)
@@ -265,14 +274,19 @@ export class BackupService {
       createdAt = new Date(createdAt.getTime() + 1000)
     }
     const file = `${server}-${stampOf(createdAt)}-${kind}.tar.zst`
-    const { bytes } = await createArchive(this.deps.serverDir(server), join(dir, file))
+    const { bytes, skipped } = await createArchive(this.deps.serverDir(server), join(dir, file))
+    if (skipped.length) {
+      console.warn(
+        `[flytower] backup ${file} left out files it couldn't read: ${skipped.join(', ')}`,
+      )
+    }
     const row = this.deps.db
       .insert(schema.backups)
       .values({ server, file, bytes, kind, note, createdAt })
       .returning()
       .get()
     this.deps.offsite?.queue(row)
-    return row
+    return Object.assign(row, { skipped })
   }
 
   private async checkSpace(server: string) {
