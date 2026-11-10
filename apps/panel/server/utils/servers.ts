@@ -1,3 +1,4 @@
+import { defaultPublicPage } from '../../shared/public-page'
 import { eq } from 'drizzle-orm'
 import { schema } from '../db'
 import type { ServiceState } from '../jobs/status'
@@ -19,6 +20,7 @@ export function publicServer(row: Row, status: ServiceState, health?: Health) {
     hostname: row.hostname,
     createdAt: row.createdAt,
     restartWhenUnresponsive: row.restartWhenUnresponsive,
+    publicPage: row.publicPage ?? defaultPublicPage(),
     status,
     health: health ?? { condition: null, crash: null },
   }

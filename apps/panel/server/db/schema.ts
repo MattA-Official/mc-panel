@@ -1,4 +1,5 @@
 import type { ContentItem } from '../../shared/spec'
+import type { PublicPage } from '../../shared/public-page'
 import { sql } from 'drizzle-orm'
 import {
   blob,
@@ -87,6 +88,8 @@ export const servers = sqliteTable(
       .default(false),
     /** IANA time zone the server's scheduled tasks are read in. */
     timezone: text('timezone').notNull().default('UTC'),
+    /** The public status page's settings; null until it's first set. */
+    publicPage: text('public_page', { mode: 'json' }).$type<PublicPage>(),
     createdAt: createdAt(),
   },
   (t) => [

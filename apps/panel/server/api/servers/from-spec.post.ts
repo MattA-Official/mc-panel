@@ -11,7 +11,7 @@ const Body = z.object({
 
 /**
  * Creates a server from a pasted spec: the same job as the form, with the spec's
- * properties, backup settings, schedules and content list carried over. Content is installed
+ * properties, backup settings, schedules, public page and content list carried over. Content is installed
  * afterwards through a plan the person can review.
  */
 export default defineEventHandler(async (event) => {
@@ -41,6 +41,7 @@ export default defineEventHandler(async (event) => {
         content: spec.content,
         hostname: spec.hostname ?? null,
         recovery: spec.recovery,
+        publicPage: spec.public,
       },
     )
     void done.then((job) => {

@@ -1,0 +1,1 @@
+ALTER TABLE `servers` ADD `public_page` text;
