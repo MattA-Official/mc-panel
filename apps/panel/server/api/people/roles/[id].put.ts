@@ -10,7 +10,7 @@ const Body = z.object({
 
 /** Changes a custom role. Everyone holding it is affected on their next request. */
 export default defineEventHandler(async (event) => {
-  const { access, session } = await requirePermission(event, 'people.manage')
+  const { access, session } = await requirePermission(event, 'roles.manage')
   await requireElevated(event)
   const { id } = await getValidatedRouterParams(event, Params.parse)
   const body = await readValidatedBody(event, Body.parse)

@@ -3,7 +3,7 @@ import { schema } from '../../../db'
 
 /** The Discord role mappings, with the Flytower roles and servers they can point at. */
 export default defineEventHandler(async (event): Promise<DiscordRolesView> => {
-  await requirePermission(event, 'system.manage')
+  await requirePermission(event, 'system.integrations')
   const db = useDb()
   return {
     mappings: discordRoleMappings(),

@@ -11,7 +11,7 @@ const Body = z.object({
  * the page follows along by polling /api/health. Needs a recent passkey check.
  */
 export default defineEventHandler(async (event) => {
-  await requirePermission(event, 'system.manage')
+  await requirePermission(event, 'system.updates')
   const { user } = await requireElevated(event)
   const { version, rollback } = await readValidatedBody(event, Body.parse)
   try {

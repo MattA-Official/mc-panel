@@ -7,7 +7,7 @@ const Body = z.object({ token: z.string().trim().min(1).max(200) })
  * stores a credential and talks to Discord, so it needs a fresh passkey check.
  */
 export default defineEventHandler(async (event) => {
-  await requirePermission(event, 'system.manage')
+  await requirePermission(event, 'system.integrations')
   const { user } = await requireElevated(event)
   const { token } = await readValidatedBody(event, Body.parse)
   await discordHttp(() => useDiscord().connect(token))

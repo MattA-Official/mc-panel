@@ -7,7 +7,7 @@ const Params = z.object({ name: z.string().max(40) })
 
 /** Turns the map on or off, who may open it, and whether it shows players. */
 export default defineEventHandler(async (event) => {
-  await requireServerPermission(event, 'server.configure')
+  await requireServerPermission(event, 'community.manage')
   const { user } = await requireUserSession(event)
   const { name } = await getValidatedRouterParams(event, Params.parse)
   const body = await readValidatedBody(event, MapSettings.parse)

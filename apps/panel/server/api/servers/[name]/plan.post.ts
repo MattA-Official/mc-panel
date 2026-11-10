@@ -15,10 +15,11 @@ const Body = z.union([
 
 /**
  * Works out what applying a spec would change. Answers `{ ok: false, issues }` for a spec
- * that doesn't check out, or `{ ok: true, plan }`.
+ * that doesn't check out, or `{ ok: true, plan }`. Seeing the server is enough to get in; each
+ * part of the spec that would change then needs its own permission (spec/sections.ts).
  */
 export default defineEventHandler(async (event) => {
-  await requireServerPermission(event, 'server.configure')
+  await requireServerPermission(event, 'server.view')
   const { name, specs } = await specContext(event)
   const body = await readValidatedBody(event, Body.parse)
   let spec: ServerSpec
@@ -36,6 +37,7 @@ export default defineEventHandler(async (event) => {
     }
     spec = parsed.data
   }
+  requireSpecChange(event, name, await specHttp(() => specs.needs(name, spec, body.upgrade)))
   const plan = await specHttp(() => specs.plan(name, spec, body.upgrade))
   return { ok: true as const, plan }
 })

@@ -8,7 +8,7 @@ const Body = z.object({ channel: z.enum(['stable', 'beta', 'native']) })
  * installing an update still asks for one.
  */
 export default defineEventHandler(async (event) => {
-  await requirePermission(event, 'system.manage')
+  await requirePermission(event, 'system.updates')
   const { user } = await requireUserSession(event)
   const { channel } = await readValidatedBody(event, Body.parse)
   setSetting(useDb(), 'update.channel', channel)

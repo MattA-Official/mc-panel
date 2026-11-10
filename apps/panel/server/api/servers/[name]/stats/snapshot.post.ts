@@ -9,7 +9,7 @@ const Params = z.object({ name: z.string().max(40) })
  * so it does no harm). Only players whose stats changed since their last row are stored.
  */
 export default defineEventHandler(async (event) => {
-  await requireServerPermission(event, 'server.configure')
+  await requireServerPermission(event, 'community.manage')
   const { name } = await getValidatedRouterParams(event, Params.parse)
   findServer(name)
   const tz =

@@ -14,12 +14,12 @@ const Body = z.object({ mappings: z.array(Mapping).max(MAX_MAPPINGS) })
 
 /**
  * Saves which Discord roles get which Flytower roles. It hands out access, so it needs both
- * Manage Flytower and Manage people, and a fresh passkey check. Owner can't be mapped: no
+ * Manage integrations and Manage roles, and a fresh passkey check. Owner can't be mapped: no
  * command needs it, and a Discord role is easier to hand out than a passkey.
  */
 export default defineEventHandler(async (event) => {
-  await requirePermission(event, 'people.manage')
-  await requirePermission(event, 'system.manage')
+  await requirePermission(event, 'roles.manage')
+  await requirePermission(event, 'system.integrations')
   const { user } = await requireElevated(event)
   const { mappings } = await readValidatedBody(event, Body.parse)
   const db = useDb()

@@ -8,7 +8,7 @@ const Body = ChannelPatch.extend({ id: z.number().int().optional() })
  * and secret are used for any left blank.
  */
 export default defineEventHandler(async (event) => {
-  await requirePermission(event, 'system.manage')
+  await requirePermission(event, 'system.notifications')
   const { id, ...input } = await readValidatedBody(event, Body.parse)
   await notifyHttp(() => useNotify().test(input, id))
   return { ok: true }

@@ -4,7 +4,7 @@ const Params = z.object({ name: z.string().max(40) })
 
 /** Stops posting the server's chat to Discord and forgets the webhook. */
 export default defineEventHandler(async (event) => {
-  await requireServerPermission(event, 'server.configure')
+  await requireServerPermission(event, 'community.manage')
   const { user } = await requireUserSession(event)
   const { name } = await getValidatedRouterParams(event, Params.parse)
   const server = findServer(name)
