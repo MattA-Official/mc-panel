@@ -2,6 +2,10 @@
  * Prints Markdown release notes from Conventional Commits between two refs.
  *
  *   bun scripts/release-notes.ts v0.1.0 [previous-tag]
+ *
+ * A written summary in .github/release-notes/<version>.md, if there is one, goes first.
+ * Commits that aren't Conventional Commits (an old squash merge, say) are still listed,
+ * under "Other changes", so a release never comes out empty.
  */
 import { $ } from 'bun'
 
@@ -9,7 +13,8 @@ const REPO = 'https://github.com/MattA-Official/mc-panel'
 const [to = 'HEAD', fromArg] = process.argv.slice(2)
 
 const previous =
-  fromArg ?? (await $`git describe --tags --abbrev=0 ${to}^`.nothrow().quiet().text()).trim() ?? ''
+  fromArg ??
+  (await $`git describe --tags --abbrev=0 --match ${'v*'} ${to}^`.nothrow().quiet().text()).trim()
 const range = previous ? `${previous}..${to}` : to
 const raw = await $`git log ${range} --format=%H%x1f%s%x1f%b%x1e`.text()
 
@@ -29,17 +34,17 @@ function parse(raw: string): Commit[] {
     .filter(Boolean)
     .flatMap((record) => {
       const [hash = '', subjectLine = '', body = ''] = record.split('\x1f')
+      if (/^Merge (branch|pull request|remote-tracking)/.test(subjectLine)) return []
       const m = subjectLine.match(/^(\w+)(?:\(([^)]+)\))?(!)?: (.+)$/)
-      if (!m) return []
       const issues = [...body.matchAll(/(?:Closes|Fixes|Refs) #(\d+)/gi)].map((x) => x[1]!)
       return [
         {
           hash,
-          type: m[1]!,
-          scope: m[2] ?? null,
-          subject: m[4]!,
+          type: m?.[1] ?? '',
+          scope: m?.[2] ?? null,
+          subject: m?.[4] ?? subjectLine,
           issues: [...new Set(issues)],
-          breaking: !!m[3] || /BREAKING CHANGE/.test(body),
+          breaking: !!m?.[3] || /BREAKING CHANGE/.test(body),
         },
       ]
     })
@@ -52,11 +57,14 @@ const sections: [string, (c: Commit) => boolean][] = [
   ['Performance', (c) => c.type === 'perf'],
   ['Docs', (c) => c.type === 'docs'],
   ['Other', (c) => ['refactor', 'chore', 'ci', 'build', 'test'].includes(c.type)],
+  ['Other changes', (c) => c.type === ''],
 ]
 
 const commits = parse(raw)
 const used = new Set<string>()
 const out: string[] = []
+const summary = Bun.file(`.github/release-notes/${to.replace(/^v/, '')}.md`)
+if (await summary.exists()) out.push((await summary.text()).trim(), '')
 for (const [title, match] of sections) {
   const list = commits.filter((c) => match(c) && !used.has(c.hash))
   if (!list.length) continue
