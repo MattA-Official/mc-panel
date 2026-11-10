@@ -293,8 +293,6 @@ function menu(b: BackupRow) {
 
     <BackupOffsite v-if="data" :server="name" :target="data.offsiteTarget" @saved="refresh" />
 
-    <WorldExports :server="name" :disabled="running || data?.busy" />
-
     <UModal v-model:open="noteOpen" title="Back up now">
       <template #body>
         <form @submit.prevent="backupNow">
