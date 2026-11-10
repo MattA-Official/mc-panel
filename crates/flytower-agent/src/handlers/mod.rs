@@ -1,6 +1,7 @@
 //! What each verb does, one module per area, matching `packages/agent/src/handlers`. Every
 //! verb in the protocol is handled here.
 
+pub mod disk;
 pub(crate) mod files;
 pub mod runtime;
 pub mod server;
@@ -82,5 +83,9 @@ pub fn handle(params: &Params, ctx: &Context) -> Result<Value, AgentError> {
         Params::UpdateStatus => Ok(update::status(ctx)),
         Params::UpdateInstall(p) => update::install(&p.version, ctx),
         Params::UpdateRollback(p) => update::rollback(&p.version, ctx),
+        Params::DiskUsage(p) => Ok(disk::usage(&p.servers, p.system, ctx)),
+        Params::DiskVacuumJournal(p) => disk::vacuum_journal(p.max_mb, ctx),
+        Params::DiskCleanApt => disk::clean_apt(ctx),
+        Params::DiskPruneFlytower => disk::prune_flytower(ctx),
     }
 }

@@ -151,6 +151,19 @@ pub struct SshSetParams {
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
+pub struct DiskUsageParams {
+    pub servers: Vec<String>,
+    pub system: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct VacuumParams {
+    pub max_mb: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct VersionParam {
     pub version: String,
 }
@@ -175,10 +188,14 @@ pub enum Params {
     UpdateInstall(VersionParam),
     UpdateRollback(VersionParam),
     ServerDelete(NameParam),
+    DiskUsage(DiskUsageParams),
+    DiskVacuumJournal(VacuumParams),
+    DiskCleanApt,
+    DiskPruneFlytower,
 }
 
 /// Every verb, in the same order as `verbs.ts`.
-pub const VERBS: [&str; 17] = [
+pub const VERBS: [&str; 21] = [
     "ping",
     "service.status",
     "service.usage",
@@ -196,6 +213,10 @@ pub const VERBS: [&str; 17] = [
     "update.install",
     "update.rollback",
     "server.delete",
+    "disk.usage",
+    "disk.vacuum-journal",
+    "disk.clean-apt",
+    "disk.prune-flytower",
 ];
 
 fn de<T: DeserializeOwned>(value: &Value) -> Result<T, String> {
@@ -295,6 +316,29 @@ impl Params {
                     Self::UpdateRollback(p)
                 }
             }
+            _ => return Self::parse_disk(verb, params),
+        };
+        Ok(Some(p))
+    }
+
+    /// The `disk.*` verbs.
+    fn parse_disk(verb: &str, params: &Value) -> Result<Option<Self>, String> {
+        let p = match verb {
+            "disk.usage" => {
+                let p: DiskUsageParams = de(params)?;
+                servers(&p.servers)?;
+                Self::DiskUsage(p)
+            }
+            "disk.vacuum-journal" => {
+                let p: VacuumParams = de(params)?;
+                check(
+                    (16..=100_000).contains(&p.max_mb),
+                    "maxMb must be from 16 to 100000",
+                )?;
+                Self::DiskVacuumJournal(p)
+            }
+            "disk.clean-apt" => de::<Empty>(params).map(|_| Self::DiskCleanApt)?,
+            "disk.prune-flytower" => de::<Empty>(params).map(|_| Self::DiskPruneFlytower)?,
             _ => return Ok(None),
         };
         Ok(Some(p))
@@ -438,6 +482,66 @@ pub struct DeleteResult {
     pub archived_to: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ServerDiskGroups {
+    pub world: u64,
+    pub logs: u64,
+    pub content: u64,
+    pub map: u64,
+    pub backups: u64,
+    pub exports: u64,
+    pub other: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ServerDisk {
+    pub groups: ServerDiskGroups,
+    pub unreadable: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SharedDisk {
+    pub imports: u64,
+    pub archive: u64,
+    pub unreadable: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SystemDisk {
+    pub java: u64,
+    pub flytower: u64,
+    pub logs: u64,
+    pub temp: u64,
+    pub unreadable: u64,
+    pub journal: u64,
+    pub apt_cache: u64,
+    pub old_releases: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DiskUsageResult {
+    pub servers: std::collections::BTreeMap<String, ServerDisk>,
+    #[serde(deserialize_with = "nullable")]
+    pub shared: Option<SharedDisk>,
+    #[serde(deserialize_with = "nullable")]
+    pub system: Option<SystemDisk>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FreedResult {
+    pub freed_bytes: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PruneResult {
+    pub freed_bytes: u64,
+    pub removed: Vec<String>,
+}
+
 /// Checks a verb's result before it's sent, like the TypeScript agent does.
 ///
 /// # Errors
@@ -459,6 +563,9 @@ pub fn check_result(verb: &str, result: &Value) -> Result<(), String> {
             "started is always true",
         ),
         "server.delete" => de::<DeleteResult>(result).map(drop),
+        "disk.usage" => de::<DiskUsageResult>(result).map(drop),
+        "disk.vacuum-journal" | "disk.clean-apt" => de::<FreedResult>(result).map(drop),
+        "disk.prune-flytower" => de::<PruneResult>(result).map(drop),
         _ => Err(format!("unknown verb {verb}")),
     }
 }
