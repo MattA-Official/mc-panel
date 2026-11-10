@@ -142,6 +142,7 @@ const when = (ms: number | null) => (ms ? new Date(ms).toLocaleString() : '')
     <UFormField
       class="mt-4"
       label="Channel webhook URL"
+      :ui="{ description: '[overflow-wrap:anywhere]' }"
       :description="
         relay.configured
           ? `Saved: ${relay.target}. Paste a new one to change it.`
