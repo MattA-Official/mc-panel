@@ -273,7 +273,9 @@ export class BackupService {
 
   private claim(server: string) {
     if (this.busy.has(server)) {
-      throw new BackupError('A backup or restore is already running for this server.')
+      throw new BackupError(
+        'A backup, restore, change or scheduled restart is already running on this server.',
+      )
     }
     this.busy.add(server)
   }
