@@ -12,7 +12,7 @@ export function usePaletteLinks(navigation: Ref<{ label: string; icon: string; t
   })
   const { data: health } = useFetch('/api/health', { key: 'palette-health', server: false })
   const sheet = useShortcutSheet()
-  const actionsFor = useServerActions(() => health.value?.agent.ok ?? true)
+  const actionsFor = useServerActions(() => health.value?.agent?.ok ?? true)
 
   const current = computed(() =>
     route.path.startsWith('/servers/') ? String(route.params.name ?? '') || null : null,

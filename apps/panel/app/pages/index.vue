@@ -14,7 +14,7 @@ const updatesOf = (s: Server) => serverUpdateCount(updates.value, s.name)
 const when = (iso: string) =>
   new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 const can = useCan()
-const actionsFor = useServerActions(() => health.value?.agent.ok ?? true)
+const actionsFor = useServerActions(() => health.value?.agent?.ok ?? true)
 
 /** Live tick time, memory and CPU for running servers, re-read when the clock moves on. */
 const metrics = useLiveMetrics()
@@ -58,7 +58,7 @@ function closeCharts() {
     </template>
     <template #body>
       <UAlert
-        v-if="health && !health.agent.ok"
+        v-if="health?.agent && !health.agent.ok"
         class="mb-6"
         color="warning"
         variant="subtle"
