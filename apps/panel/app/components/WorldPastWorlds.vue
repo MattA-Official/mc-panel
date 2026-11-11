@@ -68,7 +68,9 @@ async function remove() {
   if (!deleting.value) return
   try {
     const id = deleting.value.id
-    await withElevation(() => $fetch(`${exportsBase.value}/${id}` as string, { method: 'DELETE' }))
+    await withElevation(() =>
+      $fetch<unknown>(`${exportsBase.value}/${id}` as string, { method: 'DELETE' }),
+    )
     toast.add({ title: `Deleted ${deleting.value.name}`, color: 'success' })
     deleting.value = null
     refresh()

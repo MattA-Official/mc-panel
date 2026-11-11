@@ -59,7 +59,9 @@ async function revoke(e: WorldExport, s: ShareLink) {
 }
 async function remove(e: WorldExport) {
   try {
-    await withElevation(() => $fetch(`${base.value}/${e.id}` as string, { method: 'DELETE' }))
+    await withElevation(() =>
+      $fetch<unknown>(`${base.value}/${e.id}` as string, { method: 'DELETE' }),
+    )
     toast.add({ title: 'Export deleted', color: 'success' })
     refresh()
   } catch (err) {
