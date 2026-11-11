@@ -1,6 +1,8 @@
 //! The Unix socket server, like `packages/agent/src/server.ts`, plus the check Bun can't do:
-//! the kernel's `SO_PEERCRED` says who connected, and only root or the panel's group may talk
-//! to the agent. The socket's file mode still guards it as before; this is a second lock.
+//! the kernel's `SO_PEERCRED` says who connected, and only root or the panel's user may talk
+//! to the agent. The socket's file mode still guards it as before; this is a second lock. It
+//! checks the user, not the group: servers share the panel's group so they can use the files
+//! the panel puts in their folders.
 
 use std::fs;
 use std::io::{self, Read, Write};
@@ -28,7 +30,20 @@ pub struct ListenOptions {
 /// # Errors
 /// If the file can't be read or the group isn't in it.
 pub fn group_id(name: &str, group_file: &Path) -> io::Result<u32> {
-    fs::read_to_string(group_file)?
+    id_in(name, group_file, "group")
+}
+
+/// Looks up a user id in an `/etc/passwd` style file.
+///
+/// # Errors
+/// If the file can't be read or the user isn't in it.
+pub fn user_id(name: &str, passwd_file: &Path) -> io::Result<u32> {
+    id_in(name, passwd_file, "user")
+}
+
+/// The third field of the line whose first field is `name`; both files share that layout.
+fn id_in(name: &str, file: &Path, kind: &str) -> io::Result<u32> {
+    fs::read_to_string(file)?
         .lines()
         .find_map(|line| {
             let mut parts = line.split(':');
@@ -36,13 +51,13 @@ pub fn group_id(name: &str, group_file: &Path) -> io::Result<u32> {
             let gid = parts.nth(1)?;
             (group == name).then(|| gid.parse().ok()).flatten()
         })
-        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, format!("group {name} not found")))
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, format!("{kind} {name} not found")))
 }
 
-/// True if a peer with this uid and gid may use the agent.
+/// True if a peer with this uid may use the agent: root or the panel's user.
 #[must_use]
-pub fn allowed(uid: u32, gid: u32, panel_gid: u32) -> bool {
-    uid == 0 || gid == panel_gid
+pub fn allowed(uid: u32, panel_uid: u32) -> bool {
+    uid == 0 || uid == panel_uid
 }
 
 /// Creates the socket: directory 0750 and socket 0660, both `root:<panel group>`.
@@ -67,7 +82,8 @@ pub fn bind(opts: &ListenOptions) -> io::Result<UnixListener> {
 }
 
 /// Accepts connections forever, one thread each. `handle` turns a line into a response.
-pub fn serve<H>(listener: &UnixListener, panel_gid: Option<u32>, handle: H)
+/// `panel_uid` is the panel's user; `None` skips the peer check, for tests.
+pub fn serve<H>(listener: &UnixListener, panel_uid: Option<u32>, handle: H)
 where
     H: Fn(&str) -> Response + Send + Sync + 'static,
 {
@@ -77,19 +93,19 @@ where
         let handle = Arc::clone(&handle);
         thread::spawn(move || {
             // A connection that fails just ends; the panel reconnects.
-            let _ = connection(stream, panel_gid, &*handle);
+            let _ = connection(stream, panel_uid, &*handle);
         });
     }
 }
 
 fn connection(
     mut stream: UnixStream,
-    panel_gid: Option<u32>,
+    panel_uid: Option<u32>,
     handle: &dyn Fn(&str) -> Response,
 ) -> io::Result<()> {
-    if let Some(panel_gid) = panel_gid {
+    if let Some(panel_uid) = panel_uid {
         let cred = rustix::net::sockopt::socket_peercred(&stream)?;
-        if !allowed(cred.uid.as_raw(), cred.gid.as_raw(), panel_gid) {
+        if !allowed(cred.uid.as_raw(), panel_uid) {
             let refused = AgentError::new(ErrorCode::Forbidden, "only the panel may use the agent");
             stream.write_all(Response::err("unknown", &refused).encode().as_bytes())?;
             return Ok(());
@@ -177,13 +193,22 @@ mod tests {
         fs::write(&file, "root:x:0:\nflytower:x:998:panel\nbroken\n").unwrap();
         assert_eq!(group_id("flytower", &file).unwrap(), 998);
         assert!(group_id("nobody", &file).is_err());
+        let passwd = dir.join("passwd");
+        fs::write(
+            &passwd,
+            "root:x:0:0::/root:/bin/sh\nflytower:x:997:998::/var/lib/flytower:/usr/sbin/nologin\n",
+        )
+        .unwrap();
+        assert_eq!(user_id("flytower", &passwd).unwrap(), 997);
+        assert!(user_id("mc-survival", &passwd).is_err());
         fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]
     fn peer_rules() {
-        assert!(allowed(0, 0, 998));
-        assert!(allowed(1001, 998, 998));
-        assert!(!allowed(1001, 1001, 998));
+        assert!(allowed(0, 997));
+        assert!(allowed(997, 997));
+        // A server's user is refused, whatever groups it is in.
+        assert!(!allowed(1001, 997));
     }
 }
