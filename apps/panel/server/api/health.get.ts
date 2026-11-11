@@ -1,4 +1,5 @@
 import { loadAccess } from '../auth/access'
+import { isFromThisBox } from '../utils/this-box'
 
 /**
  * Liveness for the installer, the updater, the release smoke test and the System page. Never
@@ -19,9 +20,11 @@ export default defineEventHandler(async (event) => {
 
 /** A request straight to the panel's port from this machine, not through the proxy. */
 function fromThisBox(event: Parameters<typeof getRequestIP>[0]) {
-  if (getRequestHeader(event, 'x-forwarded-for')) return false
-  const ip = getRequestIP(event) ?? ''
-  return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1'
+  return isFromThisBox({
+    forwardedFor: getRequestHeader(event, 'x-forwarded-for'),
+    ip: getRequestIP(event),
+    listenHost: process.env.NITRO_HOST || process.env.HOST,
+  })
 }
 
 async function signedIn(event: Parameters<typeof getRequestIP>[0]) {
