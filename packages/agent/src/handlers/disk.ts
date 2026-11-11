@@ -9,8 +9,8 @@ import { join, resolve } from 'node:path'
 import { AgentError, type Params, type Result } from '@flytower/protocol'
 import type { AgentContext } from '../context.ts'
 import { measurer, type Measured } from '../du.ts'
-import { readRecord } from '../updater.ts'
-import { busy } from './update.ts'
+import { dbBackups, readRecord } from '../updater.ts'
+import { busy, exclusively } from './update.ts'
 
 export type ServerGroup = 'world' | 'logs' | 'content' | 'map' | 'backups' | 'exports' | 'other'
 
@@ -39,6 +39,7 @@ export function places(ctx: AgentContext) {
     maps: join(data, 'maps'),
     imports: join(data, 'imports'),
     archive: ctx.paths.archive,
+    state: ctx.paths.state,
     varLog: join(root, 'var/log'),
     journal: join(root, 'var/log/journal'),
     apt: join(root, 'var/cache/apt'),
@@ -118,11 +119,14 @@ export async function prunePlan(ctx: AgentContext): Promise<{ paths: string[]; n
     out.paths.push(join(dir, n))
     out.names.push(n)
   }
-  for (const n of (await names(p.data)).names) {
-    const m = DB_COPY.exec(n)
-    if (m && !keep.has(m[2]!)) {
-      out.paths.push(join(p.data, n))
-      out.names.push(n)
+  // Database copies: the agent's own, and any an older updater left beside the database.
+  for (const folder of [dbBackups(p.state), p.data]) {
+    for (const n of (await names(folder)).names) {
+      const m = DB_COPY.exec(n)
+      if (m && !keep.has(m[2]!)) {
+        out.paths.push(join(folder, n))
+        out.names.push(n)
+      }
     }
   }
   return out
@@ -193,6 +197,10 @@ export async function usage(
       }
     }
     if (!elsewhere.has(resolve(p.config))) await system(p.config, 'flytower')
+    // The agent's own folder (database copies, mostly), unless it's inside one walked above.
+    const inside = (child: string, parent: string) =>
+      resolve(child).startsWith(`${resolve(parent)}/`)
+    if (!inside(p.state, p.data) && !inside(p.state, p.prefix)) await system(p.state, 'flytower')
     await system(p.varLog, 'logs')
     for (const t of [p.apt, p.tmp, p.varTmp]) await system(t, 'temp')
   }
@@ -267,7 +275,10 @@ export async function cleanApt(
   return { freedBytes: Math.max(0, before - after) }
 }
 
-export async function pruneFlytower(
+export const pruneFlytower = (p: Params<'disk.prune-flytower'>, ctx: AgentContext) =>
+  exclusively(() => pruneNow(p, ctx))
+
+async function pruneNow(
   _p: Params<'disk.prune-flytower'>,
   ctx: AgentContext,
 ): Promise<Result<'disk.prune-flytower'>> {

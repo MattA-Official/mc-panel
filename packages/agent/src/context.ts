@@ -15,10 +15,10 @@ export interface AgentContext {
   paths: {
     servers: string // /srv/flytower/servers
     runtimes: string // /opt/flytower/runtimes
-    archive: string // /var/lib/flytower/archive
+    archive: string // /var/lib/flytower-archive, root:panel group 0750
     config: string // /etc/flytower
     systemd: string // /etc/systemd/system
-    state: string // /var/lib/flytower/agent, root only
+    state: string // /var/lib/flytower-agent, root only (0700)
     /** Where releases live, with `current` pointing at one. */
     prefix?: string // /opt/flytower
     /** The panel's data folder, holding its database. */

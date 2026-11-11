@@ -12,6 +12,7 @@ pub mod testing;
 pub mod update;
 
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use std::time::{Duration, SystemTime};
 
 use serde_json::{Value, json};
@@ -50,6 +51,8 @@ pub struct Context {
     pub releases_url: String,
     /// The key releases are signed with, as a PEM `PUBLIC KEY`; tests use their own.
     pub release_key: String,
+    /// Set while an update, a rollback or a clean-up of old releases runs.
+    pub updating: Arc<AtomicBool>,
 }
 
 /// Runs one checked request.

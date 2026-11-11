@@ -6,7 +6,6 @@ use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Duration;
 
-use flytower_agent::caddy;
 use flytower_agent::dispatch::dispatch;
 use flytower_agent::events::{Journal, UnitEvents};
 use flytower_agent::exec::{Exec, RealExec};
@@ -15,6 +14,7 @@ use flytower_agent::handlers::{Context, handle, server, ssh, system_clock, updat
 use flytower_agent::release::RELEASE_KEY;
 use flytower_agent::server::{ListenOptions, bind, group_id, serve, user_id};
 use flytower_agent::units::Paths;
+use flytower_agent::{caddy, folders};
 
 fn env(name: &str, fallback: &str) -> String {
     std::env::var(name).unwrap_or_else(|_| fallback.to_string())
@@ -56,6 +56,7 @@ fn main() -> ExitCode {
         panel_group: env("FLYTOWER_PANEL_GROUP", "flytower"),
         releases_url: env("FLYTOWER_RELEASES_URL", update::RELEASES),
         release_key: RELEASE_KEY.into(),
+        updating: Arc::default(),
     };
     let group = ctx.panel_group.clone();
     let gid = match group_id(&group, Path::new("/etc/group")) {
@@ -90,6 +91,10 @@ fn main() -> ExitCode {
     println!("flytower-agent {} (rust) listening", ctx.version);
     // Tell bin/flytower-agent this start worked, so it keeps choosing Rust after a restart.
     clear_start_marker(&opts.socket_path);
+    // Before anything reads or writes state: the folders, and what older releases left.
+    if let Err(e) = folders::prepare(&ctx) {
+        eprintln!("preparing the agent's folders failed: {}", e.message);
+    }
     // An emergency SSH opening must end on time even if the agent restarted in between.
     if let Err(e) = ssh::restore(&ctx) {
         eprintln!("restoring the SSH timer failed: {}", e.message);

@@ -11,9 +11,10 @@ use std::time::{Duration, Instant, SystemTime};
 use serde_json::{Value, json};
 
 use super::Context;
-use super::files::{mkdir, read, remove, write};
+use super::files::{io_error, remove};
 use crate::envelope::{AgentError, ErrorCode};
 use crate::exec::Exec;
+use crate::safe_fs::{own_dir, read_small, write_atomic};
 use crate::time::{iso, parse_iso};
 
 pub const SSH_COMMENT: &str = "flytower emergency ssh";
@@ -161,7 +162,7 @@ fn arm(ctx: &Context, delay: Duration) {
 }
 
 fn closes_at(state_dir: &str) -> Option<String> {
-    let state: Value = serde_json::from_str(&read(&state_file(state_dir))?).ok()?;
+    let state: Value = serde_json::from_str(&read_small(&state_file(state_dir))?).ok()?;
     state.get("closesAt")?.as_str().map(str::to_string)
 }
 
@@ -223,9 +224,11 @@ pub fn set(open: bool, minutes: Option<i64>, ctx: &Context) -> Result<Value, Age
     if let Some(minutes) = minutes {
         let delay = Duration::from_secs(u64::try_from(minutes).unwrap_or(0) * 60);
         let at = (ctx.now)() + delay;
-        mkdir(Path::new(&ctx.paths.state), 0o700)?;
+        let file = state_file(&ctx.paths.state);
         let state = json!({ "closesAt": iso(at) }).to_string();
-        write(&state_file(&ctx.paths.state), &state, 0o600)?;
+        own_dir(Path::new(&ctx.paths.state), 0o700)
+            .and_then(|()| write_atomic(&file, &state, 0o600))
+            .map_err(|e| io_error("can't write", &file, &e))?;
         arm(ctx, delay);
     } else {
         // Open for good: no timer.
@@ -357,6 +360,7 @@ mod tests {
             panel_group: "flytower".into(),
             releases_url: String::new(),
             release_key: String::new(),
+            updating: Arc::default(),
         };
         Setup {
             _root: root,

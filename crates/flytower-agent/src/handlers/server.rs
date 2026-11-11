@@ -10,6 +10,7 @@ use super::Context;
 use super::files::{mkdir, read, remove as rm, write};
 use super::service::unit_name;
 use crate::envelope::{AgentError, ErrorCode};
+use crate::folders::archive_dir;
 use crate::units::{env_file, limits_drop_in, template_unit};
 
 /// The Linux user that owns and runs a server.
@@ -307,11 +308,9 @@ pub fn remove(name: &str, ctx: &Context) -> Result<Value, AgentError> {
 
     let mut archived_to = None;
     if f.dir.exists() {
-        // Readable by the panel's group, so a deleted server can be imported again.
-        let archive = Path::new(&ctx.paths.archive);
-        mkdir(archive, 0o777)?;
-        run(ctx, "chgrp", &[&ctx.panel_group, &ctx.paths.archive])?;
-        run(ctx, "chmod", &["0750", &ctx.paths.archive])?;
+        // Readable by the panel's group, so a deleted server can be imported again. Only root
+        // can change the folder, so the tarball's path can't be swapped for a link.
+        let archive = archive_dir(ctx)?;
         let stamp = crate::time::iso(SystemTime::now()).replace([':', '.'], "-");
         let tarball = archive.join(format!("{name}-{stamp}.tar.gz"));
         let to = str(&tarball);

@@ -46,7 +46,7 @@ With the Rust agent (the default):
 - [ ] Create a new server on a Java version you haven't used yet. Java downloads and the server starts.
 - [ ] Change a server's memory and port in **Settings**, then restart it. Both take effect.
 - [ ] **System**, **SSH**: open SSH for 5 minutes, check you can connect, then let it close by itself. Restart the agent while it's open and check it still closes on time.
-- [ ] Delete a test server. Its folder is archived under `/var/lib/flytower/archive`.
+- [ ] Delete a test server. Its folder is archived under `/var/lib/flytower-archive`.
 - [ ] **System**, **Updates**: update to a newer build, then use **Go back to**. Both work, the agent stays on Rust afterwards, and `journalctl -u 'flytower-update-*'` shows the updater's result as one JSON line.
 - [ ] Fallback: `cp /opt/flytower/current/bin/flytower-agent-rust /root/` then `echo 'exit 1' > /opt/flytower/current/bin/flytower-agent-rust` and restart `flytower-agent`. Within a few seconds the journal shows the fallback message and the Bun agent listening, and the panel still works. Put the binary back (`cp /root/flytower-agent-rust /opt/flytower/current/bin/`), delete the marker, restart, and it's Rust again.
 - [ ] Choose Bun as above, and check everything still works with nothing left over.
