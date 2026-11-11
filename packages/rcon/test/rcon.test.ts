@@ -17,6 +17,8 @@ interface FakeOptions {
   trickle?: boolean
   /** Never answer commands. */
   silent?: boolean
+  /** Wait this long before answering a command (login is answered straight away). */
+  delayMs?: number
   /** Handle only the first packet of each read, as Minecraft does. */
   onePacketPerRead?: boolean
 }
@@ -53,6 +55,7 @@ function fakeServer(opts: FakeOptions = {}) {
           } else if (opts.silent) {
             continue
           } else if (p.type === PacketType.Command) {
+            if (opts.delayMs) await Bun.sleep(opts.delayMs)
             const body = opts.reply?.(p.body) ?? `ran ${p.body}`
             for (let i = 0; i === 0 || i < body.length; i += 4096) {
               await send(s, p.id, PacketType.Response, body.slice(i, i + 4096))
@@ -150,10 +153,11 @@ describe('Rcon', () => {
   })
 
   it('lets one slow command wait longer than the default', async () => {
-    const { port } = fakeServer({ reply: () => 'Saved the game' })
-    const rcon = await Rcon.connect({ host: '127.0.0.1', port, password: 'secret', timeoutMs: 1 })
-    // The default 1 ms would fail; the override gives it time.
-    expect(await rcon.command('save-all flush', { timeoutMs: 1000 })).toBe('Saved the game')
+    // Login is answered at once, so the short default only has to cover it; the command's
+    // answer comes later than that default, and only the override leaves time for it.
+    const { port } = fakeServer({ reply: () => 'Saved the game', delayMs: 300 })
+    const rcon = await Rcon.connect({ host: '127.0.0.1', port, password: 'secret', timeoutMs: 100 })
+    expect(await rcon.command('save-all flush', { timeoutMs: 2000 })).toBe('Saved the game')
     rcon.close()
   })
 
