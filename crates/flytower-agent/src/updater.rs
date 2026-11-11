@@ -2,14 +2,15 @@
 //! `packages/agent/src/updater.ts`. Runs as its own transient systemd unit (started by
 //! `update.install` and `update.rollback`), because it restarts the agent that started it.
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
-use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 use crate::entry_points::{AGENT_UNIT, set_agent_exec_start};
 use crate::exec::Exec;
+use crate::safe_fs::{Owner, copy_file, own_dir, read_small, write_atomic};
 use crate::time::iso;
 use crate::verbs::{UpdateRecord, UpdateState};
 
@@ -81,6 +82,29 @@ pub fn record_path(state: &Path) -> PathBuf {
     state.join("update.json")
 }
 
+/// Where the database is copied before an update: in the agent's own folder, which only root
+/// can change, never beside the database in the panel's folder.
+#[must_use]
+pub fn db_backups(state: &Path) -> PathBuf {
+    state.join("db-backups")
+}
+
+/// The last update record, read without following a link.
+#[must_use]
+pub fn read_record(state: &Path) -> Option<UpdateRecord> {
+    serde_json::from_str(&read_small(&record_path(state))?).ok()
+}
+
+/// Writes the update record, in the agent's own folder.
+///
+/// # Errors
+/// If the folder isn't the agent's, or the file can't be written.
+pub fn write_record(state: &Path, record: &UpdateRecord) -> std::io::Result<()> {
+    own_dir(state, 0o700)?;
+    let json = serde_json::to_string_pretty(record).map_err(std::io::Error::other)?;
+    write_atomic(&record_path(state), &json, 0o600)
+}
+
 /// The version `current` points at.
 ///
 /// # Errors
@@ -117,23 +141,21 @@ fn rewrite(file: &Path, start: &str, line: &str) -> Result<(), String> {
         .map_err(|e| format!("{}: {e}", file.display()))
 }
 
-/// A database file as it was before the update, and who owned it.
-struct Saved {
-    file: &'static str,
-    uid: u32,
-    gid: u32,
-    mode: u32,
+/// The database files as they were before the update.
+#[derive(Default)]
+struct SavedDatabase {
+    /// Copied files, and who owned them.
+    saved: BTreeMap<&'static str, Owner>,
+    /// Files that weren't there, so any the new version made can go on a rollback.
+    absent: BTreeSet<&'static str>,
 }
 
-/// Copies a file, keeping its modified time, as `cp(…, { preserveTimestamps: true })` does.
-fn copy(src: &Path, dest: &Path) -> std::io::Result<()> {
-    fs::copy(src, dest)?;
-    let modified = fs::metadata(src)?.modified()?;
-    fs::File::options()
-        .write(true)
-        .open(dest)?
-        .set_modified(modified)
-}
+/// Backups are root's alone, whoever owned the original.
+const ROOT_ONLY: Owner = Owner {
+    uid: 0,
+    gid: 0,
+    mode: 0o600,
+};
 
 impl Updater {
     fn run(&self, file: &str, args: &[&str]) -> Result<(), String> {
@@ -218,14 +240,15 @@ impl Updater {
     }
 
     fn write(&self, record: &UpdateRecord) -> UpdateRecord {
-        if let Ok(json) = serde_json::to_string_pretty(record) {
-            let _ = fs::write(record_path(&self.state), json);
+        if let Err(e) = write_record(&self.state, record) {
+            eprintln!("flytower-updater: can't write the update record: {e}");
         }
         record.clone()
     }
 
     /// Moves from the current release to `to`. The database is copied first (with the panel
-    /// stopped, so the copy is consistent) and put back if the new version isn't healthy.
+    /// stopped, so the copy is consistent) and put back if the new version isn't healthy. If
+    /// the copy can't be made, nothing else is touched: the old version starts again as it was.
     #[must_use]
     pub fn run_update(&self, to: &str, manual: bool) -> UpdateRecord {
         let now = || iso((self.now)());
@@ -254,63 +277,76 @@ impl Updater {
             });
         }
 
-        let mut saved = Vec::new();
-        let outcome = self
-            .save_database(to, &mut saved)
-            .and_then(|()| self.switch_to(to))
-            .map(|()| self.healthy(to));
-        match outcome {
+        let db = match self.save_database(to) {
+            Ok(db) => db,
+            Err(e) => {
+                // The live database hasn't been touched. Put the agent unit back (the agent
+                // pointed it at the new release before handing over) and start the panel again.
+                let _ = self.switch_to(&from);
+                return finish(
+                    UpdateState::Failed,
+                    Some(format!(
+                        "couldn't copy the database first, so nothing was changed ({e})"
+                    )),
+                );
+            }
+        };
+        match self.switch_to(to).map(|()| self.healthy(to)) {
             Ok(None) => {
                 self.prune(&[to, &from]);
                 finish(UpdateState::Succeeded, None)
             }
             Ok(Some(problem)) => {
-                let _ = self.roll_back(&from, to, &saved);
+                let _ = self.roll_back(&from, to, &db);
                 finish(UpdateState::RolledBack, Some(problem))
             }
             Err(e) => {
-                let _ = self.roll_back(&from, to, &saved);
+                let _ = self.roll_back(&from, to, &db);
                 finish(UpdateState::RolledBack, Some(e))
             }
         }
     }
 
-    fn save_database(&self, to: &str, saved: &mut Vec<Saved>) -> Result<(), String> {
-        self.run("systemctl", &["stop", "flytower-panel.service"])?;
-        for file in DB_FILES {
-            let src = self.panel_data.join(file);
-            let Ok(meta) = fs::metadata(&src) else {
-                continue;
-            };
-            copy(&src, &self.panel_data.join(format!("{file}.before-{to}")))
-                .map_err(|e| format!("can't copy {}: {e}", src.display()))?;
-            saved.push(Saved {
-                file,
-                uid: meta.uid(),
-                gid: meta.gid(),
-                mode: meta.mode(),
-            });
-        }
-        Ok(())
+    fn backup_of(&self, file: &str, to: &str) -> PathBuf {
+        db_backups(&self.state).join(format!("{file}.before-{to}"))
     }
 
-    fn roll_back(&self, from: &str, to: &str, saved: &[Saved]) -> Result<(), String> {
+    fn save_database(&self, to: &str) -> Result<SavedDatabase, String> {
+        self.run("systemctl", &["stop", "flytower-panel.service"])?;
+        let backups = db_backups(&self.state);
+        own_dir(&self.state, 0o700)
+            .and_then(|()| own_dir(&backups, 0o700))
+            .map_err(|e| format!("can't use {}: {e}", backups.display()))?;
+        let mut db = SavedDatabase::default();
+        for file in DB_FILES {
+            let src = self.panel_data.join(file);
+            match copy_file(&src, &self.backup_of(file, to), Some(ROOT_ONLY)) {
+                Ok(owner) => {
+                    db.saved.insert(file, owner);
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                    db.absent.insert(file);
+                }
+                Err(e) => return Err(format!("can't copy {}: {e}", src.display())),
+            }
+        }
+        Ok(db)
+    }
+
+    fn roll_back(&self, from: &str, to: &str, db: &SavedDatabase) -> Result<(), String> {
         let _ = self.run("systemctl", &["stop", "flytower-panel.service"]);
         for file in DB_FILES {
             let dest = self.panel_data.join(file);
-            let _ = fs::remove_file(&dest);
-            let Some(was) = saved.iter().find(|s| s.file == file) else {
-                continue;
-            };
-            // The updater runs as root, so a restored file must go back to the panel's user,
-            // or SQLite can't open it (a root-owned -shm file stops the panel starting).
-            let back = self.panel_data.join(format!("{file}.before-{to}"));
-            copy(&back, &dest)
-                .and_then(|()| std::os::unix::fs::chown(&dest, Some(was.uid), Some(was.gid)))
-                .and_then(|()| {
-                    fs::set_permissions(&dest, fs::Permissions::from_mode(was.mode & 0o7777))
-                })
-                .map_err(|e| format!("can't restore {}: {e}", dest.display()))?;
+            if let Some(was) = db.saved.get(file) {
+                // The updater runs as root, so a restored file must go back to the panel's
+                // user, or SQLite can't open it (a root-owned -shm file stops the panel).
+                copy_file(&self.backup_of(file, to), &dest, Some(*was))
+                    .map_err(|e| format!("can't restore {}: {e}", dest.display()))?;
+            } else if db.absent.contains(file) {
+                // Made by the new version (a -wal or -shm file); not part of the old database.
+                let _ = fs::remove_file(&dest);
+            }
+            // Anything else was never copied, so it's left exactly as it is.
         }
         self.switch_to(from)
     }
@@ -331,6 +367,7 @@ impl Updater {
 
 #[cfg(test)]
 mod tests {
+    use std::os::unix::fs::MetadataExt;
     use std::sync::Mutex;
 
     use super::*;
@@ -399,8 +436,15 @@ mod tests {
         let agent = read(Path::new(&p.systemd).join(AGENT_UNIT));
         assert!(agent.contains("FLYTOWER_VERSION=0.5.0"));
         assert!(agent.contains(&new_exec(&prefix)));
-        let saved = Path::new(&p.panel_data).join("flytower.db.before-0.5.0");
-        assert_eq!(read(saved), "old database");
+        // The copy is kept in the agent's own folder, root's alone, not beside the database.
+        let saved = db_backups(Path::new(&p.state)).join("flytower.db.before-0.5.0");
+        assert_eq!(read(&saved), "old database");
+        assert_eq!(fs::metadata(&saved).unwrap().mode() & 0o777, 0o600);
+        assert!(
+            !Path::new(&p.panel_data)
+                .join("flytower.db.before-0.5.0")
+                .exists()
+        );
         assert!(
             fake.ran()
                 .contains(&"systemctl restart flytower-agent.service".to_string())
@@ -467,6 +511,84 @@ mod tests {
         );
         assert!(record.manual);
         assert_eq!(current_version(&prefix).unwrap(), "0.4.0");
+    }
+
+    #[test]
+    fn leaves_the_live_database_alone_if_it_cant_be_copied() {
+        let (root, prefix) = layout();
+        let data = Path::new(&root.paths.panel_data);
+        fs::write(data.join("flytower.db-shm"), "shared memory").unwrap();
+        // Not a regular file, so it can't be copied (as a full disk can't be written).
+        fs::create_dir(data.join("flytower.db-wal")).unwrap();
+        let fake = Fake::new(vec![]);
+        let record = updater(&root, &fake, healthy_as("0.5.0")).run_update("0.5.0", false);
+        assert_eq!(record.state, UpdateState::Failed);
+        assert!(
+            record
+                .reason
+                .as_deref()
+                .unwrap()
+                .starts_with("couldn't copy the database first")
+        );
+        assert_eq!(read(data.join("flytower.db")), "old database");
+        assert_eq!(read(data.join("flytower.db-shm")), "shared memory");
+        assert_eq!(current_version(&prefix).unwrap(), "0.4.0");
+        assert_eq!(
+            fake.ran().last().map(String::as_str),
+            Some("systemctl start flytower-panel.service")
+        );
+    }
+
+    #[test]
+    fn never_copies_through_a_planted_link() {
+        let (root, _) = layout();
+        let p = &root.paths;
+        let data = Path::new(&p.panel_data);
+        let secret = Path::new(&p.config).join("secret");
+        fs::write(&secret, "root only").unwrap();
+        fs::remove_file(data.join("flytower.db")).unwrap();
+        std::os::unix::fs::symlink(&secret, data.join("flytower.db")).unwrap();
+        let backups = db_backups(Path::new(&p.state));
+        fs::create_dir_all(&backups).unwrap();
+        let target = Path::new(&p.config).join("target");
+        fs::write(&target, "untouched").unwrap();
+        std::os::unix::fs::symlink(&target, backups.join("flytower.db-wal.before-0.5.0")).unwrap();
+        let fake = Fake::new(vec![]);
+        let record = updater(&root, &fake, healthy_as("0.5.0")).run_update("0.5.0", false);
+        assert_eq!(record.state, UpdateState::Failed);
+        assert!(!backups.join("flytower.db.before-0.5.0").exists());
+        assert_eq!(read(&target), "untouched");
+        assert_eq!(read(&secret), "root only");
+    }
+
+    #[test]
+    fn rolls_back_removing_only_files_the_new_version_made() {
+        let (root, _) = layout();
+        let p = root.paths.clone();
+        let data = PathBuf::from(&p.panel_data);
+        let target = Path::new(&p.config).join("target");
+        fs::write(&target, "untouched").unwrap();
+        let health: HealthCheck = {
+            let (data, target) = (data.clone(), target.clone());
+            Arc::new(move |_| {
+                fs::write(data.join("flytower.db"), "migrated").unwrap();
+                fs::write(data.join("flytower.db-wal"), "new wal").unwrap();
+                // Something planted at a restore path is removed, not written through.
+                let _ = fs::remove_file(data.join("flytower.db-shm"));
+                std::os::unix::fs::symlink(&target, data.join("flytower.db-shm")).unwrap();
+                Ok(Health {
+                    version: "0.4.0".into(),
+                    agent_ok: true,
+                })
+            })
+        };
+        let fake = Fake::new(vec![]);
+        let record = updater(&root, &fake, health).run_update("0.5.0", false);
+        assert_eq!(record.state, UpdateState::RolledBack);
+        assert_eq!(read(data.join("flytower.db")), "old database");
+        assert!(!data.join("flytower.db-wal").exists());
+        assert!(fs::symlink_metadata(data.join("flytower.db-shm")).is_err());
+        assert_eq!(read(&target), "untouched");
     }
 
     #[test]

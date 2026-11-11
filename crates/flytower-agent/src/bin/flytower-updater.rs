@@ -29,7 +29,7 @@ fn main() -> ExitCode {
         panel_data: env("FLYTOWER_PANEL_DATA", "/var/lib/flytower"),
         config: env("FLYTOWER_CONFIG_DIR", "/etc/flytower"),
         systemd: env("FLYTOWER_SYSTEMD_DIR", "/etc/systemd/system"),
-        state: env("FLYTOWER_AGENT_STATE_DIR", "/var/lib/flytower/agent"),
+        state: env("FLYTOWER_AGENT_STATE_DIR", "/var/lib/flytower-agent"),
         health: curl_health(Arc::clone(&exec)),
         exec,
         sleep: Arc::new(std::thread::sleep),
