@@ -9,10 +9,11 @@ use std::path::Path;
 pub struct Paths {
     pub servers: String,
     pub runtimes: String,
+    /// Root's, readable by the panel's group (0750).
     pub archive: String,
     pub config: String,
     pub systemd: String,
-    /// Root only.
+    /// Root only (0700): SSH timer, update record, database copies.
     pub state: String,
     /// Where releases live, with `current` pointing at one.
     pub prefix: String,
@@ -34,10 +35,10 @@ impl Paths {
         Self {
             servers: env("FLYTOWER_SERVERS_DIR", "/srv/flytower/servers"),
             runtimes: env("FLYTOWER_RUNTIMES_DIR", "/opt/flytower/runtimes"),
-            archive: env("FLYTOWER_ARCHIVE_DIR", "/var/lib/flytower/archive"),
+            archive: env("FLYTOWER_ARCHIVE_DIR", "/var/lib/flytower-archive"),
             config: env("FLYTOWER_CONFIG_DIR", "/etc/flytower"),
             systemd: env("FLYTOWER_SYSTEMD_DIR", "/etc/systemd/system"),
-            state: env("FLYTOWER_AGENT_STATE_DIR", "/var/lib/flytower/agent"),
+            state: env("FLYTOWER_AGENT_STATE_DIR", "/var/lib/flytower-agent"),
             prefix: env("FLYTOWER_PREFIX", "/opt/flytower"),
             panel_data: env("FLYTOWER_PANEL_DATA", "/var/lib/flytower"),
             system: "/".into(),
