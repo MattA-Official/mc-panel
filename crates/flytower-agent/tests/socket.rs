@@ -43,6 +43,7 @@ fn answers_in_order_over_a_socket() {
         panel_group: "flytower".into(),
         releases_url: String::new(),
         release_key: String::new(),
+        updating: Arc::default(),
     };
     thread::spawn(move || {
         serve(&listener, None, move |line| {
