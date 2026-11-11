@@ -12,11 +12,13 @@ panelRoute:
 **System**, **Updates** shows the version you're on and offers any newer release, with its notes. **Update** asks for your passkey, then:
 
 1. downloads the release and checks its signature against Flytower's release key;
-2. copies the panel's database aside;
+2. copies the panel's database aside, into `/var/lib/flytower-agent/db-backups`, which only root can read. If the copy can't be made (a full disk, say), the update stops there and your database is left exactly as it was;
 3. switches to the new version and restarts the panel and agent. Your Minecraft servers keep running throughout;
 4. checks the new panel starts and answers. If it doesn't, Flytower puts the previous version and the database back by itself, and the card says what went wrong.
 
 The panel is away for a minute or so. **Go back to** the previous version is offered afterwards in the same way. Both show up in **Activity**.
+
+One update runs at a time: while one is downloading or switching, another update, a **Go back to** or a clean-up of old releases is refused until it's done. The system helper only installs releases newer than the one running. To go back, use **Go back to**, which offers the releases still on the machine.
 
 ## Stable or Beta
 

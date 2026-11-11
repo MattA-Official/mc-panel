@@ -84,5 +84,5 @@ Old backups and world exports are the usual culprits.
 
 - Lower how many backups each server keeps (**World**, **Backups**, **Schedule**), or delete old ones. Backups you took yourself are never deleted automatically.
 - Delete world exports you've already downloaded (**World**, **Past worlds**).
-- Deleted servers are kept as archives in `/var/lib/flytower/archive` so they can be brought back. Delete the ones you're sure about over [SSH](troubleshooting.md).
+- Deleted servers are kept as archives in `/var/lib/flytower-archive` (before 1.4.1, `/var/lib/flytower/archive`; the system helper moves them across) so they can be brought back. Delete the ones you're sure about over [SSH](troubleshooting.md).
 - With [off-site copies](backups.md#off-site-copies) set up, you can keep fewer backups on the machine.
