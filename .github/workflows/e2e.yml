@@ -143,6 +143,50 @@ jobs:
           call ssh.set '{"open":true}'
           docker exec vps ufw --force disable
 
+      - name: Rust agent by default, falling back to Bun if it won't start
+        run: |
+          kind() { bash tests/e2e/agent-kind.sh; }
+          expect() { k="$(kind)"; [ "$k" = "$1" ] || { echo "expected the $1 agent, got $k: $2"; exit 1; }; echo "✓ $1: $2"; }
+          answers() {
+            for _ in $(seq 1 10); do
+              docker exec vps /opt/flytower/current/bin/bun /src/tests/e2e/agent-call.ts ssh.status && return 0
+              sleep 1
+            done
+            echo "the agent doesn't answer"; exit 1
+          }
+          restart() { docker exec vps systemctl restart flytower-agent; }
+          bin="$(docker exec vps readlink -f /opt/flytower/current/bin)"
+          marker=/run/flytower/agent-rust-starting
+
+          expect rust "a fresh install"
+          answers
+
+          # A Rust agent that exits before it listens: systemd restarts the wrapper, which sees
+          # the marker it left and starts Bun instead.
+          docker exec vps sh -c "mv '$bin/flytower-agent-rust' '$bin/flytower-agent-rust.real' &&
+            printf '#!/bin/sh\necho broken >&2\nexit 1\n' > '$bin/flytower-agent-rust' &&
+            chmod +x '$bin/flytower-agent-rust'"
+          restart
+          expect bun "the Rust agent failed to start"
+          answers
+          docker exec vps mv -f "$bin/flytower-agent-rust.real" "$bin/flytower-agent-rust"
+          restart
+          expect bun "it stays on Bun until a reboot or an update clears the marker"
+          docker exec vps rm "$marker"
+          restart
+          expect rust "the marker cleared"
+          answers
+
+          # Choosing Bun by hand.
+          docker exec vps sh -c 'echo bun > /etc/flytower/agent'
+          restart
+          expect bun "chosen in /etc/flytower/agent"
+          answers
+          docker exec vps rm /etc/flytower/agent
+          restart
+          expect rust "back to the default"
+          answers
+
       - name: Self-update, and roll back an update that won't start
         run: |
           call() { docker exec vps /opt/flytower/current/bin/bun /src/tests/e2e/agent-call.ts "$@"; }
@@ -160,6 +204,8 @@ jobs:
           for _ in $(seq 1 60); do [ "$(last_state)" = succeeded ] && break; sleep 3; done
           health | grep -q '"version":"0.0.1-e2e"' || { echo "not updated: $(health)"; call update.status; exit 1; }
           echo "✓ updated to 0.0.1-e2e"
+          # The new release's Rust agent took over.
+          [ "$(bash tests/e2e/agent-kind.sh)" = rust ] || { echo "not on the Rust agent after updating"; exit 1; }
 
           call update.install '{"version":"0.0.2-e2e"}'
           for _ in $(seq 1 80); do [ "$(last_state)" = rolled-back ] && break; sleep 3; done
@@ -168,6 +214,7 @@ jobs:
           for _ in $(seq 1 30); do health | grep -q '"version":"0.0.1-e2e"' && break; sleep 2; done
           health | grep -q '"version":"0.0.1-e2e"' || { echo "not back on 0.0.1-e2e: $(health)"; docker exec vps ls -la /var/lib/flytower; exit 1; }
           echo "✓ a broken update rolled back to 0.0.1-e2e"
+          [ "$(bash tests/e2e/agent-kind.sh)" = rust ] || { echo "not on the Rust agent after rolling back"; exit 1; }
 
       - name: Logs
         if: always()
