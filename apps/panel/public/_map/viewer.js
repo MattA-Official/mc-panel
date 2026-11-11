@@ -42,7 +42,12 @@
   coords.hidden = true
 
   // The view: which dimension, the block at the centre, and the zoom (a power of two).
+  // While zooming, zoom is fractional: it eases towards goal over ZOOM_MS.
   const view = { dim: 0, x: 0, z: 0, zoom: 0 }
+  let goal = 0
+  const ZOOM_MS = 160
+  const FADE_MS = 120
+  const still = matchMedia('(prefers-reduced-motion: reduce)')
   let manifest = null
   let manifestText = ''
   let rev = Date.now()
@@ -56,6 +61,7 @@
   let gliding = 0
 
   const scale = () => 2 ** view.zoom
+  const clampZoom = (z) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z))
   const dims = () => (manifest ? manifest.dimensions : [])
   const current = () => dims()[view.dim]
 
@@ -75,7 +81,7 @@
     if (Number.isFinite(Number(x)) && x !== '' && x !== undefined) view.x = Number(x)
     if (Number.isFinite(Number(z)) && z !== '' && z !== undefined) view.z = Number(z)
     if (zoom !== undefined && Number.isFinite(Number(zoom))) {
-      view.zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(Number(zoom))))
+      view.zoom = goal = clampZoom(Math.round(Number(zoom)))
     }
   }
 
@@ -89,12 +95,45 @@
       history.replaceState(
         null,
         '',
-        `#${id}/${Math.round(view.x)}/${Math.round(view.z)}/${view.zoom}`,
+        `#${id}/${Math.round(view.x)}/${Math.round(view.z)}/${Math.round(goal)}`,
       )
     }, 250)
   }
 
   // --- Tiles ---
+
+  // Each tile remembers where it belongs. Tiles from the level shown before (a zoom across a
+  // level, or a redraw of the world) stay underneath, scaled to fit, until the new level's
+  // tiles in view have all arrived, so the map never flashes blank.
+  let want = new Set()
+  let preloadTimer = 0
+  const preloaded = new Map()
+
+  // The blocks on screen: left, top, width and height.
+  function onScreen() {
+    const s = scale()
+    const w = root.clientWidth / s
+    const h = root.clientHeight / s
+    return [view.x - w / 2, view.z - h / 2, w, h]
+  }
+
+  // Which tiles cover an area at a zoom: the sharpest level that isn't bigger than needed.
+  function cover(zoom, [left, topZ, w, h] = onScreen()) {
+    const d = current()
+    const level = Math.min(manifest.levels, Math.max(0, -Math.ceil(zoom - 1e-6)))
+    const blocks = manifest.tileSize * 2 ** level
+    const [bx0, bz0, bx1, bz1] = d.bounds
+    // Region bounds at this level; >> floors negatives as we need.
+    return {
+      level,
+      tx0: Math.max(bx0 >> level, Math.floor(left / blocks)),
+      tx1: Math.min(bx1 >> level, Math.floor((left + w) / blocks)),
+      tz0: Math.max(bz0 >> level, Math.floor(topZ / blocks)),
+      tz1: Math.min(bz1 >> level, Math.floor((topZ + h) / blocks)),
+    }
+  }
+
+  const tileUrl = (d, level, tx, tz) => `${d.tiles}/${level}/${tx}_${tz}.png?r=${rev}`
 
   function draw() {
     const d = current()
@@ -102,54 +141,110 @@
     const w = root.clientWidth
     const h = root.clientHeight
     const s = scale()
-    const level = Math.min(manifest.levels, Math.max(0, -view.zoom))
-    const blocks = manifest.tileSize * 2 ** level
-    const size = blocks * s
-    const [bx0, bz0, bx1, bz1] = d.bounds
-    // Region bounds at this level; >> floors negatives as we need.
-    const lx0 = bx0 >> level
-    const lz0 = bz0 >> level
-    const lx1 = bx1 >> level
-    const lz1 = bz1 >> level
     const left = view.x - w / 2 / s
     const topZ = view.z - h / 2 / s
-    const tx0 = Math.max(lx0, Math.floor(left / blocks))
-    const tx1 = Math.min(lx1, Math.floor((left + w / s) / blocks))
-    const tz0 = Math.max(lz0, Math.floor(topZ / blocks))
-    const tz1 = Math.min(lz1, Math.floor((topZ + h / s) / blocks))
-    const want = new Set()
-    for (let tz = tz0; tz <= tz1; tz++) {
-      for (let tx = tx0; tx <= tx1; tx++) {
-        const key = `${d.tiles}/${level}/${tx}_${tz}`
-        want.add(key)
-        let img = tiles.get(key)
-        if (!img) {
-          img = new Image()
-          img.alt = ''
-          img.decoding = 'async'
-          img.onerror = () => (img.style.visibility = 'hidden')
-          img.src = `${d.tiles}/${level}/${tx}_${tz}.png?r=${rev}`
-          tiles.set(key, img)
-          tilesLayer.append(img)
+    // Zooming out, go straight to the goal's level: it covers the new edges sooner.
+    const c = cover(Math.min(view.zoom, goal))
+    want = new Set()
+    for (let tz = c.tz0; tz <= c.tz1; tz++) {
+      for (let tx = c.tx0; tx <= c.tx1; tx++) {
+        const url = tileUrl(d, c.level, tx, tz)
+        want.add(url)
+        if (tiles.has(url)) continue
+        const img = new Image()
+        img.alt = ''
+        img.decoding = 'async'
+        const t = { img, level: c.level, tx, tz, ready: false }
+        img.onload = () => {
+          // Fade in over the old level, and only count it as there once it fully is.
+          img.classList.add('ready')
+          setTimeout(
+            () => {
+              t.ready = true
+              tidy()
+            },
+            still.matches ? 0 : FADE_MS,
+          )
         }
-        img.style.left = `${Math.round((tx * blocks - left) * s)}px`
-        img.style.top = `${Math.round((tz * blocks - topZ) * s)}px`
-        img.style.width = img.style.height = `${Math.ceil(size)}px`
+        img.onerror = () => {
+          t.ready = true
+          img.style.visibility = 'hidden'
+          tidy()
+        }
+        img.src = url
+        tiles.set(url, t)
+        tilesLayer.append(img)
       }
     }
-    for (const [key, img] of tiles) {
-      if (!want.has(key)) {
-        img.remove()
-        tiles.delete(key)
+    const waiting = [...want].some((url) => !tiles.get(url).ready)
+    for (const [url, t] of tiles) {
+      const blocks = manifest.tileSize * 2 ** t.level
+      // Edges are rounded on their own, so neighbouring tiles always meet with no gap.
+      const x0 = Math.round((t.tx * blocks - left) * s)
+      const x1 = Math.round(((t.tx + 1) * blocks - left) * s)
+      const y0 = Math.round((t.tz * blocks - topZ) * s)
+      const y1 = Math.round(((t.tz + 1) * blocks - topZ) * s)
+      if (!want.has(url)) {
+        // Old tiles only fill gaps: drop them once they're not needed, off screen, or tiny.
+        const off = x1 <= 0 || y1 <= 0 || x0 >= w || y0 >= h
+        if (!waiting || off || x1 - x0 < 16 || !t.ready) {
+          t.img.remove()
+          tiles.delete(url)
+          continue
+        }
       }
+      const style = t.img.style
+      style.left = `${x0}px`
+      style.top = `${y0}px`
+      style.width = `${x1 - x0}px`
+      style.height = `${y1 - y0}px`
+      t.img.classList.toggle('old', !want.has(url))
     }
     tilesLayer.classList.toggle('pixelated', s > 1)
     drawPlayers()
     writeHash()
+    if (!waiting) preload()
+  }
+
+  // A new tile arrived: once the whole view has, the old level underneath can go.
+  function tidy() {
+    if ([...want].every((url) => tiles.get(url)?.ready)) draw()
+  }
+
+  // Once the view has settled, fetch the tiles one zoom step in and out, so the next zoom
+  // has them ready (the server lets the browser keep them for a minute). Zooming in stays
+  // inside the screen; zooming out can reach up to a screen further on every side.
+  function preload() {
+    clearTimeout(preloadTimer)
+    preloadTimer = setTimeout(() => {
+      const d = current()
+      if (!d || zooming || pointers.size) return
+      const now = cover(goal).level
+      const [left, topZ, w, h] = onScreen()
+      // Out first: zooming in already has the old level to show, scaled up, while it waits.
+      const steps = [
+        [goal - 1, [left - w, topZ - h, w * 3, h * 3]],
+        [goal + 1, [left, topZ, w, h]],
+      ]
+      for (const [z, area] of steps) {
+        const c = cover(clampZoom(z), area)
+        if (c.level === now) continue
+        for (let tz = c.tz0; tz <= c.tz1; tz++) {
+          for (let tx = c.tx0; tx <= c.tx1; tx++) {
+            const url = tileUrl(d, c.level, tx, tz)
+            if (tiles.has(url) || preloaded.has(url)) continue
+            if (preloaded.size >= 200) preloaded.delete(preloaded.keys().next().value)
+            const img = new Image()
+            img.src = url
+            preloaded.set(url, img)
+          }
+        }
+      }
+    }, 300)
   }
 
   function clearTiles() {
-    for (const img of tiles.values()) img.remove()
+    for (const t of tiles.values()) t.img.remove()
     tiles.clear()
   }
 
@@ -225,7 +320,8 @@
         }
         view.x = p.x
         view.z = p.z
-        view.zoom = Math.max(view.zoom, 0)
+        stopZoom()
+        view.zoom = goal = Math.max(Math.round(goal), 0)
         draw()
       }
       people.append(b)
@@ -255,29 +351,94 @@
 
   // --- Moving around ---
 
-  function zoomAt(delta, px, py) {
-    const before = scale()
-    const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, view.zoom + delta))
-    if (next === view.zoom) return
-    // Keep the block under the pointer where it is.
+  // Zooms towards a level, keeping the block under the pointer (px, py) where it is. The
+  // zoom eases there over ZOOM_MS; a zoom that arrives on the way just moves the goal.
+  let zooming = 0
+  let anchor = null
+  let from = 0
+  let since = 0
+
+  function zoomTo(target, px, py) {
+    target = clampZoom(target)
     const w = root.clientWidth
     const h = root.clientHeight
-    const bx = view.x + (px - w / 2) / before
-    const bz = view.z + (py - h / 2) / before
-    view.zoom = next
-    const after = scale()
-    view.x = bx - (px - w / 2) / after
-    view.z = bz - (py - h / 2) / after
+    const s = scale()
+    anchor = { px, py, bx: view.x + (px - w / 2) / s, bz: view.z + (py - h / 2) / s }
+    goal = target
+    from = view.zoom
+    since = performance.now()
+    if (still.matches) {
+      stopZoom()
+      show(target)
+      return draw()
+    }
+    if (!zooming) zooming = requestAnimationFrame(frame)
+  }
+
+  function zoomAt(delta, px, py) {
+    zoomTo(Math.round(goal) + delta, px, py)
+  }
+
+  // Puts the view at a zoom with the anchor block under the anchor point.
+  function show(zoom) {
+    view.zoom = zoom
+    const s = scale()
+    view.x = anchor.bx - (anchor.px - root.clientWidth / 2) / s
+    view.z = anchor.bz - (anchor.py - root.clientHeight / 2) / s
+  }
+
+  function frame(now) {
+    const t = Math.min(1, Math.max(0, (now - since) / ZOOM_MS))
+    show(from + (goal - from) * (1 - (1 - t) ** 3))
+    zooming = t < 1 ? requestAnimationFrame(frame) : 0
     draw()
   }
 
+  function stopZoom() {
+    cancelAnimationFrame(zooming)
+    zooming = 0
+    clearTimeout(snapTimer)
+  }
+
+  // Trackpads and pinches can stop between levels; settle on the nearest one so pixels stay
+  // square and sharp.
+  let snapTimer = 0
+  function snapSoon(px, py) {
+    clearTimeout(snapTimer)
+    snapTimer = setTimeout(() => {
+      if (goal !== Math.round(goal)) zoomTo(Math.round(goal), px, py)
+    }, 200)
+  }
+
   const pointers = new Map()
-  let pinch = 0
+  // A two-finger pinch: the zoom and the block under the fingers when it began.
+  let pinch = null
+  const middle = () => {
+    const [a, b] = [...pointers.values()]
+    const rect = root.getBoundingClientRect()
+    return {
+      x: (a.x + b.x) / 2 - rect.left,
+      y: (a.y + b.y) / 2 - rect.top,
+      d: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+    }
+  }
   root.addEventListener('pointerdown', (e) => {
     if (e.target.closest('.bar')) return
     root.setPointerCapture(e.pointerId)
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
     root.classList.add('dragging')
+    if (pointers.size === 2) {
+      stopZoom()
+      goal = view.zoom
+      const m = middle()
+      const s = scale()
+      pinch = {
+        zoom: view.zoom,
+        d: m.d,
+        bx: view.x + (m.x - root.clientWidth / 2) / s,
+        bz: view.z + (m.y - root.clientHeight / 2) / s,
+      }
+    }
   })
   root.addEventListener('pointermove', (e) => {
     const s = scale()
@@ -288,46 +449,61 @@
     coords.textContent = `x ${Math.floor(bx)}  z ${Math.floor(bz)}`
     const was = pointers.get(e.pointerId)
     if (!was) return
-    if (pointers.size === 2) {
-      const [a, b] = [...pointers.values()]
-      const before = Math.hypot(a.x - b.x, a.y - b.y)
-      was.x = e.clientX
-      was.y = e.clientY
-      const after = Math.hypot(a.x - b.x, a.y - b.y)
-      pinch += Math.log2(after / Math.max(1, before))
-      if (Math.abs(pinch) >= 1) {
-        const step = Math.trunc(pinch)
-        pinch -= step
-        zoomAt(step, (a.x + b.x) / 2 - rect.left, (a.y + b.y) / 2 - rect.top)
-      }
-      return
-    }
-    view.x -= (e.clientX - was.x) / s
-    view.z -= (e.clientY - was.y) / s
+    const dx = e.clientX - was.x
+    const dy = e.clientY - was.y
     was.x = e.clientX
     was.y = e.clientY
+    if (pointers.size === 2 && pinch) {
+      // Zoom with the fingers' spread, and keep the block they started on between them.
+      const m = middle()
+      anchor = { px: m.x, py: m.y, bx: pinch.bx, bz: pinch.bz }
+      goal = clampZoom(pinch.zoom + Math.log2(m.d / pinch.d))
+      show(goal)
+      draw()
+      return
+    }
+    if (zooming && anchor) {
+      // Dragging mid-zoom: carry the zoom's anchor along with the pointer.
+      anchor.px += dx
+      anchor.py += dy
+    }
+    view.x -= dx / s
+    view.z -= dy / s
     draw()
   })
   const release = (e) => {
-    pointers.delete(e.pointerId)
-    pinch = 0
-    if (pointers.size === 0) root.classList.remove('dragging')
+    if (!pointers.delete(e.pointerId)) return
+    if (pinch && pointers.size < 2) {
+      pinch = null
+      snapSoon(
+        anchor ? anchor.px : root.clientWidth / 2,
+        anchor ? anchor.py : root.clientHeight / 2,
+      )
+    }
+    if (pointers.size === 0) {
+      root.classList.remove('dragging')
+      draw()
+    }
   }
   root.addEventListener('pointerup', release)
   root.addEventListener('pointercancel', release)
   root.addEventListener('pointerleave', () => (coords.hidden = true))
 
-  let wheel = 0
   root.addEventListener(
     'wheel',
     (e) => {
       e.preventDefault()
-      wheel -= e.deltaY / (e.deltaMode === 1 ? 3 : 100)
-      if (Math.abs(wheel) < 1) return
-      const step = Math.trunc(wheel)
-      wheel = 0
+      // A mouse notch is one zoom level; trackpads send many small steps, and a trackpad
+      // pinch arrives as a wheel with Ctrl held.
+      const unit = e.deltaMode === 1 ? 3 : e.deltaMode === 2 ? 1 : 100
+      let step = -e.deltaY / unit
+      if (e.ctrlKey && e.deltaMode === 0) step *= 4
+      step = Math.max(-1, Math.min(1, step))
       const rect = root.getBoundingClientRect()
-      zoomAt(Math.sign(step), e.clientX - rect.left, e.clientY - rect.top)
+      const px = e.clientX - rect.left
+      const py = e.clientY - rect.top
+      zoomTo(goal + step, px, py)
+      snapSoon(px, py)
     },
     { passive: false },
   )
@@ -346,6 +522,7 @@
   window.addEventListener('resize', draw)
   window.addEventListener('hashchange', () => {
     const before = view.dim
+    stopZoom()
     readHash()
     if (view.dim !== before) {
       picker.value = String(view.dim)
@@ -371,7 +548,7 @@
       manifestText = text
       manifest = JSON.parse(text)
       rev = Date.now()
-      clearTiles()
+      // Old tiles stay until the new ones arrive, so a redraw never blanks the map.
       draw()
     } catch {
       // Try again next time.
