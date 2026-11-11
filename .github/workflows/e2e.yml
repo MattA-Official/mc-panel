@@ -154,7 +154,9 @@ jobs:
             done
             echo "the agent doesn't answer"; exit 1
           }
-          restart() { docker exec vps systemctl restart flytower-agent; }
+          # Six restarts in a few seconds would hit systemd's start limit (5 in 10s), so clear
+          # the count first; a real box restarts the agent once when Rust fails.
+          restart() { docker exec vps sh -c 'systemctl reset-failed flytower-agent; systemctl restart flytower-agent'; }
           bin="$(docker exec vps readlink -f /opt/flytower/current/bin)"
           marker=/run/flytower/agent-rust-starting
 
