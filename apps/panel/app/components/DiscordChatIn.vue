@@ -64,8 +64,8 @@ onBeforeUnmount(() => clearTimeout(timer))
 
 <template>
   <section class="space-y-3 border-t border-default pt-4" data-e2e="discord-chat-in">
-    <div class="flex flex-wrap items-start justify-between gap-2">
-      <div>
+    <div class="flex items-start justify-between gap-3">
+      <div class="min-w-0 flex-1">
         <h3 class="font-semibold">Chat from Discord</h3>
         <p class="mt-1 text-muted">
           Shows messages from a server's Discord chat channel in the game, as
@@ -74,6 +74,7 @@ onBeforeUnmount(() => clearTimeout(timer))
         </p>
       </div>
       <UBadge
+        class="shrink-0"
         variant="subtle"
         :color="badge.color"
         :label="badge.label"
@@ -86,7 +87,7 @@ onBeforeUnmount(() => clearTimeout(timer))
       color="error"
       variant="subtle"
       icon="i-lucide-circle-alert"
-      title="Discord closed the connection"
+      title="Chat from Discord has stopped"
       :description="chat.error ?? undefined"
       data-e2e="discord-chat-in-error"
     >
