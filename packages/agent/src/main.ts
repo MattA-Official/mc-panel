@@ -25,6 +25,7 @@ const ctx = {
     prefix: env('FLYTOWER_PREFIX', '/opt/flytower'),
     panelData: env('FLYTOWER_PANEL_DATA', '/var/lib/flytower'),
     caddyfile: env('FLYTOWER_CADDYFILE', '/etc/caddy/Caddyfile'),
+    socket: env('FLYTOWER_AGENT_SOCKET', '/run/flytower/agent.sock'),
   },
   releasesUrl: env(
     'FLYTOWER_RELEASES_URL',
@@ -45,7 +46,7 @@ if (process.getuid?.() !== 0) {
 
 const server = await listen(
   {
-    socketPath: env('FLYTOWER_AGENT_SOCKET', '/run/flytower/agent.sock'),
+    socketPath: ctx.paths.socket ?? '/run/flytower/agent.sock',
     group: ctx.panelGroup,
   },
   handlers,

@@ -27,6 +27,8 @@ export interface AgentContext {
     system?: string
     /** The Caddyfile the installer wrote. */
     caddyfile?: string // /etc/caddy/Caddyfile
+    /** The agent's socket. Servers can't see its folder. */
+    socket?: string // /run/flytower/agent.sock
   }
   /** The `flytower-du` binary, if there is one; otherwise disk use is walked in TypeScript. */
   du?: string | null
