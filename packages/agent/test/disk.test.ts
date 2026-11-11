@@ -31,10 +31,10 @@ function machine() {
   const paths = {
     servers: join(root, 'srv'),
     runtimes: join(prefix, 'runtimes'),
-    archive: join(data, 'archive'),
+    archive: join(root, 'archive'),
     config: join(root, 'etc'),
     systemd: join(root, 'systemd'),
-    state: join(data, 'agent'),
+    state: join(root, 'agent'),
     prefix,
     panelData: data,
     system: join(root, 'sys'),
@@ -53,7 +53,10 @@ function machine() {
   file(join(data, 'imports', 'upload.zip'))
   file(join(data, 'flytower.db'), 40 * KB)
   file(join(data, 'flytower.db.before-1.1.0'), 40 * KB)
+  // Left by an updater from before the copies moved to the agent's own folder.
   file(join(data, 'flytower.db.before-1.0.0'), 40 * KB)
+  file(join(paths.state, 'db-backups', 'flytower.db.before-1.1.0'), 40 * KB)
+  file(join(paths.state, 'db-backups', 'flytower.db-wal.before-1.0.0'), 8 * KB)
   file(join(paths.runtimes, 'temurin-21', 'bin', 'java'), 96 * KB)
   for (const v of ['1.0.0', '1.1.0', '1.2.0']) {
     file(join(prefix, 'releases', v, 'VERSION'), 16)
@@ -163,11 +166,12 @@ describe('disk.usage', () => {
         join(m.paths.system, 'var/cache/apt/pkgcache.bin'),
       ),
     )
-    // 1.0.0, the leftover download and 1.0.0's database copy.
+    // 1.0.0, the leftover download and 1.0.0's database copies.
     expect(r.system.oldReleases).toBe(
       await size(
         join(m.paths.prefix, 'releases', '1.0.0'),
         join(m.paths.prefix, 'releases', '.download-1.3.0'),
+        join(m.paths.state, 'db-backups', 'flytower.db-wal.before-1.0.0'),
         join(m.paths.panelData, 'flytower.db.before-1.0.0'),
       ),
     )
@@ -178,9 +182,10 @@ describe('disk.usage', () => {
       join(m.paths.panelData, 'flytower.db'),
       join(m.paths.panelData, 'flytower.db.before-1.1.0'),
       join(m.paths.panelData, 'flytower.db.before-1.0.0'),
-      m.paths.state,
     )
-    expect(r.system.flytower).toBe(opt + data + (await size(m.paths.config)))
+    expect(r.system.flytower).toBe(
+      opt + data + (await size(m.paths.config)) + (await size(m.paths.state)),
+    )
   })
 
   it('leaves out places that are missing', async () => {
@@ -258,6 +263,7 @@ describe('clean up', () => {
     const expected = await size(
       join(releases, '1.0.0'),
       join(releases, '.download-1.3.0'),
+      join(m.paths.state, 'db-backups', 'flytower.db-wal.before-1.0.0'),
       join(m.paths.panelData, 'flytower.db.before-1.0.0'),
     )
     const { ctx } = fakeContext(fakeExec().exec, undefined, m.paths)
@@ -267,13 +273,19 @@ describe('clean up', () => {
       ok: true,
       result: {
         freedBytes: expected,
-        removed: ['.download-1.3.0', '1.0.0', 'flytower.db.before-1.0.0'],
+        removed: [
+          '.download-1.3.0',
+          '1.0.0',
+          'flytower.db-wal.before-1.0.0',
+          'flytower.db.before-1.0.0',
+        ],
       },
     })
     expect(existsSync(join(releases, '1.0.0'))).toBe(false)
     expect(existsSync(join(releases, '1.1.0'))).toBe(true)
     expect(existsSync(join(releases, '1.2.0'))).toBe(true)
     expect(existsSync(join(m.paths.panelData, 'flytower.db.before-1.1.0'))).toBe(true)
+    expect(existsSync(join(m.paths.state, 'db-backups', 'flytower.db.before-1.1.0'))).toBe(true)
     expect(existsSync(join(m.paths.panelData, 'flytower.db'))).toBe(true)
   })
 
