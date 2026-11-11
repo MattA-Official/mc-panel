@@ -13,7 +13,7 @@ use flytower_agent::exec::{Exec, RealExec};
 use flytower_agent::fetch::Curl;
 use flytower_agent::handlers::{Context, handle, server, ssh, system_clock, update};
 use flytower_agent::release::RELEASE_KEY;
-use flytower_agent::server::{ListenOptions, bind, group_id, serve};
+use flytower_agent::server::{ListenOptions, bind, group_id, serve, user_id};
 use flytower_agent::units::Paths;
 
 fn env(name: &str, fallback: &str) -> String {
@@ -65,8 +65,16 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    let panel_user = env("FLYTOWER_PANEL_USER", "flytower");
+    let uid = match user_id(&panel_user, Path::new("/etc/passwd")) {
+        Ok(uid) => uid,
+        Err(e) => {
+            eprintln!("flytower-agent: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
     let opts = ListenOptions {
-        socket_path: PathBuf::from(env("FLYTOWER_AGENT_SOCKET", "/run/flytower/agent.sock")),
+        socket_path: PathBuf::from(&ctx.paths.socket),
         group: Some(gid),
     };
     let listener = match bind(&opts) {
@@ -101,7 +109,7 @@ fn main() -> ExitCode {
         Ok(false) => {}
         Err(e) => eprintln!("updating the Caddyfile failed: {e}"),
     }
-    serve(&listener, Some(gid), move |line| {
+    serve(&listener, Some(uid), move |line| {
         // stdout goes to the journal; one JSON line per request.
         dispatch(line, |p| handle(&p, &ctx), |audit| println!("{audit}"))
     });
