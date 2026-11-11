@@ -337,6 +337,13 @@ describe('serving the map', () => {
     expect(html).toContain('src="/_map/viewer.js?v=1.3.0"')
     expect(html).not.toContain('<Survival')
   })
+
+  it('keeps tiles under the bars and markers', async () => {
+    // Tiles use z-index to stack zoom levels; the layer must contain that, or tiles
+    // paint over the controls drawn after it.
+    const css = await Bun.file(join(import.meta.dir, '../public/_map/viewer.css')).text()
+    expect(css).toMatch(/\.tiles\s*\{[^}]*isolation:\s*isolate/)
+  })
 })
 
 describe('player positions', () => {
