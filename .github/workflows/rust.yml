@@ -39,10 +39,10 @@ jobs:
       run:
         working-directory: crates
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Rust toolchain (pinned in crates/rust-toolchain.toml)
         run: rustup toolchain install && rustc --version
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: crates
       - run: cargo fmt --check
@@ -51,7 +51,7 @@ jobs:
       - run: cargo build --locked --release --target ${{ matrix.target }}
 
       # The panel's tests check flytower-du gives exactly the numbers of the TypeScript walk.
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
