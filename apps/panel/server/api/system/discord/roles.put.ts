@@ -1,8 +1,9 @@
 import { z } from 'zod'
 import { inArray } from 'drizzle-orm'
 import { schema } from '../../../db'
-import { setSetting } from '../../../settings'
+import { getSetting, setSetting } from '../../../settings'
 import { MAX_MAPPINGS, SNOWFLAKE } from '../../../discord/roles'
+import { checkMappingChanges } from '../../../auth/people'
 
 const Mapping = z.object({
   discordRoleId: z.string().trim().regex(SNOWFLAKE, 'A Discord role ID is a long number.'),
@@ -15,10 +16,11 @@ const Body = z.object({ mappings: z.array(Mapping).max(MAX_MAPPINGS) })
 /**
  * Saves which Discord roles get which Flytower roles. It hands out access, so it needs both
  * Manage integrations and Manage roles, and a fresh passkey check. Owner can't be mapped: no
- * command needs it, and a Discord role is easier to hand out than a passkey.
+ * command needs it, and a Discord role is easier to hand out than a passkey. Like any grant,
+ * a mapping can only hand out what the person saving it could do there themselves.
  */
 export default defineEventHandler(async (event) => {
-  await requirePermission(event, 'roles.manage')
+  const { access } = await requirePermission(event, 'roles.manage')
   await requirePermission(event, 'system.integrations')
   const { user } = await requireElevated(event)
   const { mappings } = await readValidatedBody(event, Body.parse)
@@ -58,6 +60,7 @@ export default defineEventHandler(async (event) => {
     }
     seen.add(key)
   }
+  peopleCall(() => checkMappingChanges(db, access, mappings, getSetting(db, 'discord.roles') ?? []))
   setSetting(db, 'discord.roles', mappings)
   audit(user.id, 'discord.roles', null, {
     mappings: mappings.map(

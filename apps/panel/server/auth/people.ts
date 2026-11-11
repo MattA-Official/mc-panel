@@ -58,6 +58,43 @@ export function mayGrant(db: DbOrTx, access: Access, g: GrantInput): boolean {
   return perms.every((p) => can(access, p, g.server ?? undefined))
 }
 
+/** A Discord role mapping, as far as the access it hands out goes. */
+export interface MappingInput extends GrantInput {
+  discordRoleId: string
+}
+
+/**
+ * Checks a new list of Discord role mappings against the saved one. A mapping hands out a role
+ * just as a grant does, so adding one and taking one away both need the same standing as
+ * granting it. Mappings kept as they were need nothing, so people can still edit a list that
+ * holds mappings above them. A mapping to a role that's since been deleted can always go.
+ */
+export function checkMappingChanges(
+  db: DbOrTx,
+  access: Access,
+  next: readonly MappingInput[],
+  current: readonly MappingInput[],
+) {
+  const key = (m: MappingInput) => `${m.discordRoleId}\u0000${m.roleId}\u0000${m.server ?? ''}`
+  const before = new Set(current.map(key))
+  const after = new Set(next.map(key))
+  for (const m of next) {
+    if (!before.has(key(m)) && !mayGrant(db, access, m)) {
+      throw new PeopleError("You can't give a Discord role more access than you have.", 403)
+    }
+  }
+  for (const m of current) {
+    if (after.has(key(m))) continue
+    if (!db.select().from(schema.roles).where(eq(schema.roles.id, m.roleId)).get()) continue
+    if (!mayGrant(db, access, m)) {
+      throw new PeopleError(
+        "You can't remove a Discord role mapping that gives more access than you have.",
+        403,
+      )
+    }
+  }
+}
+
 function checkGrant(db: DbOrTx, access: Access, g: GrantInput) {
   if (g.server !== null && !serverExists(db, g.server)) {
     throw new PeopleError('That server no longer exists.')
@@ -175,9 +212,14 @@ export function acceptInvite(tx: DbOrTx, inviteId: number, name: string, now = D
   return { user, invite }
 }
 
-export function revokeInvite(db: Db, id: number) {
+/** Cancels an unused invite. Like taking access away, it needs the standing to have made it. */
+export function revokeInvite(db: Db, access: Access, id: number) {
   const invite = db.select().from(schema.invites).where(eq(schema.invites.id, id)).get()
   if (!invite || invite.usedAt) throw new PeopleError('No such invite.', 404)
+  const exists = db.select().from(schema.roles).where(eq(schema.roles.id, invite.roleId)).get()
+  if (exists && !mayGrant(db, access, { roleId: invite.roleId, server: invite.server })) {
+    throw new PeopleError("You can't cancel an invite that gives more access than you have.", 403)
+  }
   db.delete(schema.invites).where(eq(schema.invites.id, id)).run()
   return invite
 }
