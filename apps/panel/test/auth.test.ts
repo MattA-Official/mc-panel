@@ -1,7 +1,7 @@
 import { mkdtempSync, existsSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it, spyOn } from 'bun:test'
 import { openDb, schema } from '../server/db'
 import { ChallengeStore } from '../server/auth/challenges'
 import {
@@ -63,6 +63,30 @@ describe('recovery codes', () => {
     expect(await redeemCode(db, codes[3]!)).toBeNull()
     expect(await redeemCode(db, 'AAAA-AAAA-AAAA')).toBeNull()
   }, 20_000)
+
+  it('check only the codes that share the first group, plus older ones without it', async () => {
+    const db = openDb(':memory:')
+    const a = db.insert(schema.users).values({ name: 'Matt' }).returning().get()
+    const b = db.insert(schema.users).values({ name: 'Sam' }).returning().get()
+    const codes = await issueCodes(db, a.id)
+    await issueCodes(db, b.id)
+    // A code from before lookups existed.
+    db.insert(schema.recoveryCodes)
+      .values({ userId: b.id, hash: await Bun.password.hash('ZZZZ-ZZZZ-ZZZZ') })
+      .run()
+    const verify = spyOn(Bun.password, 'verify')
+    try {
+      expect(await redeemCode(db, codes[0]!)).toBe(a.id)
+      // Its own row and the old one at most, never all 21.
+      expect(verify.mock.calls.length).toBeLessThanOrEqual(2)
+      verify.mockClear()
+      expect(await redeemCode(db, 'not a code')).toBeNull()
+      expect(verify).not.toHaveBeenCalled()
+      expect(await redeemCode(db, 'zzzz zzzz zzzz')).toBe(b.id)
+    } finally {
+      verify.mockRestore()
+    }
+  }, 30_000)
 })
 
 describe('setup token', () => {

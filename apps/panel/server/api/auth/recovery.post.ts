@@ -8,6 +8,8 @@ const Body = z.object({ code: z.string().min(1).max(40) })
 /** Signs in with a recovery code, uses it up, and requires a new passkey next. */
 export default defineEventHandler(async (event) => {
   limit(event, 'recovery')
+  // Each try can cost an Argon2 check, so there's a ceiling across all addresses too.
+  limitAll('recovery', 60)
   const db = useDb()
   const { code } = await readValidatedBody(event, Body.parse)
   const userId = await redeemCode(db, code)

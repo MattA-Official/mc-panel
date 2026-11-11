@@ -46,15 +46,25 @@ export const credentials = sqliteTable('credentials', {
   lastUsedAt: integer('last_used_at', { mode: 'timestamp_ms' }),
 })
 
-/** One-time recovery codes, stored only as Bun.password hashes. */
-export const recoveryCodes = sqliteTable('recovery_codes', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  userId: integer('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  hash: text('hash').notNull(),
-  usedAt: integer('used_at', { mode: 'timestamp_ms' }),
-})
+/**
+ * One-time recovery codes, stored only as Bun.password hashes. `lookup` is the code's first
+ * group, so signing in checks one hash rather than every code in the install. It gives away
+ * 20 of the 60 bits; the other 40 are still behind Argon2. Codes made before it was added
+ * have none and are checked the slow way until they're replaced.
+ */
+export const recoveryCodes = sqliteTable(
+  'recovery_codes',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    hash: text('hash').notNull(),
+    lookup: text('lookup'),
+    usedAt: integer('used_at', { mode: 'timestamp_ms' }),
+  },
+  (t) => [index('recovery_codes_lookup').on(t.lookup)],
+)
 
 /** The installer's setup token. At most one row (id = 1). */
 export const setupToken = sqliteTable('setup_token', {
