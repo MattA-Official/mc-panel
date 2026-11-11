@@ -159,6 +159,7 @@ export default defineWebSocketHandler({
         (data) => {
           const current = access() ?? NO_ACCESS
           if (needs && !can(current, needs.permission, needs.server)) return
+          if (jobId !== null && !canSeeJob(current, jobId)) return
           send(peer, topic, data)
         },
         () => access() ?? NO_ACCESS,

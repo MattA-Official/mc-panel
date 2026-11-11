@@ -77,8 +77,9 @@ export function eventAccess(event: H3Event): Access {
 }
 
 /**
- * Whether this person may follow job `id`: jobs for a server need `server.view` on it; jobs
- * for no server (imports, panel updates) are open to whoever started them or can see them.
+ * Whether this person may follow job `id`: jobs for a server need `server.view` on it. The
+ * only jobs for no server unpack an upload for a new server, so they need `servers.create`.
+ * A job that doesn't exist yet can't be followed, so nobody can wait on ids to come.
  */
 export function canSeeJob(access: Access, id: number): boolean {
   const row = useDb()
@@ -86,8 +87,10 @@ export function canSeeJob(access: Access, id: number): boolean {
     .from(schema.jobs)
     .where(eq(schema.jobs.id, id))
     .get()
-  if (!row) return true // The route answers 404 itself.
-  return row.server === null || can(access, 'server.view', row.server)
+  if (!row) return false
+  return row.server === null
+    ? can(access, 'servers.create')
+    : can(access, 'server.view', row.server)
 }
 
 /** The update check's findings, with only the servers this person can see. */
