@@ -2,12 +2,36 @@
  * The lockfile: exactly which files a server's spec installed, by URL and hash. It lives in
  * the server folder as flytower.lock.json so it travels with backups and moves.
  */
-import { chmod, readdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { z } from 'zod'
 import { CONTENT_KINDS } from '@flytower/providers'
+import { isSafeLevelName } from '../../shared/spec'
+import { readNoFollow, replaceFile } from '../files'
 
 export const LOCK_FILE = 'flytower.lock.json'
+
+/** A file name Flytower will put in a content folder: one plain name, not hidden. */
+export const isSafeContentFile = (name: string) =>
+  name.length > 0 &&
+  name.length <= 160 &&
+  !name.startsWith('.') &&
+  // eslint-disable-next-line no-control-regex
+  !/[/\\\x00-\x1f\x7f]/.test(name)
+
+/**
+ * Whether a lockfile path is a file directly inside mods/, plugins/ or a world's datapacks/.
+ * The lockfile sits in the server folder where the server can edit it, so its paths are
+ * checked before anything is moved or deleted.
+ */
+export function isContentPath(path: string) {
+  const slash = path.lastIndexOf('/')
+  if (slash < 0 || !isSafeContentFile(path.slice(slash + 1))) return false
+  const folder = path.slice(0, slash)
+  if (folder === 'mods' || folder === 'plugins') return true
+  const level = /^(.+)\/datapacks$/.exec(folder)?.[1]
+  return level !== undefined && isSafeLevelName(level)
+}
 
 const LockedItem = z.object({
   source: z.enum(['modrinth', 'hangar', 'url', 'vanillatweaks']),
@@ -18,7 +42,7 @@ const LockedItem = z.object({
   versionNumber: z.string(),
   kind: z.enum(CONTENT_KINDS),
   /** Relative to the server folder, like "mods/lithium.jar" or "world/datapacks/x.zip". */
-  path: z.string(),
+  path: z.string().refine(isContentPath),
   url: z.string(),
   sha256: z.string(),
   sha512: z.string().optional(),
@@ -45,9 +69,8 @@ export class LockError extends Error {
 }
 
 export async function readLock(dir: string): Promise<Lock> {
-  const text = await readFile(join(dir, LOCK_FILE), 'utf8').catch((err: NodeJS.ErrnoException) => {
-    if (err.code === 'ENOENT') return null
-    throw err
+  const text = await readNoFollow(join(dir, LOCK_FILE)).catch(() => {
+    throw new LockError(`${LOCK_FILE} can't be read. Fix or delete it in the file manager.`)
   })
   if (text === null) return emptyLock()
   let parsed: unknown
@@ -64,11 +87,8 @@ export async function readLock(dir: string): Promise<Lock> {
 }
 
 export async function writeLock(dir: string, lock: Lock) {
-  const path = join(dir, LOCK_FILE)
   const body = `${JSON.stringify({ ...lock, content: [...lock.content].sort(byPath) }, null, 2)}\n`
-  await writeFile(`${path}.tmp`, body)
-  await chmod(`${path}.tmp`, 0o660)
-  await rename(`${path}.tmp`, path)
+  await replaceFile(join(dir, LOCK_FILE), body)
 }
 
 const byPath = (a: LockedItem, b: LockedItem) => a.path.localeCompare(b.path)

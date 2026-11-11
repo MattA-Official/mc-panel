@@ -2,7 +2,7 @@
  * Plans and applies specs. A plan is kept for a while under an id with a fingerprint of
  * what it was based on, so apply does exactly what was shown or refuses.
  */
-import { mkdir, readdir, rename, rm, stat } from 'node:fs/promises'
+import { lstat, mkdir, readdir, rename, rm } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { eq } from 'drizzle-orm'
 import {
@@ -18,6 +18,7 @@ import {
   type VanillaTweaksProvider,
 } from '@flytower/providers'
 import { listZip, unzip } from '../unzip'
+import { resolveInside } from '../files'
 import { SPEC_STEPS, type JobEvent } from '../../shared/utils/jobs'
 import { isSafeLevelName, type ServerSpec } from '../../shared/spec'
 import type { TaskSpec } from '../../shared/schedules'
@@ -254,7 +255,7 @@ export class SpecService {
       lock,
       spec,
       levelName,
-      exists: async (p) => (await stat(join(dir, p)).catch(() => null))?.isFile() ?? false,
+      exists: async (p) => (await lstat(join(dir, p)).catch(() => null))?.isFile() ?? false,
       unmanaged: (await unmanagedFiles(dir, lock, levelName)).map((u) => u.path),
       otherPorts: db
         .select({
@@ -349,6 +350,8 @@ export class SpecService {
 
     // Download everything first, so a bad link changes nothing.
     await rm(staging, { recursive: true, force: true })
+    // Not recursive, so this fails if anything appeared at the staging path in between.
+    await mkdir(staging)
     await mkdir(join(staging, 'new'), { recursive: true })
     await mkdir(join(staging, 'old'), { recursive: true })
     const lock: Lock = structuredClone(work.lock)
@@ -394,12 +397,14 @@ export class SpecService {
     try {
       await this.deps.agent('server.permissions', { name }, { timeoutMs: 120_000 })
       for (const [i, p] of work.removals.entries()) {
-        if (await stat(join(dir, p)).catch(() => null)) {
-          await move(join(dir, p), join(staging, 'old', String(i)))
+        // resolveInside refuses paths that leave the folder or pass through a link.
+        const from = await resolveInside(dir, p)
+        if (await lstat(from).catch(() => null)) {
+          await move(from, join(staging, 'old', String(i)))
         }
       }
       for (const [i, d] of work.downloads.entries()) {
-        await move(join(staging, 'new', String(i)), join(dir, d.path))
+        await move(join(staging, 'new', String(i)), await resolveInside(dir, d.path))
       }
       if (work.server) {
         await move(join(dir, 'server.jar'), join(staging, 'old', 'server.jar'))

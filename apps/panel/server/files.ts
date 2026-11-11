@@ -4,16 +4,7 @@
  */
 import { randomBytes } from 'node:crypto'
 import { constants } from 'node:fs'
-import {
-  chmod,
-  lstat,
-  mkdir,
-  open,
-  readdir,
-  realpath,
-  rename,
-  rm,
-} from 'node:fs/promises'
+import { chmod, lstat, mkdir, open, readdir, realpath, rename, rm } from 'node:fs/promises'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 
 export class FileError extends Error {

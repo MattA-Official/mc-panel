@@ -35,7 +35,7 @@ import {
 import { describeTask, sameTask, toTask, type TaskSpec } from '../../shared/schedules'
 import type { schema } from '../db'
 import { formatBytes } from '../backups/service'
-import { contentDir, type Lock, type LockedItem } from './lock'
+import { contentDir, isContentPath, type Lock, type LockedItem } from './lock'
 
 type ServerRow = typeof schema.servers.$inferSelect
 
@@ -376,6 +376,12 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
   const nextLock: LockedItem[] = []
   for (const item of resolved.items) {
     const path = `${contentDir(item.kind, input.levelName)}/${item.filename}`
+    if (!isContentPath(path)) {
+      problems.push(
+        `${item.title} has an unusual file name ("${item.filename}"), so it can't be installed.`,
+      )
+      continue
+    }
     const old = before.get(lockedKey(item))
     before.delete(lockedKey(item))
     const note = item.requiredBy.length ? `Needed by ${item.requiredBy.join(', ')}` : undefined
