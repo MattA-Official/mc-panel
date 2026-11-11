@@ -1,5 +1,6 @@
 import { join } from 'node:path'
-import { readNoFollow, replaceFile } from '../files'
+import { readNoFollow, replaceFile, resolveInside } from '../files'
+import { isSafeLevelName } from '../../shared/spec'
 import { parseProperties, setProperties, stringifyProperties, toRecord } from '../properties'
 
 export const serverDir = (name: string) => join(useRuntimeConfig().serversDir, name)
@@ -19,4 +20,14 @@ export async function writeProperties(name: string, changes: Record<string, stri
   const path = propertiesPath(name)
   const text = (await readNoFollow(path).catch(() => null)) ?? ''
   await replaceFile(path, stringifyProperties(setProperties(parseProperties(text), changes)))
+}
+
+/**
+ * The server's world folder (its level-name), absolute. Null when the name is unusual or the
+ * folder is a link, since the server process can change both.
+ */
+export async function worldDir(name: string): Promise<string | null> {
+  const level = (await readProperties(name))['level-name'] || 'world'
+  if (!isSafeLevelName(level)) return null
+  return resolveInside(serverDir(name), level).catch(() => null)
 }

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { schema } from '../../../db'
 import { refuseManagedEdits, withoutSecrets } from '../../../properties'
+import { BAD_LEVEL_NAME, isSafeLevelName } from '../../../../shared/spec'
 
 const Params = z.object({ name: z.string().max(40) })
 const Body = z.object({
@@ -21,6 +22,9 @@ export default defineEventHandler(async (event) => {
   findServer(name)
   const refused = refuseManagedEdits(Object.keys(values))
   if (refused) throw createError({ statusCode: 400, statusMessage: refused })
+  if (values['level-name'] !== undefined && !isSafeLevelName(values['level-name'])) {
+    throw createError({ statusCode: 400, statusMessage: BAD_LEVEL_NAME })
+  }
   await writeProperties(name, values)
   useDb()
     .insert(schema.audit)

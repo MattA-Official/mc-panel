@@ -19,7 +19,7 @@ import {
 } from '@flytower/providers'
 import { listZip, unzip } from '../unzip'
 import { SPEC_STEPS, type JobEvent } from '../../shared/utils/jobs'
-import type { ServerSpec } from '../../shared/spec'
+import { isSafeLevelName, type ServerSpec } from '../../shared/spec'
 import type { TaskSpec } from '../../shared/schedules'
 import { schema, type Db } from '../db'
 import { JobError, type AgentCall, type JobTracker } from '../jobs/runner'
@@ -105,7 +105,7 @@ export function publicPlan(id: string, plan: Plan): PublicPlan {
 /** The world folder's name, refusing anything that would leave the server folder. */
 export function levelNameOf(props: Record<string, string>) {
   const level = props['level-name'] || 'world'
-  if (!/^[\w][\w .-]{0,63}$/.test(level) || level.includes('..')) {
+  if (!isSafeLevelName(level)) {
     throw new SpecError(`The world folder "${level}" has an unusual name; rename it first.`)
   }
   return level
