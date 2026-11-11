@@ -3,6 +3,7 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { AgentError, unitName, userName, type Params, type Result } from '@flytower/protocol'
 import type { AgentContext } from '../context.ts'
+import { archiveDir } from '../folders.ts'
 import { envFile, limitsDropIn, templateUnit } from '../units.ts'
 
 async function run(ctx: AgentContext, file: string, args: string[]) {
@@ -177,12 +178,11 @@ export async function remove(
 
   let archivedTo: string | null = null
   if (existsSync(f.dir)) {
-    // Readable by the panel's group, so a deleted server can be imported again.
-    await mkdir(ctx.paths.archive, { recursive: true })
-    await run(ctx, 'chgrp', [ctx.panelGroup, ctx.paths.archive])
-    await run(ctx, 'chmod', ['0750', ctx.paths.archive])
+    // Readable by the panel's group, so a deleted server can be imported again. Only root
+    // can change the folder, so the tarball's path can't be swapped for a link.
+    const archive = await archiveDir(ctx)
     const stamp = new Date().toISOString().replace(/[:.]/g, '-')
-    archivedTo = join(ctx.paths.archive, `${p.name}-${stamp}.tar.gz`)
+    archivedTo = join(archive, `${p.name}-${stamp}.tar.gz`)
     await run(ctx, 'tar', ['-czf', archivedTo, '-C', ctx.paths.servers, p.name])
     await run(ctx, 'chgrp', [ctx.panelGroup, archivedTo])
     await run(ctx, 'chmod', ['0640', archivedTo])

@@ -2,6 +2,7 @@ import { duBinary } from './du.ts'
 import { refreshCaddyfile } from './caddy.ts'
 import { UnitEvents } from './events.ts'
 import { realExec } from './exec.ts'
+import { prepareFolders } from './folders.ts'
 import { handlers } from './handlers/index.ts'
 import { refreshTemplate } from './handlers/server.ts'
 import { restoreSsh } from './handlers/ssh.ts'
@@ -18,10 +19,10 @@ const ctx = {
   paths: {
     servers: env('FLYTOWER_SERVERS_DIR', '/srv/flytower/servers'),
     runtimes: env('FLYTOWER_RUNTIMES_DIR', '/opt/flytower/runtimes'),
-    archive: env('FLYTOWER_ARCHIVE_DIR', '/var/lib/flytower/archive'),
+    archive: env('FLYTOWER_ARCHIVE_DIR', '/var/lib/flytower-archive'),
     config: env('FLYTOWER_CONFIG_DIR', '/etc/flytower'),
     systemd: env('FLYTOWER_SYSTEMD_DIR', '/etc/systemd/system'),
-    state: env('FLYTOWER_AGENT_STATE_DIR', '/var/lib/flytower/agent'),
+    state: env('FLYTOWER_AGENT_STATE_DIR', '/var/lib/flytower-agent'),
     prefix: env('FLYTOWER_PREFIX', '/opt/flytower'),
     panelData: env('FLYTOWER_PANEL_DATA', '/var/lib/flytower'),
     caddyfile: env('FLYTOWER_CADDYFILE', '/etc/caddy/Caddyfile'),
@@ -52,6 +53,8 @@ const server = await listen(
   ctx,
 )
 console.log(`flytower-agent ${ctx.version} listening`)
+// Before anything reads or writes state: the folders, and what older releases left behind.
+await prepareFolders(ctx).catch((err) => console.error("preparing the agent's folders failed", err))
 // An emergency SSH opening must end on time even if the agent restarted in between.
 await restoreSsh(ctx).catch((err) => console.error('restoring the SSH timer failed', err))
 await refreshTemplate(ctx).then(
