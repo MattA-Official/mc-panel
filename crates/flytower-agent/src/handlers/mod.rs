@@ -45,7 +45,7 @@ pub struct Context {
     /// Unit changes from the journal; `None` makes `service.wait` tell the panel to poll.
     pub events: Option<Arc<UnitEvents>>,
     pub paths: Paths,
-    /// The panel's group, which may use the agent and shares server folders.
+    /// The panel's group, which owns the agent's socket and shares server folders.
     pub panel_group: String,
     /// Where releases are downloaded from: `<url>/<tag>/<file>`.
     pub releases_url: String,

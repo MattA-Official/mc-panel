@@ -15,6 +15,8 @@ import { existsSync } from 'node:fs'
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { MapSettings } from '../../shared/map-settings'
+import { isSafeLevelName } from '../../shared/spec'
+import { resolveInside } from '../files'
 
 /** What the last pass did, summed over the world's dimensions. */
 export interface MapPass {
@@ -257,8 +259,12 @@ export class MapService {
     s.queued = null
     if (!job || !this.deps.settings(name)?.enabled) return this.publish(name)
 
-    const world = join(this.deps.serverDir(name), (await this.deps.levelName(name)) || 'world')
-    if (!existsSync(world)) {
+    // The server can change its level-name and folders, so only a plain folder inside it is used.
+    const level = (await this.deps.levelName(name)) || 'world'
+    const world = isSafeLevelName(level)
+      ? await resolveInside(this.deps.serverDir(name), level).catch(() => null)
+      : null
+    if (!world || !existsSync(world)) {
       s.waiting = true
       return this.publish(name)
     }

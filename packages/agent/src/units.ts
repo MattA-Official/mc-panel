@@ -1,4 +1,29 @@
+import { dirname, isAbsolute, join, relative } from 'node:path'
 import type { AgentContext } from './context.ts'
+
+/**
+ * Paths a server must never see: the agent's socket, the panel's data, the agent's state, the
+ * archive of deleted servers and the panel's secrets. A path inside another listed one is
+ * dropped, since hiding the parent already hides it. The leading `-` tells systemd to skip a
+ * path that doesn't exist.
+ */
+export function hiddenPaths(ctx: AgentContext): string[] {
+  const p = ctx.paths
+  const all = [
+    ...new Set([
+      dirname(p.socket ?? '/run/flytower/agent.sock'),
+      p.panelData ?? '/var/lib/flytower',
+      p.state,
+      p.archive,
+      join(p.config, 'panel.env'),
+    ]),
+  ]
+  const within = (child: string, parent: string) => {
+    const r = relative(parent, child)
+    return r !== '' && r !== '..' && !r.startsWith('../') && !isAbsolute(r)
+  }
+  return all.filter((path) => !all.some((other) => within(path, other)))
+}
 
 /**
  * The one systemd template every server runs under. Rewritten on each server.create, and
@@ -18,7 +43,9 @@ StartLimitBurst=3
 
 [Service]
 User=mc-%i
-Group=${ctx.panelGroup}
+Group=mc-%i
+# The panel's group as an extra, so the server can use the files the panel puts in its folder.
+SupplementaryGroups=${ctx.panelGroup}
 UMask=0007
 WorkingDirectory=${ctx.paths.servers}/%i
 EnvironmentFile=${ctx.paths.config}/servers/%i.env
@@ -36,6 +63,10 @@ ProtectHome=yes
 PrivateTmp=yes
 PrivateDevices=yes
 ReadWritePaths=${ctx.paths.servers}/%i
+# Mods run with the server's rights, so keep the root agent and the panel's secrets out of reach.
+InaccessiblePaths=${hiddenPaths(ctx)
+  .map((path) => `-${path}`)
+  .join(' ')}
 Slice=flytower-mc.slice
 
 [Install]

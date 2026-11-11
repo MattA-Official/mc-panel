@@ -2,17 +2,9 @@
  * File operations confined to one server folder. Every path is resolved and checked, and
  * symlinks are never followed, so nothing outside the folder can be read or changed.
  */
-import {
-  chmod,
-  lstat,
-  mkdir,
-  open,
-  readdir,
-  realpath,
-  rename,
-  rm,
-  writeFile,
-} from 'node:fs/promises'
+import { randomBytes } from 'node:crypto'
+import { constants } from 'node:fs'
+import { chmod, lstat, mkdir, open, readdir, realpath, rename, rm } from 'node:fs/promises'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 
 export class FileError extends Error {
@@ -126,15 +118,57 @@ export async function writeAtomic(root: string, path: string, data: string | Res
   if (st && !st.isFile()) throw new FileError(400, "That isn't a file.")
   const parent = await lstat(dirname(file)).catch(() => null)
   if (!parent?.isDirectory()) throw new FileError(404, 'That folder does not exist.')
-  const tmp = join(dirname(file), `.${basename(file)}.flytower-${process.pid}-${Date.now()}`)
+  await replaceFile(file, data)
+}
+
+const NEW_FILE = constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW
+
+/**
+ * Replaces `path` with `data` through a temporary file beside it and a rename, leaving the
+ * result group-writable so the server can still change it.
+ *
+ * Server folders are writable by the server process, so anything could already be sitting
+ * there. The temporary file gets a random name and is created exclusively without following
+ * links, and its mode is set on the open handle, so a planted link is never written through.
+ */
+export async function replaceFile(path: string, data: string | Uint8Array | Response) {
+  const tmp = join(dirname(path), `.${basename(path)}.flytower-${randomBytes(12).toString('hex')}`)
+  const handle = await open(tmp, NEW_FILE, 0o660)
   try {
-    if (typeof data === 'string') await writeFile(tmp, data)
-    else await Bun.write(tmp, data)
-    await chmod(tmp, 0o660)
-    await rename(tmp, file)
+    try {
+      if (data instanceof Response) {
+        if (data.body) for await (const chunk of data.body) await handle.write(chunk)
+      } else {
+        await handle.writeFile(data)
+      }
+      await handle.chmod(0o660)
+    } finally {
+      await handle.close()
+    }
+    await rename(tmp, path)
   } catch (err) {
     await rm(tmp, { force: true })
     throw err
+  }
+}
+
+/**
+ * Reads a file the server process could have swapped for a link, refusing to follow one.
+ * Returns null when there's no such file.
+ */
+export async function readNoFollow(path: string): Promise<string | null> {
+  const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW).catch(
+    (err: NodeJS.ErrnoException) => {
+      if (err.code === 'ENOENT') return null
+      if (err.code === 'ELOOP') throw new FileError(400, `${basename(path)} is a link, not a file.`)
+      throw err
+    },
+  )
+  if (!handle) return null
+  try {
+    return await handle.readFile('utf8')
+  } finally {
+    await handle.close()
   }
 }
 

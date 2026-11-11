@@ -23,6 +23,8 @@ pub struct Paths {
     pub system: String,
     /// The Caddyfile the installer wrote.
     pub caddyfile: String,
+    /// The agent's socket. Servers can't see its folder.
+    pub socket: String,
 }
 
 impl Paths {
@@ -43,6 +45,7 @@ impl Paths {
             panel_data: env("FLYTOWER_PANEL_DATA", "/var/lib/flytower"),
             system: "/".into(),
             caddyfile: env("FLYTOWER_CADDYFILE", "/etc/caddy/Caddyfile"),
+            socket: env("FLYTOWER_AGENT_SOCKET", "/run/flytower/agent.sock"),
         }
     }
 
@@ -61,8 +64,42 @@ impl Paths {
             panel_data: at("panel"),
             system: at("system"),
             caddyfile: at("Caddyfile"),
+            socket: at("agent.sock"),
         }
     }
+}
+
+/// Paths a server must never see: the agent's socket, the panel's data, the agent's state, the
+/// archive of deleted servers and the panel's secrets. A path inside another listed one is
+/// dropped, since hiding the parent already hides it. Matches `hiddenPaths` in units.ts.
+#[must_use]
+pub fn hidden_paths(paths: &Paths) -> Vec<String> {
+    let socket_dir = Path::new(&paths.socket)
+        .parent()
+        .map_or_else(|| "/".into(), |p| p.to_string_lossy().into_owned());
+    let panel_env = Path::new(&paths.config)
+        .join("panel.env")
+        .to_string_lossy()
+        .into_owned();
+    let mut all: Vec<String> = Vec::new();
+    for p in [
+        socket_dir,
+        paths.panel_data.clone(),
+        paths.state.clone(),
+        paths.archive.clone(),
+        panel_env,
+    ] {
+        if !all.contains(&p) {
+            all.push(p);
+        }
+    }
+    let within = |child: &str, parent: &str| {
+        Path::new(child) != Path::new(parent) && Path::new(child).starts_with(parent)
+    };
+    all.iter()
+        .filter(|p| !all.iter().any(|other| within(p, other)))
+        .cloned()
+        .collect()
 }
 
 /// The one systemd template every server runs under. Per-server values come from the
@@ -72,6 +109,11 @@ impl Paths {
 pub fn template_unit(paths: &Paths, panel_group: &str) -> String {
     let servers = &paths.servers;
     let config = &paths.config;
+    let hidden = hidden_paths(paths)
+        .iter()
+        .map(|p| format!("-{p}"))
+        .collect::<Vec<_>>()
+        .join(" ");
     format!(
         r#"# Managed by Flytower. Changes are overwritten.
 [Unit]
@@ -85,7 +127,9 @@ StartLimitBurst=3
 
 [Service]
 User=mc-%i
-Group={panel_group}
+Group=mc-%i
+# The panel's group as an extra, so the server can use the files the panel puts in its folder.
+SupplementaryGroups={panel_group}
 UMask=0007
 WorkingDirectory={servers}/%i
 EnvironmentFile={config}/servers/%i.env
@@ -103,6 +147,8 @@ ProtectHome=yes
 PrivateTmp=yes
 PrivateDevices=yes
 ReadWritePaths={servers}/%i
+# Mods run with the server's rights, so keep the root agent and the panel's secrets out of reach.
+InaccessiblePaths={hidden}
 Slice=flytower-mc.slice
 
 [Install]
@@ -150,11 +196,35 @@ mod tests {
         let paths = Paths {
             servers: "/srv/flytower/servers".into(),
             config: "/etc/flytower".into(),
+            panel_data: "/var/lib/flytower".into(),
+            state: "/var/lib/flytower-agent".into(),
+            archive: "/var/lib/flytower-archive".into(),
+            socket: "/run/flytower/agent.sock".into(),
             ..Paths::under(Path::new("/x"))
         };
         assert_eq!(
             template_unit(&paths, "flytower"),
             fixture("server-unit.service")
+        );
+    }
+
+    #[test]
+    fn hides_nested_paths_once() {
+        let paths = Paths {
+            config: "/etc/flytower".into(),
+            socket: "/run/flytower/agent.sock".into(),
+            panel_data: "/var/lib/flytower".into(),
+            state: "/var/lib/flytower/agent".into(),
+            archive: "/var/lib/flytower/archive".into(),
+            ..Paths::under(Path::new("/x"))
+        };
+        assert_eq!(
+            hidden_paths(&paths),
+            [
+                "/run/flytower",
+                "/var/lib/flytower",
+                "/etc/flytower/panel.env"
+            ]
         );
     }
 
