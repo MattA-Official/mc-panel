@@ -15,7 +15,9 @@ describe('compareVersions', () => {
       '0.9.0',
     ]
     newestFirst.forEach((a, i) =>
-      newestFirst.forEach((b, j) => expect(Math.sign(compareVersions(a, b))).toBe(Math.sign(j - i))),
+      newestFirst.forEach((b, j) =>
+        expect(Math.sign(compareVersions(a, b))).toBe(Math.sign(j - i)),
+      ),
     )
   })
 })
