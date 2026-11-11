@@ -37,6 +37,11 @@ body {
   inset: 0;
   overflow: hidden;
 }
+/* Tiles stack old and new levels with z-index, so keep that inside the tiles layer:
+   otherwise a tile paints over the bars and markers drawn above it. */
+.tiles {
+  isolation: isolate;
+}
 .tiles img {
   position: absolute;
   z-index: 1;
