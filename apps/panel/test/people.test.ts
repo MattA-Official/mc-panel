@@ -12,6 +12,7 @@ import {
   PeopleError,
   removePerson,
   revokeInvite,
+  checkMappingChanges,
   setGrants,
 } from '../server/auth/people'
 import { can } from '../shared/permissions'
@@ -113,8 +114,26 @@ describe('invites', () => {
       server: null,
       createdBy: owner,
     })
-    revokeInvite(db, id)
+    revokeInvite(db, access(owner), id)
     expect(checkInvite(db, token)).toMatchObject({ ok: false })
+  })
+
+  test('nobody can cancel an invite for more access than they have', () => {
+    const { db, owner, person, access } = setup()
+    db.insert(schema.roles)
+      .values({ id: 'host', name: 'Host', permissions: ['people.invite', 'server.view'] })
+      .run()
+    const host = person('Sam', 'host')
+    const big = createInvite(db, access(owner), { roleId: 'admin', server: null, createdBy: owner })
+    fails(() => revokeInvite(db, access(host), big.id), /more access than you have/)
+    expect(checkInvite(db, big.token).ok).toBe(true)
+    const small = createInvite(db, access(owner), {
+      roleId: 'viewer',
+      server: null,
+      createdBy: owner,
+    })
+    revokeInvite(db, access(host), small.id)
+    expect(checkInvite(db, small.token)).toMatchObject({ ok: false })
   })
 
   test('nobody can invite someone with more access than they have', () => {
@@ -359,5 +378,51 @@ describe("a server's own access", () => {
     const { access, person } = setup()
     const admin = person('Ada', 'admin')
     expect(can(access(admin), 'access.manage', 'survival')).toBe(false)
+  })
+})
+
+describe('Discord role mappings', () => {
+  const map = (roleId: string, server: string | null = null, discordRoleId = '1001') => ({
+    discordRoleId,
+    roleId,
+    server,
+  })
+
+  test('only hand out what the person saving them could do there', () => {
+    const { db, person, access } = setup()
+    db.insert(schema.roles)
+      .values({
+        id: 'integrator',
+        name: 'Integrator',
+        permissions: ['roles.manage', 'system.integrations'],
+      })
+      .run()
+    const sam = person('Sam', 'integrator')
+    grantRole(db, sam, 'operator', 'creative')
+    const a = access(sam)
+    // Operator on the one server Sam operates is fine; anywhere else, or Admin, isn't.
+    checkMappingChanges(db, a, [map('operator', 'creative')], [])
+    fails(() => checkMappingChanges(db, a, [map('operator', 'survival')], []), /more access/)
+    fails(() => checkMappingChanges(db, a, [map('admin')], []), /more access/)
+  })
+
+  test('leave mappings above the person alone, but let them edit the rest', () => {
+    const { db, person, access } = setup()
+    db.insert(schema.roles)
+      .values({
+        id: 'integrator',
+        name: 'Integrator',
+        permissions: ['roles.manage', 'system.integrations'],
+      })
+      .run()
+    const sam = person('Sam', 'integrator')
+    grantRole(db, sam, 'viewer', null)
+    const a = access(sam)
+    const saved = [map('admin', null, '1001')]
+    checkMappingChanges(db, a, [...saved, map('viewer', null, '1002')], saved)
+    fails(() => checkMappingChanges(db, a, [], saved), /remove/)
+    fails(() => checkMappingChanges(db, a, [map('admin', null, '1003')], saved), /more access/)
+    // A mapping to a role that no longer exists can always go.
+    checkMappingChanges(db, a, [], [map('gone')])
   })
 })

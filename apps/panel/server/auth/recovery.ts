@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, isNull, or } from 'drizzle-orm'
 import type { Db } from '../db'
 import { recoveryCodes } from '../db/schema'
 
@@ -30,22 +30,34 @@ export async function issueCodes(db: Db, userId: number): Promise<string[]> {
   db.transaction((tx) => {
     tx.delete(recoveryCodes).where(eq(recoveryCodes.userId, userId)).run()
     tx.insert(recoveryCodes)
-      .values(hashes.map((hash) => ({ userId, hash })))
+      .values(hashes.map((hash, i) => ({ userId, hash, lookup: lookupOf(codes[i]!) })))
       .run()
   })
   return codes
 }
 
-/** Finds the unused code row that matches, if any. */
+/** A code's first group, which picks out the one row worth checking (see the schema). */
+function lookupOf(normalised: string): string | null {
+  return /^[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}$/.test(normalised) ? normalised.slice(0, 4) : null
+}
+
+/**
+ * Finds the unused code row that matches, if any. Only rows with the same first group are
+ * checked, plus any made before codes had one.
+ */
 async function findMatch(db: Db, code: string, userId?: number) {
   const normalised = normaliseCode(code)
+  const lookup = lookupOf(normalised)
+  if (!lookup) return null
   const rows = db
     .select()
     .from(recoveryCodes)
     .where(
-      userId === undefined
-        ? isNull(recoveryCodes.usedAt)
-        : and(isNull(recoveryCodes.usedAt), eq(recoveryCodes.userId, userId)),
+      and(
+        isNull(recoveryCodes.usedAt),
+        or(eq(recoveryCodes.lookup, lookup), isNull(recoveryCodes.lookup)),
+        userId === undefined ? undefined : eq(recoveryCodes.userId, userId),
+      ),
     )
     .all()
   for (const row of rows) {
@@ -59,9 +71,15 @@ export async function checkCode(db: Db, userId: number, code: string): Promise<b
   return (await findMatch(db, code, userId)) !== null
 }
 
+// Sign-in attempts are checked one at a time, so however many arrive together they use one
+// core and one Argon2 buffer.
+let queue: Promise<unknown> = Promise.resolve()
+
 /** Uses up a matching code and returns its owner, or null. */
 export async function redeemCode(db: Db, code: string): Promise<number | null> {
-  const row = await findMatch(db, code)
+  const found = queue.then(() => findMatch(db, code))
+  queue = found.catch(() => {})
+  const row = await found
   if (!row) return null
   // The usedAt guard makes this race-safe: only one request can flip a code to used.
   const updated = db

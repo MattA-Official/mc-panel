@@ -5,9 +5,9 @@ const Params = z.object({ id: z.coerce.number().int().positive() })
 
 /** Cancels an invite link nobody has used yet. */
 export default defineEventHandler(async (event) => {
-  const { session } = await requirePermission(event, 'people.invite')
+  const { session, access } = await requirePermission(event, 'people.invite')
   const { id } = await getValidatedRouterParams(event, Params.parse)
-  const invite = peopleCall(() => revokeInvite(useDb(), id))
+  const invite = peopleCall(() => revokeInvite(useDb(), access, id))
   audit(session.user.id, 'people.invite_revoked', null, {
     person: invite.note,
     role: invite.roleId,

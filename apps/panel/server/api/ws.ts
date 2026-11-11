@@ -116,6 +116,11 @@ function attach(topic: string, emit: (data: unknown) => void, access: () => Acce
  */
 export default defineWebSocketHandler({
   async upgrade(request) {
+    // Only the panel's own pages may open a socket, as for changes in middleware/auth.ts.
+    const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host')
+    if (fromAnotherSite(request.headers.get('origin'), host)) {
+      return new Response('That request came from another site.', { status: 403 })
+    }
     const session = await getUserSession(request)
     if (!session.user || session.mustEnrolPasskey) {
       return new Response('Sign in first.', { status: 401 })
@@ -159,6 +164,7 @@ export default defineWebSocketHandler({
         (data) => {
           const current = access() ?? NO_ACCESS
           if (needs && !can(current, needs.permission, needs.server)) return
+          if (jobId !== null && !canSeeJob(current, jobId)) return
           send(peer, topic, data)
         },
         () => access() ?? NO_ACCESS,

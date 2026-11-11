@@ -10,6 +10,12 @@ const ALWAYS_OPEN = new Set([
   // Discord calls this; it checks Discord's signature before doing anything.
   '/api/discord/interactions',
 ])
+/**
+ * The session route nuxt-auth-utils adds, which answers for the cookie alone. Only this: a new
+ * route under /api/_ still goes through the checks below.
+ */
+const MODULE_ROUTES = new Set(['/api/_auth/session'])
+const READ_ONLY = new Set(['GET', 'HEAD', 'OPTIONS'])
 /** Public status pages; each route checks that the server's page is on. */
 const PUBLIC_PREFIX = '/api/public/'
 const SETUP_ROUTES = new Set([
@@ -33,7 +39,21 @@ const ENROL_ROUTES = new Set(['/api/passkeys/register-options', '/api/passkeys/r
  */
 export default defineEventHandler(async (event) => {
   const path = getRequestURL(event).pathname
-  if (!path.startsWith('/api/') || path.startsWith('/api/_') || ALWAYS_OPEN.has(path)) return
+  if (!path.startsWith('/api/')) return
+  // Changes only come from the panel's own pages. Session cookies are SameSite=Strict, but
+  // that still lets in pages on sibling hostnames, such as a server's own address. Discord
+  // calls the interactions route from its servers, with no Origin.
+  if (
+    !READ_ONLY.has(event.method) &&
+    fromAnotherSite(
+      getRequestHeader(event, 'origin'),
+      getRequestHost(event, { xForwardedHost: true }),
+    )
+  ) {
+    throw createError({ statusCode: 403, statusMessage: 'That request came from another site.' })
+  }
+  if (MODULE_ROUTES.has(path) || path.startsWith('/api/_nuxt_icon/') || ALWAYS_OPEN.has(path))
+    return
   if (path.startsWith(PUBLIC_PREFIX)) return
 
   if (needsSetup(useDb())) {
