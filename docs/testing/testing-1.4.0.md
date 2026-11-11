@@ -91,7 +91,7 @@ On a running Fabric server, open the **Console**.
 
 ## System-wide disk use
 
-You need a test VPS on this build with at least one server. Test with the Bun agent first, then again with the Rust one (`echo rust > /etc/flytower/agent`, then `systemctl restart flytower-agent`). See [Disk space](../disk.md).
+You need a test VPS on this build with at least one server. Test with the Rust agent (the default from this build), then again with the Bun one (`echo bun > /etc/flytower/agent`, then `systemctl restart flytower-agent`). See [Disk space](../disk.md).
 
 - [ ] **System**, **Overview**, **Disk**: after a minute (or **Measure now**), the grey part of the bar is split into **Java runtimes**, **Flytower**, **System logs**, **Package cache and temp files** and **Operating system and everything else**, each in its own shade of grey. Servers keep their colours.
 - [ ] Each part has a row under the servers, with its size. Hovering over the bar and the legend show the same sizes.
@@ -143,6 +143,14 @@ You need two servers and a second account.
 - [ ] Make a role with **Manage who has access**, **Start and stop** and **Manage players**, and give it to the second account on one server only. As them, that server's **Settings** has **Access**; the other server's doesn't.
 - [ ] As them, the role picker offers only roles they could have there themselves (Viewer and their own role, not Operator or Admin), and the server refuses anything more.
 - [ ] Built-in **Admin** has no **Manage who has access**, so an Admin's Settings has no Access section.
+
+## Rust agent on by default
+
+The Rust agent and updater are now the default, with the Bun ones as a fallback. Install this build on a VPS that has never had `/etc/flytower/agent`, then work through [Testing the Rust agent](testing-rust-agent.md), including the fallback check.
+
+- [ ] A fresh install and an update from 1.3 both end up on the Rust agent, with no file in `/etc/flytower`.
+- [ ] A VPS that already had `echo rust > /etc/flytower/agent` stays on Rust.
+- [ ] `echo bun > /etc/flytower/agent` and a restart puts it on Bun, and an update keeps it there.
 
 ## Chat from Discord into the game
 
