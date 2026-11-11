@@ -3,7 +3,8 @@ import { uuidHex } from '@flytower/providers'
 import { eq } from 'drizzle-orm'
 import { sealer } from '../backups/offsite'
 import { schema } from '../db'
-import { ChatRelay, accountName, type RelayConfig } from '../discord/relay'
+import { ChatRelay, accountName, webhookChannel, type RelayConfig } from '../discord/relay'
+import { DeliveryError } from '../notify/types'
 import { checkUrl, maskUrl, NotifyError } from '../notify'
 import { parseUuidLine } from '../stats/sessions'
 import {
@@ -139,6 +140,9 @@ export async function saveRelay(server: string, input: RelayInput): Promise<Rela
   const was = stored(server)
   let urlSealed = was?.urlSealed
   let target = was?.target
+  // The channel is only known for the webhook it was read from.
+  let channelId = input.url ? null : (was?.channelId ?? null)
+  let guildId = input.url ? null : (was?.guildId ?? null)
   if (input.url) {
     try {
       checkUrl('discord', input.url)
@@ -151,6 +155,19 @@ export async function saveRelay(server: string, input: RelayInput): Promise<Rela
   if (!urlSealed || !target) {
     throw createError({ statusCode: 400, statusMessage: 'Paste the channel’s webhook URL.' })
   }
+  if (input.fromDiscord && !channelId) {
+    // Chat from Discord listens to the webhook's channel, so ask Discord which one that is.
+    try {
+      const url = input.url ?? (await seal.unseal(urlSealed))
+      ;({ channelId, guildId } = await webhookChannel(url))
+    } catch (err) {
+      const why = err instanceof DeliveryError ? err.message : String((err as Error).message)
+      throw createError({
+        statusCode: 400,
+        statusMessage: `Couldn’t find the webhook’s channel for chat from Discord. ${why}`,
+      })
+    }
+  }
   const next: StoredRelay = {
     urlSealed,
     target,
@@ -161,10 +178,13 @@ export async function saveRelay(server: string, input: RelayInput): Promise<Rela
     lastError: null,
     lastErrorAt: null,
     broken: false,
+    fromDiscord: input.fromDiscord,
+    channelId,
+    guildId,
   }
   writeStored(server, next)
   useChatRelay().clear(server)
-  return relayView(next)
+  return relayView(next, discordInbound)
 }
 
 export function removeRelay(server: string) {
@@ -185,4 +205,14 @@ export async function relayTestUrl(server: string, url?: string): Promise<string
   const s = stored(server)
   if (!s) throw createError({ statusCode: 400, statusMessage: 'Paste the channel’s webhook URL.' })
   return seal.unseal(s.urlSealed)
+}
+
+/** Servers whose chat takes messages from this Discord channel. */
+export function serversFromChannel(channelId: string): string[] {
+  return useDb()
+    .select({ name: schema.servers.name, r: schema.servers.discordRelay })
+    .from(schema.servers)
+    .all()
+    .filter((row) => row.r?.fromDiscord === true && row.r.channelId === channelId)
+    .map((row) => row.name)
 }

@@ -151,3 +151,21 @@ The Rust agent and updater are now the default, with the Bun ones as a fallback.
 - [ ] A fresh install and an update from 1.3 both end up on the Rust agent, with no file in `/etc/flytower`.
 - [ ] A VPS that already had `echo rust > /etc/flytower/agent` stays on Rust.
 - [ ] `echo bun > /etc/flytower/agent` and a restart puts it on Bun, and an update keeps it there.
+
+## Chat from Discord into the game
+
+You need a connected Discord app, a server with **Discord chat** posting to a channel, and a Discord server you can post in.
+
+- [ ] **System**, **Integrations**: the Discord app card has a **Chat from Discord** section, **Off**, with three steps and **Add the bot to a Discord server**. That link asks to add a bot that can only see channels.
+- [ ] Before switching on Message Content Intent in the Developer Portal, press **Turn on** (it asks for your passkey). Within a few seconds the badge says **Stopped**, with a message telling you to turn on Message Content Intent.
+- [ ] Turn it on in the Developer Portal, then press **Connect again**: the badge goes to **Connected** and says how many Discord servers the bot is in.
+- [ ] The server's **Settings**, **Community**, **Discord chat** has a **Chat from Discord** switch. Before the bot is in that Discord server, switching it on and saving shows "The bot isn't in this channel's Discord server yet".
+- [ ] Add the bot, switch it on and save. Say "hello" in the channel: everyone in game sees `[Discord] your nickname: hello`, with `[Discord]` in blue. It's also in the panel's console.
+- [ ] The relay's own posts (player chat) don't come back into the game.
+- [ ] Mention someone, a channel and a custom emoji: the game shows `@name`, `#channel` and `:emoji:`. `**bold**` shows as plain `bold`, and `||secret||` as `[spoiler]`.
+- [ ] Post only a picture: the game shows `[sent an image]`. A message with a line break shows on one line.
+- [ ] Type `§cred` and `"},{"text":"x","clickEvent":{"action":"run_command","value":"/op you"}}`: it shows as plain text, not red, and clicking it does nothing.
+- [ ] Stop the server and post: nothing happens and nothing errors. Start it again and post: it shows.
+- [ ] Restart the panel (`systemctl restart flytower`): the badge comes back **Connected** on its own.
+- [ ] Turn the switch off on the server: messages stop. Turn **Chat from Discord** off on the card: the badge says **Off**, and the server card says it's off for the whole panel.
+- [ ] **Activity** lists "Turned on chat from Discord", "Started showing Discord chat in …" and the matching "off" lines.

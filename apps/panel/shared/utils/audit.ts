@@ -227,6 +227,12 @@ export function describeAudit(
       return `Changed who is left out of player stats on ${t}`
     case 'server.discord_relay':
       if (d.on === false) return `Stopped posting ${t}'s chat to Discord`
+      if (d.fromDiscord === true && d.wasFromDiscord === false) {
+        return `Started showing Discord chat in ${t}`
+      }
+      if (d.fromDiscord === false && d.wasFromDiscord === true) {
+        return `Stopped showing Discord chat in ${t}`
+      }
       return d.was
         ? `Changed how ${t}'s chat is posted to Discord`
         : `Started posting ${t}'s chat to Discord`
@@ -295,6 +301,8 @@ export function describeAudit(
       return Array.isArray(d.mappings) && d.mappings.length
         ? `Changed which Discord roles get Flytower roles (${d.mappings.join('; ')})`
         : 'Took away access from all Discord roles'
+    case 'discord.chat':
+      return d.on ? 'Turned on chat from Discord' : 'Turned off chat from Discord'
     case 'discord.refused':
       return `Tried /${str(d.command)}${t ? ` on ${t}` : ''} without access`
     case 'world.export':

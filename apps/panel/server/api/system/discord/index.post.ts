@@ -12,6 +12,9 @@ export default defineEventHandler(async (event) => {
   const { token } = await readValidatedBody(event, Body.parse)
   await discordHttp(() => useDiscord().connect(token))
   await syncDiscordCommands(true)
+  // A new token: chat from Discord reconnects with it, if it's on.
+  useDiscordGateway().stop()
+  syncDiscordGateway()
   const state = useDiscord().state()
   if (state.connected) {
     audit(user.id, 'discord.connect', null, {

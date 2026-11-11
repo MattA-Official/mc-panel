@@ -22,6 +22,8 @@ export interface Settings {
   'discord.app': DiscordApp
   /** Discord roles whose members get Flytower roles in slash commands. */
   'discord.roles': DiscordRoleMapping[]
+  /** Chat from Discord into the game: whether the panel keeps a Gateway connection open. */
+  'discord.chat': { enabled: boolean }
 }
 
 export interface StoredImage {

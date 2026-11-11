@@ -251,6 +251,39 @@ export function waitFromHeaders(res: Response): number {
   return 0
 }
 
+// ------------------------------------------------------------------ the webhook's channel
+
+/**
+ * The channel and Discord server a webhook posts to. Reading a webhook with its token needs
+ * no bot token. Throws a DeliveryError saying what's wrong.
+ */
+export async function webhookChannel(
+  url: string,
+  fetchImpl: Fetch = fetch,
+): Promise<{ channelId: string; guildId: string | null }> {
+  if (!isDiscordWebhook(url)) {
+    throw new DeliveryError("That isn't a Discord webhook address.", null, true)
+  }
+  let res: Response
+  try {
+    res = await fetchImpl(url, { signal: AbortSignal.timeout(15_000), redirect: 'error' })
+  } catch (err) {
+    throw new DeliveryError(`Couldn't reach Discord: ${(err as Error).message}`)
+  }
+  if (res.status === 401 || res.status === 404) {
+    throw new DeliveryError('Discord says that webhook doesn’t exist any more.', null, true)
+  }
+  if (!res.ok) throw new DeliveryError(`Discord answered ${res.status}.`)
+  const body = (await res.json().catch(() => null)) as {
+    channel_id?: unknown
+    guild_id?: unknown
+  } | null
+  const snowflake = (v: unknown) => (typeof v === 'string' && /^\d{5,25}$/.test(v) ? v : null)
+  const channelId = snowflake(body?.channel_id)
+  if (!channelId) throw new DeliveryError('Discord didn’t say which channel the webhook is in.')
+  return { channelId, guildId: snowflake(body?.guild_id) }
+}
+
 // ------------------------------------------------------------------ the relay
 
 export interface RelayConfig {

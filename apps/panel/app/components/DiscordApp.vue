@@ -268,6 +268,8 @@ async function copyEndpoint() {
       </div>
 
       <DiscordRoles />
+
+      <DiscordChatIn :discord="discord" @update="(s) => (discord = s)" />
     </div>
 
     <UModal
