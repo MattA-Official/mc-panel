@@ -4,6 +4,11 @@ name: PR build
 # can be installed on a test VPS with `install.sh --pr <number>`. The panel's updater only
 # offers v-tagged releases, so these never reach anyone by accident. Closing the pull request
 # deletes its build.
+#
+# Test builds are signed with their own key (secret FLYTOWER_PR_SIGNING_KEY, public half in
+# installer/pr-key.pem), never the release key. Only `install.sh --pr` trusts it; the
+# updaters don't. The release key lives in the `release` environment, which branches can't
+# reach.
 on:
   pull_request:
     types: [opened, synchronize, reopened, closed]
@@ -17,7 +22,7 @@ concurrency:
 
 jobs:
   build:
-    # Only branches in this repository: forks don't get the signing key.
+    # Only branches in this repository: forks don't get the test-build key.
     if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     permissions:
@@ -26,16 +31,16 @@ jobs:
       PR: ${{ github.event.pull_request.number }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
       - name: Rust toolchain (pinned in crates/rust-toolchain.toml)
         run: cd crates && rustup toolchain install && rustc --version
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: crates
 
@@ -62,23 +67,24 @@ jobs:
 
       - name: Sign
         env:
-          FLYTOWER_SIGNING_KEY: ${{ secrets.FLYTOWER_SIGNING_KEY }}
+          # signing-key.ts reads FLYTOWER_SIGNING_KEY; here it holds the test-build key.
+          FLYTOWER_SIGNING_KEY: ${{ secrets.FLYTOWER_PR_SIGNING_KEY }}
         run: |
           if [[ -z "$FLYTOWER_SIGNING_KEY" ]]; then
-            echo "::error::FLYTOWER_SIGNING_KEY is needed to sign test builds"
+            echo "::error::FLYTOWER_PR_SIGNING_KEY is needed to sign test builds"
             exit 1
           fi
           umask 077
           key="$(mktemp)"
           trap 'rm -f "$key"' EXIT
           bun scripts/signing-key.ts "$key"
-          if [[ "$(openssl pkey -in "$key" -pubout)" != "$(cat installer/release-key.pem)" ]]; then
-            echo "::error::FLYTOWER_SIGNING_KEY doesn't match installer/release-key.pem"
+          if [[ "$(openssl pkey -in "$key" -pubout)" != "$(cat installer/pr-key.pem)" ]]; then
+            echo "::error::FLYTOWER_PR_SIGNING_KEY doesn't match installer/pr-key.pem"
             exit 1
           fi
           openssl pkeyutl -sign -inkey "$key" -rawin -in dist/SHA256SUMS | base64 -w0 > dist/SHA256SUMS.sig
           base64 -d dist/SHA256SUMS.sig > sig.bin
-          openssl pkeyutl -verify -pubin -inkey installer/release-key.pem -rawin \
+          openssl pkeyutl -verify -pubin -inkey installer/pr-key.pem -rawin \
             -in dist/SHA256SUMS -sigfile sig.bin
           rm sig.bin
 
