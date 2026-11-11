@@ -20,6 +20,21 @@ fn env(name: &str, fallback: &str) -> String {
     std::env::var(name).unwrap_or_else(|_| fallback.to_string())
 }
 
+/// bin/flytower-agent writes this beside the socket before starting the Rust agent. If it's
+/// still there on the next start, that start failed, and the wrapper falls back to Bun.
+fn clear_start_marker(socket: &Path) {
+    let marker = socket
+        .parent()
+        .unwrap_or(Path::new("/"))
+        .join("agent-rust-starting");
+    match std::fs::remove_file(&marker) {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
+            eprintln!("flytower-agent: can't remove {}: {e}", marker.display());
+        }
+        _ => {}
+    }
+}
+
 fn main() -> ExitCode {
     if !rustix::process::geteuid().is_root() {
         eprintln!("flytower-agent must run as root");
@@ -65,6 +80,8 @@ fn main() -> ExitCode {
         }
     };
     println!("flytower-agent {} (rust) listening", ctx.version);
+    // Tell bin/flytower-agent this start worked, so it keeps choosing Rust after a restart.
+    clear_start_marker(&opts.socket_path);
     // An emergency SSH opening must end on time even if the agent restarted in between.
     if let Err(e) = ssh::restore(&ctx) {
         eprintln!("restoring the SSH timer failed: {}", e.message);
