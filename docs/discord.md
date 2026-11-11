@@ -71,7 +71,7 @@ Staff commands use the access of a Flytower role. Under **Discord roles** on the
 2. In your Discord server's **Server Settings**, **Roles**, right-click the role and choose **Copy Role ID**.
 3. On the card, press **Give a Discord role access**, paste the ID, give it a name you'll recognise (Discord doesn't tell the app role names), and pick the Flytower role and servers.
 
-A member with several mapped roles gets all of them together. Changes apply to the next command. Owner can't be given out through Discord. Saving needs **Manage integrations**, **Manage roles** and your passkey, and is in **Activity**.
+A member with several mapped roles gets all of them together. Changes apply to the next command. Owner can't be given out through Discord. Saving needs **Manage integrations**, **Manage roles** and your passkey, and is in **Activity**. As with giving people roles, you can only give a Discord role what you could do on those servers yourself, and only remove a mapping you could have made. Mappings you leave as they are stay.
 
 Anyone without a mapped role who tries a staff command gets a private "Sorry, you can't use that", and the attempt is in **Activity**. Commands used in a direct message with the app only get what everyone gets.
 

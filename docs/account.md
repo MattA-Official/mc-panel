@@ -19,13 +19,13 @@ The installer gives you a **setup link** and a **setup token** (or uses the toke
 On **Your account** (your name at the bottom of the sidebar), **Your passkeys**:
 
 - **Add a passkey** creates one on the device you're using, or on a security key. Add at least two, so losing one device doesn't lock you out. Passkeys in iCloud Keychain, Google Password Manager, 1Password and similar sync between your devices by themselves.
-- Remove a passkey you no longer use, or one on a lost device. Your last passkey can't be removed.
+- Remove a passkey you no longer use, or one on a lost device. Removing one also signs you out on every other device, so a lost one can't carry on; sign in again on the ones you still use. Your last passkey can't be removed.
 
 ## If you lose every passkey
 
 On the sign-in page, choose **Lost your passkeys? Use a recovery code**. Each code works once. After signing in with one, you're asked to add a new passkey straight away, before anything else.
 
-Down to your last few codes? **Your account**, **Make new codes** gives you a fresh set of ten. The old ones stop working.
+Down to your last few codes? **Your account**, **Make new codes** gives you a fresh set of ten. The old ones stop working. If your codes were made before Flytower 1.4.1, making a new set is worth doing: newer codes are quicker for the panel to check.
 
 ## If you lose your passkeys and your codes
 
