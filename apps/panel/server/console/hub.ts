@@ -100,6 +100,11 @@ export class ConsoleHub {
     return reply
   }
 
+  /** Adds lines to a server's console that aren't in its log, like chat from Discord. */
+  show(name: string, lines: string[]) {
+    this.push(name, lines)
+  }
+
   /** Drops a server's RCON connection, e.g. after it stops. */
   forget(name: string) {
     void this.rcons.get(name)?.then(

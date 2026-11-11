@@ -355,6 +355,8 @@ describe('settings', () => {
       lastError: null,
       lastErrorAt: null,
       broken: false,
+      fromDiscord: false,
+      inbound: { enabled: false, state: 'off', error: null, botInServer: null },
     })
     expect(JSON.stringify(v)).not.toContain('secret')
     expect(relayView(null).configured).toBe(false)
@@ -366,6 +368,7 @@ describe('settings', () => {
       joins: true,
       deaths: true,
       advancements: true,
+      fromDiscord: false,
     })
     expect(() => RelayInput.parse({ url: 'nope' })).toThrow()
     expect(() => RelayInput.parse({ url: WEBHOOK, extra: 1 })).toThrow()

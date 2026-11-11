@@ -29,7 +29,7 @@ export function publicServer(row: Row, status: ServiceState, health?: Health) {
     publicPage: readPublicPage(row.publicPage),
     stats: readStatsSettings(row.stats),
     map: readMapSettings(row.map),
-    discordRelay: relayView(row.discordRelay),
+    discordRelay: relayView(row.discordRelay, discordInbound),
     status,
     health: health ?? { condition: null, crash: null },
     icon: iconUrl(row.name),
