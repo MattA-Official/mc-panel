@@ -1,3 +1,4 @@
+import { fromAnotherSite } from '../server/utils/origin'
 import { mkdtempSync, existsSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -136,5 +137,20 @@ describe('setup token', () => {
     expect(importTokenFile(db, path)).toBe(true)
     expect(existsSync(path)).toBe(false)
     expect(await verifyToken(db, 'from-installer')).toBe('ok')
+  })
+})
+
+describe('requests from another site', () => {
+  it('lets in the panel itself and tools that send no Origin', () => {
+    expect(fromAnotherSite('https://panel.example.org', 'panel.example.org')).toBe(false)
+    expect(fromAnotherSite('http://localhost:3000', 'localhost:3000')).toBe(false)
+    expect(fromAnotherSite(undefined, 'panel.example.org')).toBe(false)
+  })
+
+  it('refuses sibling hostnames, other ports and opaque origins', () => {
+    expect(fromAnotherSite('https://survival.example.org', 'panel.example.org')).toBe(true)
+    expect(fromAnotherSite('http://localhost:4000', 'localhost:3000')).toBe(true)
+    expect(fromAnotherSite('null', 'panel.example.org')).toBe(true)
+    expect(fromAnotherSite('https://panel.example.org', undefined)).toBe(true)
   })
 })
