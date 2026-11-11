@@ -12,6 +12,7 @@ const chat = ref(true)
 const joins = ref(true)
 const deaths = ref(true)
 const advancements = ref(true)
+const fromDiscord = ref(false)
 watch(
   relay,
   (r) => {
@@ -20,6 +21,7 @@ watch(
     joins.value = r.joins
     deaths.value = r.deaths
     advancements.value = r.advancements
+    fromDiscord.value = r.fromDiscord
   },
   { immediate: true },
 )
@@ -31,7 +33,8 @@ const dirty = computed(
       (chat.value !== relay.value.chat ||
         joins.value !== relay.value.joins ||
         deaths.value !== relay.value.deaths ||
-        advancements.value !== relay.value.advancements)),
+        advancements.value !== relay.value.advancements ||
+        fromDiscord.value !== relay.value.fromDiscord)),
 )
 
 const saving = ref(false)
@@ -54,6 +57,7 @@ async function save() {
           joins: joins.value,
           deaths: deaths.value,
           advancements: advancements.value,
+          fromDiscord: fromDiscord.value,
         },
       }),
     )
@@ -102,6 +106,22 @@ async function remove() {
     removing.value = false
   }
 }
+
+/** Why chat from Discord won't show yet, when it's switched on here. */
+const inboundNote = computed(() => {
+  const r = relay.value
+  if (!r || !fromDiscord.value) return null
+  if (!r.inbound.enabled) {
+    return 'Chat from Discord is off for the whole panel. Turn it on under System, Integrations, Discord app.'
+  }
+  if (r.inbound.state === 'stopped') {
+    return `The connection to Discord has stopped: ${r.inbound.error ?? 'see System, Integrations.'}`
+  }
+  if (r.configured && r.fromDiscord && r.inbound.botInServer === false) {
+    return 'The bot isn’t in this channel’s Discord server yet. Add it from System, Integrations, Discord app.'
+  }
+  return null
+})
 
 const when = (ms: number | null) => (ms ? new Date(ms).toLocaleString() : '')
 </script>
@@ -195,6 +215,20 @@ const when = (ms: number | null) => (ms ? new Date(ms).toLocaleString() : '')
         label="Advancements"
         description="When someone makes an advancement, reaches a goal or completes a challenge."
         data-e2e="discord-chat-advancements"
+      />
+      <USwitch
+        v-model="fromDiscord"
+        label="Chat from Discord"
+        description="Shows messages from this channel in game, as [Discord] name: message. Plain text only."
+        data-e2e="discord-chat-from-discord"
+      />
+      <UAlert
+        v-if="inboundNote"
+        color="warning"
+        variant="subtle"
+        icon="i-lucide-triangle-alert"
+        :description="inboundNote"
+        data-e2e="discord-chat-inbound-note"
       />
     </div>
 

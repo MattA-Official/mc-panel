@@ -5,6 +5,8 @@ export default defineEventHandler(async (event) => {
   const discord = useDiscord()
   const app = discord.app()
   const { cleanedUp } = await discord.disconnect()
+  // Chat from Discord needs the app, so it closes too (the setting is kept for next time).
+  syncDiscordGateway()
   if (app) {
     audit(user.id, 'discord.disconnect', null, {
       applicationId: app.applicationId,

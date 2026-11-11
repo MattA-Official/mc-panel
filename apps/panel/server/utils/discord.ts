@@ -30,6 +30,7 @@ export function useDiscord(): DiscordService {
       return rpId ? `https://${rpId}` : null
     },
     commandNames: () => useCommands().names(),
+    chat: discordChatState,
   })
   return service
 }

@@ -10,7 +10,7 @@ panelRoute:
 
 Flytower can answer **slash commands** in your Discord server, such as `/status` and `/players`, through a Discord app you make. It's separate from [notifications](notifications.md), which only need a channel webhook.
 
-Discord sends each command to your panel over HTTPS, so the panel needs a domain that Discord can reach from the internet. Flytower doesn't keep a connection open to Discord.
+Discord sends each command to your panel over HTTPS, so the panel needs a domain that Discord can reach from the internet. Flytower doesn't keep a connection open to Discord, unless you turn on [chat from Discord](#chat-from-discord).
 
 ## Connecting an app
 
@@ -104,8 +104,34 @@ Player faces need the panel to have a domain, because Discord fetches them from 
 
 If Discord says the webhook is gone (it was deleted) or refuses it, Flytower stops posting and the card says why. Paste a new webhook, or press **Save** to try the same one again. The webhook URL is stored encrypted and never shown again; the card shows only the webhook's ID.
 
+## Chat from Discord
+
+Messages people send in a server's Discord chat channel can be shown in game too, as `[Discord] name: message`. It's off until you turn it on, because it keeps one connection to Discord open from the panel and needs a setting switched on in the Developer Portal.
+
+1. In the [Discord Developer Portal](https://discord.com/developers/applications), open the app's **Bot** tab and turn on **Message Content Intent** under **Privileged Gateway Intents**. Without it Discord sends messages with no text.
+2. In Flytower, open **System**, **Integrations**. Under **Chat from Discord** on the Discord app card, press **Add the bot to a Discord server** and pick your server. Unlike the commands, this adds the app as a bot; it only asks to see channels.
+3. Press **Turn on**. You're asked for your passkey. The badge shows **Connected** once Discord has accepted the connection.
+4. For each server, open **Settings**, **Community**, **Discord chat**, switch on **Chat from Discord** and press **Save**. Messages from the channel the server's [chat webhook](#game-chat-in-a-channel) posts to are then shown in game. Flytower asks Discord which channel that is, so there's nothing to copy.
+
+The name shown is the person's nickname in your Discord server, or their display name. Only what people type comes through: bots, webhooks (including Flytower's own chat posts, so nothing echoes back) and Discord's own messages like joins and pins are left out. A message that's only a picture, file or sticker shows as `[sent an image]` and so on.
+
+Messages are plain text in game. Mentions show as `@name`, channels as `#channel`, roles as `@role` and custom emoji as `:name:`; Markdown is taken out and spoilers show as `[spoiler]`. Line breaks become spaces, Minecraft formatting codes are removed, and anything over 256 characters is cut. The text is sent with `tellraw` as JSON built by the panel, so nothing typed can run a command or add a click action. Messages also show in the server's console in the panel.
+
+Messages only go to servers that are running, one at a time and in order. If Discord sends more than 20 at once for one server, the rest are dropped rather than queued up.
+
+### If the connection drops
+
+The connection heartbeats as Discord asks. When it drops, or Discord stops answering, the card shows **Reconnecting** and the panel connects again, resuming where it left off so no messages are missed. It waits a little longer after each failed attempt, up to a minute.
+
+It stops, with **Stopped** and Discord's reason, when trying again can't help: most often because **Message Content Intent** is off, or the bot token was reset. Fix that, then press **Connect again**. Disconnecting the app closes the connection; connecting one again reopens it if chat from Discord is still on.
+
+A server's **Discord chat** card says when chat from Discord is switched on there but can't work yet: when it's off for the whole panel, the connection has stopped, or the bot isn't in that channel's Discord server.
+
+Turning chat from Discord on and off is in **Activity**, as is switching it on or off for a server.
+
 ## How it's kept safe
 
 - Every request to the endpoint must carry Discord's Ed25519 signature, made with the app's private key and checked against its public key before anything else happens. Requests with a missing or wrong signature, or a timestamp more than five minutes off, get a 401.
 - The bot token and each server's chat webhook are encrypted with keys derived from the panel's own secret, like notification and off-site storage secrets.
-- Connecting and disconnecting need **Manage integrations** and a passkey check, and both are in **Activity**.
+- Connecting and disconnecting need **Manage integrations** and a passkey check, and both are in **Activity**. So does turning on chat from Discord.
+- Chat from Discord asks Discord for as little as it can: the list of Discord servers the bot is in, and messages in the channels it can see. The bot only has permission to see channels.

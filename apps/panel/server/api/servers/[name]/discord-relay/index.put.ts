@@ -5,8 +5,8 @@ const Params = z.object({ name: z.string().max(40) })
 
 /**
  * Turns on (or changes) posting the server's chat, joins, leaves, deaths and advancements to a
- * Discord channel. It
- * sends what players say off the machine, so it needs a fresh passkey check.
+ * Discord channel, and showing that channel's messages in game. It sends what players say off
+ * the machine, so it needs a fresh passkey check.
  */
 export default defineEventHandler(async (event) => {
   await requireServerPermission(event, 'community.manage')
@@ -25,6 +25,8 @@ export default defineEventHandler(async (event) => {
     joins: view.joins,
     deaths: view.deaths,
     advancements: view.advancements,
+    fromDiscord: view.fromDiscord,
+    wasFromDiscord: was?.fromDiscord === true,
   })
   return view
 })

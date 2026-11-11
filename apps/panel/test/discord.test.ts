@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import { openDb } from '../server/db'
 import { sealer } from '../server/backups/offsite'
-import { DiscordService, inviteUrl } from '../server/discord/service'
+import { DiscordService, botInviteUrl, inviteUrl } from '../server/discord/service'
 import { errorText } from '../server/discord/api'
 import { EPHEMERAL, ResponseType } from '../server/discord/interactions'
 import { CommandRegistry, route } from '../server/discord/registry'
@@ -161,7 +161,17 @@ describe('connecting an app', () => {
       connectedAt: new Date(NOW).toISOString(),
       commands: [],
       commandsError: null,
+      botInviteUrl: botInviteUrl('123456789012345678'),
+      chat: {
+        enabled: false,
+        state: 'off',
+        error: null,
+        since: null,
+        guildCount: 0,
+        servers: [],
+      },
     })
+    expect(botInviteUrl('1')).toContain('scope=bot+applications.commands&permissions=1024')
     expect(calls.map((c) => `${c.method} ${c.url}`)).toEqual([
       'GET https://discord.com/api/v10/applications/@me',
       'PATCH https://discord.com/api/v10/applications/@me',
