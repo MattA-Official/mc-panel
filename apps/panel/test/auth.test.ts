@@ -110,6 +110,16 @@ describe('setup token', () => {
     expect(await verifyToken(db, 'right-token')).toBe('locked')
   })
 
+  it('counts guesses sent at the same time', async () => {
+    const db = openDb(':memory:')
+    await setTokenPlain(db, 'right-token')
+    const results = await Promise.all(
+      Array.from({ length: MAX_ATTEMPTS + 5 }, () => verifyToken(db, 'nope')),
+    )
+    expect(results.filter((r) => r === 'wrong')).toHaveLength(MAX_ATTEMPTS - 1)
+    expect(await verifyToken(db, 'right-token')).toBe('locked')
+  }, 30_000)
+
   it('expires and can be used only once', async () => {
     const db = openDb(':memory:')
     await setTokenPlain(db, 't', 0)
