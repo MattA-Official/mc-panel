@@ -1,5 +1,4 @@
 import { offlineUuid } from '@flytower/providers'
-import { join } from 'node:path'
 import { Sessions } from '../stats/sessions'
 import { StatsSnapshot } from '../stats/snapshot'
 import { parseList } from '../players'
@@ -113,12 +112,7 @@ export function useStatsSnapshot(): StatsSnapshot {
   snapshot ??= new StatsSnapshot({
     db: useDb(),
     include: statsInclude,
-    worldDir: async (server) => {
-      const level = (await readProperties(server).catch(() => ({}) as Record<string, string>))[
-        'level-name'
-      ]
-      return join(serverDir(server), level || 'world')
-    },
+    worldDir: (server) => worldDir(server).catch(() => null),
   })
   return snapshot
 }

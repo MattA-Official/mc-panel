@@ -31,6 +31,16 @@ export function isSecretProperty(key: string): boolean {
 export const isManagedProperty = (key: string) =>
   MANAGED_PROPERTIES.includes(key) || isSecretProperty(key)
 
+/**
+ * Whether a level-name is a plain folder name inside the server folder: letters, numbers,
+ * spaces, dots, dashes and underscores, never "..".
+ */
+export const isSafeLevelName = (name: string) =>
+  /^\w[\w .-]{0,63}$/.test(name) && !name.includes('..')
+
+export const BAD_LEVEL_NAME =
+  'The world folder name (level-name) can only use letters, numbers, spaces, dots, dashes and underscores.'
+
 export const MIN_MEMORY_MB = 1024
 export const MAX_MEMORY_MB = 65536
 export const DEFAULT_MEMORY_MB = 4096
@@ -113,6 +123,10 @@ const Properties = z
     z.union([z.string().max(2000), z.number(), z.boolean()]),
   )
   .superRefine((props, ctx) => {
+    const level = props['level-name']
+    if (level !== undefined && !isSafeLevelName(String(level))) {
+      ctx.addIssue({ code: 'custom', path: ['level-name'], message: BAD_LEVEL_NAME })
+    }
     for (const key of Object.keys(props)) {
       if (isManagedProperty(key)) {
         ctx.addIssue({
