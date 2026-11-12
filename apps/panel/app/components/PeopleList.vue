@@ -9,6 +9,7 @@ import {
 import type { GrantView, InviteView, PeopleView, Person } from '~/utils/people'
 /** Everyone who can sign in, what they can do, and invite links nobody has used yet. */
 const toast = useToast()
+const copy = useCopy()
 const can = useCan()
 const withElevation = useElevation()
 const { data, refresh } = await useFetch<PeopleView>('/api/people')
@@ -113,8 +114,7 @@ async function createInvite() {
 
 async function copyLink() {
   if (!link.value) return
-  await navigator.clipboard.writeText(link.value.url)
-  toast.add({ title: 'Link copied', color: 'success' })
+  await copy(link.value.url, 'Link')
 }
 
 const cancelInvite = (i: InviteView) =>

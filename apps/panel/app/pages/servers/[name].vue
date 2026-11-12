@@ -4,7 +4,14 @@ import { serverUpdateCount } from '#shared/updates'
 
 const route = useRoute()
 const name = computed(() => String(route.params.name))
-const { data: server, error, refresh } = await useFetch<Server>(() => `/api/servers/${name.value}`)
+const {
+  data: server,
+  error,
+  refresh,
+  status: loadStatus,
+} = await useFetch<Server>(() => `/api/servers/${name.value}`)
+/** Only a 404 means there's no such server; anything else is a load that can be tried again. */
+const missing = computed(() => error.value?.statusCode === 404)
 useHead({ title: () => server.value?.displayName ?? 'Server' })
 
 const live = useLiveStatuses()
@@ -26,8 +33,9 @@ const canPower = computed(() => can('server.power', name.value))
  * What each view needs for changes, and what to say when that's missing. Keyed by the path
  * after the server's name (`content`, `settings/yaml`), most specific first.
  */
-// Settings and World say this per section, so they aren't here.
-const WRITE_NEEDS: [string, { permission: Permission; text: string }][] = [
+// Settings and World say this per section, so they aren't here. A view that hides its own
+// changes (`own`) isn't wrapped in the disabled fieldset, so reading still works there.
+const WRITE_NEEDS: [string, { permission: Permission; text: string; own?: true }][] = [
   [
     'settings/yaml',
     { permission: 'spec.edit', text: 'You can read the YAML but not apply changes.' },
@@ -35,6 +43,15 @@ const WRITE_NEEDS: [string, { permission: Permission; text: string }][] = [
   [
     'content',
     { permission: 'content.manage', text: 'You can see what is installed but not change it.' },
+  ],
+  [
+    'files',
+    {
+      permission: 'files.write',
+      text: 'You can browse and download files but not change them.',
+      // Opening folders and files and downloading are buttons too, so Files hides changes itself.
+      own: true,
+    },
   ],
   [
     'players',
@@ -46,7 +63,7 @@ const readOnly = computed(() => {
   // The Stats view on Players is only for reading, so it needs nothing more.
   if (view === 'players' && route.query.view === 'stats') return null
   const need = WRITE_NEEDS.find(([key]) => view === key || view.startsWith(`${key}/`))?.[1]
-  return need && !can(need.permission, name.value) ? need.text : null
+  return need && !can(need.permission, name.value) ? need : null
 })
 
 const toast = useToast()
@@ -243,11 +260,27 @@ const powerMenu = computed(() => [
 
     <template #body>
       <UEmpty
-        v-if="error"
+        v-if="missing"
         icon="i-lucide-search-x"
         :title="`No server called ${name}`"
         description="It may have been deleted."
         :actions="[{ label: 'All servers', to: '/' }]"
+      />
+      <UEmpty
+        v-else-if="error && !server"
+        icon="i-lucide-cloud-alert"
+        :title="`Couldn't load ${name}`"
+        :description="errorMessage(error)"
+        :actions="[
+          {
+            label: 'Try again',
+            icon: 'i-lucide-rotate-cw',
+            loading: loadStatus === 'pending',
+            onClick: () => refresh(),
+          },
+          { label: 'All servers', to: '/', color: 'neutral', variant: 'outline' },
+        ]"
+        data-e2e="load-error"
       />
       <template v-else-if="server">
         <UAlert
@@ -257,12 +290,12 @@ const powerMenu = computed(() => [
           variant="subtle"
           icon="i-lucide-eye"
           title="View only"
-          :description="readOnly"
+          :description="readOnly.text"
           data-e2e="read-only"
         />
         <!-- A disabled fieldset disables every button and field inside, so nothing here can be
              changed without the permission. The server checks every request anyway. -->
-        <fieldset :disabled="!!readOnly" class="contents">
+        <fieldset :disabled="!!readOnly && !readOnly.own" class="contents">
           <NuxtPage />
         </fieldset>
       </template>

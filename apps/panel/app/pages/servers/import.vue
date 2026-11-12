@@ -60,14 +60,20 @@ function drop(e: DragEvent) {
   dragging.value = false
   file.value = e.dataTransfer?.files?.[0] ?? null
 }
+/** The upload under way, so leaving the page can stop it and clear up. */
+let uploading: { id: string | null; abort: AbortController } | null = null
 async function upload() {
   const f = file.value
   if (!f) return
+  const current = { id: null as string | null, abort: new AbortController() }
+  uploading = current
   try {
     const m = await $fetch<ImportMeta>('/api/imports', {
       method: 'POST',
       body: { label: f.name, size: f.size },
+      signal: current.abort.signal,
     })
+    current.id = m.id
     progress.value = 0
     for (let offset = 0; offset < f.size; offset += CHUNK) {
       const chunk = f.slice(offset, offset + CHUNK)
@@ -76,6 +82,7 @@ async function upload() {
         const res = await fetch(`/api/imports/${m.id}/chunk?offset=${offset}`, {
           method: 'PUT',
           body: chunk,
+          signal: current.abort.signal,
         })
         if (res.ok) break
         const msg = (await res.json().catch(() => null))?.statusMessage ?? `HTTP ${res.status}`
@@ -84,12 +91,29 @@ async function upload() {
       }
       progress.value = Math.round(((offset + chunk.size) / f.size) * 100)
     }
+    uploading = null
     await unpack(m, {})
   } catch (err) {
+    if (current.abort.signal.aborted) return
+    uploading = null
     progress.value = null
     toast.add({ title: "Couldn't upload it", description: errorMessage(err), color: 'error' })
   }
 }
+// Leaving mid-upload asks first, then stops sending and deletes the half-uploaded import.
+onBeforeRouteLeave(() => !uploading || confirm('Leave and stop the upload?'))
+function onBeforeUnload(e: BeforeUnloadEvent) {
+  if (uploading) e.preventDefault()
+}
+onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', onBeforeUnload)
+  if (!uploading) return
+  uploading.abort.abort()
+  if (uploading.id)
+    void $fetch(`/api/imports/${uploading.id}` as string, { method: 'DELETE' }).catch(() => {})
+  uploading = null
+})
 
 // Link
 const url = ref('')

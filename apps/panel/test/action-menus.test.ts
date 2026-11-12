@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import {
   isMenuKey,
-  rightClickEnabled,
   RIGHT_CLICK_KEY,
+  switchEnabled,
   wantsBrowserMenu,
 } from '../app/utils/action-menus'
 import {
@@ -56,16 +56,21 @@ test('isMenuKey', () => {
   expect(isMenuKey({ key: 'k', shiftKey: false })).toBe(false)
 })
 
-test('rightClickEnabled is on unless switched off', () => {
-  expect(rightClickEnabled(null)).toBe(true)
-  expect(rightClickEnabled({ getItem: () => null })).toBe(true)
-  expect(rightClickEnabled({ getItem: (k) => (k === RIGHT_CLICK_KEY ? 'off' : null) })).toBe(false)
+test('switchEnabled is on unless switched off', () => {
+  expect(switchEnabled(null, RIGHT_CLICK_KEY)).toBe(true)
+  expect(switchEnabled({ getItem: () => null }, RIGHT_CLICK_KEY)).toBe(true)
   expect(
-    rightClickEnabled({
-      getItem: () => {
-        throw new Error('blocked')
+    switchEnabled({ getItem: (k) => (k === RIGHT_CLICK_KEY ? 'off' : null) }, RIGHT_CLICK_KEY),
+  ).toBe(false)
+  expect(
+    switchEnabled(
+      {
+        getItem: () => {
+          throw new Error('blocked')
+        },
       },
-    }),
+      RIGHT_CLICK_KEY,
+    ),
   ).toBe(true)
 })
 

@@ -78,12 +78,8 @@ const shareUrl = computed(() => {
     ? `https://${server.value.hostname}/map/`
     : `${useRequestURL().origin}${path.value}`
 })
-const copied = ref(false)
-async function copy(text: string) {
-  await navigator.clipboard.writeText(text).catch(() => {})
-  copied.value = true
-  setTimeout(() => (copied.value = false), 1500)
-}
+const { copied, copy: copyText } = useCopyButton()
+const copy = (text: string) => copyText(text, 'Address')
 
 const plural = (n: number, one: string, many = `${one}s`) =>
   `${n.toLocaleString()} ${n === 1 ? one : many}`

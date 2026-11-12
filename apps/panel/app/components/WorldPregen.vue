@@ -20,9 +20,12 @@ const change = ref<{ propose: (spec: unknown, o: { title: string }) => Promise<v
 const { data, refresh } = await useFetch<Status>(() => `/api/servers/${name.value}/world/pregen`, {
   default: () => ({ blocked: null, tasks: [] }),
 })
-// Poll while the tab is open; quicker while something is running.
+// Poll while the tab is open; quicker while something is running. A check still under way
+// when you leave mustn't start the next one, or polling carries on for good.
 let timer: ReturnType<typeof setTimeout> | undefined
+let stopped = false
 function schedule() {
+  if (stopped) return
   timer = setTimeout(
     async () => {
       await refresh().catch(() => {})
@@ -32,7 +35,10 @@ function schedule() {
   )
 }
 onMounted(schedule)
-onBeforeUnmount(() => clearTimeout(timer))
+onBeforeUnmount(() => {
+  stopped = true
+  clearTimeout(timer)
+})
 
 const DIMENSIONS = [
   { label: 'Overworld', value: 'overworld' },

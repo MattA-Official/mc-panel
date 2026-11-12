@@ -19,7 +19,8 @@ const BADGE = {
   wrong: { label: 'Wrong', color: 'error' },
   unknown: { label: "Couldn't check", color: 'neutral' },
 } as const
-const copy = (s: string) => navigator.clipboard.writeText(s).catch(() => {})
+const copyText = useCopy()
+const copy = (s: string) => copyText(s, 'Value')
 const srvParts = (v: string) => {
   const [priority, weight, port, target] = v.split(' ')
   return { priority, weight, port, target }

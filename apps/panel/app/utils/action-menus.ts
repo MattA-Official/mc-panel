@@ -63,6 +63,3 @@ export function switchEnabled(storage: Pick<Storage, 'getItem'> | null, key: str
     return true
   }
 }
-
-export const rightClickEnabled = (storage: Pick<Storage, 'getItem'> | null) =>
-  switchEnabled(storage, RIGHT_CLICK_KEY)

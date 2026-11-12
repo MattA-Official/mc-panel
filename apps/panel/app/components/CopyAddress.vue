@@ -3,12 +3,8 @@
 const props = defineProps<{ server: Pick<Server, 'hostname' | 'port'> }>()
 const machine = useRequestURL().hostname
 const address = computed(() => connectAddress(props.server, machine))
-const copied = ref(false)
-async function copy() {
-  await navigator.clipboard.writeText(address.value).catch(() => {})
-  copied.value = true
-  setTimeout(() => (copied.value = false), 1500)
-}
+const { copied, copy: copyText } = useCopyButton()
+const copy = () => copyText(address.value, 'Address')
 </script>
 
 <template>

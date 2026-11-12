@@ -4,7 +4,12 @@ import { vitals } from '#shared/vitals'
 
 useHead({ title: 'Servers' })
 const { data: health } = await useFetch('/api/health')
-const { data: servers } = await useFetch<Server[]>('/api/servers', { default: () => [] })
+const {
+  data: servers,
+  error,
+  refresh,
+  status: loadStatus,
+} = await useFetch<Server[]>('/api/servers', { default: () => [] })
 const live = useLiveStatuses()
 const statusOf = (s: Server) => live.value[s.name] ?? s.status
 const liveHealth = useLiveHealth()
@@ -66,8 +71,24 @@ function closeCharts() {
         title="The system helper isn't running"
         description="Servers can't be started, stopped or created until it's back. Restarting the machine usually fixes it."
       />
+      <!-- A failed load isn't an empty panel, so it says so and offers another go. -->
       <UEmpty
-        v-if="servers.length === 0"
+        v-if="error"
+        icon="i-lucide-cloud-alert"
+        title="Couldn't load your servers"
+        :description="errorMessage(error)"
+        :actions="[
+          {
+            label: 'Try again',
+            icon: 'i-lucide-rotate-cw',
+            loading: loadStatus === 'pending',
+            onClick: () => refresh(),
+          },
+        ]"
+        data-e2e="load-error"
+      />
+      <UEmpty
+        v-else-if="servers.length === 0"
         icon="i-lucide-drama"
         title="Nothing on stage yet."
         description="Create your first server to get started."
