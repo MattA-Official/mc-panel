@@ -82,6 +82,15 @@ const change = ref<{
   propose: (spec: unknown, o: { title: string; upgrade?: true | string[] }) => Promise<void>
 } | null>(null)
 
+/** Runs a change, saying so when it can't even get as far as a plan. */
+async function changing(what: string, fn: () => Promise<void>) {
+  try {
+    await fn()
+  } catch (err) {
+    toast.add({ title: `Couldn't ${what}`, description: errorMessage(err), color: 'error' })
+  }
+}
+
 async function currentSpec() {
   return (
     await $fetch<{ spec: { content: Wanted[] } & Record<string, unknown> }>(
@@ -90,17 +99,19 @@ async function currentSpec() {
   ).spec
 }
 
-async function add(hit: Hit) {
-  const spec = await currentSpec()
-  spec.content = [
-    ...spec.content,
-    hit.source === 'hangar' ? { hangar: hit.slug } : { modrinth: hit.slug, kind: hit.kind },
-  ]
-  addOpen.value = false
-  await change.value?.propose(spec, { title: `Add ${hit.title}` })
-}
+const add = (hit: Hit) =>
+  changing(`add ${hit.title}`, async () => {
+    const spec = await currentSpec()
+    spec.content = [
+      ...spec.content,
+      hit.source === 'hangar' ? { hangar: hit.slug } : { modrinth: hit.slug, kind: hit.kind },
+    ]
+    addOpen.value = false
+    await change.value?.propose(spec, { title: `Add ${hit.title}` })
+  })
 
-async function remove(item: Item) {
+const remove = (item: Item) => changing(`remove ${item.title}`, () => removeItem(item))
+async function removeItem(item: Item) {
   const spec = await currentSpec()
   spec.content = spec.content.filter((c) => {
     if ('modrinth' in c) return c.modrinth !== item.slug && c.modrinth !== item.projectId
@@ -118,12 +129,13 @@ async function remove(item: Item) {
   await change.value?.propose(spec, { title: `Remove ${item.title}` })
 }
 
-function update(item?: Item) {
-  return change.value?.propose(null, {
-    title: item ? `Update ${item.title}` : 'Update everything',
-    upgrade: item ? [item.projectId] : true,
+const update = (item?: Item) =>
+  changing(item ? `update ${item.title}` : 'update everything', async () => {
+    await change.value?.propose(null, {
+      title: item ? `Update ${item.title}` : 'Update everything',
+      upgrade: item ? [item.projectId] : true,
+    })
   })
-}
 
 const copy = useCopy()
 /** An item's actions, for its ⋯ button and its right-click menu (#106). */
@@ -173,7 +185,10 @@ const kindTabs = computed(() =>
   })),
 )
 
+/** Counts searches, so a slow answer to an older one can't replace newer results. */
+let searchId = 0
 async function search() {
+  const mine = ++searchId
   searching.value = true
   searchError.value = ''
   try {
@@ -188,13 +203,15 @@ async function search() {
         },
       },
     )
+    if (mine !== searchId) return
     hits.value = r.hits
     total.value = r.total
   } catch (err) {
+    if (mine !== searchId) return
     searchError.value = errorMessage(err)
     hits.value = []
   } finally {
-    searching.value = false
+    if (mine === searchId) searching.value = false
   }
 }
 watch([query, kind, source, clientOnly], () => {
@@ -248,12 +265,14 @@ const vtKey = (tweak: string, category: string, pack: string) => `${tweak}:${cat
 watch(vtOpen, async (o) => {
   if (!o) return
   if (!vt.value) loadVt()
-  const spec = await currentSpec()
-  vtPicked.value = new Set(
-    spec.content.flatMap((c) =>
-      'vanillatweaks' in c ? [`${c.tweak ?? 'datapack'}:${c.vanillatweaks}`] : [],
-    ),
-  )
+  await changing('read which packs are installed', async () => {
+    const spec = await currentSpec()
+    vtPicked.value = new Set(
+      spec.content.flatMap((c) =>
+        'vanillatweaks' in c ? [`${c.tweak ?? 'datapack'}:${c.vanillatweaks}`] : [],
+      ),
+    )
+  })
 })
 const vtCategories = computed(() => {
   const list = (vtTab.value === 'crafting' ? vt.value?.crafting : vt.value?.datapacks) ?? []
@@ -275,7 +294,8 @@ function toggleVt(key: string, on: boolean) {
   else next.delete(key)
   vtPicked.value = next
 }
-async function reviewVt() {
+const reviewVt = () => changing('review the Vanilla Tweaks', reviewVtPacks)
+async function reviewVtPacks() {
   const spec = await currentSpec()
   const others = spec.content.filter((c) => !('vanillatweaks' in c))
   const picked: Wanted[] = [...vtPicked.value].map((key) => {
