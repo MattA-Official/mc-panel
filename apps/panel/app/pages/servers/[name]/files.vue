@@ -10,6 +10,10 @@ const { server } = useServerContext()
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const can = useCan()
+
+/** Read-only people can browse, open and download, but not change anything. */
+const canWrite = computed(() => !!server.value && can('files.write', server.value.name))
 
 const base = computed(() => `/api/servers/${server.value?.name}/files`)
 const path = computed(() => normalise(String(route.query.path ?? '/')))
@@ -109,7 +113,7 @@ function closeEditor() {
 }
 const saving = ref(false)
 async function save() {
-  if (!editing.value) return
+  if (!editing.value || !canWrite.value) return
   saving.value = true
   try {
     await $fetch(`${base.value}/write` as string, {
@@ -162,7 +166,9 @@ function rowMenu(e: Entry) {
     [
       ...(e.type === 'file'
         ? [
-            { label: 'Edit', icon: 'i-lucide-pencil', onSelect: () => open(e) },
+            canWrite.value
+              ? { label: 'Edit', icon: 'i-lucide-pencil', onSelect: () => open(e) }
+              : { label: 'View', icon: 'i-lucide-eye', onSelect: () => open(e) },
             {
               label: 'Download',
               icon: 'i-lucide-download',
@@ -171,21 +177,29 @@ function rowMenu(e: Entry) {
             },
           ]
         : []),
-      {
-        label: 'Rename',
-        icon: 'i-lucide-text-cursor-input',
-        onSelect: () => (renaming.value = { from: p, to: e.name }),
-      },
+      ...(canWrite.value
+        ? [
+            {
+              label: 'Rename',
+              icon: 'i-lucide-text-cursor-input',
+              onSelect: () => (renaming.value = { from: p, to: e.name }),
+            },
+          ]
+        : []),
       { label: 'Copy path', icon: 'i-lucide-copy', onSelect: () => void copy(p, 'Path') },
     ],
-    [
-      {
-        label: 'Delete',
-        icon: 'i-lucide-trash-2',
-        color: 'error' as const,
-        onSelect: () => (deleting.value = e),
-      },
-    ],
+    ...(canWrite.value
+      ? [
+          [
+            {
+              label: 'Delete',
+              icon: 'i-lucide-trash-2',
+              color: 'error' as const,
+              onSelect: () => (deleting.value = e),
+            },
+          ],
+        ]
+      : []),
   ]
 }
 
@@ -222,16 +236,19 @@ async function uploadAll(files: FileList | File[] | null | undefined) {
   await refresh()
 }
 const dragging = ref(false)
+function onDragOver() {
+  if (canWrite.value) dragging.value = true
+}
 function onDrop(e: DragEvent) {
   dragging.value = false
-  uploadAll(e.dataTransfer?.files)
+  if (canWrite.value) uploadAll(e.dataTransfer?.files)
 }
 </script>
 
 <template>
   <div
     class="relative mx-auto w-full max-w-5xl"
-    @dragover.prevent="dragging = true"
+    @dragover.prevent="onDragOver"
     @dragleave.self="dragging = false"
     @drop.prevent="onDrop"
   >
@@ -252,21 +269,23 @@ function onDrop(e: DragEvent) {
           </button>
         </template>
       </nav>
-      <UButton
-        label="New folder"
-        icon="i-lucide-folder-plus"
-        color="neutral"
-        variant="outline"
-        @click="newFolder = ''"
-      />
-      <UButton label="Upload" icon="i-lucide-upload" @click="fileInput?.click()" />
-      <input
-        ref="fileInput"
-        type="file"
-        multiple
-        class="hidden"
-        @change="uploadAll(($event.target as HTMLInputElement).files)"
-      />
+      <template v-if="canWrite">
+        <UButton
+          label="New folder"
+          icon="i-lucide-folder-plus"
+          color="neutral"
+          variant="outline"
+          @click="newFolder = ''"
+        />
+        <UButton label="Upload" icon="i-lucide-upload" @click="fileInput?.click()" />
+        <input
+          ref="fileInput"
+          type="file"
+          multiple
+          class="hidden"
+          @change="uploadAll(($event.target as HTMLInputElement).files)"
+        />
+      </template>
     </div>
 
     <div v-for="u in uploads" :key="u.name" class="mb-2 flex items-center gap-3 text-sm">
@@ -346,7 +365,9 @@ function onDrop(e: DragEvent) {
         </tbody>
       </table>
     </div>
-    <p class="mt-2 text-xs text-muted">Drop files anywhere here to upload them to this folder.</p>
+    <p v-if="canWrite" class="mt-2 text-xs text-muted">
+      Drop files anywhere here to upload them to this folder.
+    </p>
 
     <div
       v-if="dragging"
@@ -373,6 +394,7 @@ function onDrop(e: DragEvent) {
         <textarea
           v-if="editing"
           v-model="editing.content"
+          :readonly="!canWrite"
           spellcheck="false"
           aria-label="File contents"
           class="h-[calc(100dvh-12rem)] w-full resize-none rounded-md border border-default bg-[#0b0e14] p-3 font-mono text-[13px] leading-relaxed text-default outline-none focus:border-primary"
@@ -382,10 +404,18 @@ function onDrop(e: DragEvent) {
       </template>
       <template #footer>
         <div class="flex w-full items-center justify-between">
-          <span class="text-xs text-muted">{{ dirty ? 'Unsaved changes' : 'Saved' }}</span>
+          <span class="text-xs text-muted">{{
+            !canWrite ? 'View only' : dirty ? 'Unsaved changes' : 'Saved'
+          }}</span>
           <div class="flex gap-2">
             <UButton label="Close" color="neutral" variant="ghost" @click="closeEditor" />
-            <UButton label="Save" :disabled="!dirty" :loading="saving" @click="save" />
+            <UButton
+              v-if="canWrite"
+              label="Save"
+              :disabled="!dirty"
+              :loading="saving"
+              @click="save"
+            />
           </div>
         </div>
       </template>
