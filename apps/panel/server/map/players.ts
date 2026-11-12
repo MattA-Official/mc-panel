@@ -47,19 +47,31 @@ const JUMP = 64
 
 /** Positions per server, asked for at most once every few seconds. */
 export class PlayerPositions {
-  private cache = new Map<string, { at: number; players: Promise<MapPlayer[]> }>()
+  /** Per server: the last answer, or the sweep under way (`at` is null until it's done). */
+  private cache = new Map<string, { at: number | null; players: Promise<MapPlayer[]> }>()
   /** Per server, then per player: the last answer and when the dimension was asked. */
   private known = new Map<string, Map<string, { player: MapPlayer; dimensionAt: number }>>()
 
   constructor(private deps: PositionDeps) {}
 
+  /**
+   * Where everyone is. A sweep still under way is shared, however long RCON takes, so a slow
+   * server never has two sweeps at once; a finished one is kept for the time to live.
+   */
   get(server: string): Promise<MapPlayer[]> {
     const hit = this.cache.get(server)
     const ttl = this.deps.ttlMs ?? 1000
-    if (hit && Date.now() - hit.at < ttl) return hit.players
-    const players = this.ask(server).catch(() => [] as MapPlayer[])
-    this.cache.set(server, { at: Date.now(), players })
-    return players
+    if (hit && (hit.at === null || Date.now() - hit.at < ttl)) return hit.players
+    const entry: { at: number | null; players: Promise<MapPlayer[]> } = {
+      at: null,
+      players: this.ask(server)
+        .catch(() => [] as MapPlayer[])
+        .finally(() => {
+          entry.at = Date.now()
+        }),
+    }
+    this.cache.set(server, entry)
+    return entry.players
   }
 
   forget(server: string) {

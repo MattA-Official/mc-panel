@@ -1,0 +1,20 @@
+// The website runs as a Cloudflare Worker. Pages are prerendered at build time and served as
+// static assets; the Worker is there for later server routes (a mailing list, opt-in telemetry).
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "flytower-site",
+  "main": "./.output/server/index.mjs",
+  "compatibility_date": "2026-10-28",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./.output/public",
+    "binding": "ASSETS",
+    "html_handling": "drop-trailing-slash",
+    "not_found_handling": "404-page",
+  },
+  // Deploying creates the DNS record and certificate for the domain on first run.
+  "routes": [{ "pattern": "flytower.dev", "custom_domain": true }],
+  "observability": { "enabled": true },
+  "preview_urls": true,
+  "workers_dev": true,
+}

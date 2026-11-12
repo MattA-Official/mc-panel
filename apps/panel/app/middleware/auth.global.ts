@@ -10,7 +10,12 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (s.needsSetup) return to.path === '/setup' ? undefined : navigateTo('/setup')
   // Invite links are opened signed out; signed in, the page says to sign out first.
   if (to.path === '/join') return
-  if (!s.user) return to.path === '/login' ? undefined : navigateTo('/login')
+  if (!s.user) {
+    if (to.path === '/login') return
+    // Remember where they were going, so signing in takes them there.
+    const next = returnPath(to.fullPath)
+    return navigateTo({ path: '/login', query: next === '/' ? {} : { next } })
+  }
   if (s.mustEnrolPasskey) return to.path === '/enrol' ? undefined : navigateTo('/enrol')
   if (PUBLIC.has(to.path) || to.path === '/enrol') return navigateTo('/')
 })

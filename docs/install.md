@@ -38,30 +38,32 @@ curl -fsSL https://github.com/MattA-Official/mc-panel/releases/latest/download/i
   | sudo bash -s -- --domain panel.example.com
 ```
 
-The installer prints a setup link and a setup token at the end. Open the link to go straight to creating your passkey, or open the panel and type the token if the link won't open where you are (on another device, say). Either works once, within 24 hours. Lost them before finishing setup? Run the same command again for new ones.
+The installer prints a setup link and a setup token at the end. Open the link to go straight to creating your passkey, or open the panel and type the token if the link won't open where you are (on another device, say). Either works once, within 24 hours. Lost them before finishing setup? Run the same command again for new ones. It keeps the version you have.
 
 ## What the installer does
 
 - Unpacks the release (which includes its own Bun runtime) into `/opt/flytower/releases/<version>` and points `/opt/flytower/current` at it.
 - Creates a `flytower` system user for the panel. The panel never runs as root; a small root helper (`flytower-agent`) does the handful of things that need it.
-- Installs Caddy for HTTPS, and opens ports 22, 80 and 443 with ufw. Minecraft ports are opened per server as you create them.
+- Installs Caddy for HTTPS, and opens 80, 443 and your SSH port with ufw. It asks `sshd` which port SSH uses (22 if it can't tell) and says which it opened. Minecraft ports are opened per server as you create them.
 - Stores data in `/var/lib/flytower`, configuration in `/etc/flytower`, and servers in `/srv/flytower/servers/<name>`.
 
-Running the installer again is safe. It upgrades in place and keeps your data, secret and servers.
+Running the installer again keeps your data, secret and servers. On a box that already has Flytower, it also keeps the installed version, whichever channel it came from, unless you pass `--version`, `--beta`, `--native`, `--pr` or `--tarball`. To update, use **System → Updates** in the panel (or `--version latest` for the newest stable release). If the version you pick is older than the one installed, the installer first saves a copy of the panel's database in `/var/lib/flytower-agent/db-backups/`.
 
 The installer checks the release's signature before installing anything, and prints "Release signature checked" when it matches. Releases before 1.0 are marked as pre-releases on GitHub, so the `latest` links above skip them. To install one, use the versioned link from its release notes.
 
 ### Options
 
-| Option                 | Meaning                                                                    |
-| ---------------------- | -------------------------------------------------------------------------- |
-| `--domain <host>`      | The panel's address. Required.                                             |
-| `--version <x.y.z>`    | Install a specific release. Defaults to the newest.                        |
-| `--setup-token <text>` | Use this setup token instead of generating one.                            |
-| `--tarball <file>`     | Install from a release tarball already on the machine.                     |
-| `--pr <number>`        | Install the signed test build of that pull request. For testing only.      |
-| `--no-caddy`           | Skip Caddy if you run your own HTTPS proxy (point it at `127.0.0.1:3000`). |
-| `--no-firewall`        | Leave ufw alone.                                                           |
+| Option                 | Meaning                                                                                                                                     |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--domain <host>`      | The panel's address. Required.                                                                                                              |
+| `--version <x.y.z>`    | Install a specific release. `--version latest` is the newest stable one. A fresh install defaults to that; a re-run keeps what's installed. |
+| `--beta`               | Install the newest release, betas included.                                                                                                 |
+| `--native`             | Install the newest [native build](updating.md#native-builds). For test servers.                                                             |
+| `--setup-token <text>` | Use this setup token instead of generating one.                                                                                             |
+| `--tarball <file>`     | Install from a release tarball already on the machine. Its signature isn't checked, so only use one you trust.                              |
+| `--pr <number>`        | Install the signed test build of that pull request. For testing only.                                                                       |
+| `--no-caddy`           | Skip Caddy if you run your own HTTPS proxy (point it at `127.0.0.1:3000`).                                                                  |
+| `--no-firewall`        | Leave ufw alone.                                                                                                                            |
 
 ## Troubleshooting
 

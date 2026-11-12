@@ -185,7 +185,23 @@ describe('OffsiteService', () => {
     expect(existsSync(path)).toBe(false)
   })
 
-  it('removing a target stops copying but keeps finished copies on record', async () => {
+  it('removes a copy whose backup was deleted while it uploaded', async () => {
+    const { offsite, db, backup, bucket } = setup()
+    const { id: target } = await offsite.addTarget(input)
+    db.update(schema.servers).set({ offsiteTarget: target }).run()
+    const b = backup('a.tar.zst')
+    const put = bucket.store.put
+    bucket.store.put = async (key, path) => {
+      await put(key, path)
+      // Deleted (or pruned) mid-upload, when there was no finished copy to remove yet.
+      db.delete(schema.backups).where(eq(schema.backups.id, b.id)).run()
+    }
+    offsite.queue(b)
+    await offsite.kick()
+    expect([...bucket.objects.keys()]).toEqual([])
+  })
+
+  it('removing a target stops copying and forgets the copies it can no longer reach', async () => {
     const { offsite, db, backup, row } = setup()
     const { id: target } = await offsite.addTarget(input)
     db.update(schema.servers).set({ offsiteTarget: target }).run()
@@ -194,6 +210,10 @@ describe('OffsiteService', () => {
     await offsite.kick()
     offsite.removeTarget(target)
     expect(db.select().from(schema.servers).get()!.offsiteTarget).toBeNull()
-    expect(row(done.id).offsiteState).toBe('done')
+    expect(row(done.id)).toMatchObject({
+      offsiteState: null,
+      offsiteTarget: null,
+      offsiteKey: null,
+    })
   })
 })

@@ -80,12 +80,9 @@ async function disconnect() {
   if (ok) confirming.value = false
 }
 
-const copied = ref(false)
+const { copied, copy } = useCopyButton()
 async function copyEndpoint() {
-  if (!discord.value?.endpointUrl) return
-  await navigator.clipboard.writeText(discord.value.endpointUrl).catch(() => {})
-  copied.value = true
-  setTimeout(() => (copied.value = false), 1500)
+  if (discord.value?.endpointUrl) await copy(discord.value.endpointUrl, 'Endpoint URL')
 }
 </script>
 

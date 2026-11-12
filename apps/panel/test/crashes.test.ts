@@ -192,6 +192,24 @@ describe('crash detection', () => {
     expect(crashed).toEqual(['survival'])
   })
 
+  it("doesn't count a later console stop as the same crash again", async () => {
+    await see(up(0))
+    mkdirSync(join(dir('survival'), 'crash-reports'))
+    const report = join(dir('survival'), 'crash-reports', 'crash-2026-11-09_21.00.30-server.txt')
+    writeFileSync(report, 'Description: Ticking entity\n')
+    const t = new Date(clock + 1000)
+    utimesSync(report, t, t)
+    clock += 60_000
+    // Crashed, and systemd had it back up before the next look.
+    await see(up(1))
+    expect(events().filter((e) => e.kind === 'crash')).toHaveLength(1)
+    clock += 30 * 60_000
+    // Someone types `stop` in the console much later.
+    await see(stopped)
+    expect(events().filter((e) => e.kind === 'crash')).toHaveLength(1)
+    expect(starts).toEqual([])
+  })
+
   it('marks a crash loop when systemd gives up, and clears it on the next start', async () => {
     await see(up(0))
     await see(autoRestart({}, 0))

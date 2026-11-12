@@ -10,6 +10,10 @@ const { server } = useServerContext()
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const can = useCan()
+
+/** Read-only people can browse, open and download, but not change anything. */
+const canWrite = computed(() => !!server.value && can('files.write', server.value.name))
 
 const base = computed(() => `/api/servers/${server.value?.name}/files`)
 const path = computed(() => normalise(String(route.query.path ?? '/')))
@@ -103,13 +107,31 @@ onMounted(() => {
 })
 
 const dirty = computed(() => !!editing.value && editing.value.content !== editing.value.original)
+/** Asks before unsaved changes are thrown away; true when it's fine to carry on. */
+function mayDiscard() {
+  return !dirty.value || confirm('Discard your unsaved changes?')
+}
 function closeEditor() {
-  if (dirty.value && !confirm('Discard your unsaved changes?')) return
+  if (!mayDiscard()) return
   editing.value = null
 }
+// Leaving the tab, moving to another folder (Back, a link) or closing the page asks too.
+function leaving() {
+  if (!editing.value) return true
+  if (!mayDiscard()) return false
+  editing.value = null
+  return true
+}
+onBeforeRouteLeave(leaving)
+onBeforeRouteUpdate((to, from) => (to.query.path === from.query.path ? true : leaving()))
+function onBeforeUnload(e: BeforeUnloadEvent) {
+  if (dirty.value) e.preventDefault()
+}
+onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
+onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload))
 const saving = ref(false)
 async function save() {
-  if (!editing.value) return
+  if (!editing.value || !canWrite.value) return
   saving.value = true
   try {
     await $fetch(`${base.value}/write` as string, {
@@ -126,31 +148,26 @@ async function save() {
   }
 }
 
-// Rename, new folder, delete
-const renaming = ref<{ from: string; to: string } | null>(null)
+// Rename, new folder, delete. Each remembers the folder it was started in, so moving to
+// another folder with a dialog open (Back, say) can't send it somewhere else.
+const renaming = ref<{ dir: string; from: string; to: string } | null>(null)
 async function doRename() {
   if (!renaming.value) return
-  const ok = await call(
-    'POST',
-    'rename',
-    { from: renaming.value.from, to: join(path.value, renaming.value.to) },
-    'Renamed',
-  )
-  if (ok) renaming.value = null
+  const { dir, from, to } = renaming.value
+  if (await call('POST', 'rename', { from, to: join(dir, to) }, 'Renamed')) renaming.value = null
 }
-const newFolder = ref<string | null>(null)
+const newFolder = ref<{ dir: string; name: string } | null>(null)
 async function doMkdir() {
-  if (!newFolder.value) return
-  if (await call('POST', 'mkdir', { path: join(path.value, newFolder.value) }, 'Folder created')) {
+  if (!newFolder.value?.name) return
+  const { dir, name } = newFolder.value
+  if (await call('POST', 'mkdir', { path: join(dir, name) }, 'Folder created')) {
     newFolder.value = null
   }
 }
-const deleting = ref<Entry | null>(null)
+const deleting = ref<{ entry: Entry; path: string } | null>(null)
 async function doDelete() {
   if (!deleting.value) return
-  if (await call('DELETE', '', { path: join(path.value, deleting.value.name) }, 'Deleted')) {
-    deleting.value = null
-  }
+  if (await call('DELETE', '', { path: deleting.value.path }, 'Deleted')) deleting.value = null
 }
 
 const copy = useCopy()
@@ -162,7 +179,9 @@ function rowMenu(e: Entry) {
     [
       ...(e.type === 'file'
         ? [
-            { label: 'Edit', icon: 'i-lucide-pencil', onSelect: () => open(e) },
+            canWrite.value
+              ? { label: 'Edit', icon: 'i-lucide-pencil', onSelect: () => open(e) }
+              : { label: 'View', icon: 'i-lucide-eye', onSelect: () => open(e) },
             {
               label: 'Download',
               icon: 'i-lucide-download',
@@ -171,33 +190,41 @@ function rowMenu(e: Entry) {
             },
           ]
         : []),
-      {
-        label: 'Rename',
-        icon: 'i-lucide-text-cursor-input',
-        onSelect: () => (renaming.value = { from: p, to: e.name }),
-      },
+      ...(canWrite.value
+        ? [
+            {
+              label: 'Rename',
+              icon: 'i-lucide-text-cursor-input',
+              onSelect: () => (renaming.value = { dir: path.value, from: p, to: e.name }),
+            },
+          ]
+        : []),
       { label: 'Copy path', icon: 'i-lucide-copy', onSelect: () => void copy(p, 'Path') },
     ],
-    [
-      {
-        label: 'Delete',
-        icon: 'i-lucide-trash-2',
-        color: 'error' as const,
-        onSelect: () => (deleting.value = e),
-      },
-    ],
+    ...(canWrite.value
+      ? [
+          [
+            {
+              label: 'Delete',
+              icon: 'i-lucide-trash-2',
+              color: 'error' as const,
+              onSelect: () => (deleting.value = { entry: e, path: p }),
+            },
+          ],
+        ]
+      : []),
   ]
 }
 
 // Uploads: XHR for progress, one file at a time.
 const uploads = ref<{ name: string; progress: number }[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
-function upload(file: File) {
+function upload(file: File, dir: string) {
   const item = reactive({ name: file.name, progress: 0 })
   uploads.value.push(item)
   return new Promise<void>((resolve) => {
     const xhr = new XMLHttpRequest()
-    xhr.open('PUT', `${base.value}/upload?path=${encodeURIComponent(join(path.value, file.name))}`)
+    xhr.open('PUT', `${base.value}/upload?path=${encodeURIComponent(join(dir, file.name))}`)
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) item.progress = Math.round((e.loaded / e.total) * 100)
     }
@@ -218,20 +245,25 @@ function upload(file: File) {
   })
 }
 async function uploadAll(files: FileList | File[] | null | undefined) {
-  for (const f of Array.from(files ?? [])) await upload(f)
+  // The folder open when the upload started, even if you move on before it finishes.
+  const dir = path.value
+  for (const f of Array.from(files ?? [])) await upload(f, dir)
   await refresh()
 }
 const dragging = ref(false)
+function onDragOver() {
+  if (canWrite.value) dragging.value = true
+}
 function onDrop(e: DragEvent) {
   dragging.value = false
-  uploadAll(e.dataTransfer?.files)
+  if (canWrite.value) uploadAll(e.dataTransfer?.files)
 }
 </script>
 
 <template>
   <div
     class="relative mx-auto w-full max-w-5xl"
-    @dragover.prevent="dragging = true"
+    @dragover.prevent="onDragOver"
     @dragleave.self="dragging = false"
     @drop.prevent="onDrop"
   >
@@ -252,21 +284,23 @@ function onDrop(e: DragEvent) {
           </button>
         </template>
       </nav>
-      <UButton
-        label="New folder"
-        icon="i-lucide-folder-plus"
-        color="neutral"
-        variant="outline"
-        @click="newFolder = ''"
-      />
-      <UButton label="Upload" icon="i-lucide-upload" @click="fileInput?.click()" />
-      <input
-        ref="fileInput"
-        type="file"
-        multiple
-        class="hidden"
-        @change="uploadAll(($event.target as HTMLInputElement).files)"
-      />
+      <template v-if="canWrite">
+        <UButton
+          label="New folder"
+          icon="i-lucide-folder-plus"
+          color="neutral"
+          variant="outline"
+          @click="newFolder = { dir: path, name: '' }"
+        />
+        <UButton label="Upload" icon="i-lucide-upload" @click="fileInput?.click()" />
+        <input
+          ref="fileInput"
+          type="file"
+          multiple
+          class="hidden"
+          @change="uploadAll(($event.target as HTMLInputElement).files)"
+        />
+      </template>
     </div>
 
     <div v-for="u in uploads" :key="u.name" class="mb-2 flex items-center gap-3 text-sm">
@@ -346,7 +380,9 @@ function onDrop(e: DragEvent) {
         </tbody>
       </table>
     </div>
-    <p class="mt-2 text-xs text-muted">Drop files anywhere here to upload them to this folder.</p>
+    <p v-if="canWrite" class="mt-2 text-xs text-muted">
+      Drop files anywhere here to upload them to this folder.
+    </p>
 
     <div
       v-if="dragging"
@@ -373,6 +409,7 @@ function onDrop(e: DragEvent) {
         <textarea
           v-if="editing"
           v-model="editing.content"
+          :readonly="!canWrite"
           spellcheck="false"
           aria-label="File contents"
           class="h-[calc(100dvh-12rem)] w-full resize-none rounded-md border border-default bg-[#0b0e14] p-3 font-mono text-[13px] leading-relaxed text-default outline-none focus:border-primary"
@@ -382,10 +419,18 @@ function onDrop(e: DragEvent) {
       </template>
       <template #footer>
         <div class="flex w-full items-center justify-between">
-          <span class="text-xs text-muted">{{ dirty ? 'Unsaved changes' : 'Saved' }}</span>
+          <span class="text-xs text-muted">{{
+            !canWrite ? 'View only' : dirty ? 'Unsaved changes' : 'Saved'
+          }}</span>
           <div class="flex gap-2">
             <UButton label="Close" color="neutral" variant="ghost" @click="closeEditor" />
-            <UButton label="Save" :disabled="!dirty" :loading="saving" @click="save" />
+            <UButton
+              v-if="canWrite"
+              label="Save"
+              :disabled="!dirty"
+              :loading="saving"
+              @click="save"
+            />
           </div>
         </div>
       </template>
@@ -411,30 +456,29 @@ function onDrop(e: DragEvent) {
       @update:open="(v) => !v && (newFolder = null)"
     >
       <template #body>
-        <form @submit.prevent="doMkdir">
+        <form v-if="newFolder" @submit.prevent="doMkdir">
           <UInput
-            :model-value="newFolder ?? ''"
+            v-model="newFolder.name"
             class="w-full font-mono"
             autofocus
             aria-label="Folder name"
             placeholder="mods"
-            @update:model-value="newFolder = String($event)"
           />
         </form>
       </template>
       <template #footer>
         <div class="flex w-full justify-end gap-2">
           <UButton label="Cancel" color="neutral" variant="ghost" @click="newFolder = null" />
-          <UButton label="Create" :disabled="!newFolder" @click="doMkdir" />
+          <UButton label="Create" :disabled="!newFolder?.name" @click="doMkdir" />
         </div>
       </template>
     </UModal>
 
     <UModal
       :open="deleting !== null"
-      :title="`Delete ${deleting?.name}?`"
+      :title="`Delete ${deleting?.entry.name}?`"
       :description="
-        deleting?.type === 'dir'
+        deleting?.entry.type === 'dir'
           ? 'The folder and everything in it will be deleted. This can\'t be undone.'
           : 'This can\'t be undone.'
       "

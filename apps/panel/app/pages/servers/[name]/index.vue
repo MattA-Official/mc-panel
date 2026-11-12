@@ -23,12 +23,8 @@ const unseenCrashes = computed(
 )
 const logsLink = (logs: string) => ({ query: { ...route.query, logs } })
 
-const copied = ref(false)
-async function copy(text: string) {
-  await navigator.clipboard.writeText(text)
-  copied.value = true
-  setTimeout(() => (copied.value = false), 1500)
-}
+const { copied, copy: copyText } = useCopyButton()
+const copy = (text: string) => copyText(text, 'Address')
 </script>
 
 <template>

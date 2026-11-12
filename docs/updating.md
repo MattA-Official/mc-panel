@@ -47,12 +47,14 @@ Each release's `SHA256SUMS` is signed with Flytower's Ed25519 release key. The i
 
 ## Re-running the installer
 
-Running the installer again is always safe. It installs the release you ask for (the newest stable release by default, or the newest beta with `--beta`), keeps your data, settings and app secret, and runs any database changes. Use it to upgrade installs from before 0.5.0, which had no updater, or if the panel won't start at all:
+Running the installer again keeps your data, settings and app secret. On a box that already has Flytower it also keeps the installed version, so a beta, native or test box stays as it is. Use it if the panel won't start at all, or for a new setup token:
 
 ```sh
 curl -fsSL https://github.com/MattA-Official/mc-panel/releases/latest/download/install.sh \
   | sudo bash -s -- --domain panel.example.com
 ```
+
+To change version with it, add `--version <x.y.z>`, `--version latest` (the newest stable release), `--beta` or `--native`. Installs from before 0.5.0, which had no updater, upgrade this way with `--version latest`. If the version you pick is older than the one installed, the installer saves a copy of the panel's database in `/var/lib/flytower-agent/db-backups/` before switching, since older code may not understand newer data.
 
 Every release is tested upgrading from each earlier one, including the database, before it's published.
 

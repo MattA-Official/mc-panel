@@ -78,12 +78,8 @@ const shareUrl = computed(() => {
     ? `https://${server.value.hostname}/map/`
     : `${useRequestURL().origin}${path.value}`
 })
-const copied = ref(false)
-async function copy(text: string) {
-  await navigator.clipboard.writeText(text).catch(() => {})
-  copied.value = true
-  setTimeout(() => (copied.value = false), 1500)
-}
+const { copied, copy: copyText } = useCopyButton()
+const copy = (text: string) => copyText(text, 'Address')
 
 const plural = (n: number, one: string, many = `${one}s`) =>
   `${n.toLocaleString()} ${n === 1 ? one : many}`
@@ -228,7 +224,11 @@ const lastLine = computed(() => {
           :loading="saving"
           :disabled="saving || !canConfigure"
           label="Show players"
-          description="Where each online player is, while someone has the map open."
+          :description="
+            server.map.public && pageOn && server.publicPage.show.players !== 'names'
+              ? 'Only for people signed in. The public page hides player names, so the public map does too.'
+              : 'Where each online player is, while someone has the map open. Without signing in, only when the public page shows player names.'
+          "
           data-e2e="map-players"
           @update:model-value="
             (v: boolean) =>

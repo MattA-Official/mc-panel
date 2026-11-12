@@ -33,6 +33,7 @@ function setup(
     },
     jobs,
     fetch: opts.fetch,
+    lookup: async () => ['93.184.216.34'],
     now: () => clock,
     freeBytes: async () => opts.free ?? 1e12,
   })
@@ -111,6 +112,42 @@ describe('imports', () => {
     }
     expect(failed.message).toBe('Only https links can be imported.')
     expect((await service.get(other.id)).state).toBe('failed')
+  })
+
+  it('checks every redirect a link leads to', async () => {
+    const { base, service } = setup({
+      fetch: (async (url: URL) => {
+        const u = String(url)
+        if (u === 'https://example.test/a')
+          return Response.redirect('https://cdn.example.test/b', 302)
+        if (u === 'https://cdn.example.test/b') return new Response(await serverZip(base))
+        if (u === 'https://example.test/sneaky')
+          return Response.redirect('https://127.0.0.1:8443/admin', 302)
+        return new Response('no', { status: 404 })
+      }) as never,
+    })
+    const ok = await service.start('https://example.test/a', null)
+    expect(
+      (await service.unpack(ok.id, { url: 'https://example.test/a' }).done) as object,
+    ).toMatchObject({ state: 'succeeded' })
+    const bad = await service.start('https://example.test/sneaky', null)
+    const failed = (await service.unpack(bad.id, { url: 'https://example.test/sneaky' }).done) as {
+      message: string
+    }
+    expect(failed.message).toBe("Links to this machine or its local network can't be imported.")
+  })
+
+  it('stops unpacking a tar.gz that would fill the disk', async () => {
+    const { base, service } = setup({ free: 200_000 })
+    const src = join(base, 'big')
+    mkdirSync(src)
+    writeFileSync(join(src, 'zeros'), new Uint8Array(1_000_000))
+    mkdirSync(join(base, 'archive'))
+    const name = 'big-2026-11-01T10-00-00-000Z.tar.gz'
+    Bun.spawnSync(['tar', '-czf', join(base, 'archive', name), '-C', base, 'big'])
+    const meta = await service.start(name, null)
+    const job = (await service.unpack(meta.id, { archive: name }).done) as { message: string }
+    expect(job.message).toBe("There isn't enough free disk space to unpack this import.")
   })
 
   it('imports a deleted server archive, and refuses Paper', async () => {

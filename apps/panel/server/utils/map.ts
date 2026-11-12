@@ -11,8 +11,8 @@ import { can } from '../../shared/permissions'
 import { loadAccess } from '../auth/access'
 import { withUuids } from '../players'
 import { PlayerPositions } from '../map/players'
-import { MAP_CSP, mapAccess, mapFile, viewerPage } from '../map/serve'
-import { MapService, readStderr, type MapProgress } from '../map/service'
+import { MAP_CSP, mapAccess, mapFile, mapShowsPlayers, viewerPage } from '../map/serve'
+import { MapService, runRenderer, type MapProgress } from '../map/service'
 
 let service: MapService | undefined
 let mojang: Mojang | undefined
@@ -22,23 +22,12 @@ export const mapBinary = () =>
   process.env.FLYTOWER_MAP || join(dirname(process.execPath), 'flytower-map')
 
 /** Runs flytower-map at low CPU and disk priority, so the Minecraft servers come first. */
-async function runMap(args: string[], onProgress?: (p: MapProgress) => void): Promise<string> {
+function runMap(args: string[], onProgress?: (p: MapProgress) => void): Promise<string> {
   const low = [
     ...(Bun.which('nice') ? ['nice', '-n', '15'] : []),
     ...(Bun.which('ionice') ? ['ionice', '-c', '3'] : []),
   ]
-  const proc = Bun.spawn([...low, mapBinary(), ...args], {
-    stdin: 'ignore',
-    stdout: 'pipe',
-    stderr: 'pipe',
-  })
-  const [out, err, code] = await Promise.all([
-    new Response(proc.stdout).text(),
-    readStderr(proc.stderr, onProgress),
-    proc.exited,
-  ])
-  if (code !== 0) throw new Error(err.trim() || `flytower-map exited with ${code}`)
-  return out
+  return runRenderer([...low, mapBinary(), ...args], onProgress)
 }
 
 /** The one map service for this process. */
@@ -121,7 +110,8 @@ export async function serveMap(event: H3Event, name: string, raw: string) {
   if (!row) throw notFound()
 
   const map = readMapSettings(row.map)
-  const open = map.enabled && map.public && readPublicPage(row.publicPage).enabled
+  const publicPage = readPublicPage(row.publicPage)
+  const open = map.enabled && map.public && publicPage.enabled
   // Only a private map looks at the session, so a public one never hands visitors a cookie.
   const session = open ? null : await getUserSession(event)
   const access = session?.user ? loadAccess(useDb(), session.user.id, session.sessionVersion) : null
@@ -130,6 +120,7 @@ export async function serveMap(event: H3Event, name: string, raw: string) {
     publicPage: open,
     canView: access ? can(access, 'server.view', name) : null,
   })
+  const showPlayers = mapShowsPlayers(map, open ? publicPage : null)
   let rel: string
   try {
     rel = decodeURIComponent(raw)
@@ -152,7 +143,7 @@ export async function serveMap(event: H3Event, name: string, raw: string) {
   }
 
   if (rel === 'players.json') {
-    const players = map.players ? await usePlayerPositions().get(name) : []
+    const players = showPlayers ? await usePlayerPositions().get(name) : []
     setResponseHeaders(event, { 'content-type': 'application/json', 'cache-control': 'no-store' })
     return { players }
   }
@@ -161,7 +152,7 @@ export async function serveMap(event: H3Event, name: string, raw: string) {
   if (head) {
     // Only for someone on the map right now, so this can't look up any player.
     const hex = uuidHex(head[1]!)
-    const players = map.players ? await usePlayerPositions().get(name) : []
+    const players = showPlayers ? await usePlayerPositions().get(name) : []
     if (!hex || !players.some((p) => p.uuid && uuidHex(p.uuid) === hex)) throw notFound()
     const png = await useSkins().skin(hex)
     if (!png) throw notFound()

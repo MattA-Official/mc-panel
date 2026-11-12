@@ -3,6 +3,9 @@ import { CommandRegistry, OptionType, route } from '../server/discord/registry'
 import { EPHEMERAL, InteractionType, type Interaction } from '../server/discord/interactions'
 import {
   leaderboardCommand,
+  playerEmbed,
+  publicPlayerNames,
+  publicPlayerStats,
   statsCommand,
   type PlayerStats,
   type StatsSource,
@@ -187,5 +190,44 @@ describe('/stats', () => {
   it('suggests player names as they type', async () => {
     const res = await run(interaction('stats', [{ name: 'player', value: 'st', focused: true }], 4))
     expect(res.data.choices).toEqual([{ name: 'Steve', value: 'Steve' }])
+  })
+})
+
+describe('/stats for the public', () => {
+  const boards = {
+    all: [
+      board('playtime', [
+        ['Steve', 216_000],
+        ['Alex', 72_000],
+      ]),
+      board('deaths', [['Steve', 2]]),
+    ],
+    month: [board('deaths', [['Notch', 1]])],
+    week: [board('deaths', [['Alex', 1]])],
+  }
+
+  it('only offers players on the public leaderboards', () => {
+    expect(publicPlayerNames(boards).sort()).toEqual(['Alex', 'Steve'])
+    expect(publicPlayerNames({ all: null })).toEqual([])
+  })
+
+  it('only shows the figures on the boards they are placed on', () => {
+    const alex = publicPlayerStats(boards, 'alex')!
+    expect(alex).toEqual({
+      name: 'Alex',
+      uuid: 'u-Alex',
+      allTime: { playtime: 72_000 },
+      week: { deaths: 1 },
+      partial: true,
+    })
+    const e = playerEmbed({ name: 'survival', displayName: 'Survival SMP', public: true }, alex)
+    expect(e.fields).toEqual([
+      { name: 'Playtime', value: '1 h', inline: true },
+      { name: 'Deaths', value: '+1 this week', inline: true },
+    ])
+    expect(e.footer.text).toBe('Their places on the public leaderboards. Updated once a day.')
+    // Someone on no public board /stats covers isn't there at all.
+    expect(publicPlayerStats(boards, 'Herobrine')).toBeNull()
+    expect(publicPlayerStats(boards, 'Notch')).toBeNull()
   })
 })

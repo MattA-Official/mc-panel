@@ -39,9 +39,8 @@ export async function changePlayers(
   if (!plan) {
     throw createError({ statusCode: 409, statusMessage: 'Start the server to kick players.' })
   }
-  const list = await readList(name, plan.file)
   if (!plan.add) {
-    await writeList(name, plan.file, removeEntry(list, player))
+    await updateList(name, plan.file, (list) => removeEntry(list, player))
     return `Removed ${player}. It takes effect when the server starts.`
   }
   const onlineMode = (await readProperties(name))['online-mode'] !== 'false'
@@ -61,6 +60,7 @@ export async function changePlayers(
       statusMessage: `There's no Minecraft account called ${player}.`,
     })
   }
-  await writeList(name, plan.file, addEntry(list, entryFor(plan.file, profile, { reason })))
+  const entry = entryFor(plan.file, profile, { reason })
+  await updateList(name, plan.file, (list) => addEntry(list, entry))
   return `Saved ${profile.name}. It takes effect when the server starts.`
 }

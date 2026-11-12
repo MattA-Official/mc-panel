@@ -52,7 +52,8 @@ function downloadCodes() {
   URL.revokeObjectURL(url)
 }
 
-const copyCodes = () => navigator.clipboard.writeText(codes.value.join('\n'))
+const copy = useCopy()
+const copyCodes = () => copy(codes.value.join('\n'), 'Codes')
 
 const confirm = () =>
   run(async () => {

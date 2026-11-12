@@ -18,6 +18,12 @@ export interface Migration {
 /**
  * Applies migrations in order, each in its own transaction, recording what ran in
  * `__flytower_migrations`. Already-applied tags are skipped, so this is safe on every boot.
+ *
+ * Foreign keys are off while a migration runs. SQLite ignores `PRAGMA foreign_keys` inside a
+ * transaction, so it has to be set around it, and with it on, a table rebuild (create new,
+ * copy, drop old, rename) would cascade-delete every row that points at the old table.
+ * `foreign_key_check` runs before each commit instead, so a migration that leaves a broken
+ * reference is rolled back rather than kept.
  */
 export function migrate(sqlite: Database, migrations: Migration[] = bundled): string[] {
   sqlite.run(
@@ -29,19 +35,34 @@ export function migrate(sqlite: Database, migrations: Migration[] = bundled): st
       .all()
       .map((r) => r.tag),
   )
+  const pending = migrations.filter((m) => !applied.has(m.tag))
+  if (!pending.length) return []
+  const fkWasOn =
+    sqlite.query<{ foreign_keys: number }, []>('PRAGMA foreign_keys').get()?.foreign_keys === 1
+  sqlite.run('PRAGMA foreign_keys = OFF')
   const ran: string[] = []
-  for (const m of migrations) {
-    if (applied.has(m.tag)) continue
-    sqlite.transaction(() => {
-      for (const statement of m.sql.split('--> statement-breakpoint')) {
-        if (statement.trim()) sqlite.run(statement)
-      }
-      sqlite.run('INSERT INTO __flytower_migrations (tag, applied_at) VALUES (?, ?)', [
-        m.tag,
-        Date.now(),
-      ])
-    })()
-    ran.push(m.tag)
+  try {
+    for (const m of pending) {
+      sqlite.transaction(() => {
+        for (const statement of m.sql.split('--> statement-breakpoint')) {
+          if (statement.trim()) sqlite.run(statement)
+        }
+        const broken = sqlite
+          .query<{ table: string; parent: string }, []>('PRAGMA foreign_key_check')
+          .all()
+        if (broken.length) {
+          const where = [...new Set(broken.map((b) => `${b.table} -> ${b.parent}`))].join(', ')
+          throw new Error(`Migration ${m.tag} left broken references (${where}).`)
+        }
+        sqlite.run('INSERT INTO __flytower_migrations (tag, applied_at) VALUES (?, ?)', [
+          m.tag,
+          Date.now(),
+        ])
+      })()
+      ran.push(m.tag)
+    }
+  } finally {
+    if (fkWasOn) sqlite.run('PRAGMA foreign_keys = ON')
   }
   return ran
 }

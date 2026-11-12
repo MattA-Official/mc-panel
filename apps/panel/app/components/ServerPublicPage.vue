@@ -52,12 +52,8 @@ async function save() {
   }
 }
 
-const copied = ref(false)
-async function copyLink() {
-  await navigator.clipboard.writeText(url.value).catch(() => {})
-  copied.value = true
-  setTimeout(() => (copied.value = false), 1500)
-}
+const { copied, copy: copyText } = useCopyButton()
+const copyLink = () => copyText(url.value, 'Link')
 
 // The players' modpack: what's in it, worked out by the panel from the server's content.
 interface PackPreview {

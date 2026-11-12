@@ -230,3 +230,14 @@ describe('Sessions', () => {
     expect(s.summary('survival').map((p) => p.name)).toEqual(['Alex'])
   })
 })
+
+describe('waiting logins', () => {
+  it("forgets logins that never joined, so they don't pile up", () => {
+    for (let i = 0; i < 50; i++) {
+      s.line('survival', uuidLine(`Bot${i}`, STEVE))
+      minutes(2)
+    }
+    const seen = (s as unknown as { seen: Map<string, Map<string, unknown>> }).seen
+    expect(seen.get('survival')!.size).toBe(1)
+  })
+})

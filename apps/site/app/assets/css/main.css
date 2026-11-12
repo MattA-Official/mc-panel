@@ -1,0 +1,89 @@
+/* Flytower design tokens for Nuxt UI v4 (Tailwind v4).
+   Put at app/assets/css/main.css and list it in nuxt.config `css`.
+   Source of truth: panel/design/tokens.json. */
+@import 'tailwindcss';
+@import '@nuxt/ui';
+/* Fonts are self-hosted from npm (@fontsource), so neither the build nor the panel calls Google. */
+@import '@fontsource-variable/ibm-plex-sans';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/600.css';
+@import '@fontsource-variable/big-shoulders-display';
+
+@theme static {
+  /* Fonts: self-hosted from @fontsource (imported above) */
+  --font-sans: 'IBM Plex Sans Variable', 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-display:
+    'Big Shoulders Display Variable', 'Big Shoulders Display', 'Arial Narrow', sans-serif;
+
+  /* Tungsten: brand amber (primary) */
+  --color-tungsten-50: #fff8eb;
+  --color-tungsten-100: #feebc8;
+  --color-tungsten-200: #fcd592;
+  --color-tungsten-300: #f9bc5c;
+  --color-tungsten-400: #f2a93b;
+  --color-tungsten-500: #e08e1b;
+  --color-tungsten-600: #c07112;
+  --color-tungsten-700: #985511;
+  --color-tungsten-800: #7a4414;
+  --color-tungsten-900: #643914;
+  --color-tungsten-950: #3a1d06;
+
+  /* Steel: cool blue-grey (neutral) */
+  --color-steel-50: #f5f7fa;
+  --color-steel-100: #e9edf3;
+  --color-steel-200: #d3dae5;
+  --color-steel-300: #aeb9cb;
+  --color-steel-400: #8292ab;
+  --color-steel-500: #627390;
+  --color-steel-600: #4c5b76;
+  --color-steel-700: #3e4a61;
+  --color-steel-800: #2a3345;
+  --color-steel-900: #1b2231;
+  --color-steel-950: #10151f;
+}
+
+:root {
+  --ui-radius: 0.25rem; /* radius-sm; Nuxt UI derives md/lg from this */
+  --ui-primary: var(--ui-color-primary-700); /* 5.8:1 on white */
+  --ui-bg: var(--ui-color-neutral-50);
+  --ui-bg-elevated: #ffffff;
+  --ui-border: var(--ui-color-neutral-200);
+  --ui-text: var(--ui-color-neutral-900);
+  --ui-text-muted: var(--ui-color-neutral-600);
+
+  --ft-console-bg: #10151f;
+  --ft-console-ink: #d3dae5;
+  --ft-running: #1f7a4f;
+  --ft-starting: #985511;
+  --ft-stopped: #627390;
+  --ft-crashed: #c23535;
+  --ft-info: #3462d4;
+}
+
+.dark {
+  --ui-primary: var(--ui-color-primary-400);
+  --ui-bg: var(--ui-color-neutral-950);
+  --ui-bg-elevated: var(--ui-color-neutral-900);
+  --ui-border: var(--ui-color-neutral-800);
+  --ui-text: var(--ui-color-neutral-100);
+  --ui-text-muted: var(--ui-color-neutral-300);
+
+  --ft-console-bg: #0b0f17;
+  --ft-running: #3dbe7f;
+  --ft-starting: #f2a93b;
+  --ft-stopped: #8292ab;
+  --ft-crashed: #f06a6a;
+  --ft-info: #7a9ff5;
+}
+
+/* Display type: server names and page titles only */
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

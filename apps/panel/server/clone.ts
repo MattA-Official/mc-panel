@@ -1,3 +1,4 @@
+import { run } from './spawn'
 /**
  * Copying a server folder for a clone. The copy goes to a staging folder; the create job
  * then moves it into the new server, as an import would.
@@ -10,10 +11,8 @@ import type { PreparedSource } from './jobs/runner'
 import { levelNameOf } from './spec/apply'
 
 async function cp(from: string, to: string) {
-  const p = Bun.spawn(['cp', '-a', '--reflink=auto', '--', from, to], { stderr: 'pipe' })
-  if ((await p.exited) !== 0) {
-    throw new Error(`Copying ${from} failed: ${(await new Response(p.stderr).text()).trim()}`)
-  }
+  const { code, stderr } = await run(['cp', '-a', '--reflink=auto', '--', from, to])
+  if (code !== 0) throw new Error(`Copying ${from} failed: ${stderr}`)
 }
 
 /**
