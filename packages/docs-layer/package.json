@@ -10,7 +10,8 @@
     "./anchors": "./anchors.ts",
     "./collection": "./collection.ts",
     "./routes": "./routes.ts",
-    "./screens": "./screens.ts"
+    "./screens": "./screens.ts",
+    "./values": "./values.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

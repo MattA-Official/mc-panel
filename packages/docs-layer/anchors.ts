@@ -30,6 +30,12 @@ export interface DocAnchor {
   need?: string
   /** When it only shows some of the time: "it shows once …", e.g. "there's a task". */
   shownWhen?: string
+  /**
+   * Help may press it for you: `:ui{anchor="…" do}`. Only for safe controls whose own
+   * confirm, passkey check and permissions then take over, so Help can do nothing the
+   * control wouldn't. Keep this list short.
+   */
+  action?: true
 }
 
 export const docAnchors = {
@@ -85,6 +91,7 @@ export const docAnchors = {
     kind: 'button',
     icon: 'i-lucide-archive',
     need: 'backups.create',
+    action: true,
   },
   'backups.schedule': {
     label: 'Schedule',
@@ -138,6 +145,42 @@ export const docAnchors = {
     kind: 'button',
     icon: 'i-lucide-plus',
     need: 'roles.manage',
+  },
+
+  // A server's header, on every tab
+  'server.start': {
+    label: 'Start',
+    route: '/servers/:name',
+    kind: 'button',
+    icon: 'i-lucide-play',
+    need: 'server.power',
+    shownWhen: 'the server is stopped',
+    action: true,
+  },
+  'server.restart': {
+    label: 'Restart',
+    route: '/servers/:name',
+    kind: 'button',
+    icon: 'i-lucide-rotate-cw',
+    need: 'server.power',
+    shownWhen: 'the server is running',
+    action: true,
+  },
+  'server.stop': {
+    label: 'Stop',
+    route: '/servers/:name',
+    kind: 'button',
+    icon: 'i-lucide-square',
+    need: 'server.power',
+    shownWhen: 'the server is running',
+    action: true,
+  },
+  'server.copy-address': {
+    label: 'Copy address',
+    route: '/servers/:name',
+    kind: 'button',
+    icon: 'i-lucide-copy',
+    action: true,
   },
 
   // Your account
@@ -303,6 +346,22 @@ export function anchorRoute(anchor: DocAnchor, server?: string): string {
 /** The CSS selector for an anchor's element in the panel. */
 export function anchorSelector(id: string): string {
   return `[data-doc="${id.replace(/["\\]/g, '\\$&')}"]`
+}
+
+/** Whether Help may press this control for you (`do`). */
+export function canDo(id: string): boolean {
+  return docAnchor(id)?.action === true
+}
+
+/** Every `:ui` on a docs page that asks Help to press its control (`do`). */
+export function actionsInMarkdown(markdown: string): string[] {
+  const found: string[] = []
+  for (const [, attrs] of markdown.matchAll(/:ui(?:\[[^\]]*\])?\{([^}]*)\}/g)) {
+    if (!/(?:^|\s)do(?:\s|=|$)/.test(attrs!)) continue
+    const id = /\banchor="([^"]*)"/.exec(attrs!)?.[1]
+    if (id) found.push(id)
+  }
+  return found
 }
 
 /** Every anchor a docs page names, in `:ui{anchor="…"}` (and later blocks) order. */

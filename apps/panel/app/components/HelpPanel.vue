@@ -16,7 +16,8 @@ watch(open, (isOpen) => {
 // Links between docs pages stay in the panel, and :ui chips can show their control.
 provide('docsOpenInPlace', (to: string) => show(to))
 const { show: showMe } = useShowMe()
-provide('docsShowMe', (anchor: string) => void showMe(anchor))
+provide('docsShowMe', (anchor: string, press?: boolean) => void showMe(anchor, press))
+provide('docsValue', useDocValues())
 
 // Scroll to the heading a "Learn more" link asked for, or back to the top. The page's
 // components render a moment after its data arrives, so look for the heading for up to a second.

@@ -14,6 +14,7 @@ const chipIcons = [
       'i-lucide-panel-top',
       'i-lucide-square',
       'i-lucide-locate-fixed',
+      'i-lucide-zap',
     ].map((name) => name.replace(/^i-([a-z0-9]+)-/, '$1:')),
   ),
 ]

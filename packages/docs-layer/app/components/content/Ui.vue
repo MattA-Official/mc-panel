@@ -1,17 +1,23 @@
 <script setup lang="ts">
-import { docAnchor } from '../../../anchors'
+import { canDo, docAnchor } from '../../../anchors'
 
 /**
  * `:ui{anchor="backups.back-up-now"}` in docs/: names a button, field or section of the panel
  * (#270). On the website it's a chip that looks like the control. In the panel's Help it's a
  * button that goes to the control and lights it up ("Show me"). The chip's words are the
  * control's own label unless the Markdown gives some: `:ui[Back up]{anchor="…"}`.
+ *
+ * With `do` (`:ui{anchor="…" do}`), the panel's Help also offers "Do it", which presses the
+ * control for you so its own confirm and passkey check take over. Only controls on the safe
+ * list in anchors.ts can be pressed; the website ignores `do`.
  */
-const props = defineProps<{ anchor: string }>()
+const props = defineProps<{ anchor: string; do?: boolean | string }>()
 const control = computed(() => docAnchor(props.anchor))
+// MDC passes a bare `do` as true, or as an empty string.
+const doable = computed(() => props.do !== undefined && props.do !== false && canDo(props.anchor))
 
 // The panel provides this; the website doesn't, so there the chip is just a picture.
-const showMe = inject<((anchor: string) => void) | null>('docsShowMe', null)
+const showMe = inject<((anchor: string, press?: boolean) => void) | null>('docsShowMe', null)
 
 const kindIcon = {
   button: 'i-lucide-mouse-pointer-click',
@@ -46,6 +52,18 @@ const icon = computed(() =>
       ><slot>{{ control?.label ?? anchor }}</slot></span
     >
   </span>
+  <button
+    v-if="showMe && control && doable"
+    type="button"
+    class="doc-ui doc-ui-live doc-ui-do"
+    :title="`${control.label} for me`"
+    :data-doc-do="anchor"
+    @click="showMe(anchor, true)"
+  >
+    <UIcon name="i-lucide-zap" class="doc-ui-icon doc-ui-locate" />
+    <span>Do it</span>
+    <span class="sr-only">: {{ control.label }}</span>
+  </button>
 </template>
 
 <style scoped>
@@ -80,6 +98,9 @@ const icon = computed(() =>
 .doc-ui-live:focus-visible {
   outline: 2px solid var(--ui-primary);
   outline-offset: 1px;
+}
+.doc-ui-do {
+  margin-left: 0.3em;
 }
 .doc-ui-locate {
   color: var(--ui-primary);

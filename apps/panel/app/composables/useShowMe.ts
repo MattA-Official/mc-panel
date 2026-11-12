@@ -1,4 +1,10 @@
-import { anchorRoute, docAnchor, needsServer, type DocAnchor } from '@flytower/docs-layer/anchors'
+import {
+  anchorRoute,
+  canDo,
+  docAnchor,
+  needsServer,
+  type DocAnchor,
+} from '@flytower/docs-layer/anchors'
 import type { HelpTarget } from '@flytower/docs-layer/routes'
 import type { Server } from './useServers'
 
@@ -15,6 +21,8 @@ export interface Spotlight {
   path: string
   /** Bumped on every Show me, so pressing it twice looks again. */
   seq: number
+  /** Press the control once it's found ("Do it"): only for anchors marked `action`. */
+  press?: boolean
 }
 
 /**
@@ -30,7 +38,10 @@ export function useShowMe() {
     () => null,
   )
   /** A Show me waiting for you to choose a server, and the servers to choose from. */
-  const picking = useState<{ id: string; servers: Server[] } | null>('doc-pick', () => null)
+  const picking = useState<{ id: string; press: boolean; servers: Server[] } | null>(
+    'doc-pick',
+    () => null,
+  )
   const help = useHelp()
   const route = useRoute()
   // The router's own route: useRoute() in a layout lags behind until the new page has loaded.
@@ -41,23 +52,28 @@ export function useShowMe() {
   const currentServer = () =>
     route.path.startsWith('/servers/') && route.params.name ? String(route.params.name) : null
 
-  async function show(id: string) {
+  /**
+   * Show me, or with `press` ("Do it") also press the control, so its own confirm, passkey
+   * check and permissions take over. Only anchors on the safe list can be pressed.
+   */
+  async function show(id: string, press = false) {
     const anchor = docAnchor(id)
     if (!anchor) return
+    press = press && canDo(id)
     back.value = {
       panel: help.open.value ? help.target.value : null,
       route: route.path.startsWith(help.base) ? route.fullPath : null,
     }
-    if (!needsServer(anchor)) return go(id, anchor)
+    if (!needsServer(anchor)) return go(id, anchor, undefined, press)
     const here = currentServer()
-    if (here) return go(id, anchor, here)
+    if (here) return go(id, anchor, here, press)
     let servers: Server[] = []
     try {
       servers = await $fetch<Server[]>('/api/servers')
     } catch {
       // Treated like having none: the message below says what to do.
     }
-    if (servers.length === 1) return go(id, anchor, servers[0]!.name)
+    if (servers.length === 1) return go(id, anchor, servers[0]!.name, press)
     if (!servers.length) {
       toast.add({
         title: `${anchor.label} is on a server's page`,
@@ -67,7 +83,7 @@ export function useShowMe() {
       })
       return
     }
-    picking.value = { id, servers }
+    picking.value = { id, press, servers }
   }
 
   /** Carries on with a Show me once you've chosen its server. */
@@ -75,10 +91,10 @@ export function useShowMe() {
     const waiting = picking.value
     picking.value = null
     const anchor = waiting && docAnchor(waiting.id)
-    if (anchor) void go(waiting.id, anchor, server)
+    if (anchor) void go(waiting.id, anchor, server, waiting.press)
   }
 
-  async function go(id: string, anchor: DocAnchor, server?: string) {
+  async function go(id: string, anchor: DocAnchor, server?: string, press = false) {
     help.open.value = false
     const to = anchorRoute(anchor, server)
     const [path = '', hash = ''] = to.split('#')
@@ -98,6 +114,7 @@ export function useShowMe() {
       server,
       path: now.value.path,
       seq: (spotlight.value?.seq ?? 0) + 1,
+      press,
     }
   }
 

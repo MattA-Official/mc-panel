@@ -7,7 +7,8 @@ import { pageRoute, routeToPage } from '@flytower/docs-layer/routes'
 const route = useRoute()
 // :ui chips in the page show their control in the panel (#270).
 const { show: showMe } = useShowMe()
-provide('docsShowMe', (anchor: string) => void showMe(anchor))
+provide('docsShowMe', (anchor: string, press?: boolean) => void showMe(anchor, press))
+provide('docsValue', useDocValues())
 const { docs } = useAppConfig()
 const base = docs?.base ?? '/help'
 const path = computed(() => routeToPage(route.path, base))
