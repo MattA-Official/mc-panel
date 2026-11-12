@@ -1,3 +1,4 @@
+import { run } from '../spawn'
 /** Moving imported files into a new server folder, and back again if the import fails. */
 import { readdir, rename, rm } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -27,11 +28,9 @@ async function move(from: string, to: string) {
     await rename(from, to)
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'EXDEV') throw err
-    const cp = Bun.spawn(['cp', '-a', '--', from, to], { stderr: 'pipe' })
-    if ((await cp.exited) !== 0) {
-      throw new Error(`Copying ${from} failed: ${(await new Response(cp.stderr).text()).trim()}`, {
-        cause: err,
-      })
+    const cp = await run(['cp', '-a', '--', from, to])
+    if (cp.code !== 0) {
+      throw new Error(`Copying ${from} failed: ${cp.stderr}`, { cause: err })
     }
     await rm(from, { recursive: true, force: true })
   }
