@@ -49,6 +49,8 @@ export class Rcon {
   private closed = false
   private timeoutMs: number
   private socket!: Socket<undefined>
+  /** The part of the last packet the socket hadn't room for yet; sent when it drains. */
+  private unsent: Uint8Array | null = null
 
   private constructor(timeoutMs: number) {
     this.timeoutMs = timeoutMs
@@ -62,6 +64,7 @@ export class Rcon {
         port: opts.port,
         socket: {
           data: (_s, chunk) => rcon.onData(chunk),
+          drain: () => rcon.flush(),
           close: () => {
             rcon.fail(new RconError('The server closed the RCON connection.'))
             rcon.closed = true
@@ -110,11 +113,29 @@ export class Rcon {
         }, timeoutMs)
         const isCommand = type === PacketType.Command
         this.current = { id, isCommand, parts: [], more: null, resolve, reject, timer }
-        this.socket.write(encodePacket(id, type, body))
+        this.send(encodePacket(id, type, body))
       })
     const result = this.queue.then(run, run)
     this.queue = result.catch(() => {})
     return result
+  }
+
+  /** Writes a packet, keeping whatever the socket didn't take for when it drains. */
+  private send(packet: Uint8Array) {
+    this.unsent = packet
+    this.flush()
+  }
+
+  private flush() {
+    const rest = this.unsent
+    if (!rest || this.closed) return
+    const wrote = this.socket.write(rest)
+    if (wrote < 0) {
+      this.fail(new RconError('The server closed the RCON connection.'))
+      this.close()
+      return
+    }
+    this.unsent = wrote >= rest.length ? null : rest.subarray(wrote)
   }
 
   private id() {
