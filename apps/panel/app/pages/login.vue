@@ -3,6 +3,7 @@ definePageMeta({ layout: 'centered' })
 useHead({ title: 'Sign in' })
 
 const { refresh } = useAuthState()
+const route = useRoute()
 const { authenticate } = usePasskeys()
 
 const mode = ref<'passkey' | 'recovery'>('passkey')
@@ -16,7 +17,7 @@ async function run(fn: () => Promise<void>) {
   try {
     await fn()
     await refresh()
-    await navigateTo('/')
+    await navigateTo(returnPath(route.query.next))
   } catch (e) {
     error.value = errorMessage(e)
   } finally {
