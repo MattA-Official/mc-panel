@@ -5,6 +5,23 @@ import { parseProperties, setProperties, stringifyProperties, toRecord } from '.
 
 export const serverDir = (name: string) => join(useRuntimeConfig().serversDir, name)
 
+const editing = new Map<string, Promise<unknown>>()
+
+/**
+ * Runs read-change-write edits of one file one at a time, so two saves that arrive together
+ * can't both read the old file and have the second write throw the first one's change away.
+ */
+export function editInTurn<T>(path: string, edit: () => Promise<T>): Promise<T> {
+  const before = editing.get(path) ?? Promise.resolve()
+  const run = before.then(edit, edit)
+  const settled = run.catch(() => {})
+  editing.set(path, settled)
+  void settled.then(() => {
+    if (editing.get(path) === settled) editing.delete(path)
+  })
+  return run
+}
+
 const propertiesPath = (name: string) => join(serverDir(name), 'server.properties')
 
 export async function readProperties(name: string): Promise<Record<string, string>> {
@@ -18,8 +35,10 @@ export async function readProperties(name: string): Promise<Record<string, strin
  */
 export async function writeProperties(name: string, changes: Record<string, string>) {
   const path = propertiesPath(name)
-  const text = (await readNoFollow(path).catch(() => null)) ?? ''
-  await replaceFile(path, stringifyProperties(setProperties(parseProperties(text), changes)))
+  await editInTurn(path, async () => {
+    const text = (await readNoFollow(path).catch(() => null)) ?? ''
+    await replaceFile(path, stringifyProperties(setProperties(parseProperties(text), changes)))
+  })
 }
 
 /**
