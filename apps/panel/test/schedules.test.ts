@@ -318,7 +318,13 @@ describe('ScheduleService', () => {
     expect(commands).toEqual(['tellraw @a {"text":"Restart at \\"5am\\"","color":"gold"}'])
   })
 
-  it('restarts after the countdown, holding the lock throughout', async () => {
+  it('restarts after the countdown, taking the lock only to save and restart', async () => {
+    const locked: [string, boolean][] = []
+    const rcon = service['deps'].rcon
+    service['deps'].rcon = async (s, cmd) => {
+      locked.push([cmd.split(' ')[0]!, busy.has(s)])
+      return rcon(s, cmd)
+    }
     service.replace('survival', [restartTask({ warn: [60] })])
     const id = service.view('survival').tasks[0]!.id
     const run = service.runNow('survival', id, 1)
@@ -326,11 +332,88 @@ describe('ScheduleService', () => {
     await run.done
     expect(restarts).toBe(1)
     expect(busy.size).toBe(0)
+    // A backup due during the warnings can still take the lock.
+    expect(locked).toEqual([
+      ['list', false],
+      ['tellraw', false],
+      ['save-all', true],
+    ])
     expect(service.view('survival').tasks[0]!).toMatchObject({
       running: false,
       lastOk: true,
       lastResult: 'Restarted in 0s (1 warning)',
     })
+  })
+
+  it('waits for a backup that started during the countdown, then restarts', async () => {
+    service.replace('survival', [restartTask({ warn: [] })])
+    busy.add('survival')
+    hold = true
+    const run = service.runNow('survival', service.view('survival').tasks[0]!.id, 1)
+    await Bun.sleep(0)
+    expect(restarts).toBe(0)
+    busy.delete('survival')
+    for (const w of waiters.splice(0)) w()
+    await run.done
+    expect(restarts).toBe(1)
+  })
+
+  it('gives up on a restart if a backup is still running ten minutes later', async () => {
+    service.replace('survival', [restartTask({ warn: [60] })])
+    const rcon = service['deps'].rcon
+    service['deps'].rcon = async (s, cmd) => {
+      if (cmd.startsWith('tellraw') && !busy.size) busy.add(s)
+      return rcon(s, cmd)
+    }
+    await service.runNow('survival', service.view('survival').tasks[0]!.id, 1).done
+    expect(restarts).toBe(0)
+    expect(commands.at(-1)).toBe(
+      'tellraw @a {"text":"The restart has been called off","color":"gold"}',
+    )
+    expect(service.view('survival').tasks[0]!).toMatchObject({
+      lastOk: false,
+      lastResult: 'Skipped: a backup or change was still running after 10 minutes',
+    })
+  })
+
+  it("doesn't start a server that was stopped during the countdown", async () => {
+    service.replace('survival', [restartTask({ warn: [60] })])
+    const rcon = service['deps'].rcon
+    service['deps'].rcon = async (s, cmd) => {
+      if (cmd.startsWith('tellraw')) running = false
+      return rcon(s, cmd)
+    }
+    await service.runNow('survival', service.view('survival').tasks[0]!.id, 1).done
+    expect(restarts).toBe(0)
+    expect(service.view('survival').tasks[0]!).toMatchObject({
+      lastOk: null,
+      lastResult: 'Skipped: the server was stopped during the countdown',
+    })
+    expect(sent).toEqual([])
+  })
+
+  it('calls off a countdown when its task changes or its server goes', async () => {
+    service.replace('survival', [restartTask({ warn: [60] })])
+    hold = true
+    const first = service.runNow('survival', service.view('survival').tasks[0]!.id, 1)
+    await Bun.sleep(0)
+    service.replace('survival', [restartTask({ warn: [30] })])
+    await first.done
+    expect(restarts).toBe(0)
+
+    const second = service.runNow('survival', service.view('survival').tasks[0]!.id, 1)
+    await Bun.sleep(0)
+    expect(service.view('survival').tasks[0]!.running).toBe(true)
+    service.remove('survival')
+    await second.done
+    expect(restarts).toBe(0)
+    expect(
+      db
+        .select()
+        .from(schema.audit)
+        .all()
+        .map((a) => (a.detail as { result: string }).result),
+    ).toEqual(['Cancelled before the restart', 'Cancelled before the restart'])
   })
 
   it("skips when the server isn't running, without an alert", async () => {
