@@ -8,12 +8,12 @@ panelRoute:
 
 # Backups
 
-Everything here is on a server's **World** tab, which opens on **Backups**.
+Everything here is on a server's **World** tab, which opens on :ui{anchor="world.backups"}.
 
 ## Taking backups
 
-- **Back up now**, with a note if you like. If the server is running, it pauses saving for a moment so the world on disk is consistent. Players stay connected.
-- **Schedule**: every 6 or 12 hours, daily, weekly, or your own cron expression, in your time zone.
+- :ui{anchor="backups.back-up-now"}, with a note if you like. If the server is running, it pauses saving for a moment so the world on disk is consistent. Players stay connected.
+- :ui{anchor="backups.schedule"}: every 6 or 12 hours, daily, weekly, or your own cron expression, in your time zone.
 - Flytower also takes a **safety** backup before anything risky: applying a plan that touches mods or the world, restoring, resetting the world, or copying another world in.
 
 Backups are `.tar.zst` archives of the whole server folder. They live in `/var/lib/flytower/backups/<server>`, and you can download them.
@@ -22,7 +22,7 @@ Some things are left out because they're never worth restoring: `logs`, `crash-r
 
 ## How many are kept
 
-Scheduled backups are thinned out by the **keep** settings. By default Flytower keeps the newest 6, plus the newest from each of the last 7 days and the last 4 weeks. The three newest safety backups are kept. Backups you take yourself are never deleted automatically.
+Scheduled backups are thinned out by the :ui[keep]{anchor="backups.keep"} settings. By default Flytower keeps the newest 6, plus the newest from each of the last 7 days and the last 4 weeks. The three newest safety backups are kept. Backups you take yourself are never deleted automatically.
 
 To keep any backup forever, choose **Keep forever** on it. It gets a **Kept** badge, retention never deletes it, and it doesn't count towards the numbers above. **Stop keeping forever** hands it back to retention.
 

@@ -14,16 +14,16 @@ panelRoute:
 
 ## Create it
 
-1. **Servers**, **New server**.
-2. Give it a **name**, which is what players see. The **short name** below it is used for its folder and can't change later.
-3. Pick a **loader**:
+1. **Servers**, :ui{anchor="servers.new"}.
+2. Give it a :ui[name]{anchor="new-server.name"}, which is what players see. The **short name** below it is used for its folder and can't change later.
+3. Pick a :ui[loader]{anchor="new-server.loader"}:
    - **Vanilla**: Mojang's server, unchanged. Datapacks only.
    - **Fabric**: for mods (performance mods like Lithium, or gameplay mods). Datapacks work too.
    - **Paper**: for plugins (from Modrinth or Hangar), with Paper's own performance improvements. Datapacks work too.
 4. Pick the **Minecraft version**. The newest release is chosen for you; tick **Snapshots** to see test versions.
-5. Choose **memory**. The slider stops at what the machine has free (see _Memory budget_ below).
-6. Leave **port** empty to use the next free one, starting at 25565.
-7. **Create server**. Flytower installs the right Java, downloads the server, accepts the EULA for you (you agree to it by creating the server), and starts it.
+5. Choose :ui[memory]{anchor="new-server.memory"}. The slider stops at what the machine has free (see _Memory budget_ below).
+6. Leave :ui[port]{anchor="new-server.port"} empty to use the next free one, starting at 25565.
+7. :ui{anchor="new-server.create"}. Flytower installs the right Java, downloads the server, accepts the EULA for you (you agree to it by creating the server), and starts it.
 
 Players connect to your VPS's address, with `:port` if it isn't 25565. To give each server a name of its own instead, see [Addresses and DNS](addresses.md).
 

@@ -8,11 +8,11 @@ since: '1.1.0'
 
 Each server can run things by itself on a schedule: a restart with a countdown in-game, a console command, or an announcement in everyone's chat. For example, restart at 5am every day, warning players 15, 5 and 1 minutes and 10 seconds beforehand.
 
-Set them under the server's **Settings**, **Schedules**, or under [`schedules`](spec.md#schedules) in its YAML. Both are the same list.
+Set them under the server's **Settings**, :ui{anchor="settings.schedules"}, or under [`schedules`](spec.md#schedules) in its YAML. Both are the same list.
 
 ## Adding a task
 
-Press **Add task** and choose what it does:
+Press :ui{anchor="schedules.add-task"} and choose what it does:
 
 - **Restart**: warns anyone online, saves the world, then restarts the server.
 - **Command**: runs a console command, such as `save-all` or `whitelist reload`. Write it without the slash. Its reply is kept, and shows when you point at the task's last result.
@@ -20,7 +20,7 @@ Press **Add task** and choose what it does:
 
 Then choose when: every day at a time, every week on a day, every hour, every few minutes, or a cron expression for anything else. Cron has five parts: minute, hour, day of the month, month, and day of the week. `0 5 * * *` is 05:00 every day, and `30 3 * * 1-5` is 03:30 on weekdays. The form shows the next three times it would run.
 
-Every task on the list shows when it runs next, and when it last ran and how that went. **Run now** runs it straight away. The list updates by itself while a task runs.
+Every task on the list shows when it runs next, and when it last ran and how that went. :ui{anchor="schedules.run-now"} runs it straight away. The list updates by itself while a task runs.
 
 ## Time zone
 
