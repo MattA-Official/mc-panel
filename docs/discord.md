@@ -57,7 +57,7 @@ Both answer from the same information as the [public status page](status-page.md
 
 **Which servers show.** Servers with their **public page** turned on, plus any server the caller can see through their [Discord role](#discord-roles). Everything else stays hidden: asking for it answers the same as a server that doesn't exist.
 
-**Leaderboards and stats.** `/leaderboard` and `/stats` use the same figures as the server's [stats](stats.md) on its Players tab. They only cover servers whose public page shows leaderboards (which needs the page to show player names, and the server to keep stats). Players left out of stats never appear, and `/stats` never says when someone last played. With more than one such server, pick one with `server`.
+**Leaderboards and stats.** `/leaderboard` and `/stats` use the same figures as the server's [stats](stats.md) on its Players tab. They only cover servers whose public page shows leaderboards (which needs the page to show player names, and the server to keep stats). Players left out of stats never appear. For anyone who can't see the server in Flytower, `/stats` only knows the players on the public all-time or weekly leaderboards (the top five), shows only their figures on those boards, and never says when someone last played. With more than one such server, pick one with `server`.
 
 Answers are posted in the channel for everyone to see, except "no such server" and similar, which only the person who asked sees. Player names can never ping anyone.
 

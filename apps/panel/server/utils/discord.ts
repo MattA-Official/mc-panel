@@ -8,7 +8,13 @@ import { discordAccess } from '../discord/roles'
 import type { Interaction } from '../discord/interactions'
 import { readPublicPage, showsLeaderboard } from '../../shared/public-page'
 import { can, type Access } from '../../shared/permissions'
-import { leaderboardCommand, statsCommand, type StatsSource } from '../discord/commands/stats'
+import {
+  leaderboardCommand,
+  publicPlayerNames,
+  publicPlayerStats,
+  statsCommand,
+  type StatsSource,
+} from '../discord/commands/stats'
 import { DiscordError, DiscordService, INTERACTIONS_PATH } from '../discord/service'
 import { CommandRegistry } from '../discord/registry'
 import { playersCommand, statusCommand, type ServerSource } from '../discord/commands/servers'
@@ -142,7 +148,8 @@ export async function postDiscordFollowUp(interaction: Interaction, reply: Reply
 
 /**
  * Stats for Discord. Someone who can see a server in Flytower gets what its Stats tab shows;
- * anyone else only servers whose public page shows leaderboards, without visits.
+ * anyone else only servers whose public page shows leaderboards, and only the players and
+ * figures those boards show, without visits.
  */
 const statsSource: StatsSource = {
   servers(access: Access) {
@@ -170,24 +177,29 @@ const statsSource: StatsSource = {
   async player(server, name, access) {
     const page = publicPageOf(server)
     if (!page || !statsVisibleTo(server, page, access)) return null
+    // Anyone else only gets what the public leaderboards show.
+    if (!can(access, 'server.view', server))
+      return publicPlayerStats(await publicBoards(server, page), name)
     const lower = name.toLowerCase()
     const find = async (period: 'all' | 'week') =>
       (await statsOverview(server, period)).players.find((p) => p.name.toLowerCase() === lower)
     const all = await find('all')
     if (!all) return null
     const week = await find('week')
-    const full = can(access, 'server.view', server)
     return {
       name: all.name,
       uuid: all.uuid,
       allTime: all.stats,
       week: week?.stats ?? { playtime: 0, deaths: 0, mob_kills: 0, distance: 0, blocks_mined: 0 },
-      ...(full && { lastSeen: all.lastSeen, sessions: all.sessions }),
+      lastSeen: all.lastSeen,
+      sessions: all.sessions,
     }
   },
   async playerNames(server, access) {
     const page = publicPageOf(server)
     if (!page || !statsVisibleTo(server, page, access)) return []
+    if (!can(access, 'server.view', server))
+      return publicPlayerNames(await publicBoards(server, page))
     return (await statsOverview(server, 'all')).players.map((p) => p.name)
   },
 }

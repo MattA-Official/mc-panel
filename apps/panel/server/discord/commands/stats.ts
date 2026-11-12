@@ -1,7 +1,8 @@
 /**
  * /leaderboard and /stats: the same figures as the Stats tab and the public page, with the
  * same rules. People who can see a server in Flytower get what the Stats tab shows; anyone
- * else only sees servers whose public page shows leaderboards, and nothing about visits.
+ * else only sees servers whose public page shows leaderboards, only the players placed on them,
+ * and nothing about visits.
  * Left-out players never appear, and a server that keeps no stats shows nothing publicly.
  */
 import type { Access } from '../../../shared/permissions'
@@ -25,14 +26,54 @@ import {
 } from '../registry'
 import { DEADLINE_MS, serverChoices, type ServerEntry } from './servers'
 
-/** A player's figures for /stats. Visits only for callers who can see the server. */
+/**
+ * A player's figures for /stats. Visits only for callers who can see the server; anyone else
+ * gets only the figures the public leaderboards show (`partial`), so a board the player isn't
+ * on is left out.
+ */
 export interface PlayerStats {
   name: string
   uuid: string
-  allTime: Record<BoardKey, number>
-  week: Record<BoardKey, number>
+  allTime: Partial<Record<BoardKey, number>>
+  week: Partial<Record<BoardKey, number>>
   lastSeen?: number | null
   sessions?: number
+  partial?: boolean
+}
+
+/** A public page's leaderboards by period, null where it shows none. */
+export type BoardsByPeriod = Partial<Record<Period, Board[] | null>>
+
+/** Everyone on the public all-time or this week's leaderboards, the ones /stats shows. */
+export function publicPlayerNames(boards: BoardsByPeriod): string[] {
+  const names = new Set<string>()
+  for (const list of [boards.all, boards.week])
+    for (const b of list ?? []) for (const e of b.entries) names.add(e.name)
+  return [...names]
+}
+
+/**
+ * One player's figures as the public leaderboards show them: all time and this week, only on
+ * the boards they're placed on. Null when they're on none.
+ */
+export function publicPlayerStats(boards: BoardsByPeriod, name: string): PlayerStats | null {
+  const lower = name.toLowerCase()
+  const pick = (period: Period) => {
+    const out: Partial<Record<BoardKey, number>> = {}
+    let who: { name: string; uuid: string } | null = null
+    for (const b of boards[period] ?? []) {
+      const e = b.entries.find((x) => x.name.toLowerCase() === lower)
+      if (!e) continue
+      out[b.key] = e.value
+      who = { name: e.name, uuid: e.uuid }
+    }
+    return { out, who }
+  }
+  const all = pick('all')
+  const week = pick('week')
+  const who = all.who ?? week.who
+  if (!who) return null
+  return { ...who, allTime: all.out, week: week.out, partial: true }
 }
 
 export interface StatsSource {
@@ -110,13 +151,15 @@ export function leaderboardEmbed(
 }
 
 export function playerEmbed(server: ServerEntry, p: PlayerStats) {
-  const fields = BOARDS.map((b) => {
+  const fields = BOARDS.flatMap((b) => {
+    const all = p.allTime[b.key]
     const week = p.week[b.key]
-    return {
-      name: b.label,
-      value: `${formatStat(b.unit, p.allTime[b.key])}${week ? `\n+${formatStat(b.unit, week)} this week` : ''}`,
-      inline: true,
-    }
+    if (all === undefined && !week) return []
+    const lines = [
+      ...(all !== undefined ? [formatStat(b.unit, all)] : []),
+      ...(week ? [`+${formatStat(b.unit, week)} this week`] : []),
+    ]
+    return [{ name: b.label, value: lines.join('\n'), inline: true }]
   })
   const visits =
     p.sessions !== undefined && p.lastSeen
@@ -127,7 +170,11 @@ export function playerEmbed(server: ServerEntry, p: PlayerStats) {
     color: COLOURS.info,
     ...(visits && { description: visits }),
     fields,
-    footer: { text: 'All time. Updated once a day.' },
+    footer: {
+      text: p.partial
+        ? 'Their places on the public leaderboards. Updated once a day.'
+        : 'All time. Updated once a day.',
+    },
   }
 }
 
