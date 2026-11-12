@@ -29,6 +29,19 @@ export const UpdateRecord = z.object({
   manual: z.boolean(),
 })
 
+/** Bytes in each part of a server's space, matching the panel's groups. */
+const ServerDiskGroups = z.object({
+  world: z.number().int().min(0),
+  logs: z.number().int().min(0),
+  content: z.number().int().min(0),
+  map: z.number().int().min(0),
+  backups: z.number().int().min(0),
+  exports: z.number().int().min(0),
+  other: z.number().int().min(0),
+})
+
+const Bytes = z.number().int().min(0)
+
 export const verbs = {
   ping: {
     params: z.object({}).strict(),
@@ -171,6 +184,54 @@ export const verbs = {
   'server.delete': {
     params: z.object({ name: ServerName }).strict(),
     result: z.object({ archivedTo: z.string().nullable() }),
+  },
+  /**
+   * Where the disk has gone, measured as root from a fixed list of places: each server named
+   * (its folder by group, its backups, exports and web map) and, with `system`, the shared
+   * imports and archive and the rest of the machine. Never takes a path. Only places on the
+   * same filesystem as the servers count.
+   */
+  'disk.usage': {
+    params: z.object({ servers: z.array(ServerName).max(100), system: z.boolean() }).strict(),
+    result: z.object({
+      servers: z.record(z.string(), z.object({ groups: ServerDiskGroups, unreadable: Bytes })),
+      shared: z.object({ imports: Bytes, archive: Bytes, unreadable: Bytes }).nullable(),
+      system: z
+        .object({
+          /** Java runtimes Flytower installed. */
+          java: Bytes,
+          /** Flytower's releases, config and data, other than what belongs to servers. */
+          flytower: Bytes,
+          /** The systemd journal and /var/log. */
+          logs: Bytes,
+          /** The apt cache, /tmp and /var/tmp. */
+          temp: Bytes,
+          unreadable: Bytes,
+          /** What the clean-up verbs could free: the journal, apt's cache, old releases. */
+          journal: Bytes,
+          aptCache: Bytes,
+          oldReleases: Bytes,
+        })
+        .nullable(),
+    }),
+  },
+  /** Shrinks the systemd journal to at most `maxMb`. */
+  'disk.vacuum-journal': {
+    params: z.object({ maxMb: z.number().int().min(16).max(100_000) }).strict(),
+    result: z.object({ freedBytes: Bytes }),
+  },
+  /** Empties apt's download cache (`apt-get clean`). */
+  'disk.clean-apt': {
+    params: z.object({}).strict(),
+    result: z.object({ freedBytes: Bytes }),
+  },
+  /**
+   * Removes Flytower releases other than the running one and the one to go back to, with
+   * their leftover downloads and database copies.
+   */
+  'disk.prune-flytower': {
+    params: z.object({}).strict(),
+    result: z.object({ freedBytes: Bytes, removed: z.array(z.string()) }),
   },
 } as const
 

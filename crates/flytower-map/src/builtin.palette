@@ -1,0 +1,175 @@
+# flytower-map built-in palette: common blocks and biomes, so the map works before the full
+# palette is made from the game's textures. Format: see src/palette.rs.
+
+# Ground
+block minecraft:stone 7d7d7d
+block minecraft:deepslate 505052
+block minecraft:granite 956756
+block minecraft:diorite bcbcbc
+block minecraft:andesite 888889
+block minecraft:tuff 6c6d66
+block minecraft:calcite dfe0dc
+block minecraft:dirt 866043
+block minecraft:coarse_dirt 77553b
+block minecraft:rooted_dirt 90674c
+block minecraft:podzol 7a5739
+block minecraft:mycelium 6f6265
+block minecraft:grass_block 949494 grass
+block minecraft:dirt_path 947a41
+block minecraft:farmland 8f6646
+block minecraft:mud 3c393d
+block minecraft:clay a0a6b3
+block minecraft:gravel 837f7e
+block minecraft:sand dbcfa3
+block minecraft:red_sand be6621
+block minecraft:sandstone d8cb9b
+block minecraft:red_sandstone b5621f
+block minecraft:terracotta 985e43
+block minecraft:white_terracotta d1b2a1
+block minecraft:orange_terracotta a15325
+block minecraft:yellow_terracotta ba8523
+block minecraft:red_terracotta 8f3d2e
+block minecraft:brown_terracotta 4d3323
+block minecraft:light_gray_terracotta 876b62
+block minecraft:moss_block 596d2d
+block minecraft:moss_carpet 596d2d
+block minecraft:bedrock 555555
+block minecraft:obsidian 0f0b19
+block minecraft:coal_ore 6a6a6a
+block minecraft:iron_ore 887f78
+block minecraft:copper_ore 7c7f6f
+block minecraft:magma_block 8e3f1f
+
+# Snow and ice
+block minecraft:snow f9fefe
+block minecraft:snow_block f9fefe
+block minecraft:powder_snow f8fdfd
+block minecraft:ice 91b7fd
+block minecraft:packed_ice 8db4fa
+block minecraft:blue_ice 74a8fd
+
+# Water and lava
+block minecraft:water c8c8c8 water
+block minecraft:bubble_column c8c8c8 water
+block minecraft:kelp c8c8c8 water
+block minecraft:kelp_plant c8c8c8 water
+block minecraft:seagrass c8c8c8 water
+block minecraft:tall_seagrass c8c8c8 water
+block minecraft:lava d4590e
+
+# Plants
+block minecraft:short_grass 8c8c8c grass
+block minecraft:tall_grass 8c8c8c grass
+block minecraft:fern 7c7c7c grass
+block minecraft:large_fern 7c7c7c grass
+block minecraft:sugar_cane 95c165
+block minecraft:cactus 5b8b2b
+block minecraft:lily_pad 208030
+block minecraft:vine 6a6a6a foliage
+block minecraft:dandelion ffec4f
+block minecraft:poppy ed302c
+block minecraft:cornflower 466aeb
+block minecraft:dead_bush 6b4f29
+block minecraft:pumpkin c6761b
+block minecraft:melon 6f912f
+block minecraft:hay_block a68b0c
+block minecraft:wheat a8964b
+
+# Trees
+block minecraft:oak_leaves 8a8a8a foliage
+block minecraft:jungle_leaves 8a8a8a foliage
+block minecraft:acacia_leaves 8a8a8a foliage
+block minecraft:dark_oak_leaves 8a8a8a foliage
+block minecraft:mangrove_leaves 8a8a8a foliage
+block minecraft:spruce_leaves 3d5c3d
+block minecraft:birch_leaves 5d7c40
+block minecraft:cherry_leaves e5adc2
+block minecraft:azalea_leaves 5a7d2d
+block minecraft:flowering_azalea_leaves 6b7a3d
+block minecraft:oak_log 977a47
+block minecraft:spruce_log 6c5030
+block minecraft:birch_log c4b57e
+block minecraft:jungle_log 9b7547
+block minecraft:acacia_log 95592f
+block minecraft:dark_oak_log 4c3317
+block minecraft:mangrove_roots 4b3c27
+block minecraft:brown_mushroom_block 957051
+block minecraft:red_mushroom_block c82e2d
+
+# Building
+block minecraft:oak_planks a2834f
+block minecraft:spruce_planks 735531
+block minecraft:birch_planks c0af79
+block minecraft:jungle_planks a07351
+block minecraft:acacia_planks a85a32
+block minecraft:dark_oak_planks 42291a
+block minecraft:cobblestone 7f7f7f
+block minecraft:mossy_cobblestone 6e775f
+block minecraft:stone_bricks 7a797a
+block minecraft:bricks 976253
+block minecraft:smooth_stone 9e9e9e
+block minecraft:white_wool e9ecec
+block minecraft:glass 00000000
+block minecraft:torch 00000000
+block minecraft:wall_torch 00000000
+block minecraft:light 00000000
+block minecraft:barrier 00000000
+block minecraft:structure_void 00000000
+block minecraft:rail 00000000
+
+# Nether
+block minecraft:netherrack 622626
+block minecraft:nether_quartz_ore 75413e
+block minecraft:nether_gold_ore 73372a
+block minecraft:soul_sand 513e32
+block minecraft:soul_soil 4b3a2e
+block minecraft:basalt 505153
+block minecraft:blackstone 2a2328
+block minecraft:glowstone ab8654
+block minecraft:crimson_nylium 831f1f
+block minecraft:warped_nylium 2b7265
+block minecraft:nether_wart_block 720202
+block minecraft:warped_wart_block 167879
+block minecraft:crimson_stem 5c1a1e
+block minecraft:warped_stem 3a3a4d
+block minecraft:shroomlight f19347
+
+# End
+block minecraft:end_stone dbde9e
+block minecraft:purpur_block a97ea9
+block minecraft:chorus_plant 5e395e
+block minecraft:chorus_flower 977697
+
+# Biomes: grass, foliage, water
+biome minecraft:plains 91bd59 77ab2f 3f76e4
+biome minecraft:sunflower_plains 91bd59 77ab2f 3f76e4
+biome minecraft:meadow 83bb6d 63a948 0e4ecf
+biome minecraft:forest 79c05a 59ae30 3f76e4
+biome minecraft:flower_forest 79c05a 59ae30 3f76e4
+biome minecraft:birch_forest 88bb67 6ba941 3f76e4
+biome minecraft:dark_forest 507a32 59ae30 3f76e4
+biome minecraft:taiga 86b783 68a464 3f76e4
+biome minecraft:old_growth_pine_taiga 86b87f 68a55f 3f76e4
+biome minecraft:snowy_taiga 80b497 60a17b 3d57d6
+biome minecraft:snowy_plains 80b497 60a17b 3f76e4
+biome minecraft:grove 80b497 60a17b 3f76e4
+biome minecraft:desert bfb755 aea42a 3f76e4
+biome minecraft:savanna bfb755 aea42a 3f76e4
+biome minecraft:jungle 59c93c 30bb0b 3f76e4
+biome minecraft:sparse_jungle 64c73f 3eb80f 3f76e4
+biome minecraft:swamp 6a7039 6a7039 617b64
+biome minecraft:mangrove_swamp 6a7039 8db127 3a7a6a
+biome minecraft:badlands 90814d 9e814d 3f76e4
+biome minecraft:mushroom_fields 55c93f 2bbb0f 3f76e4
+biome minecraft:cherry_grove b6db61 b6db61 5db7ef
+biome minecraft:beach 91bd59 77ab2f 3f76e4
+biome minecraft:river 8eb971 71a74d 3f76e4
+biome minecraft:frozen_river 80b497 60a17b 3938c9
+biome minecraft:ocean 8eb971 71a74d 3f76e4
+biome minecraft:deep_ocean 8eb971 71a74d 3f76e4
+biome minecraft:warm_ocean 8eb971 71a74d 43d5ee
+biome minecraft:lukewarm_ocean 8eb971 71a74d 45adf2
+biome minecraft:cold_ocean 8eb971 71a74d 3d57d6
+biome minecraft:frozen_ocean 80b497 60a17b 3938c9
+biome minecraft:nether_wastes bfb755 aea42a 3f76e4
+biome minecraft:the_end 8eb971 71a74d 3f76e4

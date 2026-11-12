@@ -26,10 +26,16 @@ import {
   sameStatsSettings,
   type StatsSettings,
 } from '../../shared/stats-settings'
+import {
+  describeMap,
+  readMapSettings,
+  sameMapSettings,
+  type MapSettings,
+} from '../../shared/map-settings'
 import { describeTask, sameTask, toTask, type TaskSpec } from '../../shared/schedules'
 import type { schema } from '../db'
 import { formatBytes } from '../backups/service'
-import { contentDir, type Lock, type LockedItem } from './lock'
+import { contentDir, isContentPath, type Lock, type LockedItem } from './lock'
 
 type ServerRow = typeof schema.servers.$inferSelect
 
@@ -71,6 +77,8 @@ export interface SettingsChange {
   publicPage?: PublicPage
   /** Player stats settings. */
   stats?: StatsSettings
+  /** Web map settings. */
+  map?: MapSettings
   content: ServerSpec['content']
 }
 
@@ -314,6 +322,20 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
     }
   }
 
+  if (spec.map) {
+    const was = readMapSettings(row.map)
+    if (!sameMapSettings(was, spec.map)) {
+      settings.map = spec.map
+      changes.push({
+        area: 'settings',
+        action: 'set',
+        label: 'Web map',
+        from: describeMap(was),
+        to: describeMap(spec.map),
+      })
+    }
+  }
+
   planSchedules(input, settings, changes)
 
   // Content.
@@ -354,6 +376,12 @@ export async function makePlan(input: PlanInput): Promise<Plan> {
   const nextLock: LockedItem[] = []
   for (const item of resolved.items) {
     const path = `${contentDir(item.kind, input.levelName)}/${item.filename}`
+    if (!isContentPath(path)) {
+      problems.push(
+        `${item.title} has an unusual file name ("${item.filename}"), so it can't be installed.`,
+      )
+      continue
+    }
     const old = before.get(lockedKey(item))
     before.delete(lockedKey(item))
     const note = item.requiredBy.length ? `Needed by ${item.requiredBy.join(', ')}` : undefined

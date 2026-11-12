@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { eq } from 'drizzle-orm'
-import { setGrants } from '../../../auth/people'
+import { currentGrants, grantChanges, setGrants } from '../../../auth/people'
 import { schema } from '../../../db'
 
 const Params = z.object({ id: z.coerce.number().int().positive() })
@@ -19,7 +19,12 @@ export default defineEventHandler(async (event) => {
   const db = useDb()
   const person = db.select().from(schema.users).where(eq(schema.users.id, id)).get()
   if (!person) throw createError({ statusCode: 404, statusMessage: 'No such person.' })
+  const before = currentGrants(db, id)
   peopleCall(() => setGrants(db, access, id, grants))
-  audit(session.user.id, 'people.changed', null, { person: person.name, grants })
+  audit(session.user.id, 'people.changed', null, {
+    person: person.name,
+    grants,
+    ...grantChanges(db, before, grants),
+  })
   return { ok: true }
 })

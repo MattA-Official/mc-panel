@@ -26,7 +26,7 @@ export function useSchedules(): ScheduleService {
   service ??= new ScheduleService({
     db: useDb(),
     lock: useBackups(),
-    rcon: (name, command) => useConsole().command(name, command, { timeoutMs: 30_000 }),
+    rcon: (name, command) => runConsoleCommand(name, command, null, { timeoutMs: 30_000 }),
     isRunning: async (name) => {
       const { active } = await agent('service.status', { server: name })
       return active === 'active'

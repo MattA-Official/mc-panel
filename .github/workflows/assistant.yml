@@ -1,9 +1,9 @@
 name: Assistant
 
-# Runs Claude Code in Actions for project management and release housekeeping: editing
-# releases, arranging the Projects board through GraphQL, and labelling, milestoning and
-# triaging issues and pull requests. It doesn't change code. What it may do is set out in
-# .github/assistant/INSTRUCTIONS.md.
+# Runs Claude Code in Actions for project management: arranging the Projects board through
+# GraphQL, and labelling, milestoning and triaging issues and pull requests. It can't change
+# code or releases: its token only reads the repository, and the Release and Release notes
+# workflows own releases. What it may do is set out in .github/assistant/INSTRUCTIONS.md.
 #
 # Start it by writing @claude in an issue, a pull request or a review comment, or from the
 # Actions tab (or the API) with a written request. Only the repository owner can start it.
@@ -12,10 +12,11 @@ name: Assistant
 #   CLAUDE_CODE_OAUTH_TOKEN  a Claude subscription token from `claude setup-token`, or
 #   ANTHROPIC_API_KEY        an Anthropic API key. One of the two is required; the
 #                            subscription token wins when both are set.
-#   PROJECTS_TOKEN           optional. A classic personal access token with the `repo`
-#                            and `project` scopes, needed for the user-owned Projects
-#                            board, used through .github/assistant/gh-projects. Plain gh
-#                            uses this workflow's own token for releases, issues and PRs.
+#   PROJECTS_TOKEN           optional. A classic personal access token with only the
+#                            `project` scope (the repository is public, so it needs no
+#                            `repo` scope), for the user-owned Projects board, used through
+#                            gh-projects. Plain gh uses this workflow's own token for
+#                            issues and PRs.
 on:
   issue_comment:
     types: [created]
@@ -53,21 +54,31 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
-      # Editing releases needs contents: write. The workflow never pushes code.
-      contents: write
+      # Read only: nothing here can push code, merge, or touch releases.
+      contents: read
       issues: write
       pull-requests: write
       actions: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          ref: ${{ github.event.repository.default_branch }}
           fetch-depth: 1
 
+      # Started from a pull request, the action checks out that pull request's branch, so the
+      # board wrapper and the instructions are installed from main first, outside the
+      # workspace, where the branch can't replace them.
+      - name: Install the assistant's tools from main
+        run: |
+          sudo install -m 0755 .github/assistant/gh-projects /usr/local/bin/gh-projects
+          sudo install -D -m 0644 .github/assistant/INSTRUCTIONS.md \
+            /usr/local/share/flytower-assistant/INSTRUCTIONS.md
+
       - id: assistant
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@4fa93a88de49bbef68b10eb15aabedf28ca0e1ed # v1.0.271
         env:
           # The action points GH_TOKEN at its own token, so the board token travels under
-          # its own name and .github/assistant/gh-projects uses it.
+          # its own name and gh-projects uses it.
           PROJECTS_TOKEN: ${{ secrets.PROJECTS_TOKEN }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -79,12 +90,14 @@ jobs:
           # Other people's comments stay out of the context, which limits what a stranger
           # on a public issue can steer.
           include_comments_by_actor: ${{ github.repository_owner }}
+          # Only the gh commands the job needs: gh as a whole can run code (gh extension,
+          # gh alias --shell). Files can only be written under .assistant/, for GraphQL.
           claude_args: >-
             --model claude-sonnet-5-5
             --max-turns 40
-            --allowedTools "Bash(gh:*),Bash(.github/assistant/gh-projects:*),Read,Write,Glob,Grep"
-            --disallowedTools "Bash(git push:*),Bash(git commit:*)"
-            --append-system-prompt "Before doing anything else, read .github/assistant/INSTRUCTIONS.md and follow it."
+            --allowedTools "Bash(gh issue:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr diff:*),Bash(gh pr edit:*),Bash(gh pr comment:*),Bash(gh label:*),Bash(gh release view:*),Bash(gh release list:*),Bash(gh run view:*),Bash(gh run list:*),Bash(gh search:*),Bash(gh api:*),Bash(gh-projects:*),Read,Glob,Grep,Edit(.assistant/**),Write(.assistant/**)"
+            --disallowedTools "Bash(git push:*),Bash(git commit:*),Bash(gh extension:*),Bash(gh alias:*),Bash(gh config:*),Bash(gh auth:*)"
+            --append-system-prompt "Before doing anything else, read /usr/local/share/flytower-assistant/INSTRUCTIONS.md and follow it."
 
       # The action hides Claude's output on public repositories. Comment runs reply on the
       # issue, but a dispatched run has nowhere to reply and a failed run hides its reason

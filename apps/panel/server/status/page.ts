@@ -2,7 +2,7 @@
  * What a server's public status page shows, built only from what its settings allow. Pure,
  * so the rules for what leaves the panel are tested in one place.
  */
-import type { PublicPage, PublicStatus } from '../../shared/public-page'
+import { showsLeaderboard, type PublicPage, type PublicStatus } from '../../shared/public-page'
 import type { RosterView } from './roster'
 import { packFilename } from './mrpack'
 
@@ -27,11 +27,15 @@ export interface PageInput {
   icon: string | null
   /** Whether the server has anything for players to install (Modrinth mods or extras). */
   hasPack: boolean
+  /** Whether the server's web map is on, public and drawn. */
+  hasMap: boolean
   /** `motd` from server.properties. */
   motd: string
   /** `max-players` from server.properties, when it's a number. */
   maxPlayers: number | null
   withUuids: (names: string[]) => { name: string; uuid: string }[]
+  /** Whether the server keeps player stats. */
+  statsEnabled: boolean
 }
 
 export function joinAddress(row: PageInput['row'], machine: string): string {
@@ -71,6 +75,8 @@ export function publicStatus(input: PageInput): PublicStatus {
             filename: packFilename(row.displayName),
           }
         : null,
+    map: input.hasMap ? { url: `/s/${encodeURIComponent(row.name)}/map/` } : null,
+    leaderboard: showsLeaderboard(page, input.statsEnabled),
     version: page.show.version
       ? { minecraft: row.mcVersion, loader: LOADERS[row.loader] ?? row.loader }
       : null,

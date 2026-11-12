@@ -1,0 +1,1291 @@
+{
+  "type": "root",
+  "children": {
+    "give": {
+      "type": "literal",
+      "children": {
+        "targets": {
+          "type": "argument",
+          "argument": {
+            "type": "minecraft:entity",
+            "players_only": true,
+            "single_result": false
+          },
+          "children": {
+            "item": {
+              "type": "argument",
+              "argument": {
+                "type": "minecraft:item_stack"
+              },
+              "children": {
+                "count": {
+                  "type": "argument",
+                  "argument": {
+                    "type": "minecraft:integer",
+                    "min": 1
+                  },
+                  "executable": true
+                }
+              },
+              "executable": true
+            }
+          }
+        }
+      }
+    },
+    "tp": {
+      "type": "literal",
+      "redirect": ["teleport"]
+    },
+    "teleport": {
+      "type": "literal",
+      "children": {
+        "destination": {
+          "type": "argument",
+          "argument": {
+            "type": "minecraft:entity",
+            "players_only": false,
+            "single_result": true
+          },
+          "executable": true
+        },
+        "location": {
+          "type": "argument",
+          "argument": {
+            "type": "minecraft:vec3",
+            "auto_center": true
+          },
+          "executable": true
+        },
+        "targets": {
+          "type": "argument",
+          "argument": {
+            "type": "minecraft:entity",
+            "players_only": false,
+            "single_result": false
+          },
+          "children": {
+            "destination": {
+              "type": "argument",
+              "argument": {
+                "type": "minecraft:entity",
+                "players_only": false,
+                "single_result": true
+              },
+              "executable": true
+            },
+            "location": {
+              "type": "argument",
+              "argument": {
+                "type": "minecraft:vec3",
+                "auto_center": true
+              },
+              "children": {
+                "facing": {
+                  "type": "literal",
+                  "children": {
+                    "entity": {
+                      "type": "literal",
+                      "children": {
+                        "facingEntity": {
+                          "type": "argument",
+                          "argument": {
+                            "type": "minecraft:entity",
+                            "players_only": false,
+                            "single_result": true
+                          },
+                          "children": {
+                            "facingAnchor": {
+                              "type": "argument",
+                              "argument": {
+                                "type": "minecraft:entity_anchor"
+                              },
+                              "executable": true
+                            }
+                          },
+                          "executable": true
+                        }
+                      }
+                    },
+                    "facingLocation": {
+                      "type": "argument",
+                      "argument": {
+                        "type": "minecraft:vec3",
+                        "auto_center": true
+                      },
+                      "executable": true
+                    }
+                  }
+                },
+                "rotation": {
+                  "type": "argument",
+                  "argument": {
+                    "type": "minecraft:rotation"
+                  },
+                  "executable": true
+                }
+              },
+              "executable": true
+            }
+          }
+        }
+      }
+    },
+    "say": {
+      "type": "literal",
+      "children": {
+        "message": {
+          "type": "argument",
+          "argument": {
+            "type": "minecraft:message"
+          },
+          "executable": true
+        }
+      }
+    },
+    "gamemode": {
+      "type": "literal",
+      "children": {
+        "gamemode": {
+          "type": "argument",
+          "argument": {
+            "type": "minecraft:gamemode"
+          },
+          "children": {
+            "target": {
+              "type": "argument",
+              "argument": {
+                "type": "minecraft:entity",
+                "players_only": true,
+                "single_result": false
+              },
+              "executable": true
+            }
+          },
+          "executable": true
+        }
+      }
+    },
+    "gamerule": {
+      "type": "literal",
+      "children": {
+        "advance_time": {
+          "type": "literal",
+          "children": {
+            "value": {
+              "type": "argument",
+              "argument": {
+                "type": "minecraft:bool"
+              },
+              "executable": true
+            }
+          },
+          "executable": true
+        },
+        "advance_weather": {
+          "type": "literal",
+          "children": {
+            "value": {
+              "type": "argument",
+              "argument": {
+                "type": "minecraft:bool"
+              },
+              "executable": true
+            }
+          },
+          "executable": true
+        },
+        "allow_entering_nether_using_portals": {
+          "type": "literal",
+          "children": {
+            "value": {
+              "type": "argument",
+              "argument": {
+                "type": "minecraft:bool"
+              },
+              "executable": true
+            }
+          },
+          "executable": true
+        }
+      }
+    },
+    "summon": {
+      "type": "literal",
+      "children": {
+        "entity": {
+          "type": "argument",
+          "argument": {
+            "type": "minecraft:resource",
+            "registry": "minecraft:entity_type"
+          },
+          "children": {
+            "pos": {
+              "type": "argument",
+              "argument": {
+                "type": "minecraft:vec3",
+                "auto_center": true
+              },
+              "children": {
+                "nbt": {
+                  "type": "argument",
+                  "argument": {
+                    "type": "minecraft:nbt_compound_tag"
+                  },
+                  "executable": true
+                }
+              },
+              "executable": true
+            }
+          },
+          "custom_suggestion": {
+            "type": "minecraft:summonable_entities"
+          },
+          "executable": true
+        }
+      }
+    },
+    "effect": {
+      "type": "literal",
+      "children": {
+        "clear": {
+          "type": "literal",
+          "children": {
+            "targets": {
+              "type": "argument",
+              "argument": {
+                "type": "minecraft:entity",
+                "players_only": false,
+                "single_result": false
+              },
+              "children": {
+                "effect": {
+                  "type": "argument",
+                  "argument": {
+                    "type": "minecraft:resource_or_tag",
+                    "registry": "minecraft:mob_effect"
+                  },
+                  "executable": true
+                }
+              },
+              "executable": true
+            }
+          },
+          "executable": true
+        },
+        "give": {
+          "type": "literal",
+          "children": {
+            "targets": {
+              "type": "argument",
+              "argument": {
+                "type": "minecraft:entity",
+                "players_only": false,
+                "single_result": false
+              },
+              "children": {
+                "effect": {
+                  "type": "argument",
+                  "argument": {
+                    "type": "minecraft:resource_or_tag",
+                    "registry": "minecraft:mob_effect"
+                  },
+                  "children": {
+                    "infinite": {
+                      "type": "literal",
+                      "children": {
+                        "amplifier": {
+                          "type": "argument",
+                          "argument": {
+                            "type": "minecraft:integer",
+                            "max": 255,
+                            "min": 0
+                          },
+                          "children": {
+                            "hideParticles": {
+                              "type": "argument",
+                              "argument": {
+                                "type": "minecraft:bool"
+                              },
+                              "executable": true
+                            }
+                          },
+                          "executable": true
+                        }
+                      },
+                      "executable": true
+                    },
+                    "seconds": {
+                      "type": "argument",
+                      "argument": {
+                        "type": "minecraft:integer",
+                        "max": 1000000,
+                        "min": 1
+                      },
+                      "children": {
+                        "amplifier": {
+                          "type": "argument",
+                          "argument": {
+                            "type": "minecraft:integer",
+                            "max": 255,
+                            "min": 0
+                          },
+                          "children": {
+                            "hideParticles": {
+                              "type": "argument",
+                              "argument": {
+                                "type": "minecraft:bool"
+                              },
+                              "executable": true
+                            }
+                          },
+                          "executable": true
+                        }
+                      },
+                      "executable": true
+                    }
+                  },
+                  "executable": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "time": {
+      "type": "literal",
+      "children": {
+        "add": {
+          "type": "literal",
+          "children": {
+            "time": {
+              "type": "argument",
+              "argument": {
+                "type": "minecraft:time",
+                "min": -2147483648
+              },
+              "executable": true
+            }
+          }
+        },
+        "of": {
+          "type": "literal",
+          "children": {
+            "clock": {
+              "type": "argument",
+              "argument": {
+                "type": "minecraft:resource",
+                "registry": "minecraft:world_clock"
+              },
+              "children": {
+                "add": {
+                  "type": "literal",
+                  "children": {
+                    "time": {
+                      "type": "argument",
+                      "argument": {
+                        "type": "minecraft:time",
+                        "min": -2147483648
+                      },
+                      "executable": true
+                    }
+                  }
+                },
+                "pause": {
+                  "type": "literal",
+                  "executable": true
+                },
+                "query": {
+                  "type": "literal",
+                  "children": {
+                    "time": {
+                      "type": "literal",
+                      "executable": true
+                    },
+                    "timeline": {
+                      "type": "argument",
+                      "argument": {
+                        "type": "minecraft:resource",
+                        "registry": "minecraft:timeline"
+                      },
+                      "children": {
+                        "repetition": {
+                          "type": "literal",
+                          "executable": true
+                        }
+                      },
+                      "custom_suggestion": {
+                        "type": "minecraft:ask_server"
+                      },
+                      "executable": true
+                    }
+                  }
+                },
+                "rate": {
+                  "type": "literal",
+                  "children": {
+                    "rate": {
+                      "type": "argument",
+                      "argument": {
+                        "type": "minecraft:float",
+                        "max": 1000,
+                        "min": 0.00001
+                      },
+                      "executable": true
+                    }
+                  }
+                },
+                "resume": {
+                  "type": "literal",
+                  "executable": true
+                },
+                "set": {
+                  "type": "literal",
+                  "children": {
+                    "time": {
+                      "type": "argument",
+                      "argument": {
+                        "type": "minecraft:time"
+                      },
+                      "executable": true
+                    },
+                    "timemarker": {
+                      "type": "argument",
+                      "argument": {
+                        "type": "minecraft:resource_location"
+                      },
+                      "custom_suggestion": {
+                        "type": "minecraft:ask_server"
+                      },
+                      "executable": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "pause": {
+          "type": "literal",
+          "executable": true
+        },
+        "query": {
+          "type": "literal",
+          "children": {
+            "gametime": {
+              "type": "literal",
+              "executable": true
+            },
+            "time": {
+              "type": "literal",
+              "executable": true
+            },
+            "timeline": {
+              "type": "argument",
+              "argument": {
+                "type": "minecraft:resource",
+                "registry": "minecraft:timeline"
+              },
+              "children": {
+                "repetition": {
+                  "type": "literal",
+                  "executable": true
+                }
+              },
+              "custom_suggestion": {
+                "type": "minecraft:ask_server"
+              },
+              "executable": true
+            }
+          }
+        },
+        "rate": {
+          "type": "literal",
+          "children": {
+            "rate": {
+              "type": "argument",
+              "argument": {
+                "type": "minecraft:float",
+                "max": 1000,
+                "min": 0.00001
+              },
+              "executable": true
+            }
+          }
+        },
+        "resume": {
+          "type": "literal",
+          "executable": true
+        },
+        "set": {
+          "type": "literal",
+          "children": {
+            "time": {
+              "type": "argument",
+              "argument": {
+                "type": "minecraft:time"
+              },
+              "executable": true
+            },
+            "timemarker": {
+              "type": "argument",
+              "argument": {
+                "type": "minecraft:resource_location"
+              },
+              "custom_suggestion": {
+                "type": "minecraft:ask_server"
+              },
+              "executable": true
+            }
+          }
+        }
+      }
+    },
+    "playsound": {
+      "type": "literal",
+      "children": {
+        "sound": {
+          "type": "argument",
+          "argument": {
+            "type": "minecraft:resource_location"
+          },
+          "children": {
+            "ambient": {
+              "type": "literal",
+              "children": {
+                "targets": {
+                  "type": "argument",
+                  "argument": {
+                    "type": "minecraft:entity",
+                    "players_only": true,
+                    "single_result": false
+                  },
+                  "children": {
+                    "pos": {
+                      "type": "argument",
+                      "argument": {
+                        "type": "minecraft:vec3",
+                        "auto_center": true
+                      },
+                      "children": {
+                        "volume": {
+                          "type": "argument",
+                          "argument": {
+                            "type": "minecraft:float",
+                            "min": 0
+                          },
+                          "children": {
+                            "pitch": {
+                              "type": "argument",
+                              "argument": {
+                                "type": "minecraft:float",
+                                "max": 2,
+                                "min": 0
+                              },
+                              "children": {
+                                "minVolume": {
+                                  "type": "argument",
+                                  "argument": {
+                                    "type": "minecraft:float",
+                                    "max": 1,
+                                    "min": 0
+                                  },
+                                  "executable": true
+                                }
+                              },
+                              "executable": true
+                            }
+                          },
+                          "executable": true
+                        }
+                      },
+                      "executable": true
+                    }
+                  },
+                  "executable": true
+                }
+              },
+              "executable": true
+            },
+            "block": {
+              "type": "literal",
+              "children": {
+                "targets": {
+                  "type": "argument",
+                  "argument": {
+                    "type": "minecraft:entity",
+                    "players_only": true,
+                    "single_result": false
+                  },
+                  "children": {
+                    "pos": {
+                      "type": "argument",
+                      "argument": {
+                        "type": "minecraft:vec3",
+                        "auto_center": true
+                      },
+                      "children": {
+                        "volume": {
+                          "type": "argument",
+                          "argument": {
+                            "type": "minecraft:float",
+                            "min": 0
+                          },
+                          "children": {
+                            "pitch": {
+                              "type": "argument",
+                              "argument": {
+                                "type": "minecraft:float",
+                                "max": 2,
+                                "min": 0
+                              },
+                              "children": {
+                                "minVolume": {
+                                  "type": "argument",
+                                  "argument": {
+                                    "type": "minecraft:float",
+                                    "max": 1,
+                                    "min": 0
+                                  },
+                                  "executable": true
+                                }
+                              },
+                              "executable": true
+                            }
+                          },
+                          "executable": true
+                        }
+                      },
+                      "executable": true
+                    }
+                  },
+                  "executable": true
+                }
+              },
+              "executable": true
+            },
+            "hostile": {
+              "type": "literal",
+              "children": {
+                "targets": {
+                  "type": "argument",
+                  "argument": {
+                    "type": "minecraft:entity",
+                    "players_only": true,
+                    "single_result": false
+                  },
+                  "children": {
+                    "pos": {
+                      "type": "argument",
+                      "argument": {
+                        "type": "minecraft:vec3",
+                        "auto_center": true
+                      },
+                      "children": {
+                        "volume": {
+                          "type": "argument",
+                          "argument": {
+                            "type": "minecraft:float",
+                            "min": 0
+                          },
+                          "children": {
+                            "pitch": {
+                              "type": "argument",
+                              "argument": {
+                                "type": "minecraft:float",
+                                "max": 2,
+                                "min": 0
+                              },
+                              "children": {
+                                "minVolume": {
+                                  "type": "argument",
+                                  "argument": {
+                                    "type": "minecraft:float",
+                                    "max": 1,
+                                    "min": 0
+                                  },
+                                  "executable": true
+                                }
+                              },
+                              "executable": true
+                            }
+                          },
+                          "executable": true
+                        }
+                      },
+                      "executable": true
+                    }
+                  },
+                  "executable": true
+                }
+              },
+              "executable": true
+            },
+            "master": {
+              "type": "literal",
+              "children": {
+                "targets": {
+                  "type": "argument",
+                  "argument": {
+                    "type": "minecraft:entity",
+                    "players_only": true,
+                    "single_result": false
+                  },
+                  "children": {
+                    "pos": {
+                      "type": "argument",
+                      "argument": {
+                        "type": "minecraft:vec3",
+                        "auto_center": true
+                      },
+                      "children": {
+                        "volume": {
+                          "type": "argument",
+                          "argument": {
+                            "type": "minecraft:float",
+                            "min": 0
+                          },
+                          "children": {
+                            "pitch": {
+                              "type": "argument",
+                              "argument": {
+                                "type": "minecraft:float",
+                                "max": 2,
+                                "min": 0
+                              },
+                              "children": {
+                                "minVolume": {
+                                  "type": "argument",
+                                  "argument": {
+                                    "type": "minecraft:float",
+                                    "max": 1,
+                                    "min": 0
+                                  },
+                                  "executable": true
+                                }
+                              },
+                              "executable": true
+                            }
+                          },
+                          "executable": true
+                        }
+                      },
+                      "executable": true
+                    }
+                  },
+                  "executable": true
+                }
+              },
+              "executable": true
+            },
+            "music": {
+              "type": "literal",
+              "children": {
+                "targets": {
+                  "type": "argument",
+                  "argument": {
+                    "type": "minecraft:entity",
+                    "players_only": true,
+                    "single_result": false
+                  },
+                  "children": {
+                    "pos": {
+                      "type": "argument",
+                      "argument": {
+                        "type": "minecraft:vec3",
+                        "auto_center": true
+                      },
+                      "children": {
+                        "volume": {
+                          "type": "argument",
+                          "argument": {
+                            "type": "minecraft:float",
+                            "min": 0
+                          },
+                          "children": {
+                            "pitch": {
+                              "type": "argument",
+                              "argument": {
+                                "type": "minecraft:float",
+                                "max": 2,
+                                "min": 0
+                              },
+                              "children": {
+                                "minVolume": {
+                                  "type": "argument",
+                                  "argument": {
+                                    "type": "minecraft:float",
+                                    "max": 1,
+                                    "min": 0
+                                  },
+                                  "executable": true
+                                }
+                              },
+                              "executable": true
+                            }
+                          },
+                          "executable": true
+                        }
+                      },
+                      "executable": true
+                    }
+                  },
+                  "executable": true
+                }
+              },
+              "executable": true
+            },
+            "neutral": {
+              "type": "literal",
+              "children": {
+                "targets": {
+                  "type": "argument",
+                  "argument": {
+                    "type": "minecraft:entity",
+                    "players_only": true,
+                    "single_result": false
+                  },
+                  "children": {
+                    "pos": {
+                      "type": "argument",
+                      "argument": {
+                        "type": "minecraft:vec3",
+                        "auto_center": true
+                      },
+                      "children": {
+                        "volume": {
+                          "type": "argument",
+                          "argument": {
+                            "type": "minecraft:float",
+                            "min": 0
+                          },
+                          "children": {
+                            "pitch": {
+                              "type": "argument",
+                              "argument": {
+                                "type": "minecraft:float",
+                                "max": 2,
+                                "min": 0
+                              },
+                              "children": {
+                                "minVolume": {
+                                  "type": "argument",
+                                  "argument": {
+                                    "type": "minecraft:float",
+                                    "max": 1,
+                                    "min": 0
+                                  },
+                                  "executable": true
+                                }
+                              },
+                              "executable": true
+                            }
+                          },
+                          "executable": true
+                        }
+                      },
+                      "executable": true
+                    }
+                  },
+                  "executable": true
+                }
+              },
+              "executable": true
+            },
+            "player": {
+              "type": "literal",
+              "children": {
+                "targets": {
+                  "type": "argument",
+                  "argument": {
+                    "type": "minecraft:entity",
+                    "players_only": true,
+                    "single_result": false
+                  },
+                  "children": {
+                    "pos": {
+                      "type": "argument",
+                      "argument": {
+                        "type": "minecraft:vec3",
+                        "auto_center": true
+                      },
+                      "children": {
+                        "volume": {
+                          "type": "argument",
+                          "argument": {
+                            "type": "minecraft:float",
+                            "min": 0
+                          },
+                          "children": {
+                            "pitch": {
+                              "type": "argument",
+                              "argument": {
+                                "type": "minecraft:float",
+                                "max": 2,
+                                "min": 0
+                              },
+                              "children": {
+                                "minVolume": {
+                                  "type": "argument",
+                                  "argument": {
+                                    "type": "minecraft:float",
+                                    "max": 1,
+                                    "min": 0
+                                  },
+                                  "executable": true
+                                }
+                              },
+                              "executable": true
+                            }
+                          },
+                          "executable": true
+                        }
+                      },
+                      "executable": true
+                    }
+                  },
+                  "executable": true
+                }
+              },
+              "executable": true
+            },
+            "record": {
+              "type": "literal",
+              "children": {
+                "targets": {
+                  "type": "argument",
+                  "argument": {
+                    "type": "minecraft:entity",
+                    "players_only": true,
+                    "single_result": false
+                  },
+                  "children": {
+                    "pos": {
+                      "type": "argument",
+                      "argument": {
+                        "type": "minecraft:vec3",
+                        "auto_center": true
+                      },
+                      "children": {
+                        "volume": {
+                          "type": "argument",
+                          "argument": {
+                            "type": "minecraft:float",
+                            "min": 0
+                          },
+                          "children": {
+                            "pitch": {
+                              "type": "argument",
+                              "argument": {
+                                "type": "minecraft:float",
+                                "max": 2,
+                                "min": 0
+                              },
+                              "children": {
+                                "minVolume": {
+                                  "type": "argument",
+                                  "argument": {
+                                    "type": "minecraft:float",
+                                    "max": 1,
+                                    "min": 0
+                                  },
+                                  "executable": true
+                                }
+                              },
+                              "executable": true
+                            }
+                          },
+                          "executable": true
+                        }
+                      },
+                      "executable": true
+                    }
+                  },
+                  "executable": true
+                }
+              },
+              "executable": true
+            },
+            "ui": {
+              "type": "literal",
+              "children": {
+                "targets": {
+                  "type": "argument",
+                  "argument": {
+                    "type": "minecraft:entity",
+                    "players_only": true,
+                    "single_result": false
+                  },
+                  "children": {
+                    "pos": {
+                      "type": "argument",
+                      "argument": {
+                        "type": "minecraft:vec3",
+                        "auto_center": true
+                      },
+                      "children": {
+                        "volume": {
+                          "type": "argument",
+                          "argument": {
+                            "type": "minecraft:float",
+                            "min": 0
+                          },
+                          "children": {
+                            "pitch": {
+                              "type": "argument",
+                              "argument": {
+                                "type": "minecraft:float",
+                                "max": 2,
+                                "min": 0
+                              },
+                              "children": {
+                                "minVolume": {
+                                  "type": "argument",
+                                  "argument": {
+                                    "type": "minecraft:float",
+                                    "max": 1,
+                                    "min": 0
+                                  },
+                                  "executable": true
+                                }
+                              },
+                              "executable": true
+                            }
+                          },
+                          "executable": true
+                        }
+                      },
+                      "executable": true
+                    }
+                  },
+                  "executable": true
+                }
+              },
+              "executable": true
+            },
+            "voice": {
+              "type": "literal",
+              "children": {
+                "targets": {
+                  "type": "argument",
+                  "argument": {
+                    "type": "minecraft:entity",
+                    "players_only": true,
+                    "single_result": false
+                  },
+                  "children": {
+                    "pos": {
+                      "type": "argument",
+                      "argument": {
+                        "type": "minecraft:vec3",
+                        "auto_center": true
+                      },
+                      "children": {
+                        "volume": {
+                          "type": "argument",
+                          "argument": {
+                            "type": "minecraft:float",
+                            "min": 0
+                          },
+                          "children": {
+                            "pitch": {
+                              "type": "argument",
+                              "argument": {
+                                "type": "minecraft:float",
+                                "max": 2,
+                                "min": 0
+                              },
+                              "children": {
+                                "minVolume": {
+                                  "type": "argument",
+                                  "argument": {
+                                    "type": "minecraft:float",
+                                    "max": 1,
+                                    "min": 0
+                                  },
+                                  "executable": true
+                                }
+                              },
+                              "executable": true
+                            }
+                          },
+                          "executable": true
+                        }
+                      },
+                      "executable": true
+                    }
+                  },
+                  "executable": true
+                }
+              },
+              "executable": true
+            },
+            "weather": {
+              "type": "literal",
+              "children": {
+                "targets": {
+                  "type": "argument",
+                  "argument": {
+                    "type": "minecraft:entity",
+                    "players_only": true,
+                    "single_result": false
+                  },
+                  "children": {
+                    "pos": {
+                      "type": "argument",
+                      "argument": {
+                        "type": "minecraft:vec3",
+                        "auto_center": true
+                      },
+                      "children": {
+                        "volume": {
+                          "type": "argument",
+                          "argument": {
+                            "type": "minecraft:float",
+                            "min": 0
+                          },
+                          "children": {
+                            "pitch": {
+                              "type": "argument",
+                              "argument": {
+                                "type": "minecraft:float",
+                                "max": 2,
+                                "min": 0
+                              },
+                              "children": {
+                                "minVolume": {
+                                  "type": "argument",
+                                  "argument": {
+                                    "type": "minecraft:float",
+                                    "max": 1,
+                                    "min": 0
+                                  },
+                                  "executable": true
+                                }
+                              },
+                              "executable": true
+                            }
+                          },
+                          "executable": true
+                        }
+                      },
+                      "executable": true
+                    }
+                  },
+                  "executable": true
+                }
+              },
+              "executable": true
+            }
+          },
+          "custom_suggestion": {
+            "type": "minecraft:available_sounds"
+          },
+          "executable": true
+        }
+      }
+    },
+    "list": {
+      "type": "literal",
+      "children": {
+        "uuids": {
+          "type": "literal",
+          "executable": true
+        }
+      },
+      "executable": true
+    },
+    "weather": {
+      "type": "literal",
+      "children": {
+        "clear": {
+          "type": "literal",
+          "children": {
+            "duration": {
+              "type": "argument",
+              "argument": {
+                "type": "minecraft:time",
+                "min": 1
+              },
+              "executable": true
+            }
+          },
+          "executable": true
+        },
+        "rain": {
+          "type": "literal",
+          "children": {
+            "duration": {
+              "type": "argument",
+              "argument": {
+                "type": "minecraft:time",
+                "min": 1
+              },
+              "executable": true
+            }
+          },
+          "executable": true
+        },
+        "thunder": {
+          "type": "literal",
+          "children": {
+            "duration": {
+              "type": "argument",
+              "argument": {
+                "type": "minecraft:time",
+                "min": 1
+              },
+              "executable": true
+            }
+          },
+          "executable": true
+        }
+      }
+    },
+    "msg": {
+      "type": "literal",
+      "children": {
+        "targets": {
+          "type": "argument",
+          "argument": {
+            "type": "minecraft:entity",
+            "players_only": true,
+            "single_result": false
+          },
+          "children": {
+            "message": {
+              "type": "argument",
+              "argument": {
+                "type": "minecraft:message"
+              },
+              "executable": true
+            }
+          }
+        }
+      }
+    },
+    "execute": {
+      "type": "literal",
+      "children": {
+        "as": {
+          "type": "literal",
+          "children": {
+            "targets": {
+              "type": "argument",
+              "argument": {
+                "type": "minecraft:entity",
+                "players_only": false,
+                "single_result": false
+              },
+              "redirect": ["execute"]
+            }
+          }
+        },
+        "run": {
+          "type": "literal"
+        }
+      }
+    }
+  }
+}

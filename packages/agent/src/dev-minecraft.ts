@@ -43,7 +43,14 @@ const replies: Record<string, (args: string) => string> = {
   'save-on': () => 'Automatic saving is now enabled',
   'save-all': () => 'Saving the game (this may take a moment!)\nSaved the game',
   say: () => '',
-  help: () => '/advancement\n/ban\n/list\n/say\n/seed\n/stop\n/time\n/weather',
+  // No feedback, like the real thing, unless nobody matches.
+  tellraw: (a) =>
+    a.startsWith('@') || online.includes(a.split(' ')[0] ?? '') ? '' : 'No player was found',
+  // Like the real thing: one usage per command, joined with no line breaks. spark and chunky
+  // stand in for mods' commands.
+  help: () =>
+    '/advancement (grant|revoke)/ban <targets> [<reason>]/chunky/list [uuids]/say <message>' +
+    '/seed/spark (profiler|health|tps|gc)/stop/time (add|query|set)/weather (clear|rain|thunder)',
   time: (a) =>
     a.startsWith('query') ? 'The time is 6000' : `Set the time to ${a.split(' ')[1] ?? '0'}`,
 }

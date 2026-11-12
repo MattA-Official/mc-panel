@@ -14,7 +14,7 @@ const Params = z.object({ name: z.string().max(40) })
  * what was kept about them on this server; turning stats off keeps what's there.
  */
 export default defineEventHandler(async (event) => {
-  await requireServerPermission(event, 'server.configure')
+  await requireServerPermission(event, 'community.manage')
   const { user } = await requireUserSession(event)
   const { name } = await getValidatedRouterParams(event, Params.parse)
   const body = await readValidatedBody(event, StatsSettings.parse)

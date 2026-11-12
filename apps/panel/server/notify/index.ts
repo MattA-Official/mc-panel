@@ -291,7 +291,16 @@ export class NotifyService {
       checkUrl(input.kind, input.url)
       to = { url: input.url, secret: input.secret || null }
       if (id !== undefined && input.secret === undefined) {
-        to.secret = (await this.destination(this.row(id))).secret
+        // A saved secret only goes back where it came from: the same kind of channel at the
+        // same site. Anything else has to be typed in again.
+        const row = this.row(id)
+        const saved = await this.destination(row)
+        if (saved.secret) {
+          if (row.kind !== input.kind || !sameOrigin(saved.url, input.url)) {
+            throw new NotifyError('Enter the secret again when sending to a new address.')
+          }
+          to.secret = saved.secret
+        }
       }
     } else if (id !== undefined) {
       const row = this.row(id)
@@ -378,12 +387,15 @@ export class NotifyService {
     }
   }
 
-  /** Warns at 85% and 95% full, once each, and says when it's back below 80%. */
-  disk(usedMb: number, totalMb: number) {
+  /**
+   * Warns at 85% and 95% full, once each, and says when it's back below 80%. Kept per
+   * machine; this machine's state was once kept under `disk.full:*`, which still counts.
+   */
+  disk(usedMb: number, totalMb: number, machine = 'local') {
     if (!(totalMb > 0)) return
     const pct = (usedMb / totalMb) * 100
-    const key = 'disk.full:*'
-    const state = this.state(key)
+    const key = `disk.full:${machine}`
+    const state = this.state(key) ?? (machine === 'local' ? this.state('disk.full:*') : null)
     const warned = state?.open ? Number(state.value) || 0 : 0
     const level = [...DISK_LEVELS].reverse().find((l) => pct >= l) ?? 0
     const free = formatMb(totalMb - usedMb)
@@ -525,4 +537,12 @@ export function stateKey(kind: EventKind, server?: string | null) {
 
 function formatMb(mb: number) {
   return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${Math.round(mb)} MB`
+}
+
+function sameOrigin(a: string, b: string): boolean {
+  try {
+    return new URL(a).origin === new URL(b).origin
+  } catch {
+    return false
+  }
 }

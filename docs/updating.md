@@ -12,11 +12,13 @@ panelRoute:
 **System**, **Updates** shows the version you're on and offers any newer release, with its notes. **Update** asks for your passkey, then:
 
 1. downloads the release and checks its signature against Flytower's release key;
-2. copies the panel's database aside;
+2. copies the panel's database aside, into `/var/lib/flytower-agent/db-backups`, which only root can read. If the copy can't be made (a full disk, say), the update stops there and your database is left exactly as it was;
 3. switches to the new version and restarts the panel and agent. Your Minecraft servers keep running throughout;
 4. checks the new panel starts and answers. If it doesn't, Flytower puts the previous version and the database back by itself, and the card says what went wrong.
 
 The panel is away for a minute or so. **Go back to** the previous version is offered afterwards in the same way. Both show up in **Activity**.
+
+One update runs at a time: while one is downloading or switching, another update, a **Go back to** or a clean-up of old releases is refused until it's done. The system helper only installs releases newer than the one running. To go back, use **Go back to**, which offers the releases still on the machine.
 
 ## Stable or Beta
 
@@ -33,9 +35,11 @@ If you install a beta with the installer and never choose a channel, Flytower as
 
 ## Native builds
 
-The **Native** channel is for trying Flytower with parts rewritten in Rust and Go, such as the system helper. These builds come from a separate `native` branch. Each one is numbered after the release it goes with, plus a counter: `1.2.0-beta.2.native.1` goes with 1.2.0-beta.2, and `1.2.0-native.1` goes with 1.2.0. Beta and Stable never offer them, and Native offers only them, so a native install stays native until you choose another channel.
+The **Native** channel is for trying Flytower with parts rewritten in Rust and Go, such as the system helper. These builds are made from the same code as the release they go with. Each one is numbered after the release it goes with, plus a counter: `1.2.0-beta.2.native.1` goes with 1.2.0-beta.2, and `1.2.0-native.1` goes with 1.2.0. Beta and Stable never offer them, and Native offers only them, so a native install stays native until you choose another channel.
 
 Use native builds on a test server. Leaving them means using **Go back to** for a version you had before, or reinstalling. To start on one, install with `--native`, or choose **Native** under **System, Updates**.
+
+From 1.4.0, the system helper and the updater are the Rust versions on every channel (1.3 carried them switched off). The Bun versions are still in each release: if the Rust helper fails to start, Flytower starts the Bun one by itself and says so in `journalctl -u flytower-agent`. To use Bun on purpose, run `echo bun > /etc/flytower/agent` as root and restart `flytower-agent`. Delete that file and restart again to go back. After a fallback, the box stays on Bun until it reboots or updates; to try Rust again sooner, delete `/run/flytower/agent-rust-starting` and restart `flytower-agent`.
 
 ## Releases are signed
 
@@ -83,4 +87,4 @@ For maintainers: run the **Release** workflow with a version like `1.1.0-beta.1`
 
 ## Publishing a native build
 
-For maintainers: merge `main` into `native`, then run the **Release** workflow on the `native` branch with the version of the release it goes with plus `.native.N`, such as `1.2.0-beta.2.native.1`. For a stable release, use `-native.N`, such as `1.2.0-native.1`. Native builds are published alongside each release from `main`, and in between when native work is worth trying. They're tagged `native-<version>` rather than `v…`, because Beta panels offer every `v`-tagged pre-release and older panels never look at other tags. The workflow refuses any other version on the `native` branch. Write the summary in `.github/release-notes/<version>.md` as usual.
+For maintainers: run the **Release** workflow on `main` (or the `ref` of the release it goes with) with that release's version plus `.native.N`, such as `1.3.0-beta.1.native.1`. For a stable release, use `-native.N`, such as `1.3.0-native.1`. Native builds are published alongside each release, and in between when native work is worth trying. They're tagged `native-<version>` rather than `v…`, because Beta panels offer every `v`-tagged pre-release and older panels never look at other tags. Write the summary in `.github/release-notes/<version>.md` as usual.

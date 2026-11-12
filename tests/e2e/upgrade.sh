@@ -56,3 +56,8 @@ state="$(in_vps curl -fsS http://127.0.0.1:3000/api/auth/state)"
 echo "$state" | grep -q '"needsSetup":false' || { echo "asks for setup again: $state"; exit 1; }
 in_vps grep -q NUXT_APP_SECRET /etc/flytower/panel.env
 echo "✓ upgraded from $old: $got migrations ($(echo "$before" | grep -o '"tag"' | wc -l) before), data kept"
+
+# From 1.4.0 the Rust agent is the default, so an upgrade switches over to it.
+kind="$(bash tests/e2e/agent-kind.sh)"
+[ "$kind" = rust ] || { echo "the $kind agent is running after the upgrade, not the Rust one"; exit 1; }
+echo "✓ the Rust agent took over"

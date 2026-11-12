@@ -179,6 +179,32 @@ try {
     await shot('2-console')
     step('server started and console streaming')
 
+    // Right-click menus (#106): the card's menu follows the live state; Shift leaves it alone.
+    await view.navigate(`${base}/`)
+    const rightClick = (shift: boolean) =>
+      view.evaluate(`document.querySelector('[data-e2e=server-card]').dispatchEvent(
+        new MouseEvent('contextmenu', { bubbles: true, cancelable: true, shiftKey: ${shift}, clientX: 200, clientY: 200 }))`)
+    await until('the server card', () =>
+      view.evaluate<boolean>(`!!document.querySelector('[data-e2e=server-card]')`),
+    )
+    await rightClick(true)
+    await Bun.sleep(300)
+    if (await view.evaluate<boolean>(`!!document.querySelector('[role=menu]')`)) {
+      throw new Error('Shift + right-click opened the Flytower menu')
+    }
+    await rightClick(false)
+    await until('the card menu with Restart and Stop', () =>
+      view.evaluate<boolean>(
+        `(() => { const m = document.querySelector('[role=menu]')?.innerText ?? ''; return m.includes('Restart') && m.includes('Stop') && !m.includes('Start') })()`,
+      ),
+    )
+    await view.evaluate(
+      `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`,
+    )
+    step('right-click menu on a running server card')
+    // Back to the console, where the crash banner below shows.
+    await view.navigate(`${base}/servers/smoke`)
+
     const reply = await until(
       'RCON',
       async () => {
@@ -192,6 +218,33 @@ try {
     )
     if (!/players online/.test(reply)) throw new Error(`unexpected RCON reply: ${reply}`)
     step(`RCON answered: ${reply}`)
+
+    // Console completion: the game's own reports, run with the server's Java, list every
+    // vanilla command; help over RCON adds the commands only Fabric API has.
+    type Commands = {
+      vanilla: string
+      extra: string
+      root: { literals?: Record<string, { usage?: string }> }
+      registries: Record<string, string[]>
+    }
+    const commands = await api<Commands>(view, '/api/servers/smoke/commands?wait=1')
+    const commandNames = Object.keys(commands.body.root?.literals ?? {})
+    if (
+      commands.status !== 200 ||
+      commands.body.vanilla !== 'ready' ||
+      !commandNames.includes('give')
+    ) {
+      throw new Error(
+        `command catalogue: ${commands.status} ${JSON.stringify(commands.body).slice(0, 300)}`,
+      )
+    }
+    if (commands.body.extra !== 'ready') throw new Error('help over RCON gave no commands')
+    if (!commands.body.registries.item?.includes('diamond_sword')) {
+      throw new Error('the catalogue has no item ids')
+    }
+    step(
+      `console completion knows ${commandNames.length} commands and ${commands.body.registries.item.length} items`,
+    )
 
     // Crash detection: kill Java outright. systemd restarts it after 15 seconds; Flytower
     // records the crash, shows the banner, and the console answers again afterwards.
@@ -338,7 +391,7 @@ try {
 
     /** Restores the newest backup through the UI, which also answers the passkey check. */
     const restoreNewest = async (waitFor: string) => {
-      await view.navigate(`${base}/servers/smoke/backups`)
+      await view.navigate(`${base}/servers/smoke/world`)
       await waitForText(view, waitFor, 30_000)
       // Menus open on a real pointer press, so use native clicks here.
       await view.click('[aria-label^="Actions for backup"]')
@@ -613,6 +666,24 @@ try {
       2000,
     )
     step(`added Lithium from Modrinth through plan and apply: ${loaded.slice(0, 120)}`)
+
+    // Lithium came from the panel, so the server reads the panel's files through its extra
+    // group. Inside the server's own view of the disk, the agent's socket, the panel's data
+    // and its secrets must be hidden.
+    const hidden = Bun.spawnSync([
+      'docker',
+      'exec',
+      'vps',
+      'sh',
+      '-c',
+      'pid="$(systemctl show -p MainPID --value flytower-mc@smoke)" && ' +
+        'nsenter -t "$pid" -m sh -c \'test ! -e /run/flytower/agent.sock && ' +
+        'test ! -s /etc/flytower/panel.env && test -z "$(ls -A /var/lib/flytower)"\'',
+    ])
+    if (hidden.exitCode !== 0) {
+      throw new Error(`the server can see the agent or the panel's data: ${hidden.stderr}`)
+    }
+    step("the server can't see the agent's socket or the panel's data")
 
     // Vanilla Tweaks has no official API, so a change on their side is reported, not fatal.
     try {

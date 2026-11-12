@@ -8,7 +8,7 @@
  * Kept light on purpose: about 20 numbers, not the thousands of item and block counters a
  * stats file holds.
  */
-import { readdir, readFile, stat } from 'node:fs/promises'
+import { lstat, readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { and, desc, eq, lt, lte, sql } from 'drizzle-orm'
 import { schema, type Db } from '../db'
@@ -93,8 +93,8 @@ const UUID_FILE = /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 
 export interface SnapshotDeps {
   db: Db
-  /** The server's world folder (level-name), absolute. */
-  worldDir: (server: string) => Promise<string>
+  /** The server's world folder (level-name), absolute, or null when it can't be used. */
+  worldDir: (server: string) => Promise<string | null>
   /** Whether this player's stats should be kept; everyone by default. */
   include?: (server: string, uuid: string) => boolean
   now?: () => number
@@ -110,8 +110,10 @@ export class StatsSnapshot {
   /** The folder Minecraft writes stats files to, or null when there isn't one yet. */
   async statsDir(server: string): Promise<string | null> {
     const world = await this.deps.worldDir(server)
+    if (!world) return null
     for (const dir of [join(world, 'players', 'stats'), join(world, 'stats')]) {
-      const s = await stat(dir).catch(() => null)
+      // lstat, so a link the server planted here is never followed out of its folder.
+      const s = await lstat(dir).catch(() => null)
       if (s?.isDirectory()) return dir
     }
     return null
@@ -133,7 +135,8 @@ export class StatsSnapshot {
       try {
         const path = join(dir, file)
         const last = this.latest(server, uuid)
-        const info = await stat(path)
+        const info = await lstat(path)
+        if (!info.isFile()) continue
         if (last && info.mtimeMs <= last.takenAt.getTime()) continue
         const stats = pickStats(JSON.parse(await readFile(path, 'utf8')))
         if (last && sameStats(last.stats, stats)) continue
@@ -233,6 +236,17 @@ export class StatsSnapshot {
         }
         return { uuid: r.uuid, stats }
       })
+  }
+
+  /** When the newest snapshot on a server was read, or null before the first one. */
+  lastTaken(server: string): number | null {
+    const p = schema.playerStats
+    const row = this.deps.db
+      .select({ at: sql<number | null>`max(${p.takenAt})` })
+      .from(p)
+      .where(eq(p.server, server))
+      .get()
+    return row?.at != null ? Number(row.at) : null
   }
 
   /** Deletes a player's rows (left out of stats) or a whole server's (deleted). */

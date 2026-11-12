@@ -7,7 +7,7 @@ const Params = z.object({ name: z.string().max(40) })
 
 /** The server's public status page: on or off, its description and what it shows. */
 export default defineEventHandler(async (event) => {
-  await requireServerPermission(event, 'server.configure')
+  await requireServerPermission(event, 'community.manage')
   const { user } = await requireUserSession(event)
   const { name } = await getValidatedRouterParams(event, Params.parse)
   const body = await readValidatedBody(event, PublicPage.parse)

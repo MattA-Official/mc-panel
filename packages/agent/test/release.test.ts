@@ -31,4 +31,14 @@ describe('release signatures', () => {
     const embedded = /RELEASE_KEY="\$\(cat <<'KEY'\n([\s\S]*?)\nKEY\n\)"/.exec(installer)?.[1]
     expect(embedded?.trim()).toBe(RELEASE_KEY.trim())
   })
+
+  it('gives pull request test builds their own key, which only the installer knows', () => {
+    const root = join(import.meta.dir, '../../..')
+    const installer = readFileSync(join(root, 'installer/install.sh'), 'utf8')
+    const prKey = readFileSync(join(root, 'installer/pr-key.pem'), 'utf8').trim()
+    const embedded = /PR_KEY="\$\(cat <<'PRKEY'\n([\s\S]*?)\nPRKEY\n\)"/.exec(installer)?.[1]
+    expect(embedded?.trim()).toBe(prKey)
+    // A test build signature must never pass the updater's check.
+    expect(prKey).not.toBe(RELEASE_KEY.trim())
+  })
 })

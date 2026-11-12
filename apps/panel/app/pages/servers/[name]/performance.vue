@@ -1,8 +1,10 @@
 <script setup lang="ts">
-const { server } = useServerContext()
-useHead({ title: () => `Performance · ${server.value?.displayName ?? ''}` })
+// Performance moved to the servers overview, so old links open this server's charts there.
+definePageMeta({
+  redirect: (to) => ({ path: '/', query: { metrics: String(to.params.name) } }),
+})
 </script>
 
 <template>
-  <MetricsHistory v-if="server" :server="server.name" class="mx-auto w-full max-w-5xl" />
+  <div />
 </template>

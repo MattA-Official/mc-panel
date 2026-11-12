@@ -3,15 +3,24 @@ import { eq } from 'drizzle-orm'
 import { schema } from '../db'
 import {
   BUILT_IN_ROLES,
+  expandPermissions,
   foldGrants,
   isBuiltInRole,
   type Access,
   type Permission,
 } from '../../shared/permissions'
 
-/** The permissions a role carries: built-in roles from code, custom roles from the database. */
-export function rolePermissions(role: { id: string; permissions: Permission[] }): Permission[] {
-  return isBuiltInRole(role.id) ? BUILT_IN_ROLES[role.id].permissions : role.permissions
+/**
+ * The permissions a role carries: built-in roles from code, custom roles from the database
+ * (with retired keys swapped for their replacements and implied ones added).
+ */
+export function rolePermissions(role: {
+  id: string
+  permissions: readonly string[]
+}): Permission[] {
+  return isBuiltInRole(role.id)
+    ? BUILT_IN_ROLES[role.id].permissions
+    : expandPermissions(role.permissions)
 }
 
 /**

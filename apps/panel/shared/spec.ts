@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { Schedules, toItem, toTask } from './schedules'
 import { PublicPage, compactPublicPage } from './public-page'
 import { StatsSettings, isDefaultStats } from './stats-settings'
+import { MapSettings, compactMap } from './map-settings'
 
 export const SPEC_SCHEMA_PATH = '/schema/server-v1.json'
 
@@ -29,6 +30,16 @@ export function isSecretProperty(key: string): boolean {
 /** True for a property a spec or the Settings form can't set. */
 export const isManagedProperty = (key: string) =>
   MANAGED_PROPERTIES.includes(key) || isSecretProperty(key)
+
+/**
+ * Whether a level-name is a plain folder name inside the server folder: letters, numbers,
+ * spaces, dots, dashes and underscores, never "..".
+ */
+export const isSafeLevelName = (name: string) =>
+  /^\w[\w .-]{0,63}$/.test(name) && !name.includes('..')
+
+export const BAD_LEVEL_NAME =
+  'The world folder name (level-name) can only use letters, numbers, spaces, dots, dashes and underscores.'
 
 export const MIN_MEMORY_MB = 1024
 export const MAX_MEMORY_MB = 65536
@@ -112,6 +123,10 @@ const Properties = z
     z.union([z.string().max(2000), z.number(), z.boolean()]),
   )
   .superRefine((props, ctx) => {
+    const level = props['level-name']
+    if (level !== undefined && !isSafeLevelName(String(level))) {
+      ctx.addIssue({ code: 'custom', path: ['level-name'], message: BAD_LEVEL_NAME })
+    }
     for (const key of Object.keys(props)) {
       if (isManagedProperty(key)) {
         ctx.addIssue({
@@ -290,6 +305,7 @@ export const ServerSpec = z
     stats: StatsSettings.optional().describe(
       'Player stats and who is left out of them. Left out, the current settings stay.',
     ),
+    map: MapSettings.optional(),
     timezone: z
       .string()
       .trim()
@@ -341,6 +357,8 @@ export function compactSpec(spec: ServerSpec): ServerSpecInput {
         ? { enabled: false, leaveOut: spec.stats.leaveOut }
         : { enabled: false }
   }
+  const map = spec.map && compactMap(spec.map)
+  if (map) out.map = map
   const b = spec.backups
   if (!b) return out as ServerSpecInput
   const keepDefault = b.keep.last === 6 && b.keep.daily === 7 && b.keep.weekly === 4

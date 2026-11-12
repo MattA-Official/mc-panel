@@ -8,7 +8,9 @@ import { can, NO_ACCESS, type Access, type Permission } from '../../shared/permi
 
 const Topic = z
   .string()
-  .regex(/^(job:\d+|servers|health|updates|branding|(console|schedules):[a-z][a-z0-9-]{1,30})$/)
+  .regex(
+    /^(job:\d+|servers|health|metrics|updates|branding|(console|schedules|map):[a-z][a-z0-9-]{1,30})$/,
+  )
 const ClientMessage = z.discriminatedUnion('type', [
   z.object({ type: z.literal('subscribe'), topic: Topic }),
   z.object({ type: z.literal('unsubscribe'), topic: z.string().max(64) }),
@@ -36,6 +38,9 @@ function topicNeeds(topic: string): { permission: Permission; server: string } |
   if (topic.startsWith('schedules:')) {
     return { permission: 'server.view', server: topic.slice('schedules:'.length) }
   }
+  if (topic.startsWith('map:')) {
+    return { permission: 'server.view', server: topic.slice('map:'.length) }
+  }
   return null
 }
 
@@ -57,6 +62,11 @@ function attach(topic: string, emit: (data: unknown) => void, access: () => Acce
           .map((r) => r.name)
           .filter((name) => can(access(), 'server.view', name)),
     )
+  }
+  if (topic === 'metrics') {
+    const off = useJobs().bus.subscribe(topic, (data) => emit(visibleOnly(data, access())))
+    emit(visibleOnly(liveMetrics(), access()))
+    return off
   }
   if (topic === 'updates') {
     // Opening the panel checks again if the last check is over an hour old.
@@ -85,6 +95,15 @@ function attach(topic: string, emit: (data: unknown) => void, access: () => Acce
     emit(useSchedules().view(name))
     return off
   }
+  if (topic.startsWith('map:')) {
+    const name = topic.slice('map:'.length)
+    const off = useJobs().bus.subscribe(topic, emit)
+    void useMap()
+      .status(name)
+      .then(emit)
+      .catch(() => {})
+    return off
+  }
   const off = useJobs().bus.subscribe(topic, emit)
   emit(useJobs().get(Number(topic.slice('job:'.length))))
   return off
@@ -92,11 +111,16 @@ function attach(topic: string, emit: (data: unknown) => void, access: () => Acce
 
 /**
  * One authenticated socket per tab. The browser subscribes to topics (`job:<id>`,
- * `servers`, `health`, `updates`, `branding`, `console:<name>`, `schedules:<name>`) and gets `{ topic, data }`
+ * `servers`, `health`, `metrics`, `updates`, `branding`, `console:<name>`, `schedules:<name>`, `map:<name>`) and gets `{ topic, data }`
  * messages back.
  */
 export default defineWebSocketHandler({
   async upgrade(request) {
+    // Only the panel's own pages may open a socket, as for changes in middleware/auth.ts.
+    const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host')
+    if (fromAnotherSite(request.headers.get('origin'), host)) {
+      return new Response('That request came from another site.', { status: 403 })
+    }
     const session = await getUserSession(request)
     if (!session.user || session.mustEnrolPasskey) {
       return new Response('Sign in first.', { status: 401 })
@@ -140,6 +164,7 @@ export default defineWebSocketHandler({
         (data) => {
           const current = access() ?? NO_ACCESS
           if (needs && !can(current, needs.permission, needs.server)) return
+          if (jobId !== null && !canSeeJob(current, jobId)) return
           send(peer, topic, data)
         },
         () => access() ?? NO_ACCESS,

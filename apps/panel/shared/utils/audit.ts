@@ -1,4 +1,6 @@
 /** Turning audit rows into sentences, and grouping their actions for filtering. */
+import { humanBytes } from './format'
+import { isPermission, PERMISSION_LABELS, type Permission } from '../permissions'
 
 export const AUDIT_KINDS = {
   servers: 'Servers',
@@ -21,16 +23,34 @@ export function auditKind(action: string): AuditKind {
     return 'content'
   }
   if (/^(auth|passkey|recovery|setup|ssh|people|account)\./.test(action)) return 'access'
-  if (/^(update|notify|branding|discord)\./.test(action)) return 'system'
+  if (/^(update|notify|branding|discord|disk)\./.test(action)) return 'system'
   return 'servers'
 }
 
 /** Things Flytower records by itself, with nobody signed in behind them. */
-const BY_FLYTOWER = ['server.crashed', 'server.crash_loop', 'server.unresponsive', 'schedule.run']
+const BY_FLYTOWER = [
+  'people.permissions_split',
+  'server.crashed',
+  'server.crash_loop',
+  'server.unresponsive',
+  'schedule.run',
+]
 
-/** Who to show for an entry with no user: Flytower for its own, otherwise a removed person. */
-export function auditActor(action: string, user: string | null): string | null {
-  return user ?? (BY_FLYTOWER.includes(action) ? 'Flytower' : null)
+/**
+ * Who to show for an entry: the person; "Name via Discord" for a slash command; Flytower for
+ * its own; otherwise null, for a person who has since been removed.
+ */
+export function auditActor(
+  action: string,
+  user: string | null,
+  detail: Record<string, unknown> | null = null,
+): string | null {
+  if (user) return user
+  if (detail?.via === 'discord') {
+    const name = typeof detail.discordName === 'string' && detail.discordName
+    return `${name || 'Someone'} via Discord`
+  }
+  return BY_FLYTOWER.includes(action) ? 'Flytower' : null
 }
 
 /** Detail keys that never leave the server. */
@@ -56,6 +76,30 @@ const ROLE_NAMES: Record<string, string> = {
 function roleText(d: Record<string, unknown>): string {
   const role = d.roleName ? String(d.roleName) : (ROLE_NAMES[String(d.role)] ?? 'a role')
   return `${role} on ${d.server ? String(d.server) : 'all servers'}`
+}
+
+/** "Operator on Survival and Viewer on all servers", from a grant change's detail. */
+function grantList(v: unknown): string {
+  if (!Array.isArray(v) || !v.length) return ''
+  return listText(
+    v.map((g: { role?: unknown; server?: unknown }) =>
+      roleText({ roleName: g.role, server: g.server ?? null }),
+    ),
+  )
+}
+
+/** "Read files and Change files", from a role change's detail. */
+function permissionList(v: unknown): string {
+  if (!Array.isArray(v) || !v.length) return ''
+  return listText(
+    v.map((p) => (isPermission(String(p)) ? PERMISSION_LABELS[p as Permission].label : String(p))),
+  )
+}
+
+function listText(items: string[]): string {
+  return items.length < 2
+    ? (items[0] ?? '')
+    : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`
 }
 
 const str = (v: unknown) => (v === undefined || v === null ? '' : String(v))
@@ -85,12 +129,25 @@ export function describeAudit(
       return `Cancelled an invite link${d.person ? ` for ${str(d.person)}` : ''}`
     case 'people.joined':
       return `Joined as ${roleText(d)}`
-    case 'people.changed':
-      return `Changed what ${str(d.person)} can do`
+    case 'people.changed': {
+      const gave = grantList(d.added)
+      const took = grantList(d.removed)
+      if (!gave && !took) return `Changed what ${str(d.person)} can do`
+      if (!gave) return `Took ${took} away from ${str(d.person)}`
+      return `Gave ${str(d.person)} ${gave}${took ? `, and took away ${took}` : ''}`
+    }
     case 'people.removed':
       return `Removed ${str(d.person)}`
-    case 'people.role_saved':
-      return `${d.created ? 'Made' : 'Changed'} the ${str(d.name)} role`
+    case 'people.role_saved': {
+      const base = `${d.created ? 'Made' : 'Changed'} the ${str(d.name)} role`
+      if (d.created) return base
+      const added = permissionList(d.added)
+      const removed = permissionList(d.removed)
+      const parts = [added && `added ${added}`, removed && `removed ${removed}`].filter(Boolean)
+      return parts.length ? `${base}: ${parts.join('; ')}` : base
+    }
+    case 'people.permissions_split':
+      return 'Split permissions into finer ones; custom roles kept everything they could do'
     case 'people.role_deleted':
       return `Deleted the ${str(d.name)} role`
     case 'passkey.added':
@@ -103,6 +160,13 @@ export function describeAudit(
       return `Opened SSH${d.minutes ? ` for ${str(d.minutes)} minutes` : ''}`
     case 'ssh.close':
       return 'Closed SSH'
+    case 'disk.clean': {
+      const n = typeof d.freedBytes === 'number' ? d.freedBytes : null
+      const freed = n === null ? '' : n > 0 ? `, freeing ${humanBytes(n)}` : ', which freed nothing'
+      if (d.action === 'journal') return `Shrank the system journal to ${str(d.maxMb)} MB${freed}`
+      if (d.action === 'apt') return `Cleared the package cache${freed}`
+      return `Removed old Flytower versions${freed}`
+    }
     case 'update.install':
       return `Updated Flytower to ${str(d.version)}`
     case 'update.rollback':
@@ -147,10 +211,31 @@ export function describeAudit(
       return d.restartWhenUnresponsive
         ? `Set ${t} to restart when it stops responding`
         : `Set ${t} not to restart when it stops responding`
+    case 'server.map': {
+      const was = (d.was ?? {}) as { enabled?: boolean; public?: boolean; players?: boolean }
+      if (d.enabled !== was.enabled) {
+        return d.enabled ? `Turned on ${t}'s web map` : `Turned off ${t}'s web map`
+      }
+      if (d.public !== was.public) {
+        return d.public ? `Made ${t}'s map public` : `Made ${t}'s map private`
+      }
+      return d.players ? `Turned on players on ${t}'s map` : `Turned off players on ${t}'s map`
+    }
     case 'server.stats':
       if (d.enabled === false && d.was !== false) return `Turned off player stats on ${t}`
       if (d.enabled === true && d.was === false) return `Turned on player stats on ${t}`
       return `Changed who is left out of player stats on ${t}`
+    case 'server.discord_relay':
+      if (d.on === false) return `Stopped posting ${t}'s chat to Discord`
+      if (d.fromDiscord === true && d.wasFromDiscord === false) {
+        return `Started showing Discord chat in ${t}`
+      }
+      if (d.fromDiscord === false && d.wasFromDiscord === true) {
+        return `Stopped showing Discord chat in ${t}`
+      }
+      return d.was
+        ? `Changed how ${t}'s chat is posted to Discord`
+        : `Started posting ${t}'s chat to Discord`
     case 'server.public_page':
       if (d.enabled === false) return `Turned off ${t}'s public page`
       return d.was === false ? `Turned on ${t}'s public page` : `Changed ${t}'s public page`
@@ -158,6 +243,8 @@ export function describeAudit(
       return `Stopped ${t}`
     case 'server.restart':
       return `Restarted ${t}`
+    case 'server.say':
+      return `Said “${str(d.message)}” on ${t}`
     case 'server.command':
       return `Ran /${str(d.command).replace(/^\//, '')} on ${t}`
     case 'server.properties':
@@ -210,6 +297,14 @@ export function describeAudit(
       return `Connected the Discord app ${str(d.name)}`
     case 'discord.disconnect':
       return `Disconnected the Discord app ${str(d.name)}`
+    case 'discord.roles':
+      return Array.isArray(d.mappings) && d.mappings.length
+        ? `Changed which Discord roles get Flytower roles (${d.mappings.join('; ')})`
+        : 'Took away access from all Discord roles'
+    case 'discord.chat':
+      return d.on ? 'Turned on chat from Discord' : 'Turned off chat from Discord'
+    case 'discord.refused':
+      return `Tried /${str(d.command)}${t ? ` on ${t}` : ''} without access`
     case 'world.export':
       return `Exported ${t}'s world`
     case 'world.export.delete':

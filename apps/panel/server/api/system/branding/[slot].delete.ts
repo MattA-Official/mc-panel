@@ -4,7 +4,7 @@ const Params = z.object({ slot: z.enum(['logo', 'favicon']) })
 
 /** Removes the uploaded logo or favicon, going back to Flytower's. */
 export default defineEventHandler(async (event) => {
-  await requirePermission(event, 'system.manage')
+  await requirePermission(event, 'system.branding')
   const { user } = await requireElevated(event)
   const { slot } = await getValidatedRouterParams(event, Params.parse)
   useBranding().removeImage(slot)

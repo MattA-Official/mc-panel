@@ -54,6 +54,23 @@ describe('server hostnames', () => {
     }
   })
 
+  test('the map is served on the hostname too, and /map finds it', () => {
+    for (const p of ['/s/survival/map', '/s/survival/map/', '/s/survival/map/tiles/players.json']) {
+      expect(at(p)).toBe('allow')
+    }
+    expect(at('/s/survivalx/map/')).toBe('not-found')
+    expect(at('/_map/viewer.js')).toBe('allow')
+    expect(at('/s/creative/map/')).toBe('not-found')
+    expect(
+      routeHost({
+        host: 'survival.example.com',
+        path: '/map',
+        panelDomain: 'panel.example.com',
+        server: on,
+      }),
+    ).toEqual({ kind: 'redirect', to: '/s/survival/map/' })
+  })
+
   test('a hostname whose page is off serves nothing', () => {
     expect(at('/', { name: 'survival', publicPage: false })).toBe('not-found')
     expect(at('/s/survival', { name: 'survival', publicPage: false })).toBe('not-found')

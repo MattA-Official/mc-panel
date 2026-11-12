@@ -1,0 +1,180 @@
+/* Flytower web map viewer. No libraries: tiles are plain images moved with transforms. */
+:root {
+  color-scheme: dark;
+  --bg: #0e1013;
+  --panel: rgba(20, 22, 27, 0.88);
+  --border: rgba(255, 255, 255, 0.12);
+  --text: #e8eaed;
+  --muted: #a0a6b0;
+  font:
+    14px/1.4 system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+}
+#map {
+  position: fixed;
+  inset: 0;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#map.dragging {
+  cursor: grabbing;
+}
+.tiles,
+.markers {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+/* Tiles stack old and new levels with z-index, so keep that inside the tiles layer:
+   otherwise a tile paints over the bars and markers drawn above it. */
+.tiles {
+  isolation: isolate;
+}
+.tiles img {
+  position: absolute;
+  z-index: 1;
+  display: block;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+/* A tile fades in once it has loaded; tiles kept from the last level sit underneath. */
+.tiles img.ready {
+  opacity: 1;
+}
+.tiles img.old {
+  z-index: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tiles img {
+    transition: none;
+  }
+}
+.tiles.pixelated img {
+  image-rendering: pixelated;
+}
+.markers {
+  pointer-events: none;
+}
+.player {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.head {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.6);
+  background-color: #556;
+  background-repeat: no-repeat;
+  background-size: 128px 128px;
+  background-position:
+    -80px -16px,
+    -16px -16px;
+  image-rendering: pixelated;
+}
+.player .name {
+  font-size: 12px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+}
+.bar {
+  position: absolute;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  backdrop-filter: blur(6px);
+}
+.bar.top {
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  width: fit-content;
+  max-width: calc(100% - 24px);
+  flex-wrap: wrap;
+}
+.bar.zoom {
+  top: 12px;
+  right: 12px;
+  flex-direction: column;
+  padding: 4px;
+}
+.bar.coords {
+  bottom: 12px;
+  left: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.bar.people {
+  bottom: 12px;
+  right: 12px;
+  flex-direction: column;
+  align-items: stretch;
+  max-height: 40vh;
+  overflow: auto;
+}
+.bar.people:empty,
+.bar[hidden] {
+  display: none;
+}
+.title {
+  font-weight: 600;
+}
+button,
+select {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.bar.zoom button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 18px;
+}
+button:hover,
+select:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.people button {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border: 0;
+  text-align: left;
+}
+.message {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  text-align: center;
+  padding: 24px;
+}

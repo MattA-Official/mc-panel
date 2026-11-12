@@ -12,6 +12,7 @@ const messages = {
 } as const
 
 export default defineEventHandler(async (event) => {
+  limit(event, 'setup', 5)
   const db = useDb()
   if (!needsSetup(db)) throw createError({ statusCode: 409, statusMessage: messages.used })
   const { token } = await readValidatedBody(event, Body.parse)

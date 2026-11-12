@@ -6,7 +6,7 @@ const Query = z.object({ check: z.stringbool().default(false) })
 
 /** What's running, what's installed, what's newer on the chosen channel, and how the last update went. */
 export default defineEventHandler(async (event) => {
-  await requirePermission(event, 'system.manage')
+  await requirePermission(event, 'system.updates')
   const { check } = await getValidatedQuery(event, Query.parse)
   const status = await agent('update.status', {}).catch(() => null)
   const current = status?.current ?? useRuntimeConfig().version

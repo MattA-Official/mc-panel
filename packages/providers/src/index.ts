@@ -5,6 +5,7 @@ import type { Fetch, LoaderId, LoaderProvider } from './types.ts'
 
 export * from './types.ts'
 export { downloadVerified } from './download.ts'
+export { Mojang } from './mojang.ts'
 export { dashed, lookupPlayer, offlineUuid, PLAYER_NAME, type PlayerProfile } from './players.ts'
 export {
   DEFAULT_SKINS,

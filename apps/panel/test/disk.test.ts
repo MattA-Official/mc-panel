@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'bun:test'
 import {
+  type DiskDeps,
   DiskUsage,
   groupOf,
   largestGroup,
@@ -34,6 +35,7 @@ function tree() {
     exportsDir: join(base, 'exports'),
     importsDir: join(base, 'imports'),
     archiveDir: join(base, 'archive'),
+    mapsDir: join(base, 'maps'),
   }
   const file = (path: string, bytes: number) => {
     mkdirSync(join(path, '..'), { recursive: true })
@@ -105,7 +107,7 @@ describe('measuring', () => {
     }
   })
 
-  it("splits a server's space into groups, with its backups and exports", async () => {
+  it("splits a server's space into groups, with its backups, exports and map", async () => {
     const { dirs, file } = tree()
     const dir = join(dirs.serversDir, 'survival')
     file(join(dir, 'survival-2026', 'region', 'r.0.0.mca'), 400 * KB)
@@ -115,11 +117,13 @@ describe('measuring', () => {
     file(join(dirs.backupsDir, 'survival', 'b.tar.zst'), 300 * KB)
     file(join(dirs.exportsDir, 'survival', 'w.zip'), 120 * KB)
     file(join(dirs.backupsDir, 'other', 'b.tar.zst'), 900 * KB)
+    file(join(dirs.mapsDir, 'servers', 'survival', 'tiles', '0_0.png'), 50 * KB)
     const s = await measureServer(
       {
         serverDir: (n) => join(dirs.serversDir, n),
         backupsDir: dirs.backupsDir,
         exportsDir: dirs.exportsDir,
+        mapsDir: dirs.mapsDir,
         levelName: async () => 'survival-2026',
       },
       'survival',
@@ -131,6 +135,7 @@ describe('measuring', () => {
     about(s.groups.other, 80 * KB)
     about(s.groups.backups, 300 * KB)
     about(s.groups.exports, 120 * KB)
+    about(s.groups.map, 50 * KB)
     expect(s.bytes).toBe(Object.values(s.groups).reduce((a, b) => a + b, 0))
     expect(s.unreadable).toBe(0)
   })
@@ -192,7 +197,7 @@ describe.skipIf(!process.env.FLYTOWER_DU)('flytower-du', () => {
 })
 
 describe('the tracker', () => {
-  function setup(names = ['alpha', 'beta']) {
+  function setup(names = ['alpha', 'beta'], agent?: DiskDeps['agent']) {
     const { dirs, file } = tree()
     for (const n of names) file(join(dirs.serversDir, n, 'world', 'level.dat'), 50 * KB)
     file(join(dirs.importsDir, 'x', 'upload.zip'), 70 * KB)
@@ -205,6 +210,7 @@ describe('the tracker', () => {
       levelName: async () => null,
       save: (r) => (saved = r),
       now: () => new Date(Date.UTC(2026, 10, 10)),
+      agent,
     })
     return { usage, dirs, file, live, saved: () => saved }
   }
@@ -243,6 +249,64 @@ describe('the tracker', () => {
     expect(usage.current().servers.map((s) => s.server)).toEqual(['alpha'])
     usage.forget('alpha')
     expect(usage.server('alpha')).toBeNull()
+  })
+})
+
+describe('measuring through the agent', () => {
+  const groups = { world: 100, logs: 1, content: 2, map: 0, backups: 50, exports: 0, other: 3 }
+  const system = {
+    java: 10,
+    flytower: 20,
+    logs: 30,
+    temp: 40,
+    unreadable: 0,
+    journal: 25,
+    aptCache: 5,
+    oldReleases: 7,
+  }
+  function setup(answer: DiskDeps['agent']) {
+    const { dirs, file } = tree()
+    file(join(dirs.serversDir, 'alpha', 'world', 'level.dat'), 50 * KB)
+    file(join(dirs.importsDir, 'upload.zip'), 70 * KB)
+    const calls: [string[], boolean][] = []
+    const usage = new DiskUsage({
+      names: () => ['alpha'],
+      serverDir: (n) => join(dirs.serversDir, n),
+      ...dirs,
+      levelName: async () => null,
+      agent: (servers, sys) => (calls.push([servers, sys]), answer!(servers, sys)),
+    })
+    return { usage, calls }
+  }
+
+  it("uses the agent's figures, with the rest of the machine in parts", async () => {
+    const { usage, calls } = setup(async (servers, sys) => ({
+      servers: Object.fromEntries(servers.map((s) => [s, { groups, unreadable: 0 }])),
+      shared: sys ? { imports: 9, archive: 0, unreadable: 0 } : null,
+      system: sys ? system : null,
+    }))
+    await usage.refresh()
+    const r = usage.current()
+    expect(calls).toEqual([
+      [[], true],
+      [['alpha'], false],
+    ])
+    expect(r.machine).toBe('local')
+    expect(r.servers[0]!.bytes).toBe(156)
+    expect(r.servers[0]!.groups.world).toBe(100)
+    expect(r.shared).toEqual({ imports: 9, archive: 0, unreadable: 0 })
+    expect(r.system).toEqual(system)
+  })
+
+  it('walks by itself, with the system as one slice, when the agent fails', async () => {
+    const { usage } = setup(async () => {
+      throw new Error('unknown verb "disk.usage"')
+    })
+    await usage.refresh()
+    const r = usage.current()
+    about(r.servers[0]!.groups.world, 50 * KB)
+    about(r.shared!.imports, 70 * KB)
+    expect(r.system).toBeNull()
   })
 })
 

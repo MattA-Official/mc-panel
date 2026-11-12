@@ -28,4 +28,58 @@ You need a panel with a domain, a Discord server you can add apps to (a test one
 - [ ] Stop the server: `/status` says Offline straight away. Start it: Starting, then Online once players can join.
 - [ ] `curl -X POST https://<panel>/api/discord/interactions -d '{}'` gets a 401.
 - [ ] In the portal, change the endpoint URL to something else and save, then press **Test connection** in Flytower: the card says **Endpoint not set**. **Try the endpoint again** puts it back.
+- [ ] **Discord roles**: press **Give a Discord role access**. Copy a test Discord role's ID (Developer Mode on, right-click the role, **Copy Role ID**), call it Staff, pick **Operator** on **All servers** and save. You're asked for your passkey, and the card lists "Staff gets Operator on all servers". **Activity** shows the change.
+- [ ] Owner isn't in the role list. A made-up ID like `abc` keeps **Save** greyed out.
+- [ ] As a Discord member with the Staff role, `/status` now also suggests servers whose public page is off.
+- [ ] Change the mapping to one server and save: `/status` only adds that server.
+- [ ] Without the Staff role, `/restart` answers "Sorry, you can't use that", only to you, and **Activity** shows "Tried /restart … without access".
+- [ ] With the Staff role: `/whitelist add <player>` whitelists them (check the Players tab), and `/whitelist remove` takes them off. With more than one server, leaving out `server` asks which.
+- [ ] `/say hello @everyone` shows `[Discord] <your name>: hello @everyone` in the game, and pings nobody in Discord.
+- [ ] `/restart`: "Restarting" straight away, then "… is back up" once the server is ready.
+- [ ] `/backup note:test`: "Backing up", then "Backed up … <size>". The backup has the note in the Backups tab.
+- [ ] **Activity** shows each of these as "<your Discord name> via Discord".
 - [ ] **Disconnect**: after the passkey check the card is back to empty, the commands disappear from Discord (it may take a minute, or reopen Discord), and the portal's endpoint is empty.
+
+## Game chat to Discord
+
+You need a Discord channel you can add webhooks to and a running Fabric or Paper server. Player faces need the panel to have a domain. See [Game chat in a channel](discord.md#game-chat-in-a-channel).
+
+- [ ] In Discord, the channel's settings, **Integrations**, **Webhooks**, **New Webhook**, **Copy Webhook URL**.
+- [ ] Server, **Settings**, **Discord chat**: paste `https://example.com/hook` and press **Turn on**. It's refused as not a Discord webhook.
+- [ ] Paste the real URL and press **Send a test**: "Flytower will post … chat here." arrives in the channel.
+- [ ] Press **Turn on**. After the passkey check the card says **On** and shows only the webhook's ID. **Activity** shows "Started posting … chat to Discord".
+- [ ] Join the server: "_joined the game_" appears in the channel within a second, in plain text under your name with your face. Leave: "_left the game_" appears the same way.
+- [ ] Say something: it appears under your name with your face. Say `**bold** @everyone <@1> # big https://example.com`: it shows exactly as typed, nobody is pinged, and the link works without a preview.
+- [ ] `/me waves` appears in italics.
+- [ ] From the panel's console, `say hello`: the game shows `[Server] <your name>: hello` (tag in the brand colour, not `[Rcon]`), the console shows the same line, and the channel gets `hello` under `[Server] <your name>` with no face. `me waves` shows `[Server] * <your name> waves` in game and in italics in Discord.
+- [ ] `msg <player> hi` from the console: only that player sees "[Server] <your name> whispers to you: hi", the console shows "You whisper to <player>: hi", and nothing is posted to Discord. `msg Nobody hi` shows "No player was found".
+- [ ] Send ten lines quickly (or paste them): they all arrive, joined into fewer messages, in order.
+- [ ] Die (fall from a height): "_fell from a high place_" appears under your name. Make an advancement (craft a stone pickaxe): "_has made the advancement [Stone Age]_".
+- [ ] Turn **Chat** off and save: chat stops, joins and leaves still post. Turn **Joins and leaves** off: they stop too.
+- [ ] Turn **Deaths** and **Advancements** off and save: those stop, chat still posts.
+- [ ] Delete the webhook in Discord, then say something: the card says **Stopped** with Discord's reason. Paste a new webhook and save: chat posts again.
+- [ ] **Turn off**: nothing more is posted, and the card is back to empty.
+
+## Web map
+
+You need a server that has been started at least once, with some world explored. Any loader works; try a vanilla one too. See [Web map](../map.md).
+
+- [ ] **World** tab, **Web map**: **Draw a web map** is off. Switch it on. The card says "Drawing the map now…" straight away, then "Last drawn …" with how many regions were drawn and how long it took, without reloading the page.
+- [ ] **Activity** shows "Turned on <server>'s web map".
+- [ ] **Open map**: the map opens in a new tab and looks like the world (water, beaches, forests, snow). It isn't "Drawn with simpler colours".
+- [ ] Drag, scroll, pinch on a phone, double-click and **+**/**−** all move and zoom. Zoomed right out, the whole explored world shows; zoomed right in, blocks are crisp squares.
+- [ ] The coordinates at the bottom left match the game's F3 screen for the same spot.
+- [ ] Copy the address while looking somewhere, open it in another tab: it opens at the same spot and zoom.
+- [ ] Pick **Nether**: the Nether shows below its roof, not the bedrock ceiling.
+- [ ] Join the server: within a few seconds you appear on the map with your head and name, and in the list at the bottom right. Clicking your name jumps to you, switching dimension if you're in the Nether. Walk around: the marker follows.
+- [ ] Build or dig something visible, then run `save-all` in the console. About half a minute later the card shows a new drawing with one or two regions drawn. Within a minute the open map shows the change without reloading.
+- [ ] **Draw now** draws straight away; **Redraw everything** draws every region again.
+- [ ] **Show players** off: the markers and list disappear within a few seconds.
+- [ ] Sign out and open the map's address: you're sent to sign in. Signed in as someone who can't see the server: "Not found".
+- [ ] Turn the public page on and **Anyone can open it** on: the card shows the address with a copy button. In a private window the map opens without signing in, and the browser's storage shows no cookie for it. The public page has **Open the map**, and `/status` in Discord has a **Map** link.
+- [ ] With a hostname set, `https://<hostname>/map` opens the map.
+- [ ] Turn the public page off: the map needs signing in again, and the page and Discord no longer link it.
+- [ ] **Disk use** shows a **Web map** line.
+- [ ] Reset the world (**World**, **Reset**). Start the server and let it save: the map shows the new world, and none of the old one.
+- [ ] Turn the map off: the card says it's off, the map's address gives "Not found", and the **Web map** disk line is empty after the next measurement.
+- [ ] Note how long the first drawing took and the size on the **Web map** disk line, and add them to the pull request.

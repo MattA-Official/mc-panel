@@ -2,7 +2,7 @@
  * Plans and applies specs. A plan is kept for a while under an id with a fingerprint of
  * what it was based on, so apply does exactly what was shown or refuses.
  */
-import { mkdir, readdir, rename, rm, stat } from 'node:fs/promises'
+import { lstat, mkdir, readdir, rename, rm } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { eq } from 'drizzle-orm'
 import {
@@ -18,8 +18,9 @@ import {
   type VanillaTweaksProvider,
 } from '@flytower/providers'
 import { listZip, unzip } from '../unzip'
+import { resolveInside } from '../files'
 import { SPEC_STEPS, type JobEvent } from '../../shared/utils/jobs'
-import type { ServerSpec } from '../../shared/spec'
+import { isSafeLevelName, type ServerSpec } from '../../shared/spec'
 import type { TaskSpec } from '../../shared/schedules'
 import { schema, type Db } from '../db'
 import { JobError, type AgentCall, type JobTracker } from '../jobs/runner'
@@ -27,6 +28,8 @@ import type { BackupService } from '../backups/service'
 import { specFromServer } from './from-server'
 import { readLock, unmanagedFiles, writeLock, type Lock, type LockedItem } from './lock'
 import { makePlan, type Plan } from './plan'
+import { specNeeds } from './sections'
+import type { ServerPermission } from '../../shared/permissions'
 import { budgetProblem, type MemoryUser } from '../memory'
 
 export const PLAN_TTL_MS = 15 * 60_000
@@ -57,6 +60,8 @@ export interface SpecDeps {
   schedulesChanged?: () => void
   /** Called after player stats settings change, to stop recording or forget players. */
   statsChanged?: (name: string, before: unknown) => void
+  /** Called after settings are saved, so the map service starts or stops drawing. */
+  mapChanged?: (name: string) => Promise<void>
   /** Scheduled tasks: read for plans and specs, replaced by apply. */
   tasks?: {
     tasks(name: string): TaskSpec[]
@@ -76,6 +81,8 @@ interface StoredPlan {
   plan: Plan
   fingerprint: string
   at: number
+  /** The permissions the change needs, checked again when it's applied. */
+  needs: ServerPermission[]
 }
 
 export type PublicPlan = Omit<Plan, 'work'> & { id: string }
@@ -99,7 +106,7 @@ export function publicPlan(id: string, plan: Plan): PublicPlan {
 /** The world folder's name, refusing anything that would leave the server folder. */
 export function levelNameOf(props: Record<string, string>) {
   const level = props['level-name'] || 'world'
-  if (!/^[\w][\w .-]{0,63}$/.test(level) || level.includes('..')) {
+  if (!isSafeLevelName(level)) {
     throw new SpecError(`The world folder "${level}" has an unusual name; rename it first.`)
   }
   return level
@@ -222,8 +229,21 @@ export class SpecService {
     }
   }
 
+  /** The permissions changing `name` to `spec` needs (see sections.ts). */
+  async needs(name: string, spec: ServerSpec, upgrade?: true | string[]) {
+    return specNeeds(await this.currentSpec(name), spec, upgrade)
+  }
+
+  /** What a plan made earlier needs, or null when it has expired. */
+  planNeeds(name: string, planId: string): ServerPermission[] | null {
+    this.sweep()
+    const stored = this.plans.get(planId)
+    return stored && stored.plan.server === name ? stored.needs : null
+  }
+
   async plan(name: string, spec: ServerSpec, upgrade?: true | string[]): Promise<PublicPlan> {
     const { db } = this.deps
+    const needs = await this.needs(name, spec, upgrade)
     const row = this.row(name)
     const dir = this.deps.serverDir(name)
     const props = await this.deps.readProperties(name)
@@ -235,7 +255,7 @@ export class SpecService {
       lock,
       spec,
       levelName,
-      exists: async (p) => (await stat(join(dir, p)).catch(() => null))?.isFile() ?? false,
+      exists: async (p) => (await lstat(join(dir, p)).catch(() => null))?.isFile() ?? false,
       unmanaged: (await unmanagedFiles(dir, lock, levelName)).map((u) => u.path),
       otherPorts: db
         .select({
@@ -262,7 +282,12 @@ export class SpecService {
     })
     this.sweep()
     const id = Buffer.from(crypto.getRandomValues(new Uint8Array(12))).toString('hex')
-    this.plans.set(id, { plan, fingerprint: await this.fingerprint(name), at: this.now() })
+    this.plans.set(id, {
+      plan,
+      fingerprint: await this.fingerprint(name),
+      at: this.now(),
+      needs,
+    })
     return publicPlan(id, plan)
   }
 
@@ -325,6 +350,8 @@ export class SpecService {
 
     // Download everything first, so a bad link changes nothing.
     await rm(staging, { recursive: true, force: true })
+    // Not recursive, so this fails if anything appeared at the staging path in between.
+    await mkdir(staging)
     await mkdir(join(staging, 'new'), { recursive: true })
     await mkdir(join(staging, 'old'), { recursive: true })
     const lock: Lock = structuredClone(work.lock)
@@ -370,12 +397,14 @@ export class SpecService {
     try {
       await this.deps.agent('server.permissions', { name }, { timeoutMs: 120_000 })
       for (const [i, p] of work.removals.entries()) {
-        if (await stat(join(dir, p)).catch(() => null)) {
-          await move(join(dir, p), join(staging, 'old', String(i)))
+        // resolveInside refuses paths that leave the folder or pass through a link.
+        const from = await resolveInside(dir, p)
+        if (await lstat(from).catch(() => null)) {
+          await move(from, join(staging, 'old', String(i)))
         }
       }
       for (const [i, d] of work.downloads.entries()) {
-        await move(join(staging, 'new', String(i)), join(dir, d.path))
+        await move(join(staging, 'new', String(i)), await resolveInside(dir, d.path))
       }
       if (work.server) {
         await move(join(dir, 'server.jar'), join(staging, 'old', 'server.jar'))
@@ -442,12 +471,14 @@ export class SpecService {
           : {}),
         ...(s.publicPage ? { publicPage: s.publicPage } : {}),
         ...(s.stats ? { stats: s.stats } : {}),
+        ...(s.map ? { map: s.map } : {}),
         content: s.content,
       })
       .where(eq(schema.servers.name, name))
       .run()
     if (s.backups) this.deps.schedulesChanged?.()
     if (s.stats) this.deps.statsChanged?.(name, row.stats)
+    await this.deps.mapChanged?.(name)
     if (s.schedules || s.timezone !== undefined) {
       const tasks = this.deps.tasks
       tasks?.replace(name, s.schedules ?? tasks.tasks(name), s.timezone)

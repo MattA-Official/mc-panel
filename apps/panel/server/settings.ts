@@ -4,6 +4,7 @@ import { schema, type DbOrTx } from './db'
 import type { DiskReport } from '../shared/disk'
 import type { BrandingSettings, ImageType } from '../shared/branding'
 import type { DiscordApp } from './discord/service'
+import type { DiscordRoleMapping } from '../shared/discord'
 
 export type UpdateChannel = 'stable' | 'beta' | 'native'
 
@@ -19,6 +20,10 @@ export interface Settings {
   'branding.favicon': StoredImage
   /** The connected Discord app, with its bot token sealed. */
   'discord.app': DiscordApp
+  /** Discord roles whose members get Flytower roles in slash commands. */
+  'discord.roles': DiscordRoleMapping[]
+  /** Chat from Discord into the game: whether the panel keeps a Gateway connection open. */
+  'discord.chat': { enabled: boolean }
 }
 
 export interface StoredImage {

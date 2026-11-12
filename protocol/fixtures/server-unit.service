@@ -1,0 +1,38 @@
+# Managed by Flytower. Changes are overwritten.
+[Unit]
+Description=Minecraft server %i (Flytower)
+After=network-online.target
+Wants=network-online.target
+# Three failed starts in ten minutes is a crash loop: systemd leaves the server failed
+# instead of restarting it forever. Starting it from the panel clears this.
+StartLimitIntervalSec=600
+StartLimitBurst=3
+
+[Service]
+User=mc-%i
+Group=mc-%i
+# The panel's group as an extra, so the server can use the files the panel puts in its folder.
+SupplementaryGroups=flytower
+UMask=0007
+WorkingDirectory=/srv/flytower/servers/%i
+EnvironmentFile=/etc/flytower/servers/%i.env
+ExecStart=/bin/sh -c 'exec "$$JAVA_HOME/bin/java" -Xms$${HEAP_MB}M -Xmx$${HEAP_MB}M $$JVM_FLAGS -jar server.jar nogui'
+SuccessExitStatus=0 143
+TimeoutStopSec=120
+Restart=on-failure
+RestartSec=15
+# systemd 254+ waits longer after each crash, up to a minute; older versions ignore these.
+RestartSteps=3
+RestartMaxDelaySec=60
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ReadWritePaths=/srv/flytower/servers/%i
+# Mods run with the server's rights, so keep the root agent and the panel's secrets out of reach.
+InaccessiblePaths=-/run/flytower -/var/lib/flytower -/var/lib/flytower-agent -/var/lib/flytower-archive -/etc/flytower/panel.env
+Slice=flytower-mc.slice
+
+[Install]
+WantedBy=multi-user.target

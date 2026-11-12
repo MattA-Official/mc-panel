@@ -10,7 +10,7 @@ Each server can have a page that anyone can open without signing in, at `https:/
 
 ## Turning it on
 
-A server's **Settings**, **Public page**: switch on **Show a public page for this server**, write a description (up to 500 characters, shown as plain text with line breaks), choose what it says about players, and **Save**. The card then shows the page's address with a copy button.
+A server's **Settings**, **Community**, **Public page**: switch on **Show a public page for this server**, write a description (up to 500 characters, shown as plain text with line breaks), choose what it says about players, and **Save**. The card then shows the page's address with a copy button.
 
 If the server has its own [hostname](addresses.md), the page is also at `https://<hostname>`, such as `https://survival.example.com`. See [On the server's own address](#on-the-servers-own-address).
 
@@ -27,6 +27,12 @@ You choose what the page says about who's online:
 - **Nothing**.
 
 Bear in mind that Minecraft itself already tells anyone who adds your server to their multiplayer list how many people are on, and a sample of their names, unless you set `hide-online-players=true` in the server's settings.
+
+## Leaderboards
+
+With **Names and heads** chosen, you can also tick **Show leaderboards**. The page then shows the top five for playtime, deaths, mob kills, distance travelled and blocks mined, for all time, this month and this week, from the same figures as the server's [stats](stats.md) on its Players tab. It's off unless you turn it on.
+
+Leaderboards only show while the page shows names and the server keeps [player stats](stats.md). Players left out of stats never appear. Only names, heads and the figures leave the panel: nothing about when people played or who is left out.
 
 ## Modpack for players
 
@@ -47,7 +53,7 @@ A server with a hostname (and its A record pointing at the VPS, which players ne
 
 Caddy gets a certificate for the hostname the first time someone opens it, after asking the panel that the name belongs to a server whose public page is on, so nobody can make your box request certificates for other names. Turning the page off stops new certificates; the address then shows "Not found".
 
-Installs from before 1.2 need the installer re-run once (with the same `--domain`) to add this to Caddy's configuration. `/s/<name>` on the panel's domain works without it. If you manage Caddy yourself (`--no-caddy`), add this to your Caddyfile:
+Installs from before 1.2 get this added to Caddy's configuration by the system helper the first time it starts after an update, so the hostname starts working on its own. The old file is kept as `/etc/caddy/Caddyfile.before-hostnames`. If it's still not working, check `journalctl -u flytower-agent` for "updating the Caddyfile failed". `/s/<name>` on the panel's domain works either way. If you manage Caddy yourself (`--no-caddy`), Flytower leaves your Caddyfile alone, so add this to it:
 
 ```
 {
@@ -63,6 +69,10 @@ https:// {
 	reverse_proxy 127.0.0.1:3000
 }
 ```
+
+## Web map
+
+When the server's [web map](map.md) is on and set so **Anyone can open it**, the page has an **Open the map** button once the map has been drawn. Turning the public page off makes the map private again.
 
 ## How it stays light
 

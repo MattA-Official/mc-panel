@@ -180,6 +180,40 @@ describe('channels', () => {
     ).rejects.toThrow(/address again/)
   })
 
+  it('only sends a saved secret back to the same kind of channel at the same site', async () => {
+    const { svc, calls } = setup()
+    const c = await svc.add({
+      name: 'Hook',
+      kind: 'webhook',
+      url: 'https://hooks.example.com/a',
+      secret: 'first',
+      events: ['backup.failed'],
+      servers: [],
+      enabled: true,
+    })
+    const base = { name: 'Hook', events: [], servers: [], enabled: true }
+    await expect(
+      svc.test({ ...base, kind: 'webhook', url: 'https://elsewhere.example.net/x' }, c.id),
+    ).rejects.toThrow(/secret again/)
+    await expect(
+      svc.test({ ...base, kind: 'ntfy', url: 'https://hooks.example.com/topic' }, c.id),
+    ).rejects.toThrow(/secret again/)
+    expect(calls).toHaveLength(0)
+    // A new path on the same site keeps the secret, and a typed-in one always works.
+    await svc.test({ ...base, kind: 'webhook', url: 'https://hooks.example.com/b' }, c.id)
+    await svc.test(
+      { ...base, kind: 'webhook', url: 'https://elsewhere.example.net/x', secret: 'new' },
+      c.id,
+    )
+    expect(calls.map((x) => x.url)).toEqual([
+      'https://hooks.example.com/b',
+      'https://elsewhere.example.net/x',
+    ])
+    const sig = (n: number) => new Headers(calls[n]!.init.headers).get('x-flytower-signature')
+    expect(sig(0)).toBe(sign(String(calls[0]!.init.body), 'first'))
+    expect(sig(1)).toBe(sign(String(calls[1]!.init.body), 'new'))
+  })
+
   it('reports a failed test plainly', async () => {
     const { svc } = setup(() => new Response('{"message": "Unknown Webhook"}', { status: 404 }))
     await expect(
@@ -292,6 +326,21 @@ describe('sending', () => {
       'The disk is 95% full',
       'Disk space is back to normal',
     ])
+  })
+
+  it('carries over a disk warning sent before it was kept per machine', async () => {
+    const { svc, calls } = setup()
+    await channel(svc)
+    const old = svc as unknown as {
+      setState: (key: string, v: { sentAt: Date; open: boolean; value: string }) => void
+    }
+    old.setState('disk.full:*', { sentAt: new Date(), open: true, value: '85' })
+    svc.disk(88, 100)
+    await svc.idle()
+    expect(calls).toHaveLength(0)
+    svc.disk(96, 100)
+    await svc.idle()
+    expect(calls).toHaveLength(1)
   })
 
   it('offers each update once', async () => {

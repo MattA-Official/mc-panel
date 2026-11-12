@@ -10,14 +10,21 @@
  * rather than failing the walk. Sizes are the space files take on disk (allocated blocks),
  * so sparse region files count for what they really use.
  *
- * The walking itself is done by `flytower-du` (crates/flytower-du), a Rust program shipped
+ * The agent does the measuring (`disk.usage`), as root, so every folder can be read and the
+ * rest of the machine can be split into parts too (Java, Flytower, logs, caches). It's also
+ * the one place disk use is measured, so it carries over when Flytower runs several boxes.
+ * When the agent can't (an older agent, or it fails), the panel walks the server folders
+ * itself, as before, and the rest of the machine stays one slice.
+ *
+ * The panel's own walking is done by `flytower-du` (crates/flytower-du), a Rust program shipped
  * next to Bun in each release, which gives the same numbers many times faster. When it isn't
  * there (development) or fails, the TypeScript walk below does the job instead.
  */
 import { existsSync } from 'node:fs'
 import { lstat, readdir } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import type { DiskGroup, DiskReport, ServerDisk } from '../shared/disk'
+import type { Result } from '@flytower/protocol'
+import { LOCAL_MACHINE, type DiskGroup, type DiskReport, type ServerDisk } from '../shared/disk'
 
 export { DISK_GROUPS, type DiskGroup, type DiskReport, type ServerDisk } from '../shared/disk'
 
@@ -139,6 +146,8 @@ export interface DiskDeps {
   serverDir: (name: string) => string
   backupsDir: string
   exportsDir: string
+  /** Where web maps live; each server's map counts towards it. */
+  mapsDir?: string
   importsDir: string
   archiveDir: string
   /** The server's `level-name`, from server.properties. */
@@ -148,11 +157,16 @@ export interface DiskDeps {
   now?: () => Date
   /** How to walk; `measureMany` unless a test says otherwise. */
   measure?: MeasureMany
+  /** Asks the agent to measure (`disk.usage`). Without it, or when it fails, the panel walks. */
+  agent?: (servers: string[], system: boolean) => Promise<Result<'disk.usage'>>
 }
 
 /** Measures one server: its folder by group, plus its backups and exports. */
 export async function measureServer(
-  deps: Pick<DiskDeps, 'serverDir' | 'backupsDir' | 'exportsDir' | 'levelName' | 'measure'>,
+  deps: Pick<
+    DiskDeps,
+    'serverDir' | 'backupsDir' | 'exportsDir' | 'mapsDir' | 'levelName' | 'measure'
+  >,
   server: string,
   at: Date,
 ): Promise<ServerDisk> {
@@ -162,6 +176,7 @@ export async function measureServer(
     exports: 0,
     logs: 0,
     content: 0,
+    map: 0,
     other: 0,
   }
   let unreadable = 0
@@ -178,6 +193,9 @@ export async function measureServer(
     ...entries.map((e): [DiskGroup, string] => [groupOf(e, level), join(dir, e)]),
     ['backups', join(deps.backupsDir, server)],
     ['exports', join(deps.exportsDir, server)],
+    ...(deps.mapsDir
+      ? [['map', join(deps.mapsDir, 'servers', server)] as [DiskGroup, string]]
+      : []),
   ]
   const results = await (deps.measure ?? measureMany)(labelled.map(([, path]) => path))
   labelled.forEach(([group], i) => {
@@ -186,6 +204,17 @@ export async function measureServer(
   })
   const bytes = Object.values(groups).reduce((a, b) => a + b, 0)
   return { server, bytes, groups, unreadable, measuredAt: at.toISOString() }
+}
+
+/** A server's figures as the agent sent them. */
+export function fromAgent(
+  server: string,
+  measured: Result<'disk.usage'>['servers'][string],
+  at: Date,
+): ServerDisk {
+  const groups = { ...measured.groups }
+  const bytes = Object.values(groups).reduce((a, b) => a + b, 0)
+  return { server, bytes, groups, unreadable: measured.unreadable, measuredAt: at.toISOString() }
 }
 
 /** The group with the most in it, for the System table. */
@@ -208,7 +237,25 @@ export class DiskUsage {
 
   constructor(private deps: DiskDeps) {
     this.now = deps.now ?? (() => new Date())
-    this.report = deps.load?.() ?? { servers: [], shared: null, measuredAt: null }
+    this.report = deps.load?.() ?? { servers: [], shared: null, system: null, measuredAt: null }
+    this.report.machine ??= LOCAL_MACHINE
+  }
+
+  private warned = false
+  /** Runs `fn` through the agent, or returns null so the caller walks instead. */
+  private async viaAgent<T>(
+    fn: (agent: NonNullable<DiskDeps['agent']>) => Promise<T>,
+  ): Promise<T | null> {
+    if (!this.deps.agent) return null
+    try {
+      return await fn(this.deps.agent)
+    } catch (err) {
+      if (!this.warned) {
+        console.error("[flytower] the agent couldn't measure disk use; walking instead", err)
+      }
+      this.warned = true
+      return null
+    }
   }
 
   /** The last measurement, limited to servers that still exist. */
@@ -276,7 +323,13 @@ export class DiskUsage {
   }
 
   private async measureOne(server: string) {
-    const s = await measureServer(this.deps, server, this.now())
+    const at = this.now()
+    const s =
+      (await this.viaAgent(async (agent) => {
+        const measured = (await agent([server], false)).servers[server]
+        if (!measured) throw new Error(`no figures for ${server}`)
+        return fromAgent(server, measured, at)
+      })) ?? (await measureServer(this.deps, server, at))
     const others = this.report.servers.filter((r) => r.server !== server)
     this.report = {
       ...this.report,
@@ -287,6 +340,17 @@ export class DiskUsage {
   }
 
   private async measureShared() {
+    const measured = await this.viaAgent((agent) => agent([], true))
+    if (measured?.shared) {
+      this.report = {
+        ...this.report,
+        shared: measured.shared,
+        system: measured.system,
+        measuredAt: this.now().toISOString(),
+      }
+      this.persist()
+      return
+    }
     const walk = this.deps.measure ?? measureMany
     const [[imports], [archive]] = (await Promise.all([
       walk([this.deps.importsDir]),
@@ -300,6 +364,7 @@ export class DiskUsage {
         archive: archive.bytes,
         unreadable: imports.unreadable + archive.unreadable,
       },
+      system: null,
       measuredAt: at,
     }
     this.persist()

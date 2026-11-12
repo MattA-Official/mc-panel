@@ -9,7 +9,7 @@ By default players connect to your VPS's IP address, with a port for every serve
 
 ## Setting one
 
-A server's **Settings**, **Address**: enter the hostname, such as `survival.example.com`. You can also set it with `hostname:` in the [YAML](spec.md). Two servers can't share one.
+A server's **Settings**, **General**, **Address**: enter the hostname, such as `survival.example.com`. You can also set it with `hostname:` in the [YAML](spec.md). Two servers can't share one.
 
 ## DNS records
 

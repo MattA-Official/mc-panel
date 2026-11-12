@@ -44,6 +44,7 @@ export default defineEventHandler(async (event) => {
         recovery: spec.recovery,
         publicPage: spec.public,
         stats: spec.stats,
+        map: spec.map,
       },
     )
     void done.then((job) => {

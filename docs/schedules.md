@@ -2,15 +2,13 @@
 section: Running servers
 order: 14
 since: '1.1.0'
-panelRoute:
-  - '/servers/:name/schedules'
 ---
 
 # Scheduled tasks
 
 Each server can run things by itself on a schedule: a restart with a countdown in-game, a console command, or an announcement in everyone's chat. For example, restart at 5am every day, warning players 15, 5 and 1 minutes and 10 seconds beforehand.
 
-Set them on the server's **Schedules** tab (next to **Backups**), or under [`schedules`](spec.md#schedules) in its YAML. Both are the same list.
+Set them under the server's **Settings**, **Schedules**, or under [`schedules`](spec.md#schedules) in its YAML. Both are the same list.
 
 ## Adding a task
 
@@ -26,9 +24,9 @@ Every task on the list shows when it runs next, and when it last ran and how tha
 
 ## Time zone
 
-Tasks run in the server's time zone, set at the bottom of the **Schedules** tab (or `timezone` in the YAML). It starts as UTC, so set it to where your players are, such as `Europe/London`. Clocks changing for summer time are handled: 05:00 stays 05:00.
+Tasks run in the server's time zone, set at the bottom of **Settings**, **Schedules** (or `timezone` in the YAML). It starts as UTC, so set it to where your players are, such as `Europe/London`. Clocks changing for summer time are handled: 05:00 stays 05:00.
 
-Backups keep their own time zone, set on the **Backups** tab.
+Backups keep their own time zone, set under **World**, **Backups**.
 
 ## Restarts
 

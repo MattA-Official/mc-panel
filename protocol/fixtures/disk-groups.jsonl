@@ -1,0 +1,15 @@
+{"entry":"world","levelName":null,"group":"world"}
+{"entry":"world_nether","levelName":"world","group":"world"}
+{"entry":"world_the_end","levelName":null,"group":"world"}
+{"entry":"survival","levelName":"survival","group":"world","note":"the level-name folder"}
+{"entry":"survival","levelName":"survival/region","group":"world","note":"only the first part of level-name counts"}
+{"entry":"survival","levelName":" survival ","group":"world","note":"level-name is trimmed"}
+{"entry":"survival","levelName":null,"group":"other"}
+{"entry":"logs","levelName":null,"group":"logs"}
+{"entry":"crash-reports","levelName":null,"group":"logs"}
+{"entry":"mods","levelName":null,"group":"content"}
+{"entry":"plugins","levelName":null,"group":"content"}
+{"entry":"config","levelName":null,"group":"content"}
+{"entry":"server.jar","levelName":null,"group":"other"}
+{"entry":"libraries","levelName":"world","group":"other"}
+{"entry":"","levelName":"","group":"other","note":"an empty level-name matches nothing"}

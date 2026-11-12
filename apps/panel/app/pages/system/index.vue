@@ -8,7 +8,7 @@ const flytower = computed(() => updates.value?.flytower?.summary?.latest ?? null
 
 <template>
   <UAlert
-    v-if="flytower && can('system.manage')"
+    v-if="flytower && can('system.updates')"
     color="info"
     variant="subtle"
     icon="i-lucide-arrow-up-circle"
@@ -17,7 +17,7 @@ const flytower = computed(() => updates.value?.flytower?.summary?.latest ?? null
     :actions="[{ label: 'See what\'s new', variant: 'outline', to: '/system/updates' }]"
     data-e2e="flytower-update-banner"
   />
-  <UCard v-if="health">
+  <UCard v-if="health?.agent">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
         <dt class="text-muted">Flytower</dt>

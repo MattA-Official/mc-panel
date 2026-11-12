@@ -12,6 +12,7 @@ import {
   PeopleError,
   removePerson,
   revokeInvite,
+  checkMappingChanges,
   setGrants,
 } from '../server/auth/people'
 import { can } from '../shared/permissions'
@@ -113,8 +114,26 @@ describe('invites', () => {
       server: null,
       createdBy: owner,
     })
-    revokeInvite(db, id)
+    revokeInvite(db, access(owner), id)
     expect(checkInvite(db, token)).toMatchObject({ ok: false })
+  })
+
+  test('nobody can cancel an invite for more access than they have', () => {
+    const { db, owner, person, access } = setup()
+    db.insert(schema.roles)
+      .values({ id: 'host', name: 'Host', permissions: ['people.invite', 'server.view'] })
+      .run()
+    const host = person('Sam', 'host')
+    const big = createInvite(db, access(owner), { roleId: 'admin', server: null, createdBy: owner })
+    fails(() => revokeInvite(db, access(host), big.id), /more access than you have/)
+    expect(checkInvite(db, big.token).ok).toBe(true)
+    const small = createInvite(db, access(owner), {
+      roleId: 'viewer',
+      server: null,
+      createdBy: owner,
+    })
+    revokeInvite(db, access(host), small.id)
+    expect(checkInvite(db, small.token)).toMatchObject({ ok: false })
   })
 
   test('nobody can invite someone with more access than they have', () => {
@@ -233,6 +252,18 @@ describe('custom roles', () => {
     expect(can(access(sam), 'players.manage', 'survival')).toBe(false)
   })
 
+  test('saving a role adds what its permissions need', async () => {
+    const { saveRole } = await import('../server/auth/people')
+    const { db, owner, access } = setup()
+    const writer = saveRole(db, access(owner), { name: 'Writer', permissions: ['files.write'] })
+    expect(writer.permissions).toEqual(['server.view', 'files.read', 'files.write'])
+    const content = saveRole(db, access(owner), {
+      name: 'Content',
+      permissions: ['content.manage'],
+    })
+    expect(content.permissions).toEqual(['server.view', 'content.manage'])
+  })
+
   test('names are unique, built-in roles are fixed, and nobody makes a role beyond themselves', async () => {
     const { saveRole } = await import('../server/auth/people')
     const { db, owner, person, access } = setup()
@@ -251,7 +282,7 @@ describe('custom roles', () => {
     )
     const adminAll = person('Ada', 'admin')
     fails(
-      () => saveRole(db, access(adminAll), { name: 'Boss', permissions: ['system.manage'] }),
+      () => saveRole(db, access(adminAll), { name: 'Boss', permissions: ['system.updates'] }),
       /more access than you have/,
     )
   })
@@ -267,5 +298,131 @@ describe('custom roles', () => {
     deleteRole(db, access(owner), mod.id)
     expect(db.select().from(schema.invites).all()).toEqual([])
     fails(() => deleteRole(db, access(owner), 'owner'), /Built-in roles/)
+  })
+})
+
+describe('access changes for Activity', () => {
+  test('lists the grants given and taken by name', async () => {
+    const { grantChanges } = await import('../server/auth/people')
+    const { db } = setup()
+    expect(
+      grantChanges(
+        db,
+        [
+          { roleId: 'viewer', server: null },
+          { roleId: 'admin', server: 'creative' },
+        ],
+        [
+          { roleId: 'operator', server: 'survival' },
+          { roleId: 'admin', server: 'creative' },
+          { roleId: 'operator', server: 'survival' },
+        ],
+      ),
+    ).toEqual({
+      added: [{ role: 'Operator', server: expect.any(String) }],
+      removed: [{ role: 'Viewer', server: null }],
+    })
+  })
+})
+
+describe("a server's own access", () => {
+  const ACCESS_ROUTES = [
+    'index.get.ts',
+    '[id].put.ts',
+    'invites/index.post.ts',
+    'invites/[id].delete.ts',
+  ]
+
+  test('every Access route checks for an access manager straight after seeing the server', async () => {
+    for (const f of ACCESS_ROUTES) {
+      const src = await Bun.file(
+        new URL(`../server/api/servers/[name]/access/${f}`, import.meta.url),
+      ).text()
+      const body = src.slice(src.indexOf('defineEventHandler(')).split('\n')
+      expect(body[2]).toContain('requireAccessManager(event, server)')
+    }
+  })
+
+  test('someone given Manage who has access on one server manages only that one', async () => {
+    const { mayManageAccess, serverAccess, setServerGrants } = await import('../server/auth/people')
+    const { db, owner, person, access } = setup()
+    db.insert(schema.roles)
+      .values({
+        id: 'host',
+        name: 'Host',
+        permissions: ['server.view', 'server.power', 'access.manage', 'players.manage'],
+      })
+      .run()
+    const host = person('Host', 'host', 'survival')
+    const sam = person('Sam')
+    const a = access(host)
+    expect(mayManageAccess(a, 'survival')).toBe(true)
+    expect(mayManageAccess(a, 'creative')).toBe(false)
+    expect(mayManageAccess(access(owner), 'creative')).toBe(true)
+
+    // Only roles the host could hold here are offered, and given.
+    const view = serverAccess(db, a, 'survival')
+    expect(view.roles.map((r) => r.id).sort()).toEqual(['host', 'viewer'])
+    expect(view.others.map((p) => p.name)).toContain('Sam')
+    setServerGrants(db, a, sam, 'survival', ['viewer'])
+    expect(can(access(sam), 'server.view', 'survival')).toBe(true)
+    expect(can(access(sam), 'server.view', 'creative')).toBe(false)
+    fails(() => setServerGrants(db, a, sam, 'survival', ['operator']), /more access than you have/)
+    // Grants for other servers and for all of them are left alone.
+    grantRole(db, sam, 'viewer', null)
+    setServerGrants(db, a, sam, 'survival', [])
+    expect(can(access(sam), 'server.view', 'creative')).toBe(true)
+  })
+
+  test('Admins do not get Manage who has access', () => {
+    const { access, person } = setup()
+    const admin = person('Ada', 'admin')
+    expect(can(access(admin), 'access.manage', 'survival')).toBe(false)
+  })
+})
+
+describe('Discord role mappings', () => {
+  const map = (roleId: string, server: string | null = null, discordRoleId = '1001') => ({
+    discordRoleId,
+    roleId,
+    server,
+  })
+
+  test('only hand out what the person saving them could do there', () => {
+    const { db, person, access } = setup()
+    db.insert(schema.roles)
+      .values({
+        id: 'integrator',
+        name: 'Integrator',
+        permissions: ['roles.manage', 'system.integrations'],
+      })
+      .run()
+    const sam = person('Sam', 'integrator')
+    grantRole(db, sam, 'operator', 'creative')
+    const a = access(sam)
+    // Operator on the one server Sam operates is fine; anywhere else, or Admin, isn't.
+    checkMappingChanges(db, a, [map('operator', 'creative')], [])
+    fails(() => checkMappingChanges(db, a, [map('operator', 'survival')], []), /more access/)
+    fails(() => checkMappingChanges(db, a, [map('admin')], []), /more access/)
+  })
+
+  test('leave mappings above the person alone, but let them edit the rest', () => {
+    const { db, person, access } = setup()
+    db.insert(schema.roles)
+      .values({
+        id: 'integrator',
+        name: 'Integrator',
+        permissions: ['roles.manage', 'system.integrations'],
+      })
+      .run()
+    const sam = person('Sam', 'integrator')
+    grantRole(db, sam, 'viewer', null)
+    const a = access(sam)
+    const saved = [map('admin', null, '1001')]
+    checkMappingChanges(db, a, [...saved, map('viewer', null, '1002')], saved)
+    fails(() => checkMappingChanges(db, a, [], saved), /remove/)
+    fails(() => checkMappingChanges(db, a, [map('admin', null, '1003')], saved), /more access/)
+    // A mapping to a role that no longer exists can always go.
+    checkMappingChanges(db, a, [], [map('gone')])
   })
 })

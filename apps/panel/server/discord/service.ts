@@ -4,7 +4,7 @@
  */
 import type { DbOrTx } from '../db'
 import { deleteSetting, getSetting, setSetting } from '../settings'
-import type { DiscordState } from '../../shared/discord'
+import type { DiscordChatState, DiscordState } from '../../shared/discord'
 import { DiscordApi, DiscordError, type Fetch } from './api'
 
 export { DiscordError }
@@ -35,6 +35,8 @@ export interface DiscordDeps {
   now?: () => Date
   /** The slash commands Flytower answers, for the card. */
   commandNames?: () => string[]
+  /** How chat from Discord stands, for the card. */
+  chat?: () => DiscordChatState
 }
 
 export const INTERACTIONS_PATH = '/api/discord/interactions'
@@ -44,6 +46,23 @@ const TOKEN = /^[\w-]{20,}\.[\w-]{4,}\.[\w-]{20,}$/
 
 export function inviteUrl(applicationId: string): string {
   return `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(applicationId)}&scope=applications.commands`
+}
+
+/** View Channels: all chat from Discord needs, so the bot can read the linked channels. */
+export const BOT_PERMISSIONS = 1 << 10
+
+/** Adds the app as a bot, as well as its commands. Chat from Discord needs the bot. */
+export function botInviteUrl(applicationId: string): string {
+  return `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(applicationId)}&scope=bot+applications.commands&permissions=${BOT_PERMISSIONS}`
+}
+
+const CHAT_OFF: DiscordChatState = {
+  enabled: false,
+  state: 'off',
+  error: null,
+  since: null,
+  guildCount: 0,
+  servers: [],
 }
 
 export class DiscordService {
@@ -77,6 +96,8 @@ export class DiscordService {
       connectedAt: app.connectedAt,
       commands: this.deps.commandNames?.() ?? [],
       commandsError: app.commandsError ?? null,
+      botInviteUrl: botInviteUrl(app.applicationId),
+      chat: this.deps.chat?.() ?? CHAT_OFF,
     }
   }
 

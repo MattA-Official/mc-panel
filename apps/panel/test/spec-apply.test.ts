@@ -197,6 +197,7 @@ function setup(
   let state = opts.running ? 'active' : 'inactive'
   const calls: string[] = []
   const statsChanges: { name: string; before: unknown }[] = []
+  const mapSyncs: string[] = []
   const agent = (async (verb: Verb, params: unknown) => {
     calls.push(verb === 'server.configure' ? `${verb} ${JSON.stringify(params)}` : verb)
     if (verb === 'service.status') return { active: state, since: null }
@@ -254,6 +255,7 @@ function setup(
     ],
     offsiteChanged: (n) => calls.push(`offsite ${n}`),
     statsChanged: (name, before) => statsChanges.push({ name, before }),
+    mapChanged: async (name) => void mapSyncs.push(name),
     tasks: {
       tasks: () => scheduled.tasks,
       replace: (_n, tasks, timezone) => {
@@ -269,7 +271,7 @@ function setup(
       loader: { type: opts.loader ?? 'fabric', minecraft: '26.3' },
       ...extra,
     })
-  return { db, dir, service, calls, snapshots, spec, scheduled, statsChanges }
+  return { db, dir, service, calls, snapshots, spec, scheduled, statsChanges, mapSyncs }
 }
 
 describe('plan', () => {
@@ -380,6 +382,34 @@ describe('plan', () => {
     expect(statsChanges).toEqual([{ name: 'survival', before: null }])
     expect((await service.currentSpec('survival')).stats).toEqual({ enabled: true, leaveOut })
     // Left out, it stays.
+    expect((await service.plan('survival', spec())).changes).toEqual([])
+  })
+
+  it('changes map settings and tells the map service', async () => {
+    const { service, spec, db, mapSyncs } = setup()
+    const plan = await service.plan('survival', spec({ map: { enabled: true, public: true } }))
+    expect(plan.changes).toEqual([
+      {
+        area: 'settings',
+        action: 'set',
+        label: 'Web map',
+        from: 'Off',
+        to: 'On: anyone, with players',
+      },
+    ])
+    expect(plan.restart).toBe(false)
+    await (
+      await service.apply('survival', plan.id)
+    ).done
+    expect(
+      db.select().from(schema.servers).where(eq(schema.servers.name, 'survival')).get()?.map,
+    ).toEqual({ enabled: true, public: true, players: true })
+    expect(mapSyncs).toEqual(['survival'])
+    expect((await service.currentSpec('survival')).map).toEqual({
+      enabled: true,
+      public: true,
+      players: true,
+    })
     expect((await service.plan('survival', spec())).changes).toEqual([])
   })
 
@@ -838,5 +868,38 @@ describe('vanilla tweaks', () => {
       spec({ content: [{ vanillatweaks: 'Survival/graves' }] }),
     )
     expect(again.changes).toEqual([])
+  })
+})
+
+describe('which permissions a spec change needs', () => {
+  it('needs nothing for the spec as it stands', async () => {
+    const { service } = setup()
+    const current = await service.currentSpec('survival')
+    expect(await service.needs('survival', current)).toEqual([])
+    // A form that sends the current spec back through ServerSpec changes nothing either.
+    expect(await service.needs('survival', ServerSpec.parse(current))).toEqual([])
+  })
+
+  it('needs the permission for each part that changes', async () => {
+    const { service } = setup()
+    const current = await service.currentSpec('survival')
+    const needs = (extra: Partial<ServerSpecInput>) =>
+      service.needs('survival', ServerSpec.parse({ ...current, ...extra }))
+    expect(await needs({ properties: { motd: 'Hi' } })).toEqual(['settings.edit'])
+    expect(await needs({ content: [{ modrinth: 'lithium' }] })).toEqual(['content.manage'])
+    expect(await needs({ schedules: [{ restart: '0 5 * * *' }] })).toEqual(['schedules.manage'])
+    expect(await needs({ timezone: 'Europe/London', content: [{ modrinth: 'lithium' }] })).toEqual([
+      'settings.edit',
+      'content.manage',
+    ])
+    expect(await service.needs('survival', current, true)).toEqual(['content.manage'])
+  })
+
+  it('keeps what a plan needs until it is applied', async () => {
+    const { service, spec } = setup()
+    const plan = await service.plan('survival', spec({ properties: { motd: 'Hi' } }))
+    expect(service.planNeeds('survival', plan.id)).toContain('settings.edit')
+    expect(service.planNeeds('creative', plan.id)).toBeNull()
+    expect(service.planNeeds('survival', 'nope')).toBeNull()
   })
 })

@@ -266,6 +266,10 @@ async function copyEndpoint() {
           @click="confirming = true"
         />
       </div>
+
+      <DiscordRoles />
+
+      <DiscordChatIn :discord="discord" @update="(s) => (discord = s)" />
     </div>
 
     <UModal

@@ -1,5 +1,7 @@
 import type { PublicPage } from '#shared/public-page'
 import type { StatsSettings } from '#shared/stats-settings'
+import type { MapSettings } from '#shared/map-settings'
+import type { RelayView } from '#shared/discord-relay'
 
 export type ServiceState =
   'active' | 'inactive' | 'activating' | 'deactivating' | 'failed' | 'unknown'
@@ -67,6 +69,9 @@ export interface Server {
   restartWhenUnresponsive: boolean
   publicPage: PublicPage
   stats: StatsSettings
+  map: MapSettings
+  /** Game chat to Discord; never the webhook URL. */
+  discordRelay: RelayView
   status: ServiceState
   health: Health
   /** The server's icon, if it has one; the URL changes when the icon does. */
@@ -85,6 +90,19 @@ export function useLiveHealth() {
   const health = ref<Record<string, Health>>({})
   useTopic<Record<string, Health>>('health', (m) => (health.value = m))
   return health
+}
+
+/** Each server's last hour of figures and its memory limit, updated after every sample. */
+export type LiveMetrics = Record<
+  string,
+  { limitMb: number; points: import('#shared/vitals').VitalsPoint[] }
+>
+
+/** Live figures for the servers overview, kept current over the shared socket. */
+export function useLiveMetrics() {
+  const metrics = ref<LiveMetrics>({})
+  useTopic<LiveMetrics>('metrics', (m) => (metrics.value = m))
+  return metrics
 }
 
 export const loaderLabel = (s: Pick<Server, 'loader' | 'mcVersion'>) =>

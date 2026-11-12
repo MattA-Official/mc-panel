@@ -22,34 +22,30 @@ const confirming = ref<null | 'stop' | 'restart'>(null)
 const can = useCan()
 const canPower = computed(() => can('server.power', name.value))
 
-/** What each tab needs for changes, and what to say when that's missing. */
-const WRITE_NEEDS: Record<string, { permission: Permission; text: string }> = {
-  settings: {
-    permission: 'server.configure',
-    text: "You can see this server's settings but not change them.",
-  },
-  content: {
-    permission: 'server.configure',
-    text: 'You can see what is installed but not change it.',
-  },
-  yaml: { permission: 'server.configure', text: 'You can read the YAML but not apply changes.' },
-  schedules: {
-    permission: 'server.configure',
-    text: 'You can see the schedules but not change or run them.',
-  },
-  players: {
-    permission: 'players.manage',
-    text: 'You can see who plays here but not manage them.',
-  },
-  backups: {
-    permission: 'backups.create',
-    text: 'You can see the backups but not take or manage them.',
-  },
-  world: { permission: 'world.manage', text: 'You can see the world but not change it.' },
-}
+/**
+ * What each view needs for changes, and what to say when that's missing. Keyed by the path
+ * after the server's name (`content`, `settings/yaml`), most specific first.
+ */
+// Settings and World say this per section, so they aren't here.
+const WRITE_NEEDS: [string, { permission: Permission; text: string }][] = [
+  [
+    'settings/yaml',
+    { permission: 'spec.edit', text: 'You can read the YAML but not apply changes.' },
+  ],
+  [
+    'content',
+    { permission: 'content.manage', text: 'You can see what is installed but not change it.' },
+  ],
+  [
+    'players',
+    { permission: 'players.manage', text: 'You can see who plays here but not manage them.' },
+  ],
+]
 const readOnly = computed(() => {
-  const tab = route.path.split('/')[3]
-  const need = tab ? WRITE_NEEDS[tab] : undefined
+  const view = route.path.split('/').slice(3).join('/')
+  // The Stats view on Players is only for reading, so it needs nothing more.
+  if (view === 'players' && route.query.view === 'stats') return null
+  const need = WRITE_NEEDS.find(([key]) => view === key || view.startsWith(`${key}/`))?.[1]
   return need && !can(need.permission, name.value) ? need.text : null
 })
 
@@ -85,15 +81,9 @@ const tabs = computed<
   }[]
 >(() => [
   ...(can('console.read', name.value)
-    ? [
-        { label: 'Console', icon: 'i-lucide-terminal', to: `/servers/${name.value}`, exact: true },
-        { label: 'Logs', icon: 'i-lucide-scroll-text', to: `/servers/${name.value}/logs` },
-      ]
+    ? [{ label: 'Console', icon: 'i-lucide-terminal', to: `/servers/${name.value}`, exact: true }]
     : []),
   { label: 'Players', icon: 'i-lucide-users', to: `/servers/${name.value}/players` },
-  { label: 'Performance', icon: 'i-lucide-activity', to: `/servers/${name.value}/performance` },
-  { label: 'Backups', icon: 'i-lucide-archive', to: `/servers/${name.value}/backups` },
-  { label: 'Schedules', icon: 'i-lucide-calendar-clock', to: `/servers/${name.value}/schedules` },
   {
     label: 'Content',
     icon: 'i-lucide-package',
@@ -115,8 +105,26 @@ const tabs = computed<
     ? [{ label: 'Files', icon: 'i-lucide-folder-open', to: `/servers/${name.value}/files` }]
     : []),
   { label: 'Settings', icon: 'i-lucide-sliders-horizontal', to: `/servers/${name.value}/settings` },
-  { label: 'YAML', icon: 'i-lucide-file-code', to: `/servers/${name.value}/yaml` },
 ])
+
+/**
+ * The Logs pop-up, open while the address has `?logs` (a file name, `crashes`, or empty for
+ * the newest log), so Back closes it and links can open it on the right thing.
+ */
+const router = useRouter()
+const logsOpen = computed(() => route.query.logs !== undefined && can('console.read', name.value))
+const logFile = computed({
+  get: () => String(route.query.logs ?? ''),
+  set: (logs) => {
+    // Closing empties the choice; that mustn't open the pop-up again.
+    if (route.query.logs !== undefined) router.replace({ query: { ...route.query, logs } })
+  },
+})
+function closeLogs() {
+  const query = { ...route.query }
+  delete query.logs
+  router.replace({ query })
+}
 
 /** The tab being shown, for the phone-sized tab menu. */
 const currentTab = computed(
@@ -258,6 +266,22 @@ const powerMenu = computed(() => [
           <NuxtPage />
         </fieldset>
       </template>
+      <UModal
+        v-if="server"
+        :open="logsOpen"
+        title="Logs"
+        :description="server.displayName"
+        :ui="{
+          content:
+            'h-dvh max-h-dvh max-w-none rounded-none sm:h-[92dvh] sm:max-h-[92dvh] sm:max-w-[min(96vw,100rem)] sm:rounded-lg',
+          body: 'flex min-h-0 flex-1 flex-col sm:p-4',
+        }"
+        @update:open="(v) => !v && closeLogs()"
+      >
+        <template #body>
+          <ServerLogs v-model="logFile" />
+        </template>
+      </UModal>
       <UModal
         :open="!!confirming"
         :title="confirming === 'stop' ? 'Stop the server?' : 'Restart the server?'"

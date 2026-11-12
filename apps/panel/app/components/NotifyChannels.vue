@@ -190,6 +190,48 @@ async function remove() {
   }
 }
 
+async function setPaused(c: ChannelView, paused: boolean) {
+  try {
+    await withElevation(() =>
+      $fetch<unknown>(`/api/system/notify/${c.id}` as string, {
+        method: 'PUT',
+        body: {
+          name: c.name,
+          kind: c.kind,
+          events: c.events,
+          servers: c.servers,
+          enabled: !paused,
+        },
+      }),
+    )
+    toast.add({ title: paused ? `Paused ${c.name}` : `Resumed ${c.name}`, color: 'success' })
+    refresh()
+  } catch (err) {
+    toast.add({ title: "Couldn't change it", description: errorMessage(err), color: 'error' })
+  }
+}
+
+/** A channel's actions, for right-click (#106); the row's buttons do the same. */
+function rowMenu(c: ChannelView) {
+  return [
+    [
+      { label: 'Send a test', icon: 'i-lucide-send', onSelect: () => void sendTest(c) },
+      { label: 'Edit', icon: 'i-lucide-pencil', onSelect: () => edit(c) },
+      c.enabled
+        ? { label: 'Pause', icon: 'i-lucide-pause', onSelect: () => void setPaused(c, true) }
+        : { label: 'Resume', icon: 'i-lucide-play', onSelect: () => void setPaused(c, false) },
+    ],
+    [
+      {
+        label: 'Remove…',
+        icon: 'i-lucide-trash-2',
+        color: 'error' as const,
+        onSelect: () => (removing.value = c),
+      },
+    ],
+  ]
+}
+
 const when = (iso: string) => formatDateTime(iso)
 
 function summary(c: ChannelView) {
@@ -221,7 +263,14 @@ function summary(c: ChannelView) {
     </template>
 
     <ul v-if="channels?.length" class="divide-y divide-default">
-      <li v-for="c in channels" :key="c.id" class="flex items-center justify-between gap-4 py-2">
+      <ActionTarget
+        v-for="c in channels"
+        :key="c.id"
+        as="li"
+        :items="rowMenu(c)"
+        :label="c.name"
+        class="flex items-center justify-between gap-4 py-2"
+      >
         <div class="min-w-0">
           <p class="flex flex-wrap items-center gap-2 font-medium">
             {{ c.name }}
@@ -262,7 +311,7 @@ function summary(c: ChannelView) {
             @click="removing = c"
           />
         </div>
-      </li>
+      </ActionTarget>
     </ul>
     <p v-else class="text-sm text-muted">
       None yet. A Discord webhook is the quickest start: it takes a minute to make one.

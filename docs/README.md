@@ -16,6 +16,7 @@ These pages are also in the panel itself, for the version you have installed: **
 - [Your first server](first-server.md): creating, starting and joining a server.
 - [Your account, passkeys and recovery codes](account.md): signing in, extra devices, your name and appearance, and what to do if you lose them.
 - [People and roles](people.md): inviting people as Admins, Operators or Viewers, for one server or all of them.
+- [Keyboard shortcuts](shortcuts.md): G then a letter to jump about, J and K through lists, and ? to list them.
 
 ## Running servers
 
@@ -25,8 +26,10 @@ These pages are also in the panel itself, for the version you have installed: **
 - [Public status page](status-page.md): a page anyone can open, with the address, whether it's up and who's on.
 - [Scheduled tasks](schedules.md): restarts with an in-game countdown, console commands and announcements.
 - [Crashes](crashes.md): crash reports, crash loops, and servers that stop responding.
+- [Player stats](stats.md): leaderboards for playtime, deaths, kills, distance and blocks mined, and leaving players out.
 - [Notifications](notifications.md): Discord, ntfy and JSON webhooks for crashes, failed backups, a filling disk, updates and players.
 - [Discord app](discord.md): slash commands like `/status` and `/players` in your Discord server.
+- [Web map](map.md): a map of the world in the browser, drawn by Flytower, with players on it.
 - [Server YAML reference](spec.md): every field of a server spec.
 
 ## Looking after the machine

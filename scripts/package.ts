@@ -91,9 +91,16 @@ await chmod(bunTarget, 0o755)
 const rustTarget = arch === 'amd64' ? 'x86_64-unknown-linux-musl' : 'aarch64-unknown-linux-musl'
 const crates = join(repo, 'crates')
 await $`cargo build --release --locked --target ${rustTarget}`.cwd(crates)
-for (const bin of ['flytower-du']) {
-  await cp(join(crates, 'target', rustTarget, 'release', bin), join(stage, 'bin', bin))
-  await chmod(join(stage, 'bin', bin), 0o755)
+// The Rust agent and updater go in as *-rust, behind the wrappers, which start them unless
+// Bun is chosen or the Rust agent failed to start (see packages/agent/bin/flytower-agent).
+for (const [bin, as] of [
+  ['flytower-du', 'flytower-du'],
+  ['flytower-agent', 'flytower-agent-rust'],
+  ['flytower-updater', 'flytower-updater-rust'],
+  ['flytower-map', 'flytower-map'],
+] as const) {
+  await cp(join(crates, 'target', rustTarget, 'release', bin), join(stage, 'bin', as))
+  await chmod(join(stage, 'bin', as), 0o755)
 }
 
 // Stable entry points: systemd and the agent start these, never Bun directly, so a later

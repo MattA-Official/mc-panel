@@ -17,6 +17,7 @@ interface PastWorld {
 /** Bumped by the World tab after a reset, to fetch the list again. */
 const props = defineProps<{ server: string; version?: number }>()
 const toast = useToast()
+const withElevation = useElevation()
 const exportsBase = computed(() => `/api/servers/${props.server}/exports`)
 
 const { data: worlds, refresh } = await useFetch<PastWorld[]>(
@@ -66,7 +67,10 @@ const deleting = ref<PastWorld | null>(null)
 async function remove() {
   if (!deleting.value) return
   try {
-    await $fetch(`${exportsBase.value}/${deleting.value.id}` as string, { method: 'DELETE' })
+    const id = deleting.value.id
+    await withElevation(() =>
+      $fetch<unknown>(`${exportsBase.value}/${id}` as string, { method: 'DELETE' }),
+    )
     toast.add({ title: `Deleted ${deleting.value.name}`, color: 'success' })
     deleting.value = null
     refresh()
@@ -93,6 +97,22 @@ function menu(w: PastWorld) {
         onSelect: () => (deleting.value = w),
       },
     ],
+  ]
+}
+
+/** Everything for one past world, for right-click (#106): the row's buttons plus its ⋯ menu. */
+function rowMenu(w: PastWorld) {
+  return [
+    [
+      {
+        label: 'Download',
+        icon: 'i-lucide-download',
+        href: `${exportsBase.value}/${w.id}/download`,
+        download: true,
+      },
+      { label: 'Share link…', icon: 'i-lucide-link', onSelect: () => (sharing.value = w) },
+    ],
+    ...menu(w),
   ]
 }
 
@@ -126,7 +146,15 @@ function until(iso: string) {
       None yet. When you reset the world, you can keep the old one here.
     </p>
     <ul v-else class="divide-y divide-default">
-      <li v-for="w in worlds" :key="w.id" class="py-3 first:pt-0 last:pb-0" data-e2e="past-world">
+      <ActionTarget
+        v-for="w in worlds"
+        :key="w.id"
+        as="li"
+        :items="rowMenu(w)"
+        :label="w.name"
+        class="py-3 first:pt-0 last:pb-0"
+        data-e2e="past-world"
+      >
         <div class="flex flex-wrap items-center gap-2">
           <UIcon name="i-lucide-archive" class="size-4 text-muted" />
           <span class="font-medium">{{ w.name }}</span>
@@ -181,7 +209,7 @@ function until(iso: string) {
             />
           </li>
         </ul>
-      </li>
+      </ActionTarget>
     </ul>
 
     <WorldShareModal

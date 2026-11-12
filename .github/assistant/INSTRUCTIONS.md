@@ -6,11 +6,11 @@ is the maintainer, and only Matt can start you.
 
 ## What this workflow is for
 
-Project management and release housekeeping that can't be done from anywhere else:
+Project management that can't be done from anywhere else:
 
-- **Releases**: editing a release's title, notes or pre-release flag (`gh release edit`,
-  `gh release view`). Don't create, delete or re-tag releases: the Release workflow owns
-  tags and publishing.
+- **Releases**: read only (`gh release view`, `gh release list`). The Release workflow owns
+  tags and publishing, and the Release notes workflow rewrites notes. This workflow's token
+  can't change releases; if a request needs that, say which workflow to run and stop.
 - **Projects board** (Projects v2, GraphQL): creating and arranging the Flytower board,
   adding issues and pull requests to it, setting fields such as Status, Milestone or
   Iteration (`gh project ...`, `gh api graphql`).
@@ -21,19 +21,23 @@ a code change, say so in your reply and stop.
 
 ## Tokens
 
-Plain `gh` is signed in with the workflow's own token. Use it for releases, issues, pull
-requests, labels and milestones; those changes show as made by the workflow.
+Plain `gh` is signed in with the workflow's own token. Use it for issues, pull requests,
+labels and milestones; those changes show as made by the workflow. Only some `gh` commands
+are allowed: `gh issue`, `gh pr view/list/diff/edit/comment`, `gh label`,
+`gh release view/list`, `gh run view/list`, `gh search` and `gh api` (milestones, for
+example).
 
 For anything on the Projects board (`gh project ...`, or `gh api graphql` calls that touch a
-ProjectV2), run `.github/assistant/gh-projects` instead of `gh`, with the same arguments,
-for example `.github/assistant/gh-projects project list --owner MattA-Official`. It runs gh
-with Matt's `PROJECTS_TOKEN` (classic, `repo` and `project` scopes), because the workflow's
-own token can't reach a board owned by a user account. If it says `PROJECTS_TOKEN` isn't
-set, report that rather than retrying.
+ProjectV2), run `gh-projects` instead of `gh`, with the same arguments, for example
+`gh-projects project list --owner MattA-Official`. It runs gh with Matt's `PROJECTS_TOKEN`
+(classic, `project` scope only), because the workflow's own token can't reach a board owned
+by a user account. It only accepts `project ...` and `api graphql ...`. If it says
+`PROJECTS_TOKEN` isn't set, report that rather than retrying.
 
 GraphQL queries are full of braces, which the shell check refuses inline. Write each query
-to a file under `.assistant/` in the workspace with the Write tool, then pass it with
-`-F query=@.assistant/<name>.graphql`. Batch related mutations into one query with aliases.
+to a file under `.assistant/` in the workspace with the Write tool (the only place you can
+write), then pass it with `-F query=@.assistant/<name>.graphql`; `gh-projects` refuses any
+other file. Batch related mutations into one query with aliases.
 The workspace is thrown away after the run and nothing is committed.
 
 Never print, echo or write either token anywhere.

@@ -2,13 +2,13 @@
 section: Running servers
 order: 17
 panelRoute:
-  - '/servers/:name/yaml'
+  - '/servers/:name/settings/yaml'
   - '/servers/from-yaml'
 ---
 
 # Server YAML reference
 
-Every server can be written as one YAML document, its **spec**. The **YAML** tab shows a server's spec and lets you edit it. **New server**, **From YAML** makes a server from one. Changes go through a [plan](first-server.md#plans) like any other.
+Every server can be written as one YAML document, its **spec**. **Settings**, **YAML** shows a server's spec and lets you edit it. **New server**, **From YAML** makes a server from one. Changes go through a [plan](first-server.md#plans) like any other.
 
 The first line points editors at the schema (`/schema/server-v1.json` on your panel). In VS Code with the YAML extension, that gives you autocomplete and checking.
 
@@ -96,7 +96,7 @@ properties:
   motd: "§6§lNew Theatre §r§7Survival\n§bOpen to members"
 ```
 
-The editor in **Settings**, **Game settings** writes the same string, so you rarely need to type codes by hand. Hex colours aren't supported, because vanilla only reads the 16 colours from `server.properties`.
+The editor in **Settings**, **General**, **Game settings** writes the same string, so you rarely need to type codes by hand. Hex colours aren't supported, because vanilla only reads the 16 colours from `server.properties`.
 
 ### `content`
 
@@ -134,14 +134,15 @@ What Flytower does when the server gets stuck. Left out, the current setting sta
 
 The server's [public status page](status-page.md). Left out, the current settings stay.
 
-| Field          | Meaning                                                                                                               |
-| -------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `enabled`      | `true` to turn the page on at `/s/<name>`. Defaults to `false`.                                                       |
-| `description`  | A few lines about the server, up to 500 characters, shown as plain text with line breaks.                             |
-| `show.players` | `count` (the default) shows how many are online, `names` shows their heads and names, `none` shows nothing.           |
-| `show.version` | `false` to hide the Minecraft version and loader. Defaults to `true`.                                                 |
-| `pack.enabled` | `false` to stop offering the players' [modpack](status-page.md#modpack-for-players). Defaults to `true`; Fabric only. |
-| `pack.extras`  | Client-only extras for the modpack: a list of `modrinth: <slug>`, each with an optional exact `version`.              |
+| Field              | Meaning                                                                                                               |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `enabled`          | `true` to turn the page on at `/s/<name>`. Defaults to `false`.                                                       |
+| `description`      | A few lines about the server, up to 500 characters, shown as plain text with line breaks.                             |
+| `show.players`     | `count` (the default) shows how many are online, `names` shows their heads and names, `none` shows nothing.           |
+| `show.version`     | `false` to hide the Minecraft version and loader. Defaults to `true`.                                                 |
+| `show.leaderboard` | `true` to show the player stats leaderboards. Needs `show.players: names` and stats on. Defaults to `false`.          |
+| `pack.enabled`     | `false` to stop offering the players' [modpack](status-page.md#modpack-for-players). Defaults to `true`; Fabric only. |
+| `pack.extras`      | Client-only extras for the modpack: a list of `modrinth: <slug>`, each with an optional exact `version`.              |
 
 ```yaml
 public:
@@ -155,6 +156,22 @@ public:
     extras:
       - modrinth: iris
       - modrinth: complementary-reimagined
+```
+
+### `map`
+
+The server's [web map](map.md). Left out, the current settings stay.
+
+| Field     | Meaning                                                                                                                                      |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled` | `true` to draw a web map of the world. Defaults to `false`.                                                                                  |
+| `public`  | `true` to let anyone open the map without signing in. Needs the public page on. Defaults to `false`: only people who can see the server can. |
+| `players` | `false` to hide where players are. Defaults to `true`.                                                                                       |
+
+```yaml
+map:
+  enabled: true
+  public: true
 ```
 
 ### `timezone`
