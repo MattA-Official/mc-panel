@@ -1,5 +1,4 @@
-// Flytower website settings. The domain and addresses live here and nowhere else: change `url`
-// and `email` here and nowhere else.
+// Flytower website settings. The domain and contact addresses live here and nowhere else.
 export default defineAppConfig({
   site: {
     name: 'Flytower',
