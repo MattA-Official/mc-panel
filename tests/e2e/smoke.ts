@@ -202,6 +202,28 @@ try {
       `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`,
     )
     step('right-click menu on a running server card')
+
+    // Help (#270): a docs chip's Show me goes to the control and lights it up.
+    await view.navigate(`${base}/servers/smoke/world`)
+    await waitForText(view, 'Back up now', 30_000)
+    await view.evaluate(`document.querySelector('[data-e2e=help-button]').click()`)
+    await until('the Back up now chip in Help', () =>
+      view.evaluate<boolean>(`!!document.querySelector('[data-doc-chip="backups.back-up-now"]')`),
+    )
+    await view.evaluate(`document.querySelector('[data-doc-chip="backups.back-up-now"]').click()`)
+    await until('the spotlight round Back up now', () =>
+      view.evaluate<boolean>(`(() => {
+        const ring = document.querySelector('[data-e2e=doc-spotlight]')?.getBoundingClientRect()
+        const button = document.querySelector('[data-doc="backups.back-up-now"]')?.getBoundingClientRect()
+        return !!ring && !!button && ring.left < button.left && ring.right > button.right
+          && ring.top < button.top && ring.bottom > button.bottom
+      })()`),
+    )
+    await shot('help-show-me')
+    await view.evaluate(
+      `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`,
+    )
+    step('Show me in Help lit up Back up now')
     // Back to the console, where the crash banner below shows.
     await view.navigate(`${base}/servers/smoke`)
 
