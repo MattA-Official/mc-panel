@@ -271,7 +271,7 @@ elif [[ -z "$tarball" ]]; then
   fi
   tarball="$work/$name"
   expected="${name#flytower-}"
-  expected="${expected%-linux-$arch.tar.gz}"
+  expected="${expected%-linux-"$arch".tar.gz}"
 else
   echo "Installing from $tarball as given: its signature is not checked."
 fi
