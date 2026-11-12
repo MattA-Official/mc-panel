@@ -255,7 +255,13 @@ describe('CommandCatalogues', () => {
       online: async () => ({ running: true, players: ['Steve'] }),
       ...over,
     })
-    return { c, dir, release, builds: () => builds, helps: () => helps }
+    /** Lets any build finish before the folder goes, so none outlives its test. */
+    const cleanUp = async () => {
+      release()
+      await c.get('survival', { wait: true }).catch(() => {})
+      await rm(dir, { recursive: true, force: true })
+    }
+    return { c, dir, release, cleanUp, builds: () => builds, helps: () => helps }
   }
 
   test('builds the tree once, while consoles carry on with help', async () => {
@@ -340,7 +346,7 @@ describe('CommandCatalogues', () => {
       expect(t.helps()).toBe(0)
       expect(await t.c.get('creative')).toBeNull()
     } finally {
-      await rm(t.dir, { recursive: true, force: true })
+      await t.cleanUp()
     }
   })
 
@@ -357,7 +363,7 @@ describe('CommandCatalogues', () => {
       fail = false
       expect((await t.c.get('survival'))!.extra).toBe('ready')
     } finally {
-      await rm(t.dir, { recursive: true, force: true })
+      await t.cleanUp()
     }
   })
 })
