@@ -29,7 +29,7 @@ The New server form.
 6. Leave :ui[port]{anchor="new-server.port"} empty to use the next free one, starting at 25565.
 7. :ui{anchor="new-server.create"}. Flytower installs the right Java, downloads the server, accepts the EULA for you (you agree to it by creating the server), and starts it.
 
-Players connect to your VPS's address, with `:port` if it isn't 25565. To give each server a name of its own instead, see [Addresses and DNS](addresses.md).
+Players connect to :value{of="server.address"} (:ui{anchor="server.copy-address" do}). That's your VPS's address, with `:port` if it isn't 25565. To give each server a name of its own instead, see [Addresses and DNS](addresses.md).
 
 ## Other ways to start
 
@@ -42,7 +42,7 @@ Players connect to your VPS's address, with `:port` if it isn't 25565. To give e
 
 | Tab      | What it's for                                                                                                                                                                                                                                                                 |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Console  | Live output, and commands (without the `/`). Start, stop and restart are in the header. **View logs** opens today's log and older ones to search or download, and **Crashes** lists recent crashes.                                                                           |
+| Console  | Live output, and commands (without the `/`). :ui{anchor="server.start" do}, :ui{anchor="server.stop"} and :ui{anchor="server.restart"} are in the header. **View logs** opens today's log and older ones to search or download, and **Crashes** lists recent crashes.         |
 | Players  | **People**: who's online; kick, ban, operators, and the whitelist. **Stats**: leaderboards and a card for every player (see [Stats](stats.md)).                                                                                                                               |
 | Content  | Mods, plugins and datapacks. See [Content](content.md).                                                                                                                                                                                                                       |
 | World    | **Backups** (taking, restoring, schedule, off-site copies), the **Web map**, **Past worlds** and world exports, and **Tools**: pre-generating chunks, copying another server's world in, and resetting.                                                                       |

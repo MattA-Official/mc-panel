@@ -16,7 +16,7 @@ The Backups section of a server's World tab.
 
 ## Taking backups
 
-- :ui{anchor="backups.back-up-now"}, with a note if you like. If the server is running, it pauses saving for a moment so the world on disk is consistent. Players stay connected.
+- :ui{anchor="backups.back-up-now" do}, with a note if you like. If the server is running, it pauses saving for a moment so the world on disk is consistent. Players stay connected.
 - :ui{anchor="backups.schedule"}: every 6 or 12 hours, daily, weekly, or your own cron expression, in your time zone.
 - Flytower also takes a **safety** backup before anything risky: applying a plan that touches mods or the world, restoring, resetting the world, or copying another world in.
 
