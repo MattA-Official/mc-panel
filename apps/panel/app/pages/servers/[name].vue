@@ -37,6 +37,10 @@ const WRITE_NEEDS: [string, { permission: Permission; text: string }][] = [
     { permission: 'content.manage', text: 'You can see what is installed but not change it.' },
   ],
   [
+    'files',
+    { permission: 'files.write', text: 'You can browse and download files but not change them.' },
+  ],
+  [
     'players',
     { permission: 'players.manage', text: 'You can see who plays here but not manage them.' },
   ],
