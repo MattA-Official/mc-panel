@@ -4,7 +4,14 @@ import { serverUpdateCount } from '#shared/updates'
 
 const route = useRoute()
 const name = computed(() => String(route.params.name))
-const { data: server, error, refresh } = await useFetch<Server>(() => `/api/servers/${name.value}`)
+const {
+  data: server,
+  error,
+  refresh,
+  status: loadStatus,
+} = await useFetch<Server>(() => `/api/servers/${name.value}`)
+/** Only a 404 means there's no such server; anything else is a load that can be tried again. */
+const missing = computed(() => error.value?.statusCode === 404)
 useHead({ title: () => server.value?.displayName ?? 'Server' })
 
 const live = useLiveStatuses()
@@ -247,11 +254,27 @@ const powerMenu = computed(() => [
 
     <template #body>
       <UEmpty
-        v-if="error"
+        v-if="missing"
         icon="i-lucide-search-x"
         :title="`No server called ${name}`"
         description="It may have been deleted."
         :actions="[{ label: 'All servers', to: '/' }]"
+      />
+      <UEmpty
+        v-else-if="error && !server"
+        icon="i-lucide-cloud-alert"
+        :title="`Couldn't load ${name}`"
+        :description="errorMessage(error)"
+        :actions="[
+          {
+            label: 'Try again',
+            icon: 'i-lucide-rotate-cw',
+            loading: loadStatus === 'pending',
+            onClick: () => refresh(),
+          },
+          { label: 'All servers', to: '/', color: 'neutral', variant: 'outline' },
+        ]"
+        data-e2e="load-error"
       />
       <template v-else-if="server">
         <UAlert
