@@ -62,7 +62,7 @@ Player heads come from the panel's own copy of their skins, never from another s
 
 ## What it costs
 
-- **CPU:** drawing runs one server at a time, at the lowest priority, so the Minecraft servers always come first. A 512×512-block region takes well under a second; after the first drawing, only changed regions are drawn.
+- **CPU:** drawing runs at the lowest priority, so the Minecraft servers always come first. Each server's map is drawn one pass at a time, and at most two servers' maps at once, so one huge world doesn't hold up the others. A pass that makes no progress for ten minutes is stopped and shows as failed on the card; the next save tries again. A 512×512-block region takes well under a second; after the first drawing, only changed regions are drawn.
 - **Memory:** about 20 MB while drawing, and nothing in between.
 - **Disk:** one image per 512×512 blocks of explored world, plus zoomed-out copies. The server's **Disk use** card shows it on its own line, **Web map**. The files are in `/var/lib/flytower/maps`, not in the server's folder, so they're never in backups.
 - **Ports:** none. The panel serves the map itself.
