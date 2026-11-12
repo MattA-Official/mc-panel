@@ -57,6 +57,7 @@ function closeCharts() {
             icon="i-lucide-plus"
             label="New server"
             to="/servers/new"
+            data-doc="servers.new"
           />
         </template>
       </UDashboardNavbar>

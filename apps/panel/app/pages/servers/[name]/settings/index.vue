@@ -44,6 +44,7 @@ const sections = computed<CollapsibleSection[]>(() => [
   },
   {
     id: 'schedules',
+    doc: 'settings.schedules',
     label: 'Schedules',
     icon: 'i-lucide-calendar-clock',
     description: 'Restarts, commands and announcements on a timer',

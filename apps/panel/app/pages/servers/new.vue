@@ -208,7 +208,12 @@ function startOver() {
               },
             ]"
           />
-          <UFormField label="Name" description="What players and you will call it." required>
+          <UFormField
+            label="Name"
+            description="What players and you will call it."
+            required
+            data-doc="new-server.name"
+          >
             <UInput
               v-model="form.displayName"
               placeholder="Survival"
@@ -232,7 +237,7 @@ function startOver() {
             />
           </UFormField>
 
-          <UFormField label="Loader">
+          <UFormField label="Loader" data-doc="new-server.loader">
             <URadioGroup
               v-model="form.loader"
               :items="loaderItems"
@@ -266,6 +271,7 @@ function startOver() {
 
           <UFormField
             label="Memory"
+            data-doc="new-server.memory"
             :description="`${(form.memoryMb / 1024).toFixed(1)} GB of heap. This machine has ${((defaults?.totalMemoryMb ?? 0) / 1024).toFixed(1)} GB.`"
           >
             <USlider
@@ -279,6 +285,7 @@ function startOver() {
           <UFormField
             label="Port"
             description="Players connect to this. Firewall is opened for it."
+            data-doc="new-server.port"
           >
             <UInputNumber
               v-model="form.port"
@@ -302,6 +309,7 @@ function startOver() {
             type="submit"
             label="Create server"
             icon="i-lucide-hammer"
+            data-doc="new-server.create"
             size="lg"
             :loading="submitting"
             :disabled="!canSubmit"

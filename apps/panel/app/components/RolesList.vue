@@ -174,6 +174,7 @@ async function deleteRole() {
           label="New role"
           class="shrink-0 self-start"
           data-e2e="role-new"
+          data-doc="access.new-role"
           @click="newRole()"
         />
       </div>

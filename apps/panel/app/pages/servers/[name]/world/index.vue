@@ -6,6 +6,7 @@ const { server } = useServerContext()
 const sections = computed<CollapsibleSection[]>(() => [
   {
     id: 'backups',
+    doc: 'world.backups',
     label: 'Backups',
     icon: 'i-lucide-archive',
     description: 'Copies of the world, on a schedule or by hand',

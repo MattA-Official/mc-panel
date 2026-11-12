@@ -20,6 +20,8 @@ export interface CollapsibleSection {
   summary?: string | null
   /** What changing things here needs, and what to say when that's missing. */
   need?: { permission: Permission; text: string }
+  /** The docs' name for this section's bar (#270), e.g. "world.backups". */
+  doc?: string
 }
 
 const props = defineProps<{
@@ -54,6 +56,14 @@ watch(
   () => route.hash,
   (hash) => reveal(hash),
 )
+
+// Help's "Show me" opens a section even when the address already ends in its #id.
+function onReveal(e: Event) {
+  const id = (e as CustomEvent<unknown>).detail
+  if (typeof id === 'string') void reveal(`#${id}`)
+}
+onMounted(() => window.addEventListener('docs:reveal', onReveal))
+onBeforeUnmount(() => window.removeEventListener('docs:reveal', onReveal))
 
 /** Opens the section a `#<id>` link points at and scrolls to it. */
 async function reveal(hash: string) {
@@ -95,6 +105,7 @@ const readOnly = (s: CollapsibleSection) =>
       <template #default="{ open: isOpen }">
         <button
           type="button"
+          :data-doc="s.doc"
           class="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left hover:bg-elevated/50 focus-visible:outline-2 focus-visible:outline-primary"
         >
           <UIcon :name="s.icon" class="size-5 shrink-0 text-muted" />

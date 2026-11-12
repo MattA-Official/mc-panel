@@ -154,7 +154,7 @@ const nextText = computed(() =>
 </script>
 
 <template>
-  <UCard>
+  <UCard data-doc="backups.schedule">
     <template #header>
       <div class="flex flex-wrap items-center justify-between gap-2">
         <h2 class="text-base font-semibold">Schedule</h2>
@@ -204,7 +204,7 @@ const nextText = computed(() =>
         </p>
       </div>
 
-      <div v-if="form.preset !== 'off'">
+      <div v-if="form.preset !== 'off'" data-doc="backups.keep">
         <p class="mb-2 text-sm text-muted">
           Which scheduled backups to keep. Backups you make yourself are kept until you delete them.
           <HelpLink to="backups#how-many-are-kept" />
