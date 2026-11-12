@@ -198,6 +198,10 @@ if ! id -u flytower >/dev/null 2>&1; then
 fi
 
 install -d -m 0750 -o flytower -g flytower "$STATE_DIR"
+# The system helper's own folders, which the panel's user must not be able to change: its
+# state (root only) and the archive of deleted servers (readable by the panel).
+install -d -m 0700 -o root -g root /var/lib/flytower-agent
+install -d -m 0750 -o root -g flytower /var/lib/flytower-archive
 install -d -m 0755 "$CONFIG_DIR" "$CONFIG_DIR/servers" "$(dirname "$SERVERS_DIR")" "$SERVERS_DIR"
 install -d -m 0755 "$PREFIX/runtimes"
 

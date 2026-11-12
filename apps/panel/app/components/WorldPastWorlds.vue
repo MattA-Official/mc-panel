@@ -17,6 +17,7 @@ interface PastWorld {
 /** Bumped by the World tab after a reset, to fetch the list again. */
 const props = defineProps<{ server: string; version?: number }>()
 const toast = useToast()
+const withElevation = useElevation()
 const exportsBase = computed(() => `/api/servers/${props.server}/exports`)
 
 const { data: worlds, refresh } = await useFetch<PastWorld[]>(
@@ -66,7 +67,10 @@ const deleting = ref<PastWorld | null>(null)
 async function remove() {
   if (!deleting.value) return
   try {
-    await $fetch(`${exportsBase.value}/${deleting.value.id}` as string, { method: 'DELETE' })
+    const id = deleting.value.id
+    await withElevation(() =>
+      $fetch<unknown>(`${exportsBase.value}/${id}` as string, { method: 'DELETE' }),
+    )
     toast.add({ title: `Deleted ${deleting.value.name}`, color: 'success' })
     deleting.value = null
     refresh()

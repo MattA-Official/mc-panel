@@ -667,6 +667,24 @@ try {
     )
     step(`added Lithium from Modrinth through plan and apply: ${loaded.slice(0, 120)}`)
 
+    // Lithium came from the panel, so the server reads the panel's files through its extra
+    // group. Inside the server's own view of the disk, the agent's socket, the panel's data
+    // and its secrets must be hidden.
+    const hidden = Bun.spawnSync([
+      'docker',
+      'exec',
+      'vps',
+      'sh',
+      '-c',
+      'pid="$(systemctl show -p MainPID --value flytower-mc@smoke)" && ' +
+        'nsenter -t "$pid" -m sh -c \'test ! -e /run/flytower/agent.sock && ' +
+        'test ! -s /etc/flytower/panel.env && test -z "$(ls -A /var/lib/flytower)"\'',
+    ])
+    if (hidden.exitCode !== 0) {
+      throw new Error(`the server can see the agent or the panel's data: ${hidden.stderr}`)
+    }
+    step("the server can't see the agent's socket or the panel's data")
+
     // Vanilla Tweaks has no official API, so a change on their side is reported, not fatal.
     try {
       const cat = await api<{ datapacks: { name: string; packs: { name: string }[] }[] }>(

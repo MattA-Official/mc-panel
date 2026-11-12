@@ -15,10 +15,10 @@ export interface AgentContext {
   paths: {
     servers: string // /srv/flytower/servers
     runtimes: string // /opt/flytower/runtimes
-    archive: string // /var/lib/flytower/archive
+    archive: string // /var/lib/flytower-archive, root:panel group 0750
     config: string // /etc/flytower
     systemd: string // /etc/systemd/system
-    state: string // /var/lib/flytower/agent, root only
+    state: string // /var/lib/flytower-agent, root only (0700)
     /** Where releases live, with `current` pointing at one. */
     prefix?: string // /opt/flytower
     /** The panel's data folder, holding its database. */
@@ -27,6 +27,8 @@ export interface AgentContext {
     system?: string
     /** The Caddyfile the installer wrote. */
     caddyfile?: string // /etc/caddy/Caddyfile
+    /** The agent's socket. Servers can't see its folder. */
+    socket?: string // /run/flytower/agent.sock
   }
   /** The `flytower-du` binary, if there is one; otherwise disk use is walked in TypeScript. */
   du?: string | null

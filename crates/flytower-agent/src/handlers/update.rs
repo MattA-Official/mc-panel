@@ -3,29 +3,46 @@
 //! `current` and rolls back if the new version isn't healthy.
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, UNIX_EPOCH};
 
 use serde_json::{Value, json};
 
 use super::Context;
-use super::files::{mkdir, read, remove};
+use super::files::{mkdir, remove};
 use crate::entry_points::{has_updater, set_agent_exec_start, updater_command};
 use crate::envelope::{AgentError, ErrorCode};
 use crate::fetch::download_verified;
 use crate::release::{sum_for, verify_sums};
-use crate::time::parse_iso;
+use crate::time::{iso, parse_iso};
+use crate::updater::write_record;
 use crate::verbs::{UpdateRecord, UpdateState};
+use crate::versions::compare;
 
 pub const RELEASES: &str = "https://github.com/MattA-Official/mc-panel/releases/download";
 
-/// The environment the updater needs to find the same folders as the agent.
-const PASSED_ON: [&str; 5] = [
-    "FLYTOWER_PREFIX",
-    "FLYTOWER_PANEL_DATA",
-    "FLYTOWER_CONFIG_DIR",
-    "FLYTOWER_SYSTEMD_DIR",
-    "FLYTOWER_AGENT_STATE_DIR",
-];
+/// Holds the one-at-a-time lock until dropped.
+pub(crate) struct Exclusive(Arc<AtomicBool>);
+
+impl Drop for Exclusive {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::SeqCst);
+    }
+}
+
+/// Takes the lock an update, a rollback and a clean-up of old releases share: requests are
+/// handled side by side, and two of these at once would delete each other's downloads or swap
+/// releases under each other.
+pub(crate) fn exclusively(ctx: &Context) -> Result<Exclusive, AgentError> {
+    if ctx.updating.swap(true, Ordering::SeqCst) {
+        return Err(AgentError::new(
+            ErrorCode::Conflict,
+            "an update is already running",
+        ));
+    }
+    Ok(Exclusive(Arc::clone(&ctx.updating)))
+}
 
 fn failed(message: impl Into<String>) -> AgentError {
     AgentError::new(ErrorCode::Failed, message)
@@ -69,8 +86,7 @@ fn current_version(ctx: &Context) -> String {
 }
 
 pub(crate) fn read_record(ctx: &Context) -> Option<UpdateRecord> {
-    let text = read(&Path::new(&ctx.paths.state).join("update.json"))?;
-    serde_json::from_str(&text).ok()
+    crate::updater::read_record(Path::new(&ctx.paths.state))
 }
 
 /// `update.status`.
@@ -113,9 +129,20 @@ fn not_running(ctx: &Context, version: &str) -> Result<(), AgentError> {
 
 /// Hands over to the release's updater, in its own unit so it survives the agent's restart.
 /// The agent unit is pointed at that release's entry point first, because an updater from
-/// before the wrappers existed doesn't know to do it.
+/// before the wrappers existed doesn't know to do it. The update is recorded as running
+/// before the updater starts, so nothing else can start in between.
 fn start_updater(ctx: &Context, version: &str, manual: bool) -> Result<(), AgentError> {
     let release = prefix(ctx).join("releases").join(version);
+    let state = Path::new(&ctx.paths.state);
+    let record = UpdateRecord {
+        state: UpdateState::Running,
+        from: current_version(ctx),
+        to: version.into(),
+        reason: None,
+        at: iso((ctx.now)()),
+        manual,
+    };
+    write_record(state, &record).map_err(|e| failed(format!("can't record the update: {e}")))?;
     set_agent_exec_start(Path::new(&ctx.paths.systemd), prefix(ctx), &release)?;
     let millis = (ctx.now)()
         .duration_since(UNIX_EPOCH)
@@ -130,10 +157,17 @@ fn start_updater(ctx: &Context, version: &str, manual: bool) -> Result<(), Agent
         "--collect".into(),
         "--quiet".into(),
     ];
-    for key in PASSED_ON {
-        if let Ok(value) = std::env::var(key)
-            && !value.is_empty()
-        {
+    // Always the agent's own folders, so an older updater uses them too rather than its
+    // defaults.
+    let p = &ctx.paths;
+    for (key, value) in [
+        ("FLYTOWER_PREFIX", &p.prefix),
+        ("FLYTOWER_PANEL_DATA", &p.panel_data),
+        ("FLYTOWER_CONFIG_DIR", &p.config),
+        ("FLYTOWER_SYSTEMD_DIR", &p.systemd),
+        ("FLYTOWER_AGENT_STATE_DIR", &p.state),
+    ] {
+        if !value.is_empty() {
             args.push(format!("--setenv={key}={value}"));
         }
     }
@@ -149,10 +183,16 @@ fn start_updater(ctx: &Context, version: &str, manual: bool) -> Result<(), Agent
     let args: Vec<&str> = args.iter().map(String::as_str).collect();
     let r = ctx.exec.run("systemd-run", &args);
     if r.code != 0 {
-        return Err(failed(format!(
-            "couldn't start the updater: {}",
-            r.stderr.trim()
-        )));
+        let why = format!("couldn't start the updater: {}", r.stderr.trim());
+        let _ = write_record(
+            state,
+            &UpdateRecord {
+                state: UpdateState::Failed,
+                reason: Some(why.clone()),
+                ..record
+            },
+        );
+        return Err(failed(why));
     }
     Ok(())
 }
@@ -226,10 +266,23 @@ fn fetch_release(ctx: &Context, version: &str, work: &Path) -> Result<(), AgentE
 /// `update.install`: the version is already checked against the protocol's pattern.
 ///
 /// # Errors
-/// `conflict` if an update is running or `version` is, `failed` if any check fails.
+/// `conflict` if an update is running, `version` is, or it's older than the running one;
+/// `failed` if any check fails.
 pub fn install(version: &str, ctx: &Context) -> Result<Value, AgentError> {
+    let _lock = exclusively(ctx)?;
     busy(ctx)?;
     not_running(ctx, version)?;
+    // Going back is a rollback, to a release still installed. Fetching an older one would let
+    // anyone who can ask bring back a release with problems fixed since.
+    let current = current_version(ctx);
+    if compare(version, &current).is_lt() {
+        return Err(AgentError::new(
+            ErrorCode::Conflict,
+            format!(
+                "{version} is older than {current}, which is running; only installed releases can be gone back to"
+            ),
+        ));
+    }
     let work: PathBuf = prefix(ctx)
         .join("releases")
         .join(format!(".download-{version}"));
@@ -247,6 +300,7 @@ pub fn install(version: &str, ctx: &Context) -> Result<Value, AgentError> {
 /// # Errors
 /// `not_found` if it isn't installed, `conflict` if it's running or an update is.
 pub fn rollback(version: &str, ctx: &Context) -> Result<Value, AgentError> {
+    let _lock = exclusively(ctx)?;
     busy(ctx)?;
     if !installed(ctx).iter().any(|v| v == version) {
         return Err(AgentError::new(
@@ -427,10 +481,49 @@ mod tests {
             .collect();
         names.sort();
         assert_eq!(names, ["0.4.0", "0.5.0"]);
+        // Recorded as running before the updater started, so nothing else can start.
+        let s = status(&ctx);
+        assert_eq!(s["releases"], json!(["0.4.0", "0.5.0"]));
+        assert_eq!(s["last"]["state"], "running");
         assert_eq!(
-            status(&ctx),
-            json!({ "current": "0.4.0", "releases": ["0.4.0", "0.5.0"], "last": null })
+            (s["last"]["from"].as_str(), s["last"]["to"].as_str()),
+            (Some("0.4.0"), Some("0.5.0"))
         );
+        assert_eq!(busy(&ctx).unwrap_err().code, ErrorCode::Conflict);
+        // And the updater is told the agent's folders.
+        assert!(
+            run.contains(&format!(
+                "--setenv=FLYTOWER_AGENT_STATE_DIR={}",
+                ctx.paths.state
+            )),
+            "{run}"
+        );
+    }
+
+    #[test]
+    fn refuses_a_release_older_than_the_one_running() {
+        let (_root, _fake, ctx) = layout();
+        for version in ["0.3.9", "0.4.0-beta.1", "0.4.0-native.1"] {
+            let err = install(version, &ctx).unwrap_err();
+            assert_eq!(err.code, ErrorCode::Conflict, "{version}");
+            assert!(err.message.contains("older than 0.4.0"), "{}", err.message);
+        }
+    }
+
+    #[test]
+    fn one_update_at_a_time() {
+        let (_root, _fake, ctx) = layout();
+        let held = exclusively(&ctx).unwrap();
+        assert_eq!(
+            install("0.5.0", &ctx).unwrap_err().code,
+            ErrorCode::Conflict
+        );
+        assert_eq!(
+            super::super::disk::prune_flytower(&ctx).unwrap_err().code,
+            ErrorCode::Conflict
+        );
+        drop(held);
+        assert!(exclusively(&ctx).is_ok());
     }
 
     #[test]

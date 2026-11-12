@@ -3,10 +3,11 @@
  * emergency. The timer that closes it lives here, in the agent, and survives restarts
  * through a small state file.
  */
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { AgentError, type Params, type Result } from '@flytower/protocol'
 import type { AgentContext } from '../context.ts'
+import { ownDir, readSmall, writeAtomic } from '../safe-fs.ts'
 
 export const SSH_COMMENT = 'flytower emergency ssh'
 
@@ -44,7 +45,8 @@ interface SshFile {
 
 async function readState(ctx: AgentContext): Promise<SshFile | null> {
   try {
-    return JSON.parse(await readFile(statePath(ctx), 'utf8')) as SshFile
+    const text = await readSmall(statePath(ctx))
+    return text === null ? null : (JSON.parse(text) as SshFile)
   } catch {
     return null
   }
@@ -114,13 +116,10 @@ export async function set(p: Params<'ssh.set'>, ctx: AgentContext): Promise<Resu
   }
   if (p.minutes !== undefined) {
     const closesAt = now(ctx) + p.minutes * 60_000
-    await mkdir(ctx.paths.state, { recursive: true, mode: 0o700 })
-    await writeFile(
+    await ownDir(ctx.paths.state, 0o700)
+    await writeAtomic(
       statePath(ctx),
       JSON.stringify({ closesAt: new Date(closesAt).toISOString() }),
-      {
-        mode: 0o600,
-      },
     )
     arm(ctx, closesAt)
   } else {

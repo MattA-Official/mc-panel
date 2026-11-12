@@ -16,6 +16,7 @@ interface WorldExport {
 const props = defineProps<{ server: string; disabled?: boolean }>()
 const emit = defineEmits<{ busy: [boolean] }>()
 const toast = useToast()
+const withElevation = useElevation()
 const base = computed(() => `/api/servers/${props.server}/exports`)
 
 const { data: exports, refresh } = await useFetch<WorldExport[]>(() => base.value, {
@@ -58,7 +59,9 @@ async function revoke(e: WorldExport, s: ShareLink) {
 }
 async function remove(e: WorldExport) {
   try {
-    await $fetch(`${base.value}/${e.id}` as string, { method: 'DELETE' })
+    await withElevation(() =>
+      $fetch<unknown>(`${base.value}/${e.id}` as string, { method: 'DELETE' }),
+    )
     toast.add({ title: 'Export deleted', color: 'success' })
     refresh()
   } catch (err) {

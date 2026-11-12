@@ -6,15 +6,15 @@ use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Duration;
 
-use flytower_agent::caddy;
 use flytower_agent::dispatch::dispatch;
 use flytower_agent::events::{Journal, UnitEvents};
 use flytower_agent::exec::{Exec, RealExec};
 use flytower_agent::fetch::Curl;
 use flytower_agent::handlers::{Context, handle, server, ssh, system_clock, update};
 use flytower_agent::release::RELEASE_KEY;
-use flytower_agent::server::{ListenOptions, bind, group_id, serve};
+use flytower_agent::server::{ListenOptions, bind, group_id, serve, user_id};
 use flytower_agent::units::Paths;
+use flytower_agent::{caddy, folders};
 
 fn env(name: &str, fallback: &str) -> String {
     std::env::var(name).unwrap_or_else(|_| fallback.to_string())
@@ -56,6 +56,7 @@ fn main() -> ExitCode {
         panel_group: env("FLYTOWER_PANEL_GROUP", "flytower"),
         releases_url: env("FLYTOWER_RELEASES_URL", update::RELEASES),
         release_key: RELEASE_KEY.into(),
+        updating: Arc::default(),
     };
     let group = ctx.panel_group.clone();
     let gid = match group_id(&group, Path::new("/etc/group")) {
@@ -65,8 +66,16 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    let panel_user = env("FLYTOWER_PANEL_USER", "flytower");
+    let uid = match user_id(&panel_user, Path::new("/etc/passwd")) {
+        Ok(uid) => uid,
+        Err(e) => {
+            eprintln!("flytower-agent: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
     let opts = ListenOptions {
-        socket_path: PathBuf::from(env("FLYTOWER_AGENT_SOCKET", "/run/flytower/agent.sock")),
+        socket_path: PathBuf::from(&ctx.paths.socket),
         group: Some(gid),
     };
     let listener = match bind(&opts) {
@@ -82,6 +91,10 @@ fn main() -> ExitCode {
     println!("flytower-agent {} (rust) listening", ctx.version);
     // Tell bin/flytower-agent this start worked, so it keeps choosing Rust after a restart.
     clear_start_marker(&opts.socket_path);
+    // Before anything reads or writes state: the folders, and what older releases left.
+    if let Err(e) = folders::prepare(&ctx) {
+        eprintln!("preparing the agent's folders failed: {}", e.message);
+    }
     // An emergency SSH opening must end on time even if the agent restarted in between.
     if let Err(e) = ssh::restore(&ctx) {
         eprintln!("restoring the SSH timer failed: {}", e.message);
@@ -101,7 +114,7 @@ fn main() -> ExitCode {
         Ok(false) => {}
         Err(e) => eprintln!("updating the Caddyfile failed: {e}"),
     }
-    serve(&listener, Some(gid), move |line| {
+    serve(&listener, Some(uid), move |line| {
         // stdout goes to the journal; one JSON line per request.
         dispatch(line, |p| handle(&p, &ctx), |audit| println!("{audit}"))
     });

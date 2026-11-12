@@ -44,7 +44,8 @@ function send(socket: Socket<Conn>, text: string) {
 /**
  * Listens on a Unix socket. Access control is the socket's file mode: the directory and
  * socket are root-owned, group = the panel's group, mode 0750/0660, so only root and the
- * panel user can connect. (Bun exposes no SO_PEERCRED, so the filesystem is the check.)
+ * panel's group can connect. Servers also carry that group, so their units hide this folder
+ * (InaccessiblePaths in units.ts). Bun exposes no SO_PEERCRED, so the filesystem is the check.
  * Requests on one connection are answered strictly in order.
  */
 export function listen(

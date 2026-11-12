@@ -92,4 +92,4 @@ Each server gets the memory you give it, plus about 0.5 GB that Java uses around
 
 ## Dangerous actions
 
-Restoring a backup, resetting or copying a world, deleting a backup or a server, opening SSH, adding or removing passkeys, off-site storage changes and updates all ask for your passkey again, unless you confirmed one in the last five minutes.
+Restoring a backup, resetting or copying a world, deleting a backup, an export, a past world or a server, opening SSH, adding or removing passkeys, off-site storage changes and updates all ask for your passkey again, unless you confirmed one in the last five minutes.

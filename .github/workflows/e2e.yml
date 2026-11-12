@@ -214,7 +214,7 @@ jobs:
           call update.status
           [ "$(last_state)" = rolled-back ] || { echo "the broken update didn't roll back"; exit 1; }
           for _ in $(seq 1 30); do health | grep -q '"version":"0.0.1-e2e"' && break; sleep 2; done
-          health | grep -q '"version":"0.0.1-e2e"' || { echo "not back on 0.0.1-e2e: $(health)"; docker exec vps ls -la /var/lib/flytower; exit 1; }
+          health | grep -q '"version":"0.0.1-e2e"' || { echo "not back on 0.0.1-e2e: $(health)"; docker exec vps ls -la /var/lib/flytower /var/lib/flytower-agent/db-backups; exit 1; }
           echo "✓ a broken update rolled back to 0.0.1-e2e"
           [ "$(bash tests/e2e/agent-kind.sh)" = rust ] || { echo "not on the Rust agent after rolling back"; exit 1; }
 

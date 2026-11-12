@@ -150,7 +150,7 @@ const day = (iso: string) => formatDate(iso)
     <UModal
       :open="!!removing"
       :title="`Remove ${removingName}?`"
-      description="That device won't be able to sign in any more."
+      description="That device won't be able to sign in any more. Your other devices are signed out too, so sign in again on the ones you still use."
       @update:open="(v) => !v && (removing = null)"
     >
       <template #footer>

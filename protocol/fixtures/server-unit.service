@@ -10,7 +10,9 @@ StartLimitBurst=3
 
 [Service]
 User=mc-%i
-Group=flytower
+Group=mc-%i
+# The panel's group as an extra, so the server can use the files the panel puts in its folder.
+SupplementaryGroups=flytower
 UMask=0007
 WorkingDirectory=/srv/flytower/servers/%i
 EnvironmentFile=/etc/flytower/servers/%i.env
@@ -28,6 +30,8 @@ ProtectHome=yes
 PrivateTmp=yes
 PrivateDevices=yes
 ReadWritePaths=/srv/flytower/servers/%i
+# Mods run with the server's rights, so keep the root agent and the panel's secrets out of reach.
+InaccessiblePaths=-/run/flytower -/var/lib/flytower -/var/lib/flytower-agent -/var/lib/flytower-archive -/etc/flytower/panel.env
 Slice=flytower-mc.slice
 
 [Install]

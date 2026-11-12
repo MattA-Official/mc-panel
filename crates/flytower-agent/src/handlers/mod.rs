@@ -12,6 +12,7 @@ pub mod testing;
 pub mod update;
 
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use std::time::{Duration, SystemTime};
 
 use serde_json::{Value, json};
@@ -44,12 +45,14 @@ pub struct Context {
     /// Unit changes from the journal; `None` makes `service.wait` tell the panel to poll.
     pub events: Option<Arc<UnitEvents>>,
     pub paths: Paths,
-    /// The panel's group, which may use the agent and shares server folders.
+    /// The panel's group, which owns the agent's socket and shares server folders.
     pub panel_group: String,
     /// Where releases are downloaded from: `<url>/<tag>/<file>`.
     pub releases_url: String,
     /// The key releases are signed with, as a PEM `PUBLIC KEY`; tests use their own.
     pub release_key: String,
+    /// Set while an update, a rollback or a clean-up of old releases runs.
+    pub updating: Arc<AtomicBool>,
 }
 
 /// Runs one checked request.

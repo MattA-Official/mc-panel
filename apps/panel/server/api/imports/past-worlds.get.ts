@@ -1,8 +1,9 @@
+import { can } from '../../../shared/permissions'
 import { schema } from '../../db'
 
-/** Every server's past worlds, which a new server can start from. */
+/** The past worlds of every server this person can see, which a new server can start from. */
 export default defineEventHandler(async (event) => {
-  await requirePermission(event, 'servers.create')
+  const { access } = await requirePermission(event, 'servers.create')
   const servers = new Map(
     useDb()
       .select({ name: schema.servers.name, displayName: schema.servers.displayName })
@@ -12,6 +13,7 @@ export default defineEventHandler(async (event) => {
   )
   return useExports()
     .pastWorlds()
+    .filter((w) => can(access, 'server.view', w.server))
     .map(({ id, name, server, bytes, createdAt }) => ({
       id,
       name,

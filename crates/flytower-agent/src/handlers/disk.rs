@@ -13,8 +13,9 @@ use serde_json::{Value, json};
 
 use super::Context;
 use super::files::remove;
-use super::update::{busy, read_record};
+use super::update::{busy, exclusively, read_record};
 use crate::envelope::{AgentError, ErrorCode};
+use crate::updater::db_backups;
 
 /// The groups a server's space is split into, in the order the result lists them.
 pub const GROUPS: [&str; 7] = [
@@ -53,6 +54,8 @@ struct Places {
     apt: PathBuf,
     tmp: PathBuf,
     var_tmp: PathBuf,
+    /// The agent's own folder, holding the updater's database copies.
+    state: PathBuf,
 }
 
 impl Places {
@@ -70,6 +73,7 @@ impl Places {
             maps: data.join("maps"),
             imports: data.join("imports"),
             archive: p.archive.clone().into(),
+            state: p.state.clone().into(),
             data,
             var_log: root.join("var/log"),
             journal: root.join("var/log/journal"),
@@ -210,10 +214,13 @@ fn prune_plan(ctx: &Context) -> (Vec<PathBuf>, Vec<String>) {
             removed.push(n);
         }
     }
-    for n in names(&p.data).0 {
-        if db_copy_version(&n).is_some_and(|v| !keep.contains(v)) {
-            paths.push(p.data.join(&n));
-            removed.push(n);
+    // Database copies: the agent's own, and any an older updater left beside the database.
+    for folder in [db_backups(&p.state), p.data.clone()] {
+        for n in names(&folder).0 {
+            if db_copy_version(&n).is_some_and(|v| !keep.contains(v)) {
+                paths.push(folder.join(&n));
+                removed.push(n);
+            }
         }
     }
     (paths, removed)
@@ -270,6 +277,11 @@ fn system_places(p: &Places, paths: &mut Vec<PathBuf>, labels: &mut Vec<Label>) 
     }
     if !elsewhere.contains(&normal(&p.config)) {
         part(p.config.clone(), "flytower");
+    }
+    // The agent's own folder (database copies, mostly), unless it's inside one walked above.
+    let state = normal(&p.state);
+    if !state.starts_with(normal(&p.data)) && !state.starts_with(normal(&p.prefix)) {
+        part(p.state.clone(), "flytower");
     }
     part(p.var_log.clone(), "logs");
     for t in [&p.apt, &p.tmp, &p.var_tmp] {
@@ -442,6 +454,7 @@ pub fn clean_apt(ctx: &Context) -> Result<Value, AgentError> {
 /// # Errors
 /// While an update runs, or when something can't be removed.
 pub fn prune_flytower(ctx: &Context) -> Result<Value, AgentError> {
+    let _lock = exclusively(ctx)?;
     busy(ctx)?;
     let (paths, removed) = prune_plan(ctx);
     let freed = sum(&walk(&paths));
@@ -498,6 +511,11 @@ mod tests {
         ] {
             file(&data.join(f), 40 * KB);
         }
+        // The data folder's copies were left by an updater from before they moved to the
+        // agent's own folder.
+        let backups = db_backups(Path::new(&p.state));
+        file(&backups.join("flytower.db.before-1.1.0"), 40 * KB);
+        file(&backups.join("flytower.db-wal.before-1.0.0"), 8 * KB);
         file(&Path::new(&p.runtimes).join("temurin-21/bin/java"), 96 * KB);
         let prefix = Path::new(&p.prefix);
         for v in ["1.0.0", "1.1.0", "1.2.0"] {
@@ -607,18 +625,20 @@ mod tests {
             json!(size(&[
                 prefix.join("releases/1.0.0"),
                 prefix.join("releases/.download-1.3.0"),
+                db_backups(Path::new(&p.state)).join("flytower.db-wal.before-1.0.0"),
                 data.join("flytower.db.before-1.0.0"),
             ]))
         );
-        // The prefix (runtimes and agent state sit beside it here), the config, and the data
-        // folder without the servers' backups, imports and archive.
+        // The prefix (runtimes sit beside it here), the config, the agent's own folder, and
+        // the data folder without the servers' backups, imports and archive.
         let flytower = size(&[prefix.join("releases")])
             + size(&[
                 data.join("flytower.db"),
                 data.join("flytower.db.before-1.1.0"),
                 data.join("flytower.db.before-1.0.0"),
             ])
-            + size(&[p.config.clone().into()]);
+            + size(&[p.config.clone().into()])
+            + size(&[p.state.clone().into()]);
         assert_eq!(s["flytower"], json!(flytower));
     }
 
@@ -676,9 +696,11 @@ mod tests {
         record(&root, "succeeded", "1.1.0", "1.2.0");
         let prefix = Path::new(&root.paths.prefix);
         let data = Path::new(&root.paths.panel_data);
+        let backups = db_backups(Path::new(&root.paths.state));
         let expected = size(&[
             prefix.join("releases/1.0.0"),
             prefix.join("releases/.download-1.3.0"),
+            backups.join("flytower.db-wal.before-1.0.0"),
             data.join("flytower.db.before-1.0.0"),
         ]);
         let r = prune_flytower(&Fake::default().context(&root.paths)).unwrap();
@@ -686,9 +708,15 @@ mod tests {
             r,
             json!({
                 "freedBytes": expected,
-                "removed": [".download-1.3.0", "1.0.0", "flytower.db.before-1.0.0"],
+                "removed": [
+                    ".download-1.3.0",
+                    "1.0.0",
+                    "flytower.db-wal.before-1.0.0",
+                    "flytower.db.before-1.0.0",
+                ],
             })
         );
+        assert!(backups.join("flytower.db.before-1.1.0").exists());
         assert!(!prefix.join("releases/1.0.0").exists());
         assert!(prefix.join("releases/1.1.0").exists());
         assert!(prefix.join("releases/1.2.0").exists());
