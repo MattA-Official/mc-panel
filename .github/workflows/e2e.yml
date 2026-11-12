@@ -17,6 +17,8 @@ on:
       - '.github/workflows/ci.yml'
       - '.github/workflows/pr-build.yml'
       - '.github/workflows/release-notes.yml'
+      - '.github/workflows/docs-screens.yml'
+      - 'scripts/docs-screens.ts'
       - 'scripts/board-sync*.ts'
       - 'scripts/release-notes.ts'
       - 'scripts/e2e-gate*.ts'
