@@ -110,6 +110,14 @@ jobs:
           cmp first.env second.env && echo "secret kept across re-runs"
           docker exec vps systemctl is-active flytower-agent flytower-panel
 
+      - name: Install again with no version option (keeps the installed one)
+        run: |
+          docker exec vps bash /src/installer/install.sh --domain localhost \
+            --no-caddy --no-firewall --setup-token e2e-setup-token | tee rerun.log
+          grep -q 'already installed; keeping that version' rerun.log
+          docker exec vps cat /opt/flytower/current/VERSION | grep -qx 0.0.0-e2e
+          docker exec vps systemctl is-active flytower-agent flytower-panel
+
       - name: S3-compatible storage for off-site backups
         run: |
           # Adobe's S3Mock speaks the S3 API (multipart included) and ignores credentials.
