@@ -10,6 +10,8 @@ export default defineAppConfig({
     sponsors: 'https://github.com/sponsors/MattA-Official',
     kofi: '', // set once the Ko-fi page exists
     discord: '', // set once the Discord server exists
+    /** Whether the footer's mailing list sign-up accepts addresses yet. */
+    newsletter: false,
     install:
       'curl -fsSL https://github.com/MattA-Official/mc-panel/releases/latest/download/install.sh | sudo bash -s -- --domain panel.example.com',
   },
