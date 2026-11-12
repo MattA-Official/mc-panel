@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Flytower installer. Safe to run again: it upgrades in place and keeps secrets and data.
+# Flytower installer. Safe to run again: it keeps secrets and data, and on a machine that
+# already has Flytower it keeps the installed version unless an option picks another one.
 #
 #   curl -fsSL https://github.com/MattA-Official/mc-panel/releases/download/v<version>/install.sh \
 #     | sudo bash -s -- --domain panel.example.com
@@ -45,6 +46,80 @@ die() {
   exit 1
 }
 
+# Compares two versions like packages/protocol/src/versions.ts: prints -1, 0 or 1. A
+# pre-release sorts before its release; pre-release parts compare as semver does.
+vercmp() {
+  local a="${1#v}" b="${2#v}" ap="" bp="" i x y
+  [[ "$a" == *-* ]] && ap="${a#*-}"
+  [[ "$b" == *-* ]] && bp="${b#*-}"
+  local -a an bn apn bpn
+  IFS=. read -r -a an <<<"${a%%-*}"
+  IFS=. read -r -a bn <<<"${b%%-*}"
+  for i in 0 1 2; do
+    x="${an[i]:-0}" y="${bn[i]:-0}"
+    [[ "$x" =~ ^[0-9]+$ ]] || x=0
+    [[ "$y" =~ ^[0-9]+$ ]] || y=0
+    if ((10#$x < 10#$y)); then echo -1; return; fi
+    if ((10#$x > 10#$y)); then echo 1; return; fi
+  done
+  if [[ "$ap" == "$bp" ]]; then echo 0; return; fi
+  if [[ -z "$ap" ]]; then echo 1; return; fi
+  if [[ -z "$bp" ]]; then echo -1; return; fi
+  IFS=. read -r -a apn <<<"$ap"
+  IFS=. read -r -a bpn <<<"$bp"
+  for ((i = 0; i < ${#apn[@]} || i < ${#bpn[@]}; i++)); do
+    if ((i >= ${#apn[@]})); then echo -1; return; fi
+    if ((i >= ${#bpn[@]})); then echo 1; return; fi
+    x="${apn[i]}" y="${bpn[i]}"
+    [[ "$x" == "$y" ]] && continue
+    if [[ "$x" =~ ^[0-9]+$ && "$y" =~ ^[0-9]+$ ]]; then
+      if ((10#$x < 10#$y)); then echo -1; else echo 1; fi
+    elif [[ "$x" =~ ^[0-9]+$ ]]; then
+      echo -1
+    elif [[ "$y" =~ ^[0-9]+$ ]]; then
+      echo 1
+    elif [[ "$x" < "$y" ]]; then
+      echo -1
+    else
+      echo 1
+    fi
+    return
+  done
+  echo 0
+}
+
+# The ports sshd listens on, one per line; 22 if that can't be found out.
+ssh_ports() {
+  local sshd ports=""
+  sshd="$(command -v sshd || echo /usr/sbin/sshd)"
+  if [[ -x "$sshd" ]]; then
+    ports="$("$sshd" -T 2>/dev/null | awk '$1 == "port" && $2 ~ /^[0-9]+$/ { print $2 }' | sort -un)"
+  fi
+  printf '%s\n' "${ports:-22}"
+}
+
+# Copies the panel's database aside before an older release runs against it. The panel is
+# stopped first so the copy is consistent; the steps below start it again.
+save_database() {
+  local from="$1" to="$2" dest f copied=0
+  dest="/var/lib/flytower-agent/db-backups/installer-$from-to-$to-$(date +%Y%m%d-%H%M%S)"
+  systemctl stop flytower-panel.service 2>/dev/null || true
+  install -d -m 0700 -o root -g root /var/lib/flytower-agent /var/lib/flytower-agent/db-backups
+  install -d -m 0700 -o root -g root "$dest"
+  for f in flytower.db flytower.db-wal flytower.db-shm; do
+    # Only plain files: never follow a link in the panel's folder.
+    if [[ -f "$STATE_DIR/$f" && ! -L "$STATE_DIR/$f" ]]; then
+      cp --no-dereference --preserve=mode,ownership,timestamps "$STATE_DIR/$f" "$dest/$f"
+      copied=1
+    fi
+  done
+  if [[ $copied -eq 1 ]]; then
+    echo "Saved a copy of the panel's database in $dest"
+  else
+    rmdir "$dest"
+  fi
+}
+
 usage() {
   cat <<'EOF'
 Usage: install.sh --domain <host> [options]
@@ -61,13 +136,20 @@ Usage: install.sh --domain <host> [options]
   --setup-token <text>  Use this setup token instead of generating one.
   --no-caddy            Don't install or configure Caddy (bring your own HTTPS proxy).
   --no-firewall         Don't touch ufw.
+
+On a machine that already has Flytower, running this again keeps the installed version: it
+rewrites the settings and services and gives you a new setup token. Pass --version, --beta,
+--native, --pr or --tarball to change version. Going back to an older version saves a copy
+of the panel's database first.
 EOF
 }
+
+main() {
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --domain) domain="${2:-}"; shift 2 ;;
-    --version) version="${2#v}"; shift 2 ;;
+    --version) version="${2:-}"; version="${version#v}"; shift 2 ;;
     --tarball) tarball="${2:-}"; shift 2 ;;
     --pr) pr="${2:-}"; shift 2 ;;
     --beta) beta=1; shift ;;
@@ -83,6 +165,7 @@ done
 [[ -n "$domain" ]] || { usage >&2; die "--domain is required (passkeys need HTTPS on a real name)"; }
 [[ "$domain" =~ ^[A-Za-z0-9.-]+$ ]] || die "--domain should be a host name like panel.example.com"
 [[ -z "$pr" || "$pr" =~ ^[0-9]+$ ]] || die "--pr should be a pull request number, like 70"
+[[ -n "$version" ]] || die "--version needs a version, like 1.4.1"
 
 # ---------------------------------------------------------------- checks
 
@@ -112,7 +195,23 @@ done
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
-if [[ -z "$tarball" ]]; then
+# What's installed now, if anything. With no option choosing a version, keep it: a plain
+# re-run (say, for a new setup token) mustn't move a beta, native or test box to stable.
+installed=""
+if [[ -f "$PREFIX/current/VERSION" ]]; then installed="$(cat "$PREFIX/current/VERSION")"; fi
+keep=0
+if [[ -n "$installed" && -z "$tarball" && -z "$pr" && "$version" == latest &&
+  $beta -eq 0 && $native -eq 0 ]]; then
+  keep=1
+  say "Flytower $installed is already installed; keeping that version"
+  echo "To change version, run this again with --version, --beta, --native or --pr."
+fi
+
+# The version the signed file name promises; the tarball's own VERSION must agree.
+expected=""
+if [[ $keep -eq 1 ]]; then
+  root="$(readlink -f "$PREFIX/current")"
+elif [[ -z "$tarball" ]]; then
   if [[ -n "$pr" ]]; then
     # Pull request builds live under a pr-<number> tag, which the updater never offers.
     base="https://github.com/$REPO/releases/download/pr-$pr"
@@ -169,24 +268,38 @@ if [[ -z "$tarball" ]]; then
     echo "Release signature checked: this is a genuine Flytower release."
   fi
   tarball="$work/$name"
+  expected="${name#flytower-}"
+  expected="${expected%-linux-$arch.tar.gz}"
+else
+  echo "Installing from $tarball as given: its signature is not checked."
 fi
 
-[[ -f "$tarball" ]] || die "no such file: $tarball"
-mkdir -p "$work/unpack"
-tar -xzf "$tarball" -C "$work/unpack"
-root="$(find "$work/unpack" -mindepth 1 -maxdepth 1 -type d | head -n1)"
-[[ -f "$root/VERSION" && -x "$root/bin/bun" ]] || die "$tarball isn't a Flytower release"
+if [[ $keep -eq 0 ]]; then
+  [[ -f "$tarball" ]] || die "no such file: $tarball"
+  mkdir -p "$work/unpack"
+  tar -xzf "$tarball" -C "$work/unpack"
+  root="$(find "$work/unpack" -mindepth 1 -maxdepth 1 -type d | head -n1)"
+fi
+[[ -f "$root/VERSION" && -x "$root/bin/bun" ]] || die "${tarball:-$root} isn't a Flytower release"
 version="$(cat "$root/VERSION")"
+[[ -z "$expected" || "$version" == "$expected" ]] ||
+  die "the download says it's $version but was published as $expected; refusing to install it"
 
-say "Installing Flytower $version"
-release="$PREFIX/releases/$version"
-rm -rf "$release.new"
-mkdir -p "$PREFIX/releases"
-cp -a "$root" "$release.new"
-rm -rf "$release"
-mv "$release.new" "$release"
-ln -sfn "$release" "$PREFIX/current.new"
-mv -T "$PREFIX/current.new" "$PREFIX/current"
+if [[ $keep -eq 0 ]]; then
+  if [[ -n "$installed" && "$(vercmp "$version" "$installed")" -lt 0 ]]; then
+    say "Going back from Flytower $installed to $version"
+    save_database "$installed" "$version"
+  fi
+  say "Installing Flytower $version"
+  release="$PREFIX/releases/$version"
+  rm -rf "$release.new"
+  mkdir -p "$PREFIX/releases"
+  cp -a "$root" "$release.new"
+  rm -rf "$release"
+  mv "$release.new" "$release"
+  ln -sfn "$release" "$PREFIX/current.new"
+  mv -T "$PREFIX/current.new" "$PREFIX/current"
+fi
 bun="$PREFIX/current/bin/bun"
 
 # ---------------------------------------------------------------- users and folders
@@ -356,9 +469,21 @@ fi
 
 if [[ $with_firewall -eq 1 ]]; then
   if ! command -v ufw >/dev/null; then
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq
     apt-get install -y -qq ufw >/dev/null
   fi
-  ufw allow OpenSSH >/dev/null
+  # Keep SSH open on the port it really uses, so turning ufw on can't lock you out.
+  ports="$(ssh_ports)"
+  while read -r port; do
+    if [[ "$port" == 22 ]]; then
+      ufw allow OpenSSH >/dev/null 2>&1 || ufw allow 22/tcp comment 'ssh' >/dev/null
+    else
+      ufw allow "$port/tcp" comment 'ssh' >/dev/null
+    fi
+  done <<<"$ports"
+  echo "Firewall: SSH allowed on port $(paste -sd, - <<<"$ports" | sed 's/,/, /g')." \
+    "If SSH also listens on another port, run: ufw allow <port>/tcp"
   ufw allow 80/tcp comment 'flytower https redirect' >/dev/null
   ufw allow 443/tcp comment 'flytower panel' >/dev/null
   ufw --force enable >/dev/null
@@ -405,6 +530,10 @@ cat <<EOF
   Open the link to start, or open https://$domain and type the token if the link won't open
   where you are. Either works once, within 24 hours. If you've already finished setup,
   ignore them.
-  Lost it? Run this installer again for a new one.
+  Lost it? Run this installer again for a new one; it keeps this version.
 
 EOF
+}
+
+# Everything runs from here, so a download cut off part-way through runs nothing.
+main "$@"
