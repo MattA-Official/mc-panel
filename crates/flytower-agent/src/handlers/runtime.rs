@@ -2,7 +2,10 @@
 //! Adoptium API (not apt), checked against the SHA-256 it publishes, unpacked into a staging
 //! folder and renamed into place, so a half-finished install is never visible.
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use serde_json::{Value, json};
 
@@ -103,11 +106,31 @@ fn unpack(ctx: &Context, asset: &Asset, archive: &Path, staging: &Path) -> Resul
     write(&staging.join(MARKER), &marker, 0o666)
 }
 
+/// One lock per Java version, so two installs of the same one (two servers created at once)
+/// take turns: the second then finds the first's runtime and answers `alreadyInstalled`.
+fn lock_for(major: i64) -> Arc<Mutex<()>> {
+    static LOCKS: Mutex<BTreeMap<i64, Arc<Mutex<()>>>> = Mutex::new(BTreeMap::new());
+    let mut locks = LOCKS.lock().unwrap_or_else(PoisonError::into_inner);
+    Arc::clone(locks.entry(major).or_default())
+}
+
+/// Every install gets its own staging folder, even within one process.
+fn staging_suffix() -> String {
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    format!(
+        "{}-{}",
+        std::process::id(),
+        NEXT.fetch_add(1, Ordering::Relaxed)
+    )
+}
+
 /// `runtime.install`. Idempotent: an installed runtime answers `alreadyInstalled`.
 ///
 /// # Errors
 /// `not_found` with no build for this machine, `failed` if a step fails.
 pub fn install(major: i64, ctx: &Context) -> Result<Value, AgentError> {
+    let lock = lock_for(major);
+    let _held = lock.lock().unwrap_or_else(PoisonError::into_inner);
     let java_home = Path::new(&ctx.paths.runtimes).join(format!("temurin-{major}"));
     let home = java_home.to_string_lossy().into_owned();
     if let Some(marker) = read(&java_home.join(MARKER)) {
@@ -120,7 +143,7 @@ pub fn install(major: i64, ctx: &Context) -> Result<Value, AgentError> {
 
     let asset = latest_asset(ctx, major)?;
     mkdir(Path::new(&ctx.paths.runtimes), 0o755)?;
-    let staging = PathBuf::from(format!("{home}.staging-{}", std::process::id()));
+    let staging = PathBuf::from(format!("{home}.staging-{}", staging_suffix()));
     let archive = PathBuf::from(format!("{}.tar.gz", staging.display()));
     let result = unpack(ctx, &asset, &archive, &staging).and_then(|()| {
         remove(&java_home)?;
@@ -228,6 +251,39 @@ mod tests {
             .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
             .collect();
         assert_eq!(names, ["temurin-25"]);
+    }
+
+    #[test]
+    fn two_installs_of_one_version_at_once_take_turns() {
+        let (root, ctx, web) = setup(None);
+        let results: Vec<Value> = std::thread::scope(|s| {
+            let a = s.spawn(|| install(25, &ctx).unwrap());
+            let b = s.spawn(|| install(25, &ctx).unwrap());
+            vec![a.join().unwrap(), b.join().unwrap()]
+        });
+        let fresh = results
+            .iter()
+            .filter(|r| r["alreadyInstalled"] == false)
+            .count();
+        assert_eq!(fresh, 1, "{results:?}");
+        let downloads = web
+            .seen
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|u| u.ends_with(".tar.gz"))
+            .count();
+        assert_eq!(downloads, 1);
+        let names: Vec<String> = std::fs::read_dir(&root.paths.runtimes)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names, ["temurin-25"]);
+    }
+
+    #[test]
+    fn staging_folders_differ_per_call() {
+        assert_ne!(staging_suffix(), staging_suffix());
     }
 
     #[test]

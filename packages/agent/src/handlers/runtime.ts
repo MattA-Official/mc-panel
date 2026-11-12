@@ -31,12 +31,34 @@ async function latestAsset(ctx: AgentContext, major: number): Promise<AdoptiumAs
   throw new AgentError('not_found', `no Temurin ${major} build for ${arch}`)
 }
 
+/** Installs of one Java version take turns (two servers created at once), see `install`. */
+const queues = new Map<number, Promise<unknown>>()
+/** Every install gets its own staging folder, even within one process. */
+let nextStaging = 0
+
 /**
  * Installs Eclipse Temurin <major> under runtimes/temurin-<major>. Downloads from the
  * Adoptium API (not apt), verifies the SHA-256 it publishes, unpacks into a staging
  * folder and renames it into place, so a half-finished install is never visible.
  */
-export async function install(
+export function install(
+  p: Params<'runtime.install'>,
+  ctx: AgentContext,
+): Promise<Result<'runtime.install'>> {
+  // A second install of the same version waits for the first, then finds its runtime and
+  // answers alreadyInstalled.
+  const before = queues.get(p.major) ?? Promise.resolve()
+  const run = before.catch(() => {}).then(() => installNow(p, ctx))
+  queues.set(p.major, run)
+  void run
+    .catch(() => {})
+    .finally(() => {
+      if (queues.get(p.major) === run) queues.delete(p.major)
+    })
+  return run
+}
+
+async function installNow(
   p: Params<'runtime.install'>,
   ctx: AgentContext,
 ): Promise<Result<'runtime.install'>> {
@@ -49,7 +71,7 @@ export async function install(
 
   const asset = await latestAsset(ctx, p.major)
   await mkdir(ctx.paths.runtimes, { recursive: true, mode: 0o755 })
-  const staging = `${javaHome}.staging-${process.pid}`
+  const staging = `${javaHome}.staging-${process.pid}-${nextStaging++}`
   const archive = `${staging}.tar.gz`
   try {
     await rm(staging, { recursive: true, force: true })
