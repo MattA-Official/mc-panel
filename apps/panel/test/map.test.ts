@@ -7,6 +7,7 @@ import {
   parseProgress,
   parseReport,
   readStderr,
+  runRenderer,
   type MapDeps,
   type MapStatus,
 } from '../server/map/service'
@@ -245,6 +246,77 @@ describe('map service', () => {
     await service.draw('survival')
     expect(runs).toEqual([])
     expect(watching).toEqual([])
+  })
+})
+
+describe('map passes across servers', () => {
+  it("runs a couple at once, so one big world doesn't hold up the rest", async () => {
+    const root = mkdtempSync(join(tmpdir(), 'ft-map-'))
+    const names = ['big', 'small', 'third']
+    for (const n of names) mkdirSync(join(root, 'servers', n, 'world'), { recursive: true })
+    const started: string[] = []
+    const finished: string[] = []
+    let releaseBig!: () => void
+    const big = new Promise<void>((r) => (releaseBig = r))
+    const service = new MapService({
+      mapsDir: join(root, 'maps'),
+      serverDir: (name) => join(root, 'servers', name),
+      servers: () => names,
+      settings: () => ({ ...DEFAULT_MAP, enabled: true }),
+      minecraft: () => null,
+      levelName: async () => null,
+      makePalette: async () => {},
+      async run(args) {
+        const name = args[args.indexOf('--out') + 1]!.split('/').at(-1)!
+        started.push(name)
+        if (name === 'big') await big
+        else await wait(5)
+        finished.push(name)
+        return REPORT
+      },
+      publish: () => {},
+      watch: () => () => {},
+      parallel: 2,
+    })
+    const passes = names.map((n) => service.draw(n))
+    await Promise.all([passes[1], passes[2]])
+    // The small worlds were drawn while the big one was still going.
+    expect(finished).toEqual(['small', 'third'])
+    expect(started).toContain('big')
+    releaseBig()
+    await passes[0]
+    expect(finished).toEqual(['small', 'third', 'big'])
+  })
+})
+
+describe('running the renderer', () => {
+  it('stops a run that makes no progress', async () => {
+    const err = await runRenderer(
+      ['sh', '-c', 'echo "progress 0 2" >&2; exec sleep 5'],
+      undefined,
+      150,
+    )
+      .then(() => null)
+      .catch((e: Error) => e.message)
+    expect(err).toContain('made no progress')
+  })
+
+  it('lets a run go on while it keeps reporting progress', async () => {
+    const seen: number[] = []
+    const out = await runRenderer(
+      ['sh', '-c', 'for i in 1 2 3 4; do echo "progress $i 4" >&2; sleep 0.1; done; echo done'],
+      (p) => seen.push(p.done),
+      300,
+    )
+    expect(out.trim()).toBe('done')
+    expect(seen).toEqual([1, 2, 3, 4])
+  })
+
+  it('passes on why a run failed', async () => {
+    const err = await runRenderer(['sh', '-c', 'echo "no world here" >&2; exit 3'])
+      .then(() => null)
+      .catch((e: Error) => e.message)
+    expect(err).toBe('no world here')
   })
 })
 

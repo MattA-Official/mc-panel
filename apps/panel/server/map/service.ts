@@ -4,8 +4,10 @@
  *
  * Nothing is polled. While a map is on, the server's folder is watched for region files
  * being saved; once saving has been quiet for a short while (or has gone on for a few
- * minutes), a pass redraws just the regions that changed. One pass runs at a time across
- * all servers, at low priority, so the Minecraft servers keep the machine.
+ * minutes), a pass redraws just the regions that changed. Each server's passes run one at a
+ * time, and only a couple run at once across all servers, at low priority, so the Minecraft
+ * servers keep the machine and one huge world doesn't hold up every other map. A pass that
+ * stops making progress is ended.
  *
  * Colours come from the game's own client jar, made once per Minecraft version into a
  * palette. If that can't be fetched, the map is drawn with the built-in colours and the
@@ -73,7 +75,12 @@ export interface MapDeps {
   maxWaitMs?: number
   /** The least time between progress updates sent to watchers. */
   progressMs?: number
+  /** How many passes may run at once across all servers. */
+  parallel?: number
 }
+
+/** Passes running at once, across all servers, unless the deps say otherwise. */
+export const PARALLEL_PASSES = 2
 
 interface Live {
   stop: (() => void) | null
@@ -93,7 +100,11 @@ const SAFE_VERSION = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/
 
 export class MapService {
   private live = new Map<string, Live>()
-  private chain: Promise<void> = Promise.resolve()
+  /** Per server, the last pass queued; each server's passes run in turn. */
+  private chains = new Map<string, Promise<void>>()
+  /** Passes running now, and passes waiting for a turn. */
+  private running = 0
+  private turns: (() => void)[] = []
   private palettes = new Map<string, Promise<string | null>>()
 
   constructor(private deps: MapDeps) {}
@@ -243,14 +254,33 @@ export class MapService {
    */
   draw(name: string, opts: { full?: boolean } = {}): Promise<void> {
     const s = this.state(name)
+    const chain = this.chains.get(name) ?? Promise.resolve()
     if (s.queued) {
       s.queued.full ||= !!opts.full
-      return this.chain
+      return chain
     }
     s.queued = { full: !!opts.full }
     this.publish(name)
-    this.chain = this.chain.then(() => this.pass(name)).catch(() => {})
-    return this.chain
+    const next = chain.then(() => this.inTurn(() => this.pass(name))).catch(() => {})
+    this.chains.set(name, next)
+    void next.then(() => {
+      if (this.chains.get(name) === next) this.chains.delete(name)
+    })
+    return next
+  }
+
+  /** Runs `work` once fewer than the allowed number of passes are running. */
+  private async inTurn(work: () => Promise<void>) {
+    if (this.running < (this.deps.parallel ?? PARALLEL_PASSES)) this.running++
+    // The pass finishing hands its place straight on.
+    else await new Promise<void>((r) => this.turns.push(r))
+    try {
+      await work()
+    } finally {
+      const next = this.turns.shift()
+      if (next) next()
+      else this.running--
+    }
   }
 
   private async pass(name: string) {
@@ -339,6 +369,51 @@ export function parseProgress(line: string): MapProgress | null {
   const done = Number(m[1])
   const total = Number(m[2])
   return done <= total ? { done, total } : null
+}
+
+/** How long a run may go without reporting progress before it's ended. */
+export const STALL_MS = 10 * 60_000
+
+/**
+ * Runs a `flytower-map` command line and returns what it prints. A run that reports no
+ * progress for `stallMs` (from the start, or since the last progress line) is killed, so a
+ * stuck renderer can't hold up the maps behind it.
+ */
+export async function runRenderer(
+  cmd: string[],
+  onProgress?: (p: MapProgress) => void,
+  stallMs = STALL_MS,
+): Promise<string> {
+  const proc = Bun.spawn(cmd, { stdin: 'ignore', stdout: 'pipe', stderr: 'pipe' })
+  let stalled = false
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const arm = () => {
+    clearTimeout(timer)
+    timer = setTimeout(() => {
+      stalled = true
+      proc.kill('SIGKILL')
+    }, stallMs)
+  }
+  arm()
+  try {
+    const [out, err, code] = await Promise.all([
+      new Response(proc.stdout).text(),
+      readStderr(proc.stderr, (p) => {
+        arm()
+        onProgress?.(p)
+      }),
+      proc.exited,
+    ])
+    if (stalled) {
+      throw new Error(
+        `flytower-map made no progress for ${Math.round(stallMs / 60_000)} minutes, so it was stopped`,
+      )
+    }
+    if (code !== 0) throw new Error(err.trim() || `flytower-map exited with ${code}`)
+    return out
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 /** Reads standard error as it comes: progress lines are passed on, the rest kept for errors. */

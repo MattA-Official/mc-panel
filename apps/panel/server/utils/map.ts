@@ -12,7 +12,7 @@ import { loadAccess } from '../auth/access'
 import { withUuids } from '../players'
 import { PlayerPositions } from '../map/players'
 import { MAP_CSP, mapAccess, mapFile, mapShowsPlayers, viewerPage } from '../map/serve'
-import { MapService, readStderr, type MapProgress } from '../map/service'
+import { MapService, runRenderer, type MapProgress } from '../map/service'
 
 let service: MapService | undefined
 let mojang: Mojang | undefined
@@ -22,23 +22,12 @@ export const mapBinary = () =>
   process.env.FLYTOWER_MAP || join(dirname(process.execPath), 'flytower-map')
 
 /** Runs flytower-map at low CPU and disk priority, so the Minecraft servers come first. */
-async function runMap(args: string[], onProgress?: (p: MapProgress) => void): Promise<string> {
+function runMap(args: string[], onProgress?: (p: MapProgress) => void): Promise<string> {
   const low = [
     ...(Bun.which('nice') ? ['nice', '-n', '15'] : []),
     ...(Bun.which('ionice') ? ['ionice', '-c', '3'] : []),
   ]
-  const proc = Bun.spawn([...low, mapBinary(), ...args], {
-    stdin: 'ignore',
-    stdout: 'pipe',
-    stderr: 'pipe',
-  })
-  const [out, err, code] = await Promise.all([
-    new Response(proc.stdout).text(),
-    readStderr(proc.stderr, onProgress),
-    proc.exited,
-  ])
-  if (code !== 0) throw new Error(err.trim() || `flytower-map exited with ${code}`)
-  return out
+  return runRenderer([...low, mapBinary(), ...args], onProgress)
 }
 
 /** The one map service for this process. */
