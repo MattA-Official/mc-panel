@@ -2,7 +2,9 @@ name: E2E
 
 # Runs after each merge to main that touches the product, and on demand for a branch.
 # Changes that only touch project housekeeping (release notes, the board and Assistant
-# workflows, testing notes) don't run it: they can't change what gets installed.
+# workflows, docs, unit tests) don't run it: they can't change what gets installed.
+# The Release workflow reads this list too (scripts/e2e-gate.ts): a release passes on the
+# last E2E run when everything since only touches these paths.
 on:
   push:
     branches: [main]
@@ -17,7 +19,11 @@ on:
       - '.github/workflows/release-notes.yml'
       - 'scripts/board-sync*.ts'
       - 'scripts/release-notes.ts'
-      - 'docs/testing/**'
+      - 'scripts/e2e-gate*.ts'
+      - 'scripts/*.test.ts'
+      - 'apps/panel/test/**'
+      # The help pages are built from docs/, but text can't change what gets installed.
+      - 'docs/**'
       - 'README.md'
       - 'LICENSE'
   workflow_dispatch:
@@ -35,9 +41,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  install-and-run:
+  # Builds and packages once; the install and upgrade jobs share the tarballs.
+  build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -50,6 +57,8 @@ jobs:
           workspaces: crates
       - run: bun install --frozen-lockfile
       - run: bun run build
+      # The agents build the key in, so this comes before packaging. The private half never
+      # leaves this job.
       - name: Throwaway signing key (never the real one)
         run: |
           openssl genpkey -algorithm ed25519 -out "$RUNNER_TEMP/e2e-key.pem"
@@ -63,11 +72,13 @@ jobs:
 
       - name: Package
         run: |
-          bun scripts/package.ts --version 0.0.0-e2e --arch amd64 --out dist
-          # Two more releases to update to: a good one, and one whose panel won't start.
-          for v in 0.0.1-e2e 0.0.2-e2e; do
+          for v in 0.0.0-e2e 0.0.1-e2e 0.0.2-e2e; do
             bun scripts/package.ts --version "$v" --arch amd64 --out dist
           done
+
+      - name: Releases to update to
+        run: |
+          # Two: a good one, and one whose panel won't start.
           mkdir -p "$RUNNER_TEMP/broken"
           tar -xzf dist/flytower-0.0.2-e2e-linux-amd64.tar.gz -C "$RUNNER_TEMP/broken"
           rm "$RUNNER_TEMP/broken/flytower-0.0.2-e2e/panel/server/index.mjs"
@@ -80,6 +91,32 @@ jobs:
             openssl pkeyutl -sign -inkey "$RUNNER_TEMP/e2e-key.pem" -rawin -in "$d/SHA256SUMS" |
               base64 -w0 > "$d/SHA256SUMS.sig"
           done
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: e2e-dist
+          path: |
+            dist/flytower-*.tar.gz
+            releases/
+            installer/install.sh
+            installer/release-key.pem
+          retention-days: 1
+
+  install-and-run:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      # For the browser smoke test.
+      - run: bun install --frozen-lockfile
+      # The packages, signed test releases, and the installer with the test key in it.
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: e2e-dist
 
       - name: Boot a systemd container
         run: |
@@ -254,7 +291,7 @@ jobs:
           echo "$versions"
 
   upgrade:
-    needs: releases
+    needs: [build, releases]
     if: needs.releases.outputs.versions != '[]'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -265,17 +302,9 @@ jobs:
     name: upgrade from ${{ matrix.from }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          bun-version-file: package.json
-      - name: Rust toolchain (pinned in crates/rust-toolchain.toml)
-        run: cd crates && rustup toolchain install && rustc --version
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-        with:
-          workspaces: crates
-      - run: bun install --frozen-lockfile
-      - run: bun run build
-      - run: bun scripts/package.ts --version 0.0.0-e2e --arch amd64 --out dist
+          name: e2e-dist
       - name: Boot a systemd container
         run: |
           mkdir -p old
@@ -289,7 +318,9 @@ jobs:
             sleep 1
           done
       - name: Upgrade from ${{ matrix.from }}
-        run: bash tests/e2e/upgrade.sh "${{ matrix.from }}" /src/dist/flytower-0.0.0-e2e-linux-amd64.tar.gz
+        env:
+          FROM: ${{ matrix.from }}
+        run: bash tests/e2e/upgrade.sh "$FROM" /src/dist/flytower-0.0.0-e2e-linux-amd64.tar.gz
       - name: Logs
         if: failure()
         run: docker exec vps journalctl -u flytower-agent -u flytower-panel --no-pager -n 200 || true
