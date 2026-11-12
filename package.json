@@ -15,7 +15,8 @@
     "build": "bun run --filter '*' --filter '!@flytower/site' build",
     "build:site": "bun run --filter @flytower/site build",
     "package": "bun scripts/package.ts",
-    "release-notes": "bun scripts/release-notes.ts"
+    "release-notes": "bun scripts/release-notes.ts",
+    "docs:screens": "bun scripts/docs-screens.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
