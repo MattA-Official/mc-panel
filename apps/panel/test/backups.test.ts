@@ -217,7 +217,7 @@ describe('backups', () => {
     writeFileSync(join(folder, 'random.txt'), 'ignored')
     const listed = await service.list('survival')
     expect(listed.map((b) => b.file).sort()).toEqual(
-      [first, 'survival-20250101T000000Z.tar.zst'].sort(),
+      [first!, 'survival-20250101T000000Z.tar.zst'].sort(),
     )
     await Bun.$`rm ${join(folder, first!)}`
     expect(await service.list('survival')).toHaveLength(1)

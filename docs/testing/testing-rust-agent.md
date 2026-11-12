@@ -25,11 +25,13 @@ Delete the file and restart to go back to Rust. The choice survives updates, and
 
 ## If the Rust agent won't start
 
-Before starting the Rust agent, `bin/flytower-agent` leaves a marker at `/run/flytower/agent-rust-starting`, and the Rust agent deletes it once it's listening. If the Rust agent stops before that, systemd restarts the agent two seconds later, the marker is still there, and Bun starts instead. The journal says:
+Before starting the Rust agent, `bin/flytower-agent` leaves a marker at `/run/flytower/agent-rust-starting`, and the Rust agent deletes it once it has started up: it is listening and has run its start-up steps (folders, the SSH timer, the server and agent units, the Caddyfile). If the Rust agent stops before that, systemd restarts the agent two seconds later, the marker is still there, and Bun starts instead. The journal says:
 
 ```
 flytower-agent: the Rust agent didn't start last time, so using the Bun agent. ...
 ```
+
+This is on purpose about starting up only. Once the marker is gone, a crash later on (say while handling a request) doesn't switch to Bun: systemd just restarts the Rust agent. A start-up step that merely fails is logged and the agent carries on, so only a crash keeps the marker. If you ever see the Rust agent restarting over and over, put `bun` in `/etc/flytower/agent` and restart `flytower-agent`, then tell us.
 
 While that marker is there, the updater uses Bun too. It stays on Bun until the next reboot (the marker lives in `/run`) or the next update (the marker names the release it was for). To try Rust again straight away, `rm /run/flytower/agent-rust-starting` and restart `flytower-agent`.
 

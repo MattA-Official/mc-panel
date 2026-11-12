@@ -14,6 +14,12 @@ function fakeAgent(states: Record<string, string>, opts: { down?: boolean } = {}
 
 const tick = () => Bun.sleep(5)
 
+/** Waits until `check` passes, so a slow machine doesn't fail a test on timing alone. */
+async function until(check: () => boolean, ms = 2000) {
+  const end = Date.now() + ms
+  while (!check() && Date.now() < end) await Bun.sleep(2)
+}
+
 describe('StatusWatcher', () => {
   it('does not poll with nobody watching', async () => {
     const { agent, calls } = fakeAgent({})
@@ -45,7 +51,7 @@ describe('StatusWatcher', () => {
     const { agent, calls } = fakeAgent({ a: 'active' })
     const w = new StatusWatcher(agent, () => ['a'], 2)
     const off = w.watch(() => {})
-    await Bun.sleep(15)
+    await until(() => calls.length > 1)
     off()
     const after = calls.length
     expect(after).toBeGreaterThan(1)
@@ -89,7 +95,7 @@ describe('StatusWatcher', () => {
     const seen: StatusMap[] = []
     w.follow({ fallbackMs: 5 })
     w.watch((m) => seen.push({ ...m }))
-    await Bun.sleep(30)
+    await until(() => seen.length > 0 && verbs.filter((v) => v === 'service.wait').length > 1)
     const statusCalls = verbs.filter((v) => v === 'service.status').length
     // Nothing is asked again while systemd is quiet.
     await Bun.sleep(30)
@@ -97,7 +103,11 @@ describe('StatusWatcher', () => {
 
     states.a = 'activating'
     release!()
-    await Bun.sleep(20)
+    await until(
+      () =>
+        seen.at(-1)?.a === 'activating' &&
+        (polls.at(-1)?.a as { active?: string } | undefined)?.active === 'activating',
+    )
     expect(seen.at(-1)).toEqual({ a: 'activating' })
     expect(polls.at(-1)).toMatchObject({ a: { active: 'activating', result: 'success' } })
     w.unfollow()
@@ -113,7 +123,7 @@ describe('StatusWatcher', () => {
     }) as unknown as AgentCall
     const w = new StatusWatcher(agent, () => ['a'])
     w.follow({ fallbackMs: 5 })
-    await Bun.sleep(60)
+    await until(() => calls > 3)
     w.unfollow()
     expect(calls).toBeGreaterThan(3)
   })

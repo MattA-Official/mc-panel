@@ -225,11 +225,11 @@ describe('the Gateway connection', () => {
     ready()
     last().drop(1006)
     expect(g.status().state).toBe('reconnecting')
-    expect(timers.pending()).toEqual([BACKOFF_MS[0]])
+    expect(timers.pending()).toEqual([BACKOFF_MS[0]!])
     timers.advance(BACKOFF_MS[0]!)
     await tick()
     last().drop(1006)
-    expect(timers.pending()).toEqual([BACKOFF_MS[1]])
+    expect(timers.pending()).toEqual([BACKOFF_MS[1]!])
     timers.advance(BACKOFF_MS[1]!)
     await tick()
     expect(sockets).toHaveLength(3)
@@ -238,7 +238,7 @@ describe('the Gateway connection', () => {
     last().recv(0, null, 2, 'RESUMED')
     // Connected again: the next drop starts from the shortest wait.
     last().drop(1006)
-    expect(timers.pending()).toEqual([BACKOFF_MS[0]])
+    expect(timers.pending()).toEqual([BACKOFF_MS[0]!])
   })
 
   it('never waits longer than the last step', async () => {
@@ -252,7 +252,7 @@ describe('the Gateway connection', () => {
       await tick()
     }
     last().drop(1006)
-    expect(timers.pending()).toEqual([BACKOFF_MS.at(-1)])
+    expect(timers.pending()).toEqual([BACKOFF_MS.at(-1)!])
   })
 
   it('identifies afresh after a session can’t be resumed', async () => {

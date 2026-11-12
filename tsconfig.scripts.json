@@ -1,0 +1,12 @@
+{
+  // The repo's own scripts and the E2E tests, which no workspace's typecheck covers.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    // Scripts run as modules under Bun even with no imports.
+    "moduleDetection": "force",
+    "lib": ["ESNext", "DOM"]
+  },
+  "include": ["scripts/**/*.ts", "tests/**/*.ts"]
+}

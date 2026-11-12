@@ -28,6 +28,8 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
+      # To read the E2E runs the gate below checks.
+      actions: read
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
       version: ${{ steps.tag.outputs.version }}
@@ -48,6 +50,9 @@ jobs:
           # older commit can be released with a summary written after it.
           cp -r .github/release-notes "$RUNNER_TEMP/release-notes"
           cp scripts/release-notes.ts "$RUNNER_TEMP/release-notes.ts"
+          # So is the E2E gate, which an older commit may not have.
+          cp scripts/e2e-gate.ts "$RUNNER_TEMP/e2e-gate.ts"
+          cp .github/workflows/e2e.yml "$RUNNER_TEMP/e2e.yml"
           sha="$GITHUB_SHA"
           if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
             version="${INPUT_VERSION#v}"
@@ -94,6 +99,17 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
+      # Releases only ship commits the E2E workflow (install, self-update, upgrades from every
+      # minor version) passed on. It reuses main's run instead of running it again; for a
+      # commit without one, run E2E on it from the Actions tab first. Native builds come from
+      # their own branch, which E2E doesn't run on.
+      - name: E2E passed on this commit
+        if: ${{ !startsWith(steps.tag.outputs.tag, 'native-') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          E2E_WORKFLOW: ${{ runner.temp }}/e2e.yml
+        run: bun "$RUNNER_TEMP/e2e-gate.ts" "$TARGET_SHA"
+
       - name: Rust toolchain (pinned in crates/rust-toolchain.toml)
         run: cd crates && rustup toolchain install && rustc --version
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3

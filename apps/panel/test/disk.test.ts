@@ -70,7 +70,7 @@ describe('grouping', () => {
   })
 
   it('names the largest group', () => {
-    const groups = { world: 5, backups: 9, exports: 0, logs: 1, content: 0, other: 0 }
+    const groups = { world: 5, backups: 9, exports: 0, logs: 1, content: 0, map: 0, other: 0 }
     expect(largestGroup({ groups })).toBe('backups')
     expect(largestGroup({ groups: { ...groups, world: 0, backups: 0, logs: 0 } })).toBeNull()
   })

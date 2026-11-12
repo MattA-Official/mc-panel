@@ -23,6 +23,16 @@ export class ScheduleError extends Error {
   override name = 'ScheduleError'
 }
 
+/** A run that didn't happen, and whether that counts as a failure (`ok` false) or not (null). */
+class Skipped extends Error {
+  constructor(
+    message: string,
+    public ok: false | null,
+  ) {
+    super(message)
+  }
+}
+
 export interface ScheduleDeps {
   db: Db
   timers?: CronTimers
@@ -59,8 +69,8 @@ export class ScheduleService {
   private timers: CronTimers
   private now: () => number
   private sleep: (ms: number) => Promise<void>
-  /** Task ids with a run in progress, and how to call each off. */
-  private running = new Map<number, AbortController>()
+  /** Task ids with a run in progress: their server, and how to call each off. */
+  private running = new Map<number, { server: string; abort: AbortController }>()
 
   constructor(private deps: ScheduleDeps) {
     this.timers = deps.timers ?? new CronTimers()
@@ -140,6 +150,7 @@ export class ScheduleService {
   replace(server: string, tasks: TaskSpec[], timezone?: string) {
     const { db } = this.deps
     const old = this.rows(server)
+    let gone: Row[] = []
     db.transaction((tx) => {
       if (timezone !== undefined) {
         tx.update(schema.servers).set({ timezone }).where(eq(schema.servers.name, server)).run()
@@ -160,13 +171,18 @@ export class ScheduleService {
         }
       }
       for (const r of left) tx.delete(schema.schedules).where(eq(schema.schedules.id, r.id)).run()
+      gone = left
     })
+    // A changed task is a new one, so an old version's countdown is called off.
+    for (const r of gone) this.running.get(r.id)?.abort.abort()
     this.sync()
     this.publish(server)
   }
 
-  /** Forgets a deleted server's tasks. */
+  /** Forgets a deleted server's tasks, calling off any countdown. */
   remove(server: string) {
+    // The server row may be gone already, so this goes by the runs, not the tasks.
+    for (const run of this.running.values()) if (run.server === server) run.abort.abort()
     this.deps.db.delete(schema.schedules).where(eq(schema.schedules.server, server)).run()
     this.sync()
   }
@@ -189,44 +205,62 @@ export class ScheduleService {
     if (!row || this.running.has(id)) return
     const server = row.server
     const abort = new AbortController()
-    this.running.set(id, abort)
+    this.running.set(id, { server, abort })
     this.publish(server)
     let release: (() => void) | null = null
     let outcome: Outcome
     try {
-      release = await this.claim(server)
-      if (!release) {
-        outcome = {
-          ok: false,
-          result: `Skipped: a backup or change was still running after ${Math.round((this.deps.busyWaitMs ?? BUSY_WAIT_MS) / 60_000)} minutes`,
-        }
-      } else if (!(await this.deps.isRunning(server))) {
-        outcome = { ok: null, result: "Skipped: the server wasn't running" }
+      if (row.kind === 'restart') {
+        // The countdown runs without the lock, so a backup due meanwhile still happens. The
+        // lock is taken only to save and restart, waiting for anything that has it then.
+        outcome = (await this.deps.isRunning(server))
+          ? await this.execute(row, at, abort.signal, async (signal) => {
+              release = await this.claim(server, signal)
+              if (!release) throw new Skipped(this.busyResult(), false)
+              if (!(await this.deps.isRunning(server))) {
+                throw new Skipped('Skipped: the server was stopped during the countdown', null)
+              }
+            })
+          : { ok: null, result: "Skipped: the server wasn't running" }
       } else {
-        // Waiting for the lock can make a restart late; its countdown then starts now.
-        const late = Math.max(
-          0,
-          this.now() - (at - (row.kind === 'restart' ? leadMs(row.warn) : 0)),
-        )
-        outcome = await this.execute(row, at + late, abort.signal)
+        release = await this.claim(server, abort.signal)
+        outcome = !release
+          ? { ok: false, result: this.busyResult() }
+          : (await this.deps.isRunning(server))
+            ? await this.execute(row, at, abort.signal)
+            : { ok: null, result: "Skipped: the server wasn't running" }
       }
     } catch (err) {
       outcome =
-        err instanceof RestartCancelled
-          ? { ok: null, result: 'Cancelled before the restart' }
-          : { ok: false, result: (err as Error).message || 'Something went wrong.' }
+        err instanceof Skipped
+          ? { ok: err.ok, result: err.message }
+          : err instanceof RestartCancelled
+            ? { ok: null, result: 'Cancelled before the restart' }
+            : { ok: false, result: (err as Error).message || 'Something went wrong.' }
     } finally {
-      release?.()
+      ;(release as (() => void) | null)?.()
     }
     this.record(row, outcome, userId)
     this.running.delete(id)
     this.publish(server)
   }
 
-  /** Takes the server's lock, waiting while something else has it. Null if it never frees. */
-  private async claim(server: string): Promise<(() => void) | null> {
+  private busyResult() {
+    const minutes = Math.round((this.deps.busyWaitMs ?? BUSY_WAIT_MS) / 60_000)
+    return `Skipped: a backup or change was still running after ${minutes} minutes`
+  }
+
+  /**
+   * Takes the server's lock, waiting while something else has it. Null if it never frees;
+   * throws RestartCancelled if the run is called off while waiting.
+   */
+  private async claim(server: string, signal?: AbortSignal): Promise<(() => void) | null> {
     const deadline = this.now() + (this.deps.busyWaitMs ?? BUSY_WAIT_MS)
+    const aborted = new Promise<void>((resolve) =>
+      signal?.addEventListener('abort', () => resolve(), { once: true }),
+    )
     for (;;) {
+      if (signal?.aborted) throw new RestartCancelled('Cancelled')
       if (!this.deps.lock.isBusy(server)) {
         try {
           return this.deps.lock.lock(server)
@@ -236,7 +270,7 @@ export class ScheduleService {
       }
       const left = deadline - this.now()
       if (left <= 0) return null
-      await Promise.race([this.deps.lock.whenFree(server), this.sleep(left)])
+      await Promise.race([this.deps.lock.whenFree(server), this.sleep(left), aborted])
     }
   }
 
@@ -246,10 +280,15 @@ export class ScheduleService {
     if (!row) throw new ScheduleError('No such task.')
     const run = this.running.get(id)
     if (!run) throw new ScheduleError("That task isn't running.")
-    run.abort()
+    run.abort.abort()
   }
 
-  private async execute(row: Row, at: number, signal: AbortSignal): Promise<Outcome> {
+  private async execute(
+    row: Row,
+    at: number,
+    signal: AbortSignal,
+    beforeRestart?: (signal?: AbortSignal) => Promise<void>,
+  ): Promise<Outcome> {
     const rcon = (command: string) => this.deps.rcon(row.server, command)
     const colour = this.deps.colour?.()
     if (row.kind === 'command') {
@@ -267,6 +306,7 @@ export class ScheduleService {
         now: this.now,
         sleep: this.sleep,
         colour,
+        beforeRestart,
       },
       { warn: row.warn, skipWhenEmpty: row.skipWhenEmpty },
       at,

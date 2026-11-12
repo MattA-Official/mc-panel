@@ -9,7 +9,7 @@ import { JobRunner } from '../server/jobs/runner'
 import { entriesFor, writeZip } from '../server/zip'
 import { levelDat } from './helpers/level-dat'
 
-const body = (b: Uint8Array) => new Response(b).body!
+const body = (b: Uint8Array) => new Response(b as Uint8Array<ArrayBuffer>).body!
 
 function setup(
   opts: { free?: number; fetch?: typeof fetch; pastWorlds?: Record<number, string> } = {},

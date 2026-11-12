@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { buildBoards, buildCards, periodStart } from '../server/stats/leaderboards'
+import { buildBoards, buildCards, periodStart, type Totals } from '../server/stats/leaderboards'
 import { boardValue, findBoard, formatStat } from '../shared/leaderboards'
 
 const STEVE = '069a79f4-44e9-4726-a5be-fca90e38aaf5'
@@ -44,7 +44,7 @@ describe('periodStart', () => {
 })
 
 describe('buildBoards', () => {
-  const totals = [
+  const totals: Totals[] = [
     { uuid: STEVE, stats: { deaths: 3, walk_cm: 50_000, fly_cm: 150_000, play_time: 72_000 } },
     { uuid: ALEX, stats: { deaths: 5, sprint_cm: 10_000, blocks_mined: 40 } },
     { uuid: NOTCH, stats: { deaths: 3, mob_kills: 2 } },
@@ -88,7 +88,7 @@ describe('buildCards', () => {
     { uuid: STEVE, name: 'Steve', firstSeen: 1, lastSeen: 50, sessions: 4, online: true },
     { uuid: ALEX, name: 'Alex', firstSeen: 2, lastSeen: 90, sessions: 1, online: false },
   ]
-  const totals = [
+  const totals: Totals[] = [
     { uuid: STEVE, stats: { deaths: 2 } },
     { uuid: NOTCH, stats: { blocks_mined: 9 } },
   ]

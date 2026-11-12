@@ -39,7 +39,9 @@ function mojang(opts: { skin?: string | null; down?: boolean } = {}) {
     }
     calls.textures++
     const bytes = PNGS[u.split('/').pop()!]
-    return bytes ? new Response(bytes) : new Response(null, { status: 404 })
+    return bytes
+      ? new Response(bytes as Uint8Array<ArrayBuffer>)
+      : new Response(null, { status: 404 })
   }
   return { fetch, calls, set: (o: typeof opts) => Object.assign(opts, o) }
 }

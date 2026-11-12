@@ -8,7 +8,7 @@
 #
 # If the Rust agent fails to start, this falls back to Bun by itself. Before starting it,
 # this writes a marker beside the agent socket naming this release; the Rust agent deletes
-# it once it is listening. If the marker is still there when systemd restarts us, the last
+# it once it is listening and has run its start-up steps. If the marker is still there when systemd restarts us, the last
 # start failed, so we start Bun and leave the marker for the updater to see. /run is
 # cleared at boot, and a new release has a different folder, so either one tries Rust again.
 here=$(dirname "$(readlink -f "$0")")

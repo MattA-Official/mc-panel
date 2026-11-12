@@ -46,7 +46,9 @@ While a restart counts down, its **Run now** button becomes **Call off**. Callin
 ## When a task can't run
 
 - **The server isn't running**: the task is skipped, and its result says so. No notification is sent.
-- **A backup, restore or change is running on the server**: the task waits until it's finished, for up to ten minutes. If it's still going after that, the task is skipped, its result says why, and a notification is sent. While a restart is counting down, the server counts as busy too: **Back up now** says so, and a scheduled backup is skipped.
+- **A backup, restore or change is running on the server**: the task waits until it's finished, for up to ten minutes. If it's still going after that, the task is skipped, its result says why, and a notification is sent. A restart's countdown doesn't hold the server up: a backup due during the warnings still runs, and the restart waits for it to finish before saving and restarting.
+- **The server is stopped during a restart's countdown**: the restart is called off rather than starting the server again, and its result says so.
+- **The task is changed or deleted during its countdown** (or its server is deleted): the countdown is called off, and anyone who was warned hears that the restart isn't happening.
 - **It fails**: for example, the console doesn't answer, or the server doesn't come back after a restart. The task's result says what went wrong, and a **A scheduled restart, command or announcement failed** [notification](notifications.md) is sent. The next run that works sends "Scheduled tasks are working again".
 
 Every run is in **Activity**: credited to **Flytower** when it ran on its schedule, or to you when you pressed **Run now**.
@@ -55,4 +57,4 @@ Every run is in **Activity**: credited to **Flytower** when it ran on its schedu
 
 - A command can't be `stop`. To systemd, a server that stops by itself looks like a crash, so it would be started again (and counted as a crash). Use a restart task instead.
 - A command is one line, and an announcement is at most 256 characters.
-- Tasks of the same server run one at a time. A command due during a restart's countdown waits for the restart to finish (for up to ten minutes, as above).
+- A task waits for a backup, restore or change on its server, and for a restart that is saving and restarting, for up to ten minutes as above. A command or announcement due during a restart's warnings runs straight away.

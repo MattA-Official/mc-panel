@@ -76,8 +76,9 @@ const sections: [string, (c: Commit) => boolean][] = [
   ['Fixes', (c) => c.type === 'fix'],
   ['Performance', (c) => c.type === 'perf'],
   ['Docs', (c) => c.type === 'docs'],
-  ['Other', (c) => ['refactor', 'chore', 'ci', 'build', 'test'].includes(c.type)],
-  ['Other changes', (c) => c.type === ''],
+  // Every other Conventional Commit type (chore, ci, refactor, test, revert…), so none drop out.
+  ['Other', (c) => c.type !== ''],
+  ['Other changes', () => true],
 ]
 
 const commits = parse(raw)
