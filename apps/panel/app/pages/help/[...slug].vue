@@ -5,6 +5,9 @@ import { pageRoute, routeToPage } from '@flytower/docs-layer/routes'
 // Help, full-page: the docs for this version of Flytower, with the pages on the left and
 // the page's contents on the right.
 const route = useRoute()
+// :ui chips in the page show their control in the panel (#270).
+const { show: showMe } = useShowMe()
+provide('docsShowMe', (anchor: string) => void showMe(anchor))
 const { docs } = useAppConfig()
 const base = docs?.base ?? '/help'
 const path = computed(() => routeToPage(route.path, base))
