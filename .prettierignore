@@ -5,4 +5,5 @@ bun.lock
 **/public/*.svg
 **/migrations/meta
 **/migrations.gen.ts
+**/.wrangler
 protocol/schema.json
