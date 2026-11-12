@@ -9,7 +9,8 @@
     ".": "./nuxt.config.ts",
     "./anchors": "./anchors.ts",
     "./collection": "./collection.ts",
-    "./routes": "./routes.ts"
+    "./routes": "./routes.ts",
+    "./screens": "./screens.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
