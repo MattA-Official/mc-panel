@@ -13,6 +13,11 @@ export interface RestartDeps {
   sleep: (ms: number) => Promise<void>
   /** The colour for in-game messages: the brand's accent, or `gold`. */
   colour?: string
+  /**
+   * Runs once the countdown is over, just before saving. Throwing calls the restart off, and
+   * players who were warned hear so.
+   */
+  beforeRestart?: (signal?: AbortSignal) => Promise<void>
 }
 
 export interface RestartTask {
@@ -108,9 +113,11 @@ export async function runRestart(
       await wait(restartAt - deps.now())
     }
     await wait(0)
+    await deps.beforeRestart?.(signal)
+    await wait(0)
   } catch (err) {
     // Players who were told it's coming hear that it isn't.
-    if (err instanceof RestartCancelled && warned) {
+    if (warned) {
       await deps.rcon(tellAll('The restart has been called off', deps.colour)).catch(() => {})
     }
     throw err

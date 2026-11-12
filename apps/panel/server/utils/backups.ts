@@ -59,7 +59,7 @@ export function useExports(): ExportService {
 
 /** Re-reads every server's schedule and updates the cron jobs. */
 export function syncBackupSchedules() {
-  scheduler ??= new BackupScheduler(useBackups())
+  scheduler ??= new BackupScheduler(useBackups(), undefined, { notify: useNotify() })
   scheduler.sync(
     useDb()
       .select({
