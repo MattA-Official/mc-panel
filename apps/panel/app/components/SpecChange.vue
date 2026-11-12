@@ -16,11 +16,14 @@ const loading = ref(false)
 const applying = ref(false)
 const job = ref<number | null>(null)
 const finished = ref<JobEvent | null>(null)
+/** Counts proposals, so an earlier one answering late can't show its plan under a later title. */
+let proposal = 0
 
 async function propose(
   spec: unknown,
   opts: { title: string; upgrade?: true | string[] },
 ): Promise<void> {
+  const mine = ++proposal
   title.value = opts.title
   plan.value = null
   job.value = null
@@ -38,6 +41,7 @@ async function propose(
       method: 'POST',
       body: { spec: current, ...(opts.upgrade ? { upgrade: opts.upgrade } : {}) },
     })
+    if (mine !== proposal) return
     if (!r.ok) {
       open.value = false
       toast.add({
@@ -49,10 +53,11 @@ async function propose(
     }
     plan.value = r.plan!
   } catch (err) {
+    if (mine !== proposal) return
     open.value = false
     toast.add({ title: "Couldn't make a plan", description: errorMessage(err), color: 'error' })
   } finally {
-    loading.value = false
+    if (mine === proposal) loading.value = false
   }
 }
 
