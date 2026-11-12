@@ -40,6 +40,8 @@ const panelDir = join(root, 'apps/panel')
 const port = Number(process.env.DOCS_SCREENS_PORT ?? 3917)
 // Passkeys need a name, not an IP address.
 const base = `http://localhost:${port}`
+/** The panel's address as the pictures show it. */
+const SHOWN_AS = 'https://panel.example.com'
 /** The demo server every server page is shot on. */
 const SERVER = 'survival'
 const SIZES = {
@@ -103,6 +105,8 @@ async function start(data: string) {
     NUXT_APP_SECRET: crypto.getRandomValues(new Uint8Array(32)).toHex(),
     // An address from the documentation range, so no real one shows in a picture.
     NUXT_MACHINE_IPV4: '203.0.113.10',
+    // As if the panel had a domain, so nothing asks for one; passkeys still work on localhost.
+    NUXT_RP_ID: 'localhost',
     PORT: String(port),
     HOST: 'localhost',
   }
@@ -166,7 +170,10 @@ async function call<T>(view: View, path: string, init?: { method?: string; body?
   return r.body
 }
 
-/** First-run setup as "Alex", then two servers, backups, schedules and an invite for Sam. */
+/**
+ * First-run setup as "Alex", then two servers, backups, schedules, an invite for Sam, a
+ * notification channel and a public page.
+ */
 async function seed(view: View) {
   await waitForPath(view, '/setup', 30_000)
   await fill(view, 'input', 'docs-screens')
@@ -240,7 +247,35 @@ async function seed(view: View) {
     () => view.evaluate<boolean>(`!!document.querySelector('[data-e2e=invite-link]')`),
     30_000,
   )
-  log('seeded backups, schedules and an invite for Sam')
+  // The invite's passkey check lasts a few minutes, long enough to add a channel too.
+  await call(view, '/api/system/notify', {
+    body: {
+      name: "Alex's phone",
+      kind: 'ntfy',
+      url: 'https://ntfy.sh/flytower-demo-alerts',
+      events: ['backup.failed', 'server.crashed', 'server.crash_loop', 'disk.full'],
+      servers: [],
+    },
+  })
+  await call(view, `/api/servers/${SERVER}/resources`, {
+    method: 'PATCH',
+    body: { hostname: 'survival.example.com' },
+  })
+  await call(view, `/api/servers/${SERVER}/public-page`, {
+    method: 'PATCH',
+    body: {
+      enabled: true,
+      description: 'Our survival world. Be kind, build what you like, and ask before you borrow.',
+      show: { players: 'names', version: true, leaderboard: false },
+    },
+  })
+  // The Disk card waits for the machine's first reading.
+  await until(
+    'the first disk reading',
+    async () => (await call<{ percent: number | null }>(view, '/api/system/disk')).percent !== null,
+    60_000,
+  )
+  log('seeded backups, schedules, an invite for Sam, a notification channel and a public page')
 }
 
 /** Shoots one screenshot in one theme; returns where its labels are. */
@@ -265,13 +300,31 @@ async function shoot(
     () => view.evaluate<boolean>(`!!document.querySelector(${selector})`),
     30_000,
   )
+  // Show the panel at a made-up domain rather than the address the script runs it on.
+  await view.evaluate(`(() => {
+    const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+      if (n.nodeValue.includes(${JSON.stringify(base)})) {
+        n.nodeValue = n.nodeValue.replaceAll(${JSON.stringify(base)}, ${JSON.stringify(SHOWN_AS)})
+      }
+    }
+  })()`)
   // Let data, fonts and transitions settle, and leave nothing focused or hovered.
   await view.evaluate(`document.fonts.ready.then(() => document.activeElement?.blur())`)
   await Bun.sleep(1200)
-  // A section is pictured whole: make the window tall enough for it (within reason).
+  // A section or card is pictured whole; anything else with the window around it.
+  const frame = `(() => {
+    const el = document.querySelector(${selector})
+    return ${JSON.stringify(anchor.kind)} === 'card'
+      ? el
+      : ${JSON.stringify(anchor.kind)} === 'section'
+        ? el.closest('[data-e2e^="section-"]')
+        : null
+  })()`
+  // Make the window tall enough for it (within reason).
   const tall = await view.evaluate<number>(`(() => {
-    const s = document.querySelector(${selector}).closest('[data-e2e^="section-"]')
-    return s ? Math.ceil(s.getBoundingClientRect().height) + 160 : 0
+    const s = ${frame}
+    return s ? Math.ceil(s.getBoundingClientRect().height) + 260 : 0
   })()`)
   if (tall > size.height) {
     await view.cdp('Emulation.setDeviceMetricsOverride', {
@@ -288,10 +341,9 @@ async function shoot(
     labels: (DOMRectInit | null)[]
   } | null>(`(() => {
     const el = document.querySelector(${selector})
-    // A section anchor is its bar: picture the whole section. Anything else is pictured
-    // with the page around it.
-    const section = el.closest('[data-e2e^="section-"]')
-    if (section) section.scrollIntoView({ block: 'start' })
+    const section = ${frame}
+    // A card goes in the middle, clear of a sticky header above it.
+    if (section) section.scrollIntoView({ block: ${JSON.stringify(anchor.kind)} === 'card' ? 'center' : 'start' })
     else el.scrollIntoView({ block: 'center' })
     const pad = section ? 16 : 0
     const r = section ? section.getBoundingClientRect() : new DOMRect(0, 0, innerWidth, innerHeight)

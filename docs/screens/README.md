@@ -11,7 +11,7 @@ The Backups section of a server's World tab.
 ```
 
 - `name`: the file name here (`backups-light.webp`, `backups-dark.webp`, `backups.json`).
-- `anchor`: the page to picture, named by a control in `packages/docs-layer/anchors.ts`. A section's anchor pictures the whole section; anything else pictures the window.
+- `anchor`: the page to picture, named by a control in `packages/docs-layer/anchors.ts`. A section's or card's anchor pictures just that section or card; anything else pictures the window.
 - `labels`: controls to number on the picture, in order.
 - `device="phone"`: a phone-sized picture.
 
