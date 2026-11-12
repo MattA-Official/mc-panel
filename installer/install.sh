@@ -32,6 +32,7 @@ PANEL_PORT=3000
 
 domain=""
 version="latest"
+version_given=0
 pr=""
 beta=0
 native=0
@@ -126,6 +127,7 @@ Usage: install.sh --domain <host> [options]
 
   --domain <host>       The panel's address, e.g. panel.example.com. Its DNS must point here.
   --version <x.y.z>     Install this release instead of the latest stable one.
+                        --version latest installs the latest stable one.
   --beta                Install the newest release, betas included.
   --native              Install the newest native build: Flytower with parts rewritten in
                         Rust and Go. For test servers only.
@@ -139,8 +141,8 @@ Usage: install.sh --domain <host> [options]
 
 On a machine that already has Flytower, running this again keeps the installed version: it
 rewrites the settings and services and gives you a new setup token. Pass --version, --beta,
---native, --pr or --tarball to change version. Going back to an older version saves a copy
-of the panel's database first.
+--native, --pr or --tarball to change version (--version latest for the newest stable).
+Going back to an older version saves a copy of the panel's database first.
 EOF
 }
 
@@ -149,7 +151,7 @@ main() {
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --domain) domain="${2:-}"; shift 2 ;;
-    --version) version="${2:-}"; version="${version#v}"; shift 2 ;;
+    --version) version="${2:-}"; version="${version#v}"; version_given=1; shift 2 ;;
     --tarball) tarball="${2:-}"; shift 2 ;;
     --pr) pr="${2:-}"; shift 2 ;;
     --beta) beta=1; shift ;;
@@ -200,11 +202,11 @@ trap 'rm -rf "$work"' EXIT
 installed=""
 if [[ -f "$PREFIX/current/VERSION" ]]; then installed="$(cat "$PREFIX/current/VERSION")"; fi
 keep=0
-if [[ -n "$installed" && -z "$tarball" && -z "$pr" && "$version" == latest &&
+if [[ -n "$installed" && -z "$tarball" && -z "$pr" && $version_given -eq 0 &&
   $beta -eq 0 && $native -eq 0 ]]; then
   keep=1
   say "Flytower $installed is already installed; keeping that version"
-  echo "To change version, run this again with --version, --beta, --native or --pr."
+  echo "To change version, run this again with --version <x.y.z> (or latest), --beta, --native or --pr."
 fi
 
 # The version the signed file name promises; the tarball's own VERSION must agree.
