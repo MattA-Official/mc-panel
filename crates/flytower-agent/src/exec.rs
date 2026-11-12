@@ -16,6 +16,13 @@ pub struct ExecResult {
 
 pub trait Exec: Send + Sync {
     fn run(&self, file: &str, args: &[&str]) -> ExecResult;
+
+    /// Like [`Exec::run`], but for programs that may rightly take longer than the usual limit
+    /// (downloads). The program is killed after `timeout`. Fakes needn't care.
+    fn run_for(&self, file: &str, args: &[&str], timeout: Duration) -> ExecResult {
+        let _ = timeout;
+        self.run(file, args)
+    }
 }
 
 /// The real thing. A program still running after two minutes is killed, like the TypeScript
@@ -42,6 +49,10 @@ fn read_all(mut from: impl Read + Send + 'static) -> thread::JoinHandle<String> 
 
 impl Exec for RealExec {
     fn run(&self, file: &str, args: &[&str]) -> ExecResult {
+        self.run_for(file, args, self.timeout)
+    }
+
+    fn run_for(&self, file: &str, args: &[&str], timeout: Duration) -> ExecResult {
         let child = Command::new(file)
             .args(args)
             .stdin(Stdio::null())
@@ -66,7 +77,7 @@ impl Exec for RealExec {
         thread::spawn(move || {
             let _ = done.send(child.wait());
         });
-        let status = if let Ok(status) = waited.recv_timeout(self.timeout) {
+        let status = if let Ok(status) = waited.recv_timeout(timeout) {
             status.ok()
         } else {
             if let Some(pid) = pid {
@@ -117,5 +128,18 @@ mod tests {
             timeout: Duration::from_millis(100),
         };
         assert_eq!(exec.run("sleep", &["30"]).code, -1);
+    }
+
+    #[test]
+    fn a_longer_limit_can_be_given_per_call() {
+        let exec = RealExec {
+            timeout: Duration::from_millis(50),
+        };
+        let r = exec.run_for(
+            "sh",
+            &["-c", "sleep 0.3; echo done"],
+            Duration::from_secs(10),
+        );
+        assert_eq!((r.code, r.stdout.as_str()), (0, "done\n"));
     }
 }
