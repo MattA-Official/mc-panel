@@ -25,6 +25,7 @@ const error = ref('')
 const widget = useTemplateRef<HTMLElement>('widget')
 let widgetId = ''
 let loading: Promise<void> | undefined
+let waiting = false
 
 // Turnstile only loads once someone starts to sign up, so most visitors never fetch it.
 function loadTurnstile() {
@@ -41,7 +42,11 @@ function loadTurnstile() {
     widgetId = window.turnstile.render(widget.value, {
       sitekey: siteKey,
       appearance: 'interaction-only',
-      callback: (t: string) => (token.value = t),
+      callback: (t: string) => {
+        token.value = t
+        // Someone who pressed Subscribe and then had to tick the box doesn't press it twice.
+        if (waiting) subscribe()
+      },
       'expired-callback': () => (token.value = ''),
     })
   })
@@ -74,12 +79,14 @@ async function subscribe() {
   loadTurnstile()
   await loading?.catch(() => {})
   // The invisible check usually finishes within a second or two of loading.
-  if (!token.value) await tokenWithin(8000)
+  if (!token.value) await tokenWithin(4000)
   if (!token.value) {
-    state.value = 'error'
-    error.value = 'Still checking you’re not a bot. Please press Subscribe again in a moment.'
+    // Turnstile wants a tick; its callback sends the form once that's done.
+    waiting = true
+    error.value = 'Please tick the box above to finish signing up.'
     return
   }
+  waiting = false
   state.value = 'sending'
   try {
     await $fetch('/api/newsletter/subscribe', {
