@@ -1,0 +1,35 @@
+{
+  "width": 1280,
+  "height": 960,
+  "device": "desktop",
+  "labels": [
+    {
+      "anchor": "new-server.name",
+      "x": 34.41,
+      "y": 25.21,
+      "w": 45,
+      "h": 7.92
+    },
+    {
+      "anchor": "new-server.loader",
+      "x": 34.41,
+      "y": 46.04,
+      "w": 45,
+      "h": 11.88
+    },
+    {
+      "anchor": "new-server.memory",
+      "x": 34.41,
+      "y": 71.67,
+      "w": 45,
+      "h": 5.42
+    },
+    {
+      "anchor": "new-server.port",
+      "x": 34.41,
+      "y": 79.58,
+      "w": 45,
+      "h": 7.92
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "width": 1280,
+  "height": 960,
+  "device": "desktop",
+  "labels": [
+    {
+      "anchor": "access.invite",
+      "x": 84.26,
+      "y": 15.94,
+      "w": 11.37,
+      "h": 3.33
+    }
+  ]
+}

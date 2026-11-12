@@ -1,0 +1,21 @@
+{
+  "width": 1056,
+  "height": 749,
+  "device": "desktop",
+  "labels": [
+    {
+      "anchor": "branding.name",
+      "x": 3.79,
+      "y": 15.62,
+      "w": 45.27,
+      "h": 11.21
+    },
+    {
+      "anchor": "branding.colour",
+      "x": 3.79,
+      "y": 30.04,
+      "w": 92.42,
+      "h": 10.15
+    }
+  ]
+}

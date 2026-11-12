@@ -44,6 +44,10 @@ If someone's access changes while they have the panel open, it updates when they
 
 ## Inviting someone
 
+::screenshot{name="people" anchor="access.invite" labels="access.invite"}
+Access, People: everyone who can sign in, and invite links not used yet.
+::
+
 1. Go to **Access** in the sidebar. On the **People** tab, choose :ui{anchor="access.invite"}.
 2. Pick a role and a server (or all servers). A note for who it's for is optional and only shown to you.
 3. Copy the link and send it to them. It works once, for 7 days, and is only shown once.

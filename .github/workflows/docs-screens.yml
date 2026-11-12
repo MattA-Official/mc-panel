@@ -1,0 +1,57 @@
+name: Docs screenshots
+
+# Retakes the docs' labelled screenshots (#270) from a demo panel and opens a pull request
+# with the new pictures. Run by hand after a UI change; it never runs on its own.
+on:
+  workflow_dispatch:
+    inputs:
+      names:
+        description: Screenshot names to retake, space-separated (empty retakes them all)
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: docs-screens
+  cancel-in-progress: false
+
+jobs:
+  screens:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run --filter @flytower/panel build
+      - name: Take the screenshots
+        env:
+          NAMES: ${{ inputs.names }}
+        # Word splitting is wanted: each name is its own argument.
+        run: bun run docs:screens $NAMES
+      - name: Open a pull request with the new pictures
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF: ${{ github.ref_name }}
+        run: |
+          if [ -z "$(git status --porcelain docs/screens)" ]; then
+            echo "The screenshots haven't changed." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          branch="docs/screens-${GITHUB_RUN_ID}"
+          git config user.name MattA-Official
+          git config user.email 43476212+MattA-Official@users.noreply.github.com
+          git switch -c "$branch"
+          git add docs/screens
+          git commit -m "docs: retake the docs screenshots"
+          git push -u origin "$branch"
+          gh pr create --base "$REF" --head "$branch" \
+            --title "docs: retake the docs screenshots" \
+            --label type:docs --assignee MattA-Official \
+            --body "New labelled screenshots from the Docs screenshots workflow (run ${GITHUB_RUN_ID}). Check the pictures under Files changed before merging."
+          echo "Opened a pull request from $branch." >> "$GITHUB_STEP_SUMMARY"

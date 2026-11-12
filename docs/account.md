@@ -16,6 +16,10 @@ The installer gives you a **setup link** and a **setup token** (or uses the toke
 
 ## More than one device
 
+::screenshot{name="account" anchor="account.passkeys" labels="account.add-passkey, account.recovery-codes"}
+Your passkeys and recovery codes, on Your account.
+::
+
 On **Your account** (your name at the bottom of the sidebar), **Your passkeys**:
 
 - **Add a passkey** creates one on the device you're using, or on a security key. Add at least two, so losing one device doesn't lock you out. Passkeys in iCloud Keychain, Google Password Manager, 1Password and similar sync between your devices by themselves.

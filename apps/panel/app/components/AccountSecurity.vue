@@ -68,7 +68,7 @@ const day = (iso: string) => formatDate(iso)
 </script>
 
 <template>
-  <UCard data-e2e="account-security">
+  <UCard data-e2e="account-security" data-doc="account.passkeys">
     <template #header>
       <h2 class="font-semibold">Your passkeys</h2>
     </template>
@@ -107,6 +107,7 @@ const day = (iso: string) => formatDate(iso)
         icon="i-lucide-plus"
         label="Add a passkey"
         variant="outline"
+        data-doc="account.add-passkey"
         :loading="busy"
         @click="add"
       />
@@ -124,6 +125,7 @@ const day = (iso: string) => formatDate(iso)
           label="Make new codes"
           variant="outline"
           color="neutral"
+          data-doc="account.recovery-codes"
           :loading="busy"
           @click="confirmingCodes = true"
         />

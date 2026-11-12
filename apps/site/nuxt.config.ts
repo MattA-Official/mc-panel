@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url'
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 // The Flytower website: landing page, docs (from the repo's docs/ folder), changelog and
 // sponsor pages. Every page is prerendered at build time; the Cloudflare Worker serves them as
@@ -49,6 +51,15 @@ export default defineNuxtConfig({
   },
   nitro: {
     preset: 'cloudflare_module',
+    // The docs' labelled screenshots (docs/screens/, taken by `bun run docs:screens`). Only the
+    // website serves them; the panel shows Show me instead.
+    publicAssets: [
+      {
+        dir: fileURLToPath(new URL('../../docs/screens', import.meta.url)),
+        baseURL: '/screens',
+        maxAge: 60 * 60 * 24,
+      },
+    ],
     prerender: { crawlLinks: true, routes: ['/', '/404.html'], failOnError: true },
   },
   routeRules: {

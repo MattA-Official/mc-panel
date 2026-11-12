@@ -14,6 +14,10 @@ panelRoute:
 
 ## Create it
 
+::screenshot{name="new-server" anchor="new-server.loader" labels="new-server.name, new-server.loader, new-server.memory, new-server.port"}
+The New server form.
+::
+
 1. **Servers**, :ui{anchor="servers.new"}.
 2. Give it a :ui[name]{anchor="new-server.name"}, which is what players see. The **short name** below it is used for its folder and can't change later.
 3. Pick a :ui[loader]{anchor="new-server.loader"}:

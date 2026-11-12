@@ -217,7 +217,7 @@ const maxKb = MAX_IMAGE_BYTES / 1024
 </script>
 
 <template>
-  <UCard>
+  <UCard data-doc="branding.form">
     <template #header>
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
@@ -231,7 +231,12 @@ const maxKb = MAX_IMAGE_BYTES / 1024
     </template>
     <form class="space-y-6" data-e2e="branding-form" @submit.prevent="save">
       <div class="grid gap-5 sm:grid-cols-2">
-        <UFormField label="Name" :hint="`${form.name.length}/${NAME_MAX}`" required>
+        <UFormField
+          label="Name"
+          :hint="`${form.name.length}/${NAME_MAX}`"
+          required
+          data-doc="branding.name"
+        >
           <UInput
             v-model="form.name"
             :maxlength="NAME_MAX"
@@ -247,6 +252,7 @@ const maxKb = MAX_IMAGE_BYTES / 1024
 
       <UFormField
         label="Accent colour"
+        data-doc="branding.colour"
         description="Pick your brand colour. Flytower works out lighter and darker shades and uses the ones that are easy to read."
         :error="problem ?? undefined"
       >

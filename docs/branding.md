@@ -10,6 +10,10 @@ panelRoute:
 
 Flytower can wear your society's or community's name and colours instead of its own, without changing any code. Set it on **System**, **Branding**. Saving asks for your passkey.
 
+::screenshot{name="branding" anchor="branding.form" labels="branding.name, branding.colour"}
+The name, colour and font, on System, Branding.
+::
+
 ## What you can change
 
 - **Name**: up to 40 characters. It replaces "Flytower" in the menu, on the sign-in page, in browser tab titles, as the name on Discord notifications and in passkey prompts.

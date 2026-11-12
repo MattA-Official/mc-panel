@@ -131,6 +131,7 @@ const when = (ms: number | null) => (ms ? new Date(ms).toLocaleString() : '')
     v-if="server && relay"
     class="rounded-lg border border-default p-5"
     data-e2e="discord-chat"
+    data-doc="community.discord-chat"
   >
     <div class="flex flex-wrap items-start justify-between gap-2">
       <div>
@@ -172,6 +173,7 @@ const when = (ms: number | null) => (ms ? new Date(ms).toLocaleString() : '')
     <UFormField
       class="mt-4"
       label="Channel webhook URL"
+      data-doc="discord-chat.webhook"
       :ui="{ description: '[overflow-wrap:anywhere]' }"
       :description="
         relay.configured

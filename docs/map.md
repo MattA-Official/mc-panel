@@ -14,6 +14,10 @@ Flytower draws it itself, from the world's files. Nothing is added to the server
 
 On the server's **World** tab, **Web map**, switch on **Draw a web map**. Flytower draws the whole world straight away, then keeps it up to date. You can also set it in the [YAML](spec.md#map) with `map: { enabled: true }`.
 
+::screenshot{name="map" anchor="world.map" labels="map.enable"}
+Web map, on a server's World tab.
+::
+
 Turning it off stops drawing and deletes the map's files. Turning it back on draws everything again.
 
 ## How it keeps up

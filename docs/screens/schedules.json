@@ -1,0 +1,21 @@
+{
+  "width": 1056,
+  "height": 591,
+  "device": "desktop",
+  "labels": [
+    {
+      "anchor": "schedules.add-task",
+      "x": 86.79,
+      "y": 17.94,
+      "w": 9.71,
+      "h": 5.41
+    },
+    {
+      "anchor": "schedules.run-now",
+      "x": 80.89,
+      "y": 32.99,
+      "w": 7.94,
+      "h": 4.06
+    }
+  ]
+}

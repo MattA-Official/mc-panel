@@ -1,0 +1,21 @@
+{
+  "width": 1056,
+  "height": 348,
+  "device": "desktop",
+  "labels": [
+    {
+      "anchor": "account.add-passkey",
+      "x": 3.79,
+      "y": 56.03,
+      "w": 13.08,
+      "h": 9.2
+    },
+    {
+      "anchor": "account.recovery-codes",
+      "x": 84.3,
+      "y": 78.16,
+      "w": 11.91,
+      "h": 9.2
+    }
+  ]
+}

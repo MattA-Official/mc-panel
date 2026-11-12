@@ -12,6 +12,10 @@ A full disk is one of the few things that can corrupt a Minecraft world: if the 
 
 ## Where the space has gone
 
+::screenshot{name="disk" anchor="system.disk" labels="disk.measure-now"}
+The Disk card, on System, Overview.
+::
+
 **System**, **Overview**, **Disk** shows one bar for the disk that holds your servers. Each server has its own colour, then imports and archives, then the rest of the machine in grey, then free space. Hover over a part of the bar to see its size.
 
 The table under it lists each server's total and its largest part, with links to its details and its backups. A server's total includes its backups and world exports, since those are kept for it.

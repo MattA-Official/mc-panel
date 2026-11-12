@@ -12,6 +12,10 @@ Set them under the server's **Settings**, :ui{anchor="settings.schedules"}, or u
 
 ## Adding a task
 
+::screenshot{name="schedules" anchor="settings.schedules" labels="schedules.add-task, schedules.run-now"}
+The Schedules section of a server's Settings, with a daily restart and an hourly save.
+::
+
 Press :ui{anchor="schedules.add-task"} and choose what it does:
 
 - **Restart**: warns anyone online, saves the world, then restarts the server.

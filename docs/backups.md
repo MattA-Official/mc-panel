@@ -10,6 +10,10 @@ panelRoute:
 
 Everything here is on a server's **World** tab, which opens on :ui{anchor="world.backups"}.
 
+::screenshot{name="backups" anchor="world.backups" labels="backups.back-up-now, backups.schedule, backups.keep"}
+The Backups section of a server's World tab.
+::
+
 ## Taking backups
 
 - :ui{anchor="backups.back-up-now"}, with a note if you like. If the server is running, it pauses saving for a moment so the world on disk is consistent. Players stay connected.
