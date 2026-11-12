@@ -97,3 +97,50 @@ describe('database', () => {
     expect(events.chatter).toEqual(['player.joined'])
   })
 })
+
+describe('migration runner', () => {
+  const setup = () => {
+    const sqlite = new Database(':memory:', { strict: true })
+    sqlite.run('PRAGMA foreign_keys = ON')
+    migrate(sqlite, [
+      {
+        tag: 'a',
+        sql: 'CREATE TABLE parent (id INTEGER PRIMARY KEY, name TEXT);\n--> statement-breakpoint\nCREATE TABLE child (id INTEGER PRIMARY KEY, parent_id INTEGER NOT NULL REFERENCES parent(id) ON DELETE CASCADE);',
+      },
+    ])
+    sqlite.run("INSERT INTO parent (id, name) VALUES (1, 'p')")
+    sqlite.run('INSERT INTO child (id, parent_id) VALUES (10, 1)')
+    return sqlite
+  }
+
+  it('keeps child rows through a table rebuild', () => {
+    const sqlite = setup()
+    migrate(sqlite, [
+      { tag: 'a', sql: '' },
+      {
+        tag: 'b',
+        sql: [
+          'CREATE TABLE __new_parent (id INTEGER PRIMARY KEY, name TEXT NOT NULL)',
+          'INSERT INTO __new_parent SELECT id, name FROM parent',
+          'DROP TABLE parent',
+          'ALTER TABLE __new_parent RENAME TO parent',
+        ].join(';\n--> statement-breakpoint\n'),
+      },
+    ])
+    expect(sqlite.query('SELECT id FROM child').all()).toEqual([{ id: 10 }])
+    expect(sqlite.query('PRAGMA foreign_keys').get()).toEqual({ foreign_keys: 1 })
+  })
+
+  it('rolls back a migration that leaves broken references', () => {
+    const sqlite = setup()
+    expect(() =>
+      migrate(sqlite, [
+        { tag: 'a', sql: '' },
+        { tag: 'c', sql: 'DELETE FROM parent' },
+      ]),
+    ).toThrow('Migration c left broken references (child -> parent).')
+    expect(sqlite.query('SELECT id FROM parent').all()).toEqual([{ id: 1 }])
+    expect(sqlite.query("SELECT tag FROM __flytower_migrations WHERE tag = 'c'").all()).toEqual([])
+    expect(sqlite.query('PRAGMA foreign_keys').get()).toEqual({ foreign_keys: 1 })
+  })
+})
