@@ -89,8 +89,6 @@ fn main() -> ExitCode {
         }
     };
     println!("flytower-agent {} (rust) listening", ctx.version);
-    // Tell bin/flytower-agent this start worked, so it keeps choosing Rust after a restart.
-    clear_start_marker(&opts.socket_path);
     // Before anything reads or writes state: the folders, and what older releases left.
     if let Err(e) = folders::prepare(&ctx) {
         eprintln!("preparing the agent's folders failed: {}", e.message);
@@ -114,6 +112,11 @@ fn main() -> ExitCode {
         Ok(false) => {}
         Err(e) => eprintln!("updating the Caddyfile failed: {e}"),
     }
+    // Tell bin/flytower-agent this start worked, so it keeps choosing Rust after a restart.
+    // Only now, after the start-up steps above: if one of them brings the agent down, the
+    // marker stays and the next start uses Bun. (The steps log their own errors and carry on,
+    // so only a crash keeps the marker.)
+    clear_start_marker(&opts.socket_path);
     serve(&listener, Some(uid), move |line| {
         // stdout goes to the journal; one JSON line per request.
         dispatch(line, |p| handle(&p, &ctx), |audit| println!("{audit}"))
