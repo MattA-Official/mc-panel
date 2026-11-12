@@ -232,15 +232,52 @@ export async function publicLeaderboards(
   return { period: o.period, since: o.since, updatedAt: o.updatedAt, boards: o.boards }
 }
 
+/** A public page's leaderboards for every period, null where it shows none. */
+export type PublicBoards = Record<Period, Board[] | null>
+
+const publicBoardsCache = new Map<string, { key: string; at: number; boards: Promise<PublicBoards> }>()
+
+/** How long a server's public leaderboards are kept, at most. They change once a day. */
+const PUBLIC_BOARDS_MS = 5 * 60_000
+
+/**
+ * A public page's leaderboards for every period, worked out once and kept for a few minutes,
+ * or until the page, the stats settings or the daily snapshot change. For the heads on the
+ * page and Discord, which only ever show what these boards show.
+ */
+export function publicBoards(server: string, page: PublicPage): Promise<PublicBoards> {
+  const key = JSON.stringify([
+    page.enabled,
+    page.show,
+    statsSettings(server),
+    useStatsSnapshot().lastTaken(server),
+    // A new week or month starts new boards.
+    PERIODS.map((p) => periodStart(p, serverTimezone(server), Date.now())),
+  ])
+  const hit = publicBoardsCache.get(server)
+  if (hit && hit.key === key && Date.now() - hit.at < PUBLIC_BOARDS_MS) return hit.boards
+  const boards = (async () => {
+    const out = {} as PublicBoards
+    for (const period of PERIODS)
+      out[period] = (await publicLeaderboards(server, page, period))?.boards ?? null
+    return out
+  })()
+  const entry = { key, at: Date.now(), boards }
+  publicBoardsCache.set(server, entry)
+  // A failure isn't kept, so the next ask tries again.
+  boards.catch(() => {
+    if (publicBoardsCache.get(server) === entry) publicBoardsCache.delete(server)
+  })
+  return boards
+}
+
 /** Every player on any of a public page's leaderboards, for their heads. */
 export async function publicLeaderboardUuids(
   server: string,
   page: PublicPage,
 ): Promise<Set<string>> {
   const out = new Set<string>()
-  for (const period of PERIODS) {
-    const l = await publicLeaderboards(server, page, period)
-    for (const b of l?.boards ?? []) for (const e of b.entries) out.add(e.uuid)
-  }
+  for (const boards of Object.values(await publicBoards(server, page)))
+    for (const b of boards ?? []) for (const e of b.entries) out.add(e.uuid)
   return out
 }
