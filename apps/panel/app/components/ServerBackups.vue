@@ -255,6 +255,7 @@ function menu(b: BackupRow) {
       <UButton
         label="Back up now"
         icon="i-lucide-archive"
+        data-doc="backups.back-up-now"
         :disabled="running || data?.busy"
         @click="noteOpen = true"
       />

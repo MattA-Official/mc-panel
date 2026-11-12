@@ -13,8 +13,10 @@ watch(open, (isOpen) => {
   if (isOpen && !page.value) void refreshNuxtData('help-panel')
 })
 
-// Links between docs pages stay in the panel.
+// Links between docs pages stay in the panel, and :ui chips can show their control.
 provide('docsOpenInPlace', (to: string) => show(to))
+const { show: showMe } = useShowMe()
+provide('docsShowMe', (anchor: string) => void showMe(anchor))
 
 // Scroll to the heading a "Learn more" link asked for, or back to the top. The page's
 // components render a moment after its data arrives, so look for the heading for up to a second.

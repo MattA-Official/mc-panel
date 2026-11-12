@@ -138,6 +138,7 @@ useShortcuts()
       </UDashboardSidebar>
       <slot />
       <HelpPanel />
+      <DocSpotlight />
       <PanelSearch
         :pages="palette.pages.value"
         :server-groups="palette.groups"

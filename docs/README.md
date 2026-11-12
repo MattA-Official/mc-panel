@@ -8,7 +8,7 @@ order: 1
 
 Flytower is a web panel for running Minecraft servers on your own VPS. You install it once, then create and look after servers from the browser. You sign in with a passkey.
 
-These pages are also in the panel itself, for the version you have installed: **Help** in the sidebar, the **?** at the top of each page for the page you're on, and **Ctrl+K** (**⌘K** on a Mac) to search them.
+These pages are also in the panel itself, for the version you have installed: **Help** in the sidebar, the **?** at the top of each page for the page you're on, and :shortcut{keys="meta+k"} to search them.
 
 ## Getting started
 

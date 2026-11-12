@@ -332,7 +332,12 @@ async function submit() {
         Restarts, commands and announcements that run by themselves. They're in the server's YAML as
         <code class="font-mono">schedules</code>.
       </p>
-      <UButton label="Add task" icon="i-lucide-plus" @click="open(null)" />
+      <UButton
+        label="Add task"
+        icon="i-lucide-plus"
+        data-doc="schedules.add-task"
+        @click="open(null)"
+      />
     </div>
 
     <div class="overflow-hidden rounded-lg border border-default">
@@ -388,6 +393,7 @@ async function submit() {
               v-else
               label="Run now"
               icon="i-lucide-play"
+              data-doc="schedules.run-now"
               size="xs"
               color="neutral"
               variant="outline"

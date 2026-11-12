@@ -184,6 +184,7 @@ async function remove() {
           label="Invite someone"
           class="shrink-0 self-start"
           data-e2e="invite"
+          data-doc="access.invite"
           @click="startInvite"
         />
       </div>
