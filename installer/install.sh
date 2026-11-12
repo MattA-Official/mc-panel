@@ -415,6 +415,9 @@ EOF
 
 systemctl daemon-reload
 systemctl enable --quiet flytower-agent.service flytower-panel.service
+# Re-runs restart the services more often than systemd's start limit allows (five in ten
+# seconds), so clear the count first rather than have a quick second run fail.
+systemctl reset-failed flytower-agent.service flytower-panel.service 2>/dev/null || true
 systemctl restart flytower-agent.service
 systemctl restart flytower-panel.service
 
@@ -507,6 +510,7 @@ chown flytower:flytower "$token_tmp"
 chmod 0600 "$token_tmp"
 mv -f "$token_tmp" "$STATE_DIR/setup-token.hash"
 # The panel picks the token up at boot.
+systemctl reset-failed flytower-panel.service 2>/dev/null || true
 systemctl restart flytower-panel.service
 
 # ---------------------------------------------------------------- done
