@@ -3,6 +3,7 @@
  * gzipped days before it.
  */
 import { lstat, readdir } from 'node:fs/promises'
+import { gunzipSync } from 'node:zlib'
 import { join } from 'node:path'
 import { FileError, resolveInside } from './files'
 
@@ -58,15 +59,19 @@ export async function readLog(root: string, name: string, query = ''): Promise<L
   const gz = name.endsWith('.gz')
   if (!gz && size > MAX_LOG_BYTES)
     throw new FileError(413, 'This log is too big to show. Download it instead.')
-  let bytes = new Uint8Array(await Bun.file(path).arrayBuffer())
+  if (gz && size > MAX_LOG_BYTES)
+    throw new FileError(413, 'This log is too big to show. Download it instead.')
+  let bytes: Uint8Array = new Uint8Array(await Bun.file(path).arrayBuffer())
   if (gz) {
+    // Unpacking stops at the cap, so a small archive that unpacks to gigabytes is refused
+    // before it can use the memory.
     try {
-      bytes = Bun.gunzipSync(bytes)
-    } catch {
+      bytes = gunzipSync(bytes, { maxOutputLength: MAX_LOG_BYTES })
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ERR_BUFFER_TOO_LARGE')
+        throw new FileError(413, 'This log is too big to show. Download it instead.')
       throw new FileError(415, "This log isn't valid gzip.")
     }
-    if (bytes.byteLength > MAX_LOG_BYTES)
-      throw new FileError(413, 'This log is too big to show. Download it instead.')
   }
   const text = new TextDecoder().decode(bytes)
   const all = text.split(/\r?\n/)

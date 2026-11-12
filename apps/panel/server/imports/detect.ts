@@ -5,7 +5,7 @@
 import { lstat, readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parseProperties, toRecord } from '../properties'
-import { readNbt, worldVersion } from './nbt'
+import { MAX_BYTES as MAX_NBT_BYTES, readNbt, worldVersion } from './nbt'
 
 export interface Detected {
   /** Path of the server or world inside the staging folder. */
@@ -70,6 +70,7 @@ export async function findRoot(dir: string): Promise<string> {
 
 async function levelVersion(levelDat: string) {
   try {
+    if ((await lstat(levelDat)).size > MAX_NBT_BYTES) return null
     return worldVersion(readNbt(new Uint8Array(await readFile(levelDat)))).name
   } catch {
     return null

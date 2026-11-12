@@ -1,3 +1,5 @@
+import { gunzipSync } from 'node:zlib'
+
 /**
  * Just enough NBT to read level.dat: big-endian, gzip (or not), every tag type. Values come
  * back as plain JS (bigint for longs). Bounded so a hostile file can't exhaust memory.
@@ -6,7 +8,8 @@ export type Nbt =
   number | bigint | string | Nbt[] | { [k: string]: Nbt } | Int8Array | Int32Array | BigInt64Array
 
 const MAX_DEPTH = 64
-const MAX_BYTES = 16 * 1024 * 1024
+/** The most level.dat may be, packed or unpacked. Real ones are a few kilobytes. */
+export const MAX_BYTES = 16 * 1024 * 1024
 
 export class NbtError extends Error {
   override name = 'NbtError'
@@ -14,10 +17,17 @@ export class NbtError extends Error {
 
 export function readNbt(input: Uint8Array): { [k: string]: Nbt } {
   let bytes = input
-  if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
-    bytes = Bun.gunzipSync(bytes as Uint8Array<ArrayBuffer>)
-  }
   if (bytes.length > MAX_BYTES) throw new NbtError('level.dat is far too big.')
+  if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
+    // Stops unpacking at the cap, so a small file that unpacks to gigabytes can't use them up.
+    try {
+      bytes = gunzipSync(bytes, { maxOutputLength: MAX_BYTES })
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ERR_BUFFER_TOO_LARGE')
+        throw new NbtError('level.dat is far too big.')
+      throw new NbtError("level.dat isn't valid gzip.")
+    }
+  }
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   const utf8 = new TextDecoder()
   let at = 0
