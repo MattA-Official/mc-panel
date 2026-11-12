@@ -17,6 +17,7 @@ interface AccessView {
 const { server } = useServerContext()
 const name = computed(() => server.value?.name ?? '')
 const toast = useToast()
+const copy = useCopy()
 const can = useCan()
 const withElevation = useElevation()
 const { data, refresh } = await useFetch<AccessView>(() => `/api/servers/${name.value}/access`)
@@ -104,8 +105,7 @@ async function createInvite() {
 
 async function copyLink() {
   if (!link.value) return
-  await navigator.clipboard.writeText(link.value.url)
-  toast.add({ title: 'Link copied', color: 'success' })
+  await copy(link.value.url, 'Link')
 }
 
 const cancelInvite = (id: number) =>

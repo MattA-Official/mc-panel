@@ -37,12 +37,9 @@ const STATES = {
 } as const
 const state = computed(() => (data.value ? STATES[data.value.state] : null))
 
-const copied = ref(false)
+const { copied, copy: copyText } = useCopyButton()
 async function copy() {
-  if (!data.value) return
-  await navigator.clipboard.writeText(data.value.address).catch(() => {})
-  copied.value = true
-  setTimeout(() => (copied.value = false), 1500)
+  if (data.value) await copyText(data.value.address, 'Address')
 }
 
 // The MOTD as the multiplayer list shows it: two lines, in the game's colours.

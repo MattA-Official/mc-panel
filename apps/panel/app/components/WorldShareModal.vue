@@ -32,14 +32,9 @@ async function makeLink() {
     toast.add({ title: "Couldn't make a link", description: errorMessage(err), color: 'error' })
   }
 }
+const copyText = useCopy()
 async function copy() {
-  if (!link.value) return
-  try {
-    await navigator.clipboard.writeText(link.value)
-    toast.add({ title: 'Link copied', color: 'success' })
-  } catch {
-    toast.add({ title: 'Select the link and copy it', color: 'neutral' })
-  }
+  if (link.value) await copyText(link.value, 'Link')
 }
 </script>
 
