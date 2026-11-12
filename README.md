@@ -2,7 +2,7 @@
 
 A self-hosted web panel for running Minecraft servers. Install it once on a fresh VPS, then create, configure and look after any number of servers from the browser. You sign in with a passkey, and you never need SSH again.
 
-**Latest:** 1.0.1 on the Stable channel, and 1.1.0-beta.6 on the Beta channel. **Install:** [docs/install.md](docs/install.md). **Everything else:** [the documentation](docs/README.md).
+**Latest:** see [Releases](https://github.com/MattA-Official/mc-panel/releases). **Install:** [docs/install.md](docs/install.md). **Everything else:** [the documentation](docs/README.md).
 
 ## What it is
 
@@ -15,24 +15,15 @@ A self-hosted web panel for running Minecraft servers. Install it once on a fres
 ## Features
 
 - **Servers and content:** vanilla, Fabric and Paper servers; mods, plugins and datapacks from Modrinth, Hangar and Vanilla Tweaks, or your own files; a live console, players, whitelist and operators.
-- **Backups:** scheduled backups with retention, restores, and off-site copies to S3-compatible storage.
-- **Self-updates:** signed updates from the panel on a Stable or Beta channel, rolled back automatically if they fail, with **Go back to** for the previous version.
-- **Activity and performance:** a log of who changed what, and performance history for each server.
+- **Backups:** scheduled backups with retention, restores, off-site copies to S3-compatible storage, and past worlds kept when you reset one. [More](docs/backups.md)
+- **Keeping an eye on things:** crash detection with automatic restarts, notifications to Discord, ntfy or a webhook, disk-use warnings, and performance history. [Crashes](docs/crashes.md), [notifications](docs/notifications.md), [disk](docs/disk.md)
+- **Scheduled tasks:** restarts with an in-game countdown, console commands and announcements. [More](docs/schedules.md)
+- **People and permissions:** invite others with roles that say what each person can do, and a log of who changed what. [More](docs/people.md)
+- **Community:** a public [status page](docs/status-page.md), [Discord](docs/discord.md) chat and roles, and a [web map](docs/map.md) of your world.
+- **Your own look:** name, accent colour, font, logo and favicon across the panel, sign-in page, Discord and in-game messages. [More](docs/branding.md)
+- **Self-updates:** signed updates from the panel on a Stable, Beta or Native channel, rolled back automatically if they fail, with **Go back to** for the previous version. [More](docs/updating.md)
 
-New in 1.1.0 (on the Beta channel now):
-
-- **Notifications** to Discord, ntfy or a JSON webhook for crashes, failed backups, a filling disk, updates and players joining. [More](docs/notifications.md)
-- **Crash detection:** crash reports kept and shown in the panel, automatic restarts, crash loops stopped, and servers that stop responding noticed. [More](docs/crashes.md)
-- **Scheduled tasks:** restarts with an in-game countdown, console commands and announcements, in each server's own time zone. [More](docs/schedules.md)
-- **Update badges** for Flytower, mods, plugins, datapacks, Minecraft and Java. Nothing installs by itself. [More](docs/updating.md)
-- **Disk use:** where the space has gone, warnings at 85% and 95%, and backups skipped rather than fill the disk. [More](docs/disk.md)
-- **Hidden secrets:** secrets in `server.properties` never appear in specs, the Settings form or clones.
-
-Coming soon in 1.2.0 (merged on `main`, not yet released):
-
-- **Branding:** your own name, accent colour, font, logo and favicon across the panel, sign-in page, Discord and in-game messages. [More](docs/branding.md)
-- **Player heads** on the Players tab, fetched from Mojang by the panel itself and kept on disk.
-- **Past worlds:** keep the old world when you reset one, to download, share or turn into a new server. [More](docs/backups.md#past-worlds)
+What's new in each version is in the [release notes](https://github.com/MattA-Official/mc-panel/releases).
 
 ## Install
 
@@ -45,7 +36,7 @@ curl -fsSL https://github.com/MattA-Official/mc-panel/releases/latest/download/i
 
 The installer prints a one-time setup token. Open your domain, enter it, and create your passkey. You can also install on Hetzner Cloud with no SSH at all, through cloud-config. See [Installing Flytower](docs/install.md) for both.
 
-**Stable or Beta.** The installer installs the newest stable release by default. Add `--beta` for the newest release including betas, or `--version <x.y.z>` for a specific one. Once installed, choose the update channel under **System → Updates**. See [Stable or Beta](docs/updating.md#stable-or-beta).
+**Stable or Beta.** The installer installs the newest stable release by default. Add `--beta` for the newest release including betas, `--native` for the newest native build, or `--version <x.y.z>` for a specific one. Once installed, choose the update channel under **System → Updates**. See [Stable or Beta](docs/updating.md#stable-or-beta). Running the installer again on a box that has Flytower keeps the version it has, unless you pass one of these.
 
 **Testing a pull request.** `--pr <number>` installs the signed test build of that pull request. It's for test boxes, not real servers. Each release's testing notes are in `docs/testing/testing-<version>.md`.
 
