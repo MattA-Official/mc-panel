@@ -8,8 +8,7 @@ mailing list).
 - **Docs** come from the repo's `docs/` folder (the same Markdown the panel will show), excluding
   `testing-*.md`. The sidebar order lives in `app/app.config.ts`.
 - **Site-only pages** written in Markdown live in `content/pages/` and `content/legal/`.
-- **The domain** is a placeholder (`flytower.example`) until it is registered. Change it in
-  `app/app.config.ts`.
+- **The domain** (`flytower.dev`) and contact addresses are set in `app/app.config.ts`.
 - **Analytics**: set `NUXT_PUBLIC_CF_ANALYTICS_TOKEN` at build time to add Cloudflare Web
   Analytics. Visitors can switch it off on the privacy page, and Global Privacy Control is honoured.
 

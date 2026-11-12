@@ -1,10 +1,10 @@
-// Flytower website settings. The domain is a placeholder until it is registered: change `url`
+// Flytower website settings. The domain and addresses live here and nowhere else: change `url`
 // and `email` here and nowhere else.
 export default defineAppConfig({
   site: {
     name: 'Flytower',
-    url: 'https://flytower.example',
-    email: { hello: 'hello@flytower.example', privacy: 'privacy@flytower.example' },
+    url: 'https://flytower.dev',
+    email: { hello: 'hello@flytower.dev', privacy: 'privacy@flytower.dev' },
     tagline: 'Run Minecraft servers on your own VPS, from the browser.',
     repo: 'https://github.com/MattA-Official/mc-panel',
     releases: 'https://github.com/MattA-Official/mc-panel/releases',

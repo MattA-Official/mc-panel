@@ -1,10 +1,12 @@
 name: Website
 
-# Builds the website (apps/site) and, once Cloudflare credentials are added as repository
-# secrets, deploys it: pull requests get a preview URL, main goes live. Without the secrets the
-# build still runs and the output is attached to the run, so a broken site never merges.
+# Builds the website (apps/site) on every change and attaches the output to the run, so a broken
+# site never merges. Once Cloudflare credentials are added as repository secrets, pull requests
+# get a preview URL. Going live is a separate switch: main (and each release) deploys only when
+# the repository variable SITE_DEPLOY is "true".
 #
 # Secrets: CLOUDFLARE_API_TOKEN (Workers Scripts: Edit) and CLOUDFLARE_ACCOUNT_ID.
+# Variable: SITE_DEPLOY = true, once the domain and launch are ready.
 
 on:
   push:
@@ -72,6 +74,6 @@ jobs:
             else await github.rest.issues.createComment({ ...context.repo, issue_number: context.issue.number, body })
 
       - name: Deploy
-        if: env.CLOUDFLARE_API_TOKEN != '' && (github.event_name == 'release' || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main'))
+        if: vars.SITE_DEPLOY == 'true' && env.CLOUDFLARE_API_TOKEN != '' && (github.event_name == 'release' || (github.event_name != 'pull_request' && github.ref == 'refs/heads/main'))
         working-directory: apps/site
         run: bunx wrangler deploy
