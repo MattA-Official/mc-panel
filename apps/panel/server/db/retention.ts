@@ -28,7 +28,8 @@ export function pruneOld(db: Db, now = Date.now()): { audit: number; jobs: numbe
         ),
       ),
     )
-    .run().changes
+    .returning({ id: a.id })
+    .all().length
   const j = schema.jobs
   // Queued and running jobs are never removed, however old.
   const jobs = db
@@ -41,6 +42,7 @@ export function pruneOld(db: Db, now = Date.now()): { audit: number; jobs: numbe
         lt(j.finishedAt, new Date(now - JOBS_KEEP_MS)),
       ),
     )
-    .run().changes
+    .returning({ id: j.id })
+    .all().length
   return { audit, jobs }
 }
