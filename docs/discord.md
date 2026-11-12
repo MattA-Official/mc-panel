@@ -18,6 +18,10 @@ Discord sends each command to your panel over HTTPS, so the panel needs a domain
 2. On the app's **Bot** tab, press **Reset Token** and copy the token.
 3. In Flytower, open **System**, **Integrations**, paste the token into **Discord app** and press **Connect**. You're asked for your passkey.
 
+::screenshot{name="discord-app" anchor="system.discord" labels="discord.token"}
+The Discord app card, on System, Integrations.
+::
+
 Flytower then:
 
 - reads the app's name, application ID and public key from Discord, so you don't copy them by hand,
@@ -93,6 +97,10 @@ Each server can post what players say in game to a Discord channel. This only ne
 
 1. In Discord, open the channel's settings, **Integrations**, **Webhooks**, press **New Webhook** and **Copy Webhook URL**.
 2. In Flytower, open the server, **Settings**, **Community**, **Discord chat**, paste the URL and press **Turn on**. You're asked for your passkey. **Send a test** posts a line first if you'd like to check.
+
+::screenshot{name="discord-chat" anchor="community.discord-chat" labels="discord-chat.webhook"}
+Discord chat, in a server's Settings, Community.
+::
 
 Chat (and `/me`) is posted under the player's name with their face as the picture. `say` and `me` from the panel's console are posted under `[Server]` and the name of whoever sent them. Joins, leaves, deaths and advancements are posted the same way, in italics (`joined the game`, `was slain by Zombie`, `has made the advancement [Stone Age]`). Everything is plain text, unlike notifications, which use embeds. Turn any of the four off with the switches. Lines come from the server's log the moment Minecraft writes them, including chat that mods like No Chat Reports turn into system messages.
 

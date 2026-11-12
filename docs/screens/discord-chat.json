@@ -1,0 +1,14 @@
+{
+  "width": 1014,
+  "height": 550,
+  "device": "desktop",
+  "labels": [
+    {
+      "anchor": "discord-chat.webhook",
+      "x": 3.65,
+      "y": 22.73,
+      "w": 92.7,
+      "h": 13.82
+    }
+  ]
+}

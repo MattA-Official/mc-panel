@@ -12,6 +12,10 @@ Each server can have a page that anyone can open without signing in, at `https:/
 
 A server's **Settings**, **Community**, **Public page**: switch on **Show a public page for this server**, write a description (up to 500 characters, shown as plain text with line breaks), choose what it says about players, and **Save**. The card then shows the page's address with a copy button.
 
+::screenshot{name="public-page" anchor="community.public-page" labels="public-page.enable"}
+Public page, in a server's Settings, Community.
+::
+
 If the server has its own [hostname](addresses.md), the page is also at `https://<hostname>`, such as `https://survival.example.com`. See [On the server's own address](#on-the-servers-own-address).
 
 While the page is off, its address says "Nothing here", exactly as for a server that doesn't exist, so nobody can find out which servers you have by guessing names.

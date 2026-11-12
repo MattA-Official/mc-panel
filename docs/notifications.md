@@ -12,6 +12,10 @@ Flytower can tell you when something needs attention, so you don't have to watch
 
 Set them up on **System**, **Notifications**. Each place Flytower sends to is a **channel**. You can have as many as you like, each with its own events and servers: for example, problems to an admins' Discord channel and joins to a public one.
 
+::screenshot{name="notifications" anchor="system.notifications" labels="notifications.add"}
+The notification channels, on System, Notifications.
+::
+
 ## What you can hear about
 
 | Group    | Event                                               | When                                                                                                                                |

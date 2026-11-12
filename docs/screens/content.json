@@ -1,0 +1,21 @@
+{
+  "width": 1280,
+  "height": 960,
+  "device": "desktop",
+  "labels": [
+    {
+      "anchor": "content.add",
+      "x": 87.8,
+      "y": 14.27,
+      "w": 9.7,
+      "h": 3.33
+    },
+    {
+      "anchor": "content.vanilla-tweaks",
+      "x": 76.14,
+      "y": 14.27,
+      "w": 11.03,
+      "h": 3.33
+    }
+  ]
+}
