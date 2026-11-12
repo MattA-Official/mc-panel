@@ -8,10 +8,11 @@ use std::thread;
 
 use flytower_agent::dispatch::dispatch;
 use flytower_agent::envelope::MAX_LINE_BYTES;
+use flytower_agent::envelope::Response;
 use flytower_agent::exec::{Exec, RealExec};
 use flytower_agent::fetch::Curl;
 use flytower_agent::handlers::{Context, handle, system_clock};
-use flytower_agent::server::{ListenOptions, bind, serve};
+use flytower_agent::server::{ListenOptions, bind, serve, serve_at_most};
 use flytower_agent::units::Paths;
 use serde_json::{Value, json};
 
@@ -78,5 +79,53 @@ fn answers_in_order_over_a_socket() {
     stream.write_all(&vec![b'x'; MAX_LINE_BYTES + 1]).unwrap();
     assert_eq!(read(), "");
 
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn turns_away_connections_over_the_limit_and_frees_their_slots() {
+    let dir = std::env::temp_dir().join(format!("flytower-agent-cap-{}", std::process::id()));
+    let opts = ListenOptions {
+        socket_path: dir.join("agent.sock"),
+        group: None,
+    };
+    let listener = bind(&opts).unwrap();
+    thread::spawn(move || {
+        serve_at_most(&listener, None, 2, |_| Response::ok("x", json!({})));
+    });
+    let ask = |stream: &mut UnixStream| {
+        let _ = stream.write_all(b"{}\n");
+        let mut line = String::new();
+        BufReader::new(stream.try_clone().unwrap())
+            .read_line(&mut line)
+            .unwrap();
+        serde_json::from_str::<Value>(&line).unwrap()
+    };
+    let mut first = UnixStream::connect(&opts.socket_path).unwrap();
+    let mut second = UnixStream::connect(&opts.socket_path).unwrap();
+    assert_eq!(ask(&mut first)["ok"], true);
+    assert_eq!(ask(&mut second)["ok"], true);
+    // A third is told the agent is busy, then closed.
+    let mut third = UnixStream::connect(&opts.socket_path).unwrap();
+    let mut line = String::new();
+    BufReader::new(third.try_clone().unwrap())
+        .read_line(&mut line)
+        .unwrap();
+    let busy: Value = serde_json::from_str(&line).unwrap();
+    assert!(busy["error"]["message"].as_str().unwrap().contains("busy"));
+    let _ = third.write_all(b"{}\n");
+    // Closing one frees its slot.
+    drop(first);
+    let mut freed = None;
+    for _ in 0..50 {
+        let mut again = UnixStream::connect(&opts.socket_path).unwrap();
+        if ask(&mut again)["ok"] == true {
+            freed = Some(again);
+            break;
+        }
+        thread::sleep(std::time::Duration::from_millis(20));
+    }
+    assert!(freed.is_some());
+    drop(second);
     std::fs::remove_dir_all(dir).unwrap();
 }

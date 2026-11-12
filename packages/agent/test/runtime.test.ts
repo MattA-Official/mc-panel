@@ -1,7 +1,14 @@
 import type { Fetch } from '../src/context.ts'
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, it } from 'bun:test'
@@ -82,6 +89,27 @@ describe('runtime.install', () => {
 
     const second = await dispatch(install, handlers, ctx)
     expect(second).toMatchObject({ ok: true, result: { alreadyInstalled: true } })
+  })
+
+  it('lets two installs of one version at once take turns', async () => {
+    const seen: string[] = []
+    const runtimes = join(root, 'runtimes')
+    const { ctx } = fakeContext(
+      realExec,
+      adoptium(() => sha, seen),
+      { servers: '', runtimes, archive: '', config: '', systemd: '', state: '' },
+    )
+    const results = await Promise.all([
+      dispatch(install, handlers, ctx),
+      dispatch(install, handlers, ctx),
+    ])
+    const fresh = results.filter(
+      (r) => r.ok && (r.result as { alreadyInstalled: boolean }).alreadyInstalled === false,
+    )
+    expect(fresh).toHaveLength(1)
+    expect(results.every((r) => r.ok)).toBe(true)
+    expect(seen.filter((u) => u.endsWith('.tar.gz'))).toHaveLength(1)
+    expect(readdirSync(runtimes)).toEqual(['temurin-25'])
   })
 
   it('refuses a download whose checksum does not match and leaves nothing behind', async () => {

@@ -6,6 +6,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
+use std::time::Duration;
 
 use sha2::{Digest, Sha256};
 
@@ -32,16 +33,33 @@ pub struct Curl {
     pub exec: Arc<dyn Exec>,
 }
 
-const BASE: [&str; 8] = [
+const BASE: [&str; 6] = [
     "--fail",
     "--silent",
     "--show-error",
     "--location",
     "--proto",
     "=https",
-    "--max-time",
-    "600",
 ];
+
+/// Small responses (JSON, SHA256SUMS) get curl's own limit, well inside the agent's usual
+/// two-minute one.
+const TEXT_LIMIT: [&str; 2] = ["--max-time", "100"];
+
+/// Downloads (a Java runtime, a release) can be slow on a small VPS, so they aren't held to
+/// the two-minute limit. Instead curl gives up when the transfer stalls: under 1 KiB/s for a
+/// minute. There is still an outer limit, so nothing hangs for ever.
+const SAVE_LIMIT: [&str; 6] = [
+    "--speed-limit",
+    "1024",
+    "--speed-time",
+    "60",
+    "--max-time",
+    "3600",
+];
+
+/// A little longer than curl's own `--max-time` for downloads, so curl reports why it stopped.
+const SAVE_TIMEOUT: Duration = Duration::from_secs(3600 + 30);
 
 /// Plain HTTP is allowed only to this machine, where the end-to-end tests serve releases.
 /// Releases are signed, so even that can't hand over anything Flytower didn't build.
@@ -57,7 +75,7 @@ fn loopback(url: &str) -> bool {
 }
 
 impl Curl {
-    fn run(&self, url: &str, extra: &[&str]) -> Result<String, String> {
+    fn run(&self, url: &str, extra: &[&str], timeout: Option<Duration>) -> Result<String, String> {
         let mut args: Vec<&str> = BASE.to_vec();
         if loopback(url) {
             args[5] = "=http,https";
@@ -66,7 +84,10 @@ impl Curl {
         args.extend(extra);
         args.push("--");
         args.push(url);
-        let r = self.exec.run("curl", &args);
+        let r = match timeout {
+            Some(t) => self.exec.run_for("curl", &args, t),
+            None => self.exec.run("curl", &args),
+        };
         if r.code == 0 {
             Ok(r.stdout)
         } else {
@@ -77,12 +98,16 @@ impl Curl {
 
 impl Fetch for Curl {
     fn text(&self, url: &str) -> Result<String, String> {
-        self.run(url, &["--header", "accept: application/json, text/plain"])
+        let mut extra = TEXT_LIMIT.to_vec();
+        extra.extend(["--header", "accept: application/json, text/plain"]);
+        self.run(url, &extra, None)
     }
 
     fn save(&self, url: &str, dest: &Path) -> Result<(), String> {
         let dest = dest.to_str().ok_or("download path isn't UTF-8")?;
-        self.run(url, &["--output", dest]).map(drop)
+        let mut extra = SAVE_LIMIT.to_vec();
+        extra.extend(["--output", dest]);
+        self.run(url, &extra, Some(SAVE_TIMEOUT)).map(drop)
     }
 }
 
@@ -165,6 +190,8 @@ mod tests {
         let ran = fake.ran();
         assert!(ran[0].starts_with("curl --fail --silent --show-error --location --proto =https"));
         assert!(ran[0].ends_with("--output /tmp/a -- https://x.example/a"));
+        // Downloads stop when they stall, not after a fixed two minutes.
+        assert!(ran[0].contains("--speed-limit 1024 --speed-time 60 --max-time 3600"));
         for url in [
             "http://127.0.0.1:8765/x",
             "http://evil.example/127.0.0.1:1",

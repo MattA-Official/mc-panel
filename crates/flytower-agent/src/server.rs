@@ -10,6 +10,7 @@ use std::os::unix::fs::{PermissionsExt, chown};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 use std::time::Duration;
 
@@ -17,6 +18,30 @@ use crate::envelope::{AgentError, ErrorCode, MAX_LINE_BYTES, Response};
 
 /// A connection idle this long is closed.
 pub const IDLE_TIMEOUT: Duration = Duration::from_mins(10);
+
+/// At most this many connections are served at once. The panel opens one per call and closes
+/// it after, so even a busy panel stays far below this; it guards against running out of
+/// threads, which would bring the whole agent down.
+pub const MAX_CONNECTIONS: usize = 64;
+
+/// Counts a connection while it is open.
+struct Slot(Arc<AtomicUsize>);
+
+impl Slot {
+    fn take(open: &Arc<AtomicUsize>, max: usize) -> Option<Self> {
+        open.fetch_update(Ordering::AcqRel, Ordering::Acquire, |n| {
+            (n < max).then_some(n + 1)
+        })
+        .ok()
+        .map(|_| Self(Arc::clone(open)))
+    }
+}
+
+impl Drop for Slot {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::AcqRel);
+    }
+}
 
 pub struct ListenOptions {
     pub socket_path: PathBuf,
@@ -81,17 +106,35 @@ pub fn bind(opts: &ListenOptions) -> io::Result<UnixListener> {
     Ok(listener)
 }
 
-/// Accepts connections forever, one thread each. `handle` turns a line into a response.
-/// `panel_uid` is the panel's user; `None` skips the peer check, for tests.
+/// Accepts connections forever, one thread each, at most [`MAX_CONNECTIONS`] at once.
+/// `handle` turns a line into a response. `panel_uid` is the panel's user; `None` skips the
+/// peer check, for tests.
 pub fn serve<H>(listener: &UnixListener, panel_uid: Option<u32>, handle: H)
 where
     H: Fn(&str) -> Response + Send + Sync + 'static,
 {
+    serve_at_most(listener, panel_uid, MAX_CONNECTIONS, handle);
+}
+
+/// [`serve`] with a chosen limit, so tests can reach it.
+pub fn serve_at_most<H>(listener: &UnixListener, panel_uid: Option<u32>, max: usize, handle: H)
+where
+    H: Fn(&str) -> Response + Send + Sync + 'static,
+{
     let handle = Arc::new(handle);
+    let open = Arc::new(AtomicUsize::new(0));
     for stream in listener.incoming() {
-        let Ok(stream) = stream else { continue };
+        let Ok(mut stream) = stream else { continue };
+        let Some(slot) = Slot::take(&open, max) else {
+            let busy = AgentError::new(ErrorCode::Failed, "the agent is busy; try again shortly");
+            let _ = stream.write_all(Response::err("unknown", &busy).encode().as_bytes());
+            continue;
+        };
         let handle = Arc::clone(&handle);
-        thread::spawn(move || {
+        // If the system can't give us a thread, drop this connection rather than abort the
+        // agent (a plain thread::spawn panics, and release builds abort on panic).
+        let _ = thread::Builder::new().spawn(move || {
+            let _slot = slot;
             // A connection that fails just ends; the panel reconnects.
             let _ = connection(stream, panel_uid, &*handle);
         });
