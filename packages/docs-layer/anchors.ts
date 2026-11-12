@@ -28,6 +28,8 @@ export interface DocAnchor {
    * A name from the panel's permissions list, e.g. "backups.create".
    */
   need?: string
+  /** When it only shows some of the time: "it shows once …", e.g. "there's a task". */
+  shownWhen?: string
 }
 
 export const docAnchors = {
@@ -96,6 +98,7 @@ export const docAnchors = {
     route: '/servers/:name/world#backups',
     kind: 'field',
     need: 'backups.schedule',
+    shownWhen: 'Back up is set to a schedule',
   },
 
   // Scheduled tasks
@@ -118,6 +121,7 @@ export const docAnchors = {
     kind: 'button',
     icon: 'i-lucide-play',
     need: 'schedules.manage',
+    shownWhen: 'there is a task on the list',
   },
 
   // People and roles

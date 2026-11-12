@@ -7,7 +7,7 @@ import { anchorSelector } from '@flytower/docs-layer/anchors'
  * stays usable. Escape, a click anywhere, or leaving the page ends it.
  */
 const { spotlight, back, picking, pick, backToHelp } = useShowMe()
-const route = useRoute()
+const now = useRouter().currentRoute
 const can = useCan()
 
 const rect = ref<{ top: number; left: number; width: number; height: number } | null>(null)
@@ -18,8 +18,20 @@ let frame = 0
 const visible = (el: Element) => el.getClientRects().length > 0
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
+/** The control as drawn now: pages redraw while they load, replacing the element we found. */
+function current(id: string) {
+  return [...document.querySelectorAll<HTMLElement>(anchorSelector(id))].find(visible) ?? null
+}
+
 function track() {
-  if (!element?.isConnected) return end()
+  if (!element?.isConnected) {
+    element = spotlight.value ? current(spotlight.value.id) : null
+    if (!element) {
+      rect.value = null
+      if (spotlight.value) void find(spotlight.value.seq)
+      return
+    }
+  }
   const r = element.getBoundingClientRect()
   const pad = 6
   rect.value = {
@@ -48,7 +60,7 @@ async function find(seq: number) {
   missing.value = null
   for (let tries = 0; tries < 30; tries++) {
     if (spotlight.value?.seq !== seq) return
-    const el = [...document.querySelectorAll<HTMLElement>(anchorSelector(target.id))].find(visible)
+    const el = current(target.id)
     if (el) {
       element = el
       el.scrollIntoView({ block: 'center', behavior: reducedMotion() ? 'auto' : 'smooth' })
@@ -61,7 +73,9 @@ async function find(seq: number) {
   missing.value =
     target.need && !can(target.need as Parameters<typeof can>[0], target.server)
       ? `Your role can't use ${target.label}, so it isn't shown to you.`
-      : `${target.label} isn't showing here just now. It may be switched off, or need something set up first.`
+      : target.shownWhen
+        ? `${target.label} shows once ${target.shownWhen}.`
+        : `${target.label} isn't showing here just now. It may be switched off, or need something set up first.`
 }
 
 watch(
@@ -71,7 +85,7 @@ watch(
 )
 // Leaving the page ends it; a section opening (a #hash) doesn't.
 watch(
-  () => route.path,
+  () => now.value.path,
   (path) => spotlight.value && spotlight.value.path !== path && end(),
 )
 

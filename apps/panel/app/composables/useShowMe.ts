@@ -8,6 +8,8 @@ export interface Spotlight {
   label: string
   /** The permission it needs, for a clearer message when it isn't there. */
   need?: string
+  /** When it only shows some of the time, from the anchor list. */
+  shownWhen?: string
   server?: string
   /** The page it's on: leaving it ends the spotlight. */
   path: string
@@ -31,6 +33,8 @@ export function useShowMe() {
   const picking = useState<{ id: string; servers: Server[] } | null>('doc-pick', () => null)
   const help = useHelp()
   const route = useRoute()
+  // The router's own route: useRoute() in a layout lags behind until the new page has loaded.
+  const now = useRouter().currentRoute
   const toast = useToast()
 
   /** The server whose page you're on, if any. */
@@ -78,7 +82,9 @@ export function useShowMe() {
     help.open.value = false
     const to = anchorRoute(anchor, server)
     const [path = '', hash = ''] = to.split('#')
-    if (route.path !== path || route.hash !== (hash ? `#${hash}` : '')) await navigateTo(to)
+    if (now.value.path !== path || now.value.hash !== (hash ? `#${hash}` : '')) {
+      await navigateTo(to)
+    }
     // Open its World or Settings section, even when the address already pointed there.
     if (hash) {
       await nextTick()
@@ -88,8 +94,9 @@ export function useShowMe() {
       id,
       label: anchor.label,
       need: anchor.need,
+      shownWhen: anchor.shownWhen,
       server,
-      path: route.path,
+      path: now.value.path,
       seq: (spotlight.value?.seq ?? 0) + 1,
     }
   }
