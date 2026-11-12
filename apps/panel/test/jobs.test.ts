@@ -66,7 +66,7 @@ function setup(
   const runner = new JobRunner({
     db,
     agent,
-    loaders: { vanilla, fabric: vanilla },
+    loaders: { vanilla, fabric: vanilla, paper: vanilla },
     fetch,
     bus,
     sleep: async () => {},

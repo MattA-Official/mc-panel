@@ -1,0 +1,17 @@
+{
+  // The panel's tests, checked against the server's settings and auto-imports. Run by
+  // `bun run typecheck` after `nuxt typecheck`, which writes the config this extends.
+  "extends": "../.nuxt/tsconfig.server.json",
+  "compilerOptions": {
+    "types": ["bun"],
+    // A few tests cover browser code too.
+    "lib": ["esnext", "dom", "dom.iterable"]
+  },
+  "include": [
+    "./**/*.ts",
+    "../.nuxt/content/types.d.ts",
+    "../.nuxt/types/nitro-nuxt.d.ts",
+    "../.nuxt/types/nitro.d.ts",
+    "../shared/**/*.d.ts"
+  ]
+}

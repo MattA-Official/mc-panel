@@ -8,7 +8,7 @@
     "build": "bun --bun nuxt build",
     "preview": "bun .output/server/index.mjs",
     "postinstall": "bun --bun nuxt prepare",
-    "typecheck": "bun --bun nuxt typecheck",
+    "typecheck": "bun --bun nuxt typecheck && tsc -p test --noEmit",
     "db:generate": "bunx --bun drizzle-kit generate && bun scripts/bundle-migrations.ts"
   },
   "dependencies": {

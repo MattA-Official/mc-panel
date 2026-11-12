@@ -10,7 +10,7 @@
   "scripts": {
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
-    "typecheck": "bun run --filter '*' typecheck",
+    "typecheck": "bun run --filter '*' typecheck && tsc -p tsconfig.scripts.json",
     "test": "bun test",
     "build": "bun run --filter '*' build",
     "package": "bun scripts/package.ts",
