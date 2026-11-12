@@ -68,7 +68,10 @@ export class Sessions {
     if (!p) return
     let m = this.seen.get(server)
     if (!m) this.seen.set(server, (m = new Map()))
-    m.set(p.name.toLowerCase(), { uuid: p.uuid, at: this.now() })
+    const now = this.now()
+    // Logins that never joined (refused, or the player gave up) would otherwise stay for ever.
+    for (const [name, hit] of m) if (now - hit.at > UUID_TTL_MS) m.delete(name)
+    m.set(p.name.toLowerCase(), { uuid: p.uuid, at: now })
   }
 
   /** An event from the log. */

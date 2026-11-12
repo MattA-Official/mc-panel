@@ -28,7 +28,10 @@ export class LogTailer {
   ) {}
 
   async start() {
-    await this.seed()
+    await this.seed().catch((err) => {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT')
+        console.error(`[flytower] reading ${this.path} failed`, err)
+    })
     if (this.opts.pollMs === 0) return
     this.timer = setInterval(() => void this.tick(), this.opts.pollMs ?? 500)
   }
@@ -52,7 +55,15 @@ export class LogTailer {
     this.reading = (async () => {
       do {
         this.again = false
-        await this.read()
+        try {
+          await this.read()
+        } catch (err) {
+          // The log can vanish between the size check and the read (rotation, a world reset,
+          // a deleted server). Say so and try again on the next change: a rejection from a
+          // timer or a file watch would otherwise take the whole panel down.
+          if ((err as NodeJS.ErrnoException).code !== 'ENOENT')
+            console.error(`[flytower] reading ${this.path} failed`, err)
+        }
       } while (this.again)
     })().finally(() => (this.reading = null))
     return this.reading
@@ -71,7 +82,12 @@ export class LogTailer {
 
   private async read() {
     const st = await stat(this.path).catch(() => null)
-    if (!st) return
+    if (!st) {
+      // Gone (rotated away or deleted): whatever appears next is new from its first byte,
+      // even if it reuses the old inode.
+      this.ino = null
+      return
+    }
     if (this.ino !== st.ino || st.size < this.offset) {
       // Rotated or truncated: what's there now is all new.
       this.ino = st.ino

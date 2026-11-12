@@ -7,8 +7,8 @@
  * A restart pressed in the panel is announced straight away ("Server restarting"), its
  * shutdown is not reported as a stop, and the next "Done" says "Server restarted".
  */
-import { watch, type FSWatcher } from 'node:fs'
 import { join } from 'node:path'
+import { watchServerLog } from '../console/follow'
 import { LogTailer } from '../console/tailer'
 import type { EventKind } from '../../shared/notify'
 import type { NotifyEvent } from './types'
@@ -43,23 +43,15 @@ export function parseLogLine(line: string): LogEvent | null {
   return a ? { kind: a[2] === 'joined' ? 'joined' : 'left', player: a[1]! } : null
 }
 
-/**
- * After each change, the log is read once more this long afterwards. Bun's file watcher can
- * fold a second change into the first when they come within about a millisecond, and
- * Minecraft writes "logged in" and "joined the game" that close together, so without the
- * second look the join would wait for whatever the server logs next.
- */
-export const SETTLE_MS = 250
+export { SETTLE_MS } from '../console/follow'
 
 /** A restart that hasn't come back within this long is forgotten. */
 export const RESTART_WINDOW_MS = 15 * 60_000
 
 interface Followed {
   tailer: LogTailer
-  watchers: FSWatcher[]
-  logsWatched: boolean
+  unwatch: () => void
   ready: boolean
-  settle: ReturnType<typeof setTimeout> | null
 }
 
 /** Follows every server's log through inotify and reports what happens in it. */
@@ -138,54 +130,18 @@ export class LogWatcher {
 
   private follow(server: string) {
     const dir = join(this.serversDir, server)
-    const logs = join(dir, 'logs')
     const f: Followed = {
-      tailer: new LogTailer(join(logs, 'latest.log'), (lines) => this.lines(server, lines), {
+      tailer: new LogTailer(join(dir, 'logs', 'latest.log'), (lines) => this.lines(server, lines), {
         pollMs: 0,
         seedBytes: 0,
       }),
-      watchers: [],
-      logsWatched: false,
+      unwatch: () => {},
       ready: false,
-      settle: null,
     }
     this.followed.set(server, f)
-    const changed = () => {
-      if (!f.ready) return
-      void f.tailer.tick()
-      if (f.settle) clearTimeout(f.settle)
-      f.settle = setTimeout(() => {
-        f.settle = null
-        void f.tailer.tick()
-      }, SETTLE_MS)
-    }
-    const watchLogs = () => {
-      if (f.logsWatched) return
-      try {
-        f.watchers.push(
-          watch(logs, (_event, file) => {
-            if (!file || file === 'latest.log') changed()
-          }),
-        )
-        f.logsWatched = true
-      } catch {
-        // No logs folder yet: the server has never run. The folder watch below sees it appear.
-      }
-    }
-    try {
-      // The server's own folder, for a logs folder that doesn't exist yet.
-      f.watchers.push(
-        watch(dir, (_event, file) => {
-          if (file === 'logs') {
-            watchLogs()
-            changed()
-          }
-        }),
-      )
-    } catch (err) {
-      console.error(`[flytower] notifications can't watch ${server}'s folder`, err)
-    }
-    watchLogs()
+    f.unwatch = watchServerLog(dir, () => {
+      if (f.ready) void f.tailer.tick()
+    })
     // Start at the end of the log: what happened before the panel started isn't news.
     void f.tailer.start().then(() => {
       f.ready = true
@@ -196,8 +152,7 @@ export class LogWatcher {
   private unfollow(server: string) {
     const f = this.followed.get(server)
     if (!f) return
-    for (const w of f.watchers) w.close()
-    if (f.settle) clearTimeout(f.settle)
+    f.unwatch()
     f.tailer.stop()
     this.followed.delete(server)
     this.restarting.delete(server)

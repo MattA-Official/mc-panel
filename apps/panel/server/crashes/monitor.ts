@@ -243,6 +243,11 @@ export class CrashMonitor {
       if (wasUp && restarted && !expected) {
         await this.crashed(server, s, t, true)
         crashed = true
+        // This is a new run. Without this, a later `stop` would look for crash reports since
+        // the old run started, find this crash's, and count the stop as another crash.
+        t.upAt = this.nowMs()
+        t.answered = false
+        t.missed = 0
       }
       if (t.condition === 'crashed' || t.condition === 'crash-loop') {
         this.recovered(server, t)
