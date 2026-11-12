@@ -5,7 +5,8 @@ name: Website
 # get a preview URL. Going live is a separate switch: main (and each release) deploys only when
 # the repository variable SITE_DEPLOY is "true".
 #
-# Secrets: CLOUDFLARE_API_TOKEN (Workers Scripts: Edit) and CLOUDFLARE_ACCOUNT_ID.
+# Secrets: CLOUDFLARE_ACCOUNT_ID, and CLOUDFLARE_API_TOKEN with Account > Workers Scripts > Edit
+# (Admin the first time, to create the Worker) and Zone > Workers Routes > Edit on flytower.dev.
 # Variable: SITE_DEPLOY = true, once the domain and launch are ready.
 
 on:
