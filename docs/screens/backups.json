@@ -1,0 +1,28 @@
+{
+  "width": 1056,
+  "height": 939,
+  "device": "desktop",
+  "labels": [
+    {
+      "anchor": "backups.back-up-now",
+      "x": 84.39,
+      "y": 11.29,
+      "w": 12.1,
+      "h": 3.41
+    },
+    {
+      "anchor": "backups.schedule",
+      "x": 3.5,
+      "y": 31.21,
+      "w": 92.99,
+      "h": 36.83
+    },
+    {
+      "anchor": "backups.keep",
+      "x": 5.78,
+      "y": 48.01,
+      "w": 88.45,
+      "h": 11.93
+    }
+  ]
+}
