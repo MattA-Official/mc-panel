@@ -51,6 +51,22 @@ function end() {
   spotlight.value = null
 }
 
+/**
+ * "Do it": presses the control as if you had, so its own confirm, passkey check and
+ * permissions apply, then gets out of the way. If it can't be pressed just now, it stays lit
+ * up with a note instead; returns whether it was pressed.
+ */
+function press(el: HTMLElement, label: string): boolean {
+  const button = el.matches('button') ? el : el.querySelector<HTMLElement>('button')
+  if (!button || button.matches(':disabled, [aria-disabled="true"]')) {
+    missing.value = `${label} can't be used just now.`
+    return false
+  }
+  end()
+  button.click()
+  return true
+}
+
 /** Finds the control, waiting for its page and section to draw, for up to three seconds. */
 async function find(seq: number) {
   const target = spotlight.value
@@ -62,6 +78,7 @@ async function find(seq: number) {
     if (spotlight.value?.seq !== seq) return
     const el = current(target.id)
     if (el) {
+      if (target.press && press(el, target.label)) return
       element = el
       el.scrollIntoView({ block: 'center', behavior: reducedMotion() ? 'auto' : 'smooth' })
       if (el.matches('button, a[href], input, select, textarea')) el.focus({ preventScroll: true })

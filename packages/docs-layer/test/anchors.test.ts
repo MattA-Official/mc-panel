@@ -5,7 +5,9 @@ import { isPermission } from '../../../apps/panel/shared/permissions'
 import {
   anchorRoute,
   anchorSelector,
+  actionsInMarkdown,
   anchorsInMarkdown,
+  canDo,
   docAnchor,
   docAnchors,
   needsServer,
@@ -18,6 +20,20 @@ const appDir = join(root, 'apps/panel/app')
 const pagesDir = join(appDir, 'pages')
 
 describe('anchor helpers', () => {
+  test('actionsInMarkdown finds only the chips that ask Help to press them', () => {
+    const md = [
+      ':ui{anchor="backups.back-up-now" do} and :ui[Restart it]{anchor="server.restart" do}.',
+      ':ui{anchor="schedules.add-task"}, :ui{anchor="access.invite" done="x"}.',
+    ].join('\n')
+    expect(actionsInMarkdown(md)).toEqual(['backups.back-up-now', 'server.restart'])
+  })
+
+  test('canDo only allows listed safe actions', () => {
+    expect(canDo('backups.back-up-now')).toBe(true)
+    expect(canDo('access.invite')).toBe(false)
+    expect(canDo('nope')).toBe(false)
+  })
+
   test('anchorRoute fills in the server and keeps the section', () => {
     const anchor = docAnchor('backups.back-up-now')!
     expect(needsServer(anchor)).toBe(true)
@@ -90,6 +106,16 @@ describe('docs, anchors and the panel agree', () => {
     for (const file of readdirSync(docsDir).filter((f) => f.endsWith('.md'))) {
       for (const id of anchorsInMarkdown(readFileSync(join(docsDir, file), 'utf8'))) {
         if (!docAnchor(id)) problems.push(`${file}: no anchor "${id}" in anchors.ts`)
+      }
+    }
+    expect(problems).toEqual([])
+  })
+
+  test('docs only ask Help to press controls on the safe list', () => {
+    const problems: string[] = []
+    for (const file of readdirSync(docsDir).filter((f) => f.endsWith('.md'))) {
+      for (const id of actionsInMarkdown(readFileSync(join(docsDir, file), 'utf8'))) {
+        if (!canDo(id)) problems.push(`${file}: "${id}" isn't a safe action (action: true)`)
       }
     }
     expect(problems).toEqual([])

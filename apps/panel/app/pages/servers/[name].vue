@@ -188,7 +188,11 @@ const powerMenu = computed(() => [
           <span v-if="server" class="hidden sm:contents"
             ><StatusBadge :status="status" :condition="health.condition"
           /></span>
-          <span v-if="server" class="hidden min-w-0 text-sm text-muted md:block">
+          <span
+            v-if="server"
+            class="hidden min-w-0 text-sm text-muted md:block"
+            data-doc="server.copy-address"
+          >
             <CopyAddress :server="server" />
           </span>
         </template>
@@ -210,6 +214,7 @@ const powerMenu = computed(() => [
               class="hidden sm:inline-flex"
               label="Start"
               icon="i-lucide-play"
+              data-doc="server.start"
               :loading="busy === 'start'"
               :disabled="!!busy"
               @click="act('start')"
@@ -219,6 +224,7 @@ const powerMenu = computed(() => [
                 class="hidden sm:inline-flex"
                 label="Restart"
                 icon="i-lucide-rotate-cw"
+                data-doc="server.restart"
                 color="neutral"
                 variant="outline"
                 :loading="busy === 'restart'"
@@ -229,6 +235,7 @@ const powerMenu = computed(() => [
                 class="hidden sm:inline-flex"
                 label="Stop"
                 icon="i-lucide-square"
+                data-doc="server.stop"
                 color="error"
                 variant="soft"
                 :loading="busy === 'stop'"
