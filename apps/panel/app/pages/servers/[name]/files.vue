@@ -130,31 +130,26 @@ async function save() {
   }
 }
 
-// Rename, new folder, delete
-const renaming = ref<{ from: string; to: string } | null>(null)
+// Rename, new folder, delete. Each remembers the folder it was started in, so moving to
+// another folder with a dialog open (Back, say) can't send it somewhere else.
+const renaming = ref<{ dir: string; from: string; to: string } | null>(null)
 async function doRename() {
   if (!renaming.value) return
-  const ok = await call(
-    'POST',
-    'rename',
-    { from: renaming.value.from, to: join(path.value, renaming.value.to) },
-    'Renamed',
-  )
-  if (ok) renaming.value = null
+  const { dir, from, to } = renaming.value
+  if (await call('POST', 'rename', { from, to: join(dir, to) }, 'Renamed')) renaming.value = null
 }
-const newFolder = ref<string | null>(null)
+const newFolder = ref<{ dir: string; name: string } | null>(null)
 async function doMkdir() {
-  if (!newFolder.value) return
-  if (await call('POST', 'mkdir', { path: join(path.value, newFolder.value) }, 'Folder created')) {
+  if (!newFolder.value?.name) return
+  const { dir, name } = newFolder.value
+  if (await call('POST', 'mkdir', { path: join(dir, name) }, 'Folder created')) {
     newFolder.value = null
   }
 }
-const deleting = ref<Entry | null>(null)
+const deleting = ref<{ entry: Entry; path: string } | null>(null)
 async function doDelete() {
   if (!deleting.value) return
-  if (await call('DELETE', '', { path: join(path.value, deleting.value.name) }, 'Deleted')) {
-    deleting.value = null
-  }
+  if (await call('DELETE', '', { path: deleting.value.path }, 'Deleted')) deleting.value = null
 }
 
 const copy = useCopy()
@@ -182,7 +177,7 @@ function rowMenu(e: Entry) {
             {
               label: 'Rename',
               icon: 'i-lucide-text-cursor-input',
-              onSelect: () => (renaming.value = { from: p, to: e.name }),
+              onSelect: () => (renaming.value = { dir: path.value, from: p, to: e.name }),
             },
           ]
         : []),
@@ -195,7 +190,7 @@ function rowMenu(e: Entry) {
               label: 'Delete',
               icon: 'i-lucide-trash-2',
               color: 'error' as const,
-              onSelect: () => (deleting.value = e),
+              onSelect: () => (deleting.value = { entry: e, path: p }),
             },
           ],
         ]
@@ -206,12 +201,12 @@ function rowMenu(e: Entry) {
 // Uploads: XHR for progress, one file at a time.
 const uploads = ref<{ name: string; progress: number }[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
-function upload(file: File) {
+function upload(file: File, dir: string) {
   const item = reactive({ name: file.name, progress: 0 })
   uploads.value.push(item)
   return new Promise<void>((resolve) => {
     const xhr = new XMLHttpRequest()
-    xhr.open('PUT', `${base.value}/upload?path=${encodeURIComponent(join(path.value, file.name))}`)
+    xhr.open('PUT', `${base.value}/upload?path=${encodeURIComponent(join(dir, file.name))}`)
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) item.progress = Math.round((e.loaded / e.total) * 100)
     }
@@ -232,7 +227,9 @@ function upload(file: File) {
   })
 }
 async function uploadAll(files: FileList | File[] | null | undefined) {
-  for (const f of Array.from(files ?? [])) await upload(f)
+  // The folder open when the upload started, even if you move on before it finishes.
+  const dir = path.value
+  for (const f of Array.from(files ?? [])) await upload(f, dir)
   await refresh()
 }
 const dragging = ref(false)
@@ -275,7 +272,7 @@ function onDrop(e: DragEvent) {
           icon="i-lucide-folder-plus"
           color="neutral"
           variant="outline"
-          @click="newFolder = ''"
+          @click="newFolder = { dir: path, name: '' }"
         />
         <UButton label="Upload" icon="i-lucide-upload" @click="fileInput?.click()" />
         <input
@@ -441,30 +438,29 @@ function onDrop(e: DragEvent) {
       @update:open="(v) => !v && (newFolder = null)"
     >
       <template #body>
-        <form @submit.prevent="doMkdir">
+        <form v-if="newFolder" @submit.prevent="doMkdir">
           <UInput
-            :model-value="newFolder ?? ''"
+            v-model="newFolder.name"
             class="w-full font-mono"
             autofocus
             aria-label="Folder name"
             placeholder="mods"
-            @update:model-value="newFolder = String($event)"
           />
         </form>
       </template>
       <template #footer>
         <div class="flex w-full justify-end gap-2">
           <UButton label="Cancel" color="neutral" variant="ghost" @click="newFolder = null" />
-          <UButton label="Create" :disabled="!newFolder" @click="doMkdir" />
+          <UButton label="Create" :disabled="!newFolder?.name" @click="doMkdir" />
         </div>
       </template>
     </UModal>
 
     <UModal
       :open="deleting !== null"
-      :title="`Delete ${deleting?.name}?`"
+      :title="`Delete ${deleting?.entry.name}?`"
       :description="
-        deleting?.type === 'dir'
+        deleting?.entry.type === 'dir'
           ? 'The folder and everything in it will be deleted. This can\'t be undone.'
           : 'This can\'t be undone.'
       "
