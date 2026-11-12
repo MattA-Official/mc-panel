@@ -119,6 +119,9 @@ export class BackupService {
     return this.busy.has(server)
   }
 
+  /** Backup files being written, so a listing meanwhile doesn't take them for manual ones. */
+  private writing = new Set<string>()
+
   /** Waiting for a server's lock to be let go, by server. */
   private waiters = new Map<string, Set<() => void>>()
 
@@ -158,7 +161,10 @@ export class BackupService {
       files.delete(row.file)
     }
     for (const file of files) {
-      const st = await stat(join(dir, file))
+      // One being written right now gets its row from archive(), not from here.
+      if (this.writing.has(join(dir, file))) continue
+      const st = await stat(join(dir, file)).catch(() => null)
+      if (!st) continue
       db.insert(schema.backups)
         .values({ server, file, bytes: st.size, kind: 'manual', createdAt: st.mtime })
         .onConflictDoNothing()
@@ -191,8 +197,13 @@ export class BackupService {
     try {
       const row = this.get(server, id)
       await rm(this.path(row), { force: true })
-      this.deps.db.delete(schema.backups).where(eq(schema.backups.id, id)).run()
-      await this.deps.offsite?.removeCopy(row)
+      // The row as it is now: an upload may have finished while the file was being removed.
+      const latest = this.deps.db
+        .delete(schema.backups)
+        .where(eq(schema.backups.id, id))
+        .returning()
+        .get()
+      await this.deps.offsite?.removeCopy(latest ?? row)
       return row
     } finally {
       this.free(server)
@@ -285,8 +296,8 @@ export class BackupService {
     ]
     for (const b of gone) {
       await rm(this.path(b), { force: true })
-      db.delete(schema.backups).where(eq(schema.backups.id, b.id)).run()
-      await this.deps.offsite?.removeCopy(b)
+      const latest = db.delete(schema.backups).where(eq(schema.backups.id, b.id)).returning().get()
+      await this.deps.offsite?.removeCopy(latest ?? b)
     }
     return gone
   }
@@ -316,7 +327,16 @@ export class BackupService {
       createdAt = new Date(createdAt.getTime() + 1000)
     }
     const file = `${server}-${stampOf(createdAt)}-${kind}.tar.zst`
-    const { bytes, skipped } = await createArchive(this.deps.serverDir(server), join(dir, file))
+    const dest = join(dir, file)
+    this.writing.add(dest)
+    let result: Awaited<ReturnType<typeof createArchive>>
+    try {
+      result = await createArchive(this.deps.serverDir(server), dest)
+    } catch (err) {
+      this.writing.delete(dest)
+      throw err
+    }
+    const { bytes, skipped } = result
     if (skipped.length) {
       console.warn(
         `[flytower] backup ${file} left out files it couldn't read: ${skipped.join(', ')}`,
@@ -327,6 +347,7 @@ export class BackupService {
       .values({ server, file, bytes, kind, note, createdAt, kept })
       .returning()
       .get()
+    this.writing.delete(dest)
     this.deps.offsite?.queue(row)
     return Object.assign(row, { skipped })
   }

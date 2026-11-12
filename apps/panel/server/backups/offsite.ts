@@ -165,7 +165,11 @@ export class OffsiteService {
       .get()
   }
 
-  /** Removes a target. Servers using it stop copying; copies already made stay in the bucket. */
+  /**
+   * Removes a target. Servers using it stop copying; copies already made stay in the bucket,
+   * but Flytower forgets them, since it can no longer reach them. A backup that only had its
+   * off-site copy left is dropped from the list the next time it's read.
+   */
   removeTarget(id: number) {
     const t = this.target(id)
     const { db } = this.deps
@@ -175,12 +179,7 @@ export class OffsiteService {
       .run()
     db.update(schema.backups)
       .set({ offsiteState: null, offsiteTarget: null, offsiteKey: null, offsiteError: null })
-      .where(
-        and(
-          eq(schema.backups.offsiteTarget, id),
-          inArray(schema.backups.offsiteState, ['pending', 'uploading', 'failed']),
-        ),
-      )
+      .where(eq(schema.backups.offsiteTarget, id))
       .run()
     db.delete(schema.backupTargets).where(eq(schema.backupTargets.id, id)).run()
     return t
@@ -278,6 +277,22 @@ export class OffsiteService {
       const size = await store.size(row.offsiteKey)
       if (size !== row.bytes) {
         throw new Error(`the copy is ${size ?? 'missing'} bytes, not ${row.bytes}`)
+      }
+      // Deleted or pruned while it was uploading: that delete saw no copy to remove, so the
+      // copy just made would be left in the bucket with nothing pointing at it.
+      if (
+        !db
+          .select({ id: schema.backups.id })
+          .from(schema.backups)
+          .where(eq(schema.backups.id, row.id))
+          .get()
+      ) {
+        await store
+          .delete(row.offsiteKey)
+          .catch((err) =>
+            console.error(`[flytower] couldn't delete the off-site copy of ${row.file}`, err),
+          )
+        return
       }
       set({ offsiteState: 'done', offsiteError: null, offsiteAt: this.now() })
       this.deps.notifier?.resolve({

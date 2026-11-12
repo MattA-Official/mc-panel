@@ -3,16 +3,17 @@
  * archive lands in its own folder, is unpacked and inspected, and then becomes a server
  * through the create-server job.
  */
-import { createWriteStream } from 'node:fs'
+import { createReadStream, createWriteStream } from 'node:fs'
 import { mkdir, readdir, readFile, rm, stat, statfs, truncate, writeFile } from 'node:fs/promises'
 import { basename, join } from 'node:path'
-import { Readable } from 'node:stream'
+import { Readable, Transform, Writable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
+import { createGunzip, createZstdDecompress } from 'node:zlib'
 import { UNPACK_STEPS, type JobEvent } from '../../shared/utils/jobs'
 import { JobError, type JobTracker } from '../jobs/runner'
-import { extractArchive } from '../backups/archive'
 import { unzip } from '../unzip'
 import { detect, type Detected } from './detect'
+import { fetchLink, LinkError, type Lookup } from './fetch-link'
 
 export const STAGE_TTL_MS = 24 * 3_600_000
 export const MAX_CHUNK = 32 * 1024 * 1024
@@ -46,6 +47,8 @@ export interface ImportDeps {
   pastWorldPath?: (id: number) => string
   jobs: { track(kind: string, server: string | null, steps: readonly string[]): JobTracker }
   fetch?: typeof fetch
+  /** Resolves a link's host name, for checking where it points. */
+  lookup?: Lookup
   now?: () => number
   freeBytes?: (dir: string) => Promise<number>
 }
@@ -215,10 +218,8 @@ export class ImportService {
       const r = await unzip(archive, out, { maxBytes: room })
       if (r.skipped.length)
         console.log(`[flytower] import ${id} skipped ${r.skipped.length} entries`)
-    } else if (kind === 'gzip') {
-      await untar(['-xzf', archive], out)
-    } else if (kind === 'zstd') {
-      await extractArchive(archive, out)
+    } else if (kind === 'gzip' || kind === 'zstd') {
+      await untar(archive, kind, out, room)
     } else {
       throw new ImportError("That isn't a .zip, .tar.gz or .tar.zst file.")
     }
@@ -243,8 +244,13 @@ export class ImportService {
     } catch {
       throw new ImportError("That isn't a valid link.")
     }
-    if (parsed.protocol !== 'https:') throw new ImportError('Only https links can be imported.')
-    const res = await (this.deps.fetch ?? fetch)(parsed, { redirect: 'follow' })
+    let res: Response
+    try {
+      res = await fetchLink(parsed, { fetch: this.deps.fetch, lookup: this.deps.lookup })
+    } catch (err) {
+      if (err instanceof LinkError) throw new ImportError(err.message)
+      throw err
+    }
     if (!res.ok || !res.body) throw new ImportError(`The link answered ${res.status}.`)
     const size = Number(res.headers.get('content-length')) || null
     if (size && size > MAX_IMPORT) throw new ImportError('That file is too big to import here.')
@@ -303,14 +309,58 @@ async function sniff(file: string): Promise<'zip' | 'gzip' | 'zstd' | null> {
   return null
 }
 
-async function untar(args: string[], dir: string) {
+/**
+ * Unpacks a .tar.gz or .tar.zst into `dir`, stopping once more than `maxBytes` has come out
+ * so one archive can't fill the disk every server shares. The archive is decompressed here
+ * and fed to tar, so what's counted is the tar stream, which is a little more than the files
+ * it holds.
+ */
+export async function untar(
+  file: string,
+  kind: 'gzip' | 'zstd',
+  dir: string,
+  maxBytes: number,
+): Promise<void> {
   // GNU tar refuses `..` and absolute names, and creates links last, so nothing escapes.
-  const proc = Bun.spawn(['tar', ...args, '--no-same-owner', '--no-same-permissions', '-C', dir], {
-    stderr: 'pipe',
+  const proc = Bun.spawn(
+    ['tar', '-xf', '-', '--no-same-owner', '--no-same-permissions', '-C', dir],
+    { stdin: 'pipe', stdout: 'ignore', stderr: 'pipe' },
+  )
+  const stderr = new Response(proc.stderr).text()
+  const sink = proc.stdin
+  let out = 0
+  const count = new Transform({
+    transform(chunk: Buffer, _enc, cb) {
+      out += chunk.length
+      if (out > maxBytes)
+        return cb(new ImportError("There isn't enough free disk space to unpack this import."))
+      cb(null, chunk)
+    },
   })
-  if ((await proc.exited) > 1) {
-    throw new ImportError(`Couldn't unpack it: ${(await new Response(proc.stderr).text()).trim()}`)
+  const toTar = new Writable({
+    write(chunk, _enc, cb) {
+      Promise.resolve(sink.write(chunk)).then(() => cb(), cb)
+    },
+    final(cb) {
+      Promise.resolve(sink.end()).then(() => cb(), cb)
+    },
+  })
+  try {
+    await pipeline(
+      createReadStream(file),
+      kind === 'gzip' ? createGunzip() : createZstdDecompress(),
+      count,
+      toTar,
+    )
+  } catch (err) {
+    proc.kill()
+    await proc.exited
+    if (err instanceof ImportError) throw err
+    // tar stopped reading (it failed): its own message says why.
+    const why = (await stderr).trim()
+    throw new ImportError(`Couldn't unpack it: ${why || (err as Error).message}`)
   }
+  if ((await proc.exited) > 1) throw new ImportError(`Couldn't unpack it: ${(await stderr).trim()}`)
 }
 
 /** Links from an upload are never kept: they could point anywhere. */
