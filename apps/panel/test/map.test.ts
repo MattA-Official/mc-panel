@@ -436,6 +436,31 @@ describe('player positions', () => {
     expect(steve).toMatchObject({ x: 2000, dimension: 'minecraft:the_nether' })
   })
 
+  it('shares a slow sweep instead of starting another', async () => {
+    let sweeps = 0
+    let release!: () => void
+    const slow = new Promise<void>((r) => (release = r))
+    const positions = new PlayerPositions({
+      online: async () => {
+        sweeps++
+        await slow
+        return []
+      },
+      rcon: async () => '',
+      ttlMs: 0,
+    })
+    const first = positions.get('survival')
+    await wait(5)
+    const second = positions.get('survival')
+    expect(sweeps).toBe(1)
+    release()
+    expect(await first).toEqual([])
+    expect(await second).toEqual([])
+    // Once it's done, the next ask starts a new one.
+    await positions.get('survival')
+    expect(sweeps).toBe(2)
+  })
+
   it('gives nobody when the server cannot be asked', async () => {
     const positions = new PlayerPositions({
       online: async () => {
