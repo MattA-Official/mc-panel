@@ -51,7 +51,10 @@ const columns = [
           :columns="columns"
           :ui="{
             root: 'xl:gap-16',
-            center: 'grid grid-flow-row grid-cols-2 gap-8 sm:grid-cols-3 xl:col-span-2',
+            center:
+              'grid grid-flow-row grid-cols-1 gap-8 text-center sm:grid-cols-3 sm:text-left xl:col-span-2 xl:flex xl:flex-row xl:justify-end xl:gap-24',
+            list: 'mt-4 space-y-3 sm:mt-6 sm:space-y-4',
+            link: 'justify-center sm:justify-start',
           }"
         >
           <template #left>
