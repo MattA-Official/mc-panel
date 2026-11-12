@@ -235,7 +235,10 @@ export async function publicLeaderboards(
 /** A public page's leaderboards for every period, null where it shows none. */
 export type PublicBoards = Record<Period, Board[] | null>
 
-const publicBoardsCache = new Map<string, { key: string; at: number; boards: Promise<PublicBoards> }>()
+const publicBoardsCache = new Map<
+  string,
+  { key: string; at: number; boards: Promise<PublicBoards> }
+>()
 
 /** How long a server's public leaderboards are kept, at most. They change once a day. */
 const PUBLIC_BOARDS_MS = 5 * 60_000
