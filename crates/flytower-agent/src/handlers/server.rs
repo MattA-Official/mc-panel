@@ -215,7 +215,10 @@ pub fn configure(
         let env = read(&f.env).unwrap_or_default();
         let java = match java_major {
             Some(major) => Some(str(&java_home(ctx, major)?).to_string()),
-            None => env_value(&env, "JAVA_HOME").map(str::to_string),
+            // Like Bun, an empty `JAVA_HOME=` counts as none.
+            None => env_value(&env, "JAVA_HOME")
+                .filter(|v| !v.is_empty())
+                .map(str::to_string),
         };
         let heap = memory_mb.or_else(|| {
             env_value(&env, "HEAP_MB")
@@ -490,6 +493,22 @@ mod tests {
             fs::read_to_string(s.path("systemd/flytower-mc@survival.service.d/limits.conf"))
                 .unwrap();
         assert!(limits.contains("MemoryMax=3072M"));
+    }
+
+    #[test]
+    fn refuses_an_empty_java_home_like_bun() {
+        let s = Setup::new(vec![("id -u mc-survival", absent())]);
+        create("survival", 25565, 6144, 25, &s.ctx()).unwrap();
+        let env = s.path("etc/servers/survival.env");
+        fs::write(&env, "JAVA_HOME=\nHEAP_MB=6144\n").unwrap();
+        let err = configure("survival", Some(2048), None, None, &s.ctx()).unwrap_err();
+        assert_eq!(err.code, ErrorCode::Failed);
+        assert!(err.message.ends_with("has no JAVA_HOME"), "{}", err.message);
+        // And the file is left as it was.
+        assert_eq!(
+            fs::read_to_string(&env).unwrap(),
+            "JAVA_HOME=\nHEAP_MB=6144\n"
+        );
     }
 
     #[test]
