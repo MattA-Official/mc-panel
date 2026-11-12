@@ -107,10 +107,28 @@ onMounted(() => {
 })
 
 const dirty = computed(() => !!editing.value && editing.value.content !== editing.value.original)
+/** Asks before unsaved changes are thrown away; true when it's fine to carry on. */
+function mayDiscard() {
+  return !dirty.value || confirm('Discard your unsaved changes?')
+}
 function closeEditor() {
-  if (dirty.value && !confirm('Discard your unsaved changes?')) return
+  if (!mayDiscard()) return
   editing.value = null
 }
+// Leaving the tab, moving to another folder (Back, a link) or closing the page asks too.
+function leaving() {
+  if (!editing.value) return true
+  if (!mayDiscard()) return false
+  editing.value = null
+  return true
+}
+onBeforeRouteLeave(leaving)
+onBeforeRouteUpdate((to, from) => (to.query.path === from.query.path ? true : leaving()))
+function onBeforeUnload(e: BeforeUnloadEvent) {
+  if (dirty.value) e.preventDefault()
+}
+onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
+onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload))
 const saving = ref(false)
 async function save() {
   if (!editing.value || !canWrite.value) return
