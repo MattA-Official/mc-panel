@@ -335,6 +335,7 @@ async function measureNow() {
       <UButton
         icon="i-lucide-refresh-cw"
         label="Measure now"
+        data-doc="disk.measure-now"
         size="xs"
         color="neutral"
         variant="outline"

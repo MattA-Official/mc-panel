@@ -117,7 +117,12 @@ const lastLine = computed(() => {
 </script>
 
 <template>
-  <section v-if="server" class="rounded-lg border border-default p-5" data-e2e="world-map">
+  <section
+    v-if="server"
+    class="rounded-lg border border-default p-5"
+    data-e2e="world-map"
+    data-doc="world.map"
+  >
     <h2 class="text-base font-semibold">Web map</h2>
     <p class="mt-1 text-sm text-muted">
       A map of the world to open in the browser, drawn by Flytower from the world files as players
@@ -133,6 +138,7 @@ const lastLine = computed(() => {
         label="Draw a web map"
         description="Off, nothing is drawn and the map's files are removed."
         data-e2e="map-enabled"
+        data-doc="map.enable"
         @update:model-value="
           (v: boolean) => save({ enabled: v }, v ? 'The web map is on' : 'The web map is off')
         "

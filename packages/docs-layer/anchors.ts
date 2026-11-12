@@ -139,6 +139,142 @@ export const docAnchors = {
     icon: 'i-lucide-plus',
     need: 'roles.manage',
   },
+
+  // Your account
+  'account.passkeys': {
+    label: 'Your passkeys',
+    route: '/account',
+    kind: 'card',
+    icon: 'i-lucide-key-round',
+  },
+  'account.add-passkey': {
+    label: 'Add a passkey',
+    route: '/account',
+    kind: 'button',
+    icon: 'i-lucide-plus',
+  },
+  'account.recovery-codes': {
+    label: 'Make new codes',
+    route: '/account',
+    kind: 'button',
+  },
+
+  // Mods, plugins and datapacks
+  'content.add': {
+    label: 'Add content',
+    route: '/servers/:name/content',
+    kind: 'button',
+    icon: 'i-lucide-plus',
+    need: 'content.manage',
+  },
+  'content.vanilla-tweaks': {
+    label: 'Vanilla Tweaks',
+    route: '/servers/:name/content',
+    kind: 'button',
+    icon: 'i-lucide-sparkles',
+    need: 'content.manage',
+  },
+
+  // Web map
+  'world.map': {
+    label: 'Web map',
+    route: '/servers/:name/world#map',
+    kind: 'card',
+    icon: 'i-lucide-map',
+  },
+  'map.enable': {
+    label: 'Draw a web map',
+    route: '/servers/:name/world#map',
+    kind: 'field',
+    need: 'world.manage',
+  },
+
+  // Public page and Discord chat, in a server's Settings, Community
+  'community.public-page': {
+    label: 'Public page',
+    route: '/servers/:name/settings#community',
+    kind: 'card',
+    icon: 'i-lucide-globe',
+  },
+  'public-page.enable': {
+    label: 'Show a public page for this server',
+    route: '/servers/:name/settings#community',
+    kind: 'field',
+    need: 'community.manage',
+  },
+  'community.discord-chat': {
+    label: 'Discord chat',
+    route: '/servers/:name/settings#community',
+    kind: 'card',
+    icon: 'i-lucide-message-square',
+  },
+  'discord-chat.webhook': {
+    label: 'Channel webhook URL',
+    route: '/servers/:name/settings#community',
+    kind: 'field',
+    need: 'community.manage',
+  },
+
+  // System
+  'system.discord': {
+    label: 'Discord app',
+    route: '/system/integrations',
+    kind: 'card',
+    icon: 'i-lucide-message-square-code',
+    need: 'system.integrations',
+  },
+  'discord.token': {
+    label: 'Bot token',
+    route: '/system/integrations',
+    kind: 'field',
+    need: 'system.integrations',
+  },
+  'system.notifications': {
+    label: 'Notifications',
+    route: '/system/notifications',
+    kind: 'card',
+    icon: 'i-lucide-bell',
+    need: 'system.notifications',
+  },
+  'notifications.add': {
+    label: 'Add channel',
+    route: '/system/notifications',
+    kind: 'button',
+    icon: 'i-lucide-plus',
+    need: 'system.notifications',
+  },
+  'branding.form': {
+    label: 'Name, colour and font',
+    route: '/system/branding',
+    kind: 'card',
+    icon: 'i-lucide-palette',
+    need: 'system.branding',
+  },
+  'branding.name': {
+    label: 'Name',
+    route: '/system/branding',
+    kind: 'field',
+    need: 'system.branding',
+  },
+  'branding.colour': {
+    label: 'Accent colour',
+    route: '/system/branding',
+    kind: 'field',
+    need: 'system.branding',
+  },
+  'system.disk': {
+    label: 'Disk',
+    route: '/system',
+    kind: 'card',
+    icon: 'i-lucide-hard-drive',
+  },
+  'disk.measure-now': {
+    label: 'Measure now',
+    route: '/system',
+    kind: 'button',
+    icon: 'i-lucide-refresh-cw',
+    need: 'system.updates',
+  },
 } as const satisfies Record<string, DocAnchor>
 
 export type DocAnchorId = keyof typeof docAnchors

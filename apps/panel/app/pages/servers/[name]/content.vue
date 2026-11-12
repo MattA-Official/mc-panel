@@ -346,11 +346,17 @@ const pendingText = computed(() => {
         <UButton
           label="Vanilla Tweaks"
           icon="i-lucide-sparkles"
+          data-doc="content.vanilla-tweaks"
           color="neutral"
           variant="outline"
           @click="vtOpen = true"
         />
-        <UButton label="Add content" icon="i-lucide-plus" @click="addOpen = true" />
+        <UButton
+          label="Add content"
+          icon="i-lucide-plus"
+          data-doc="content.add"
+          @click="addOpen = true"
+        />
       </div>
     </div>
 

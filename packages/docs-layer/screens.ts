@@ -20,7 +20,7 @@ export type ScreenshotDevice = 'desktop' | 'phone'
 export interface ScreenshotSpec {
   /** File name in docs/screens/, e.g. "backups". */
   name: string
-  /** The anchor whose page is shot; a section anchor crops to that section. */
+  /** The anchor whose page is shot; a section or card anchor crops to that section or card. */
   anchor: string
   /** Anchors to number on the picture, in order. */
   labels: string[]

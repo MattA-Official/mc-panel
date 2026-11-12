@@ -243,7 +243,7 @@ function summary(c: ChannelView) {
 </script>
 
 <template>
-  <UCard data-e2e="notify-channels">
+  <UCard data-e2e="notify-channels" data-doc="system.notifications">
     <template #header>
       <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div class="min-w-0">
@@ -257,6 +257,7 @@ function summary(c: ChannelView) {
           icon="i-lucide-plus"
           label="Add channel"
           class="shrink-0 self-start"
+          data-doc="notifications.add"
           @click="add"
         />
       </div>

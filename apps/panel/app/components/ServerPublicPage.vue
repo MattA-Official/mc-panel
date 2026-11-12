@@ -112,7 +112,11 @@ const PLAYER_ITEMS: { label: string; value: PlayerVisibility; description: strin
 </script>
 
 <template>
-  <section v-if="server && form" class="rounded-lg border border-default p-5">
+  <section
+    v-if="server && form"
+    class="rounded-lg border border-default p-5"
+    data-doc="community.public-page"
+  >
     <h2 class="text-base font-semibold">Public page</h2>
     <p class="mt-1 text-sm text-muted">
       A page anyone can open without signing in, with the address to join, whether the server is up
@@ -159,6 +163,7 @@ const PLAYER_ITEMS: { label: string; value: PlayerVisibility; description: strin
         label="Show a public page for this server"
         description="Off, the page doesn't exist: its address shows the same 'nothing here' as any other."
         data-e2e="public-page-enabled"
+        data-doc="public-page.enable"
       />
       <template v-if="form.enabled">
         <UFormField

@@ -87,7 +87,7 @@ async function copyEndpoint() {
 </script>
 
 <template>
-  <UCard>
+  <UCard data-doc="system.discord">
     <template #header>
       <div class="flex items-center justify-between gap-3">
         <h2 class="flex items-center gap-2 font-semibold">
@@ -138,7 +138,7 @@ async function copyEndpoint() {
         description="Discord only sends commands to an https address, so give the panel a domain first."
       />
       <form class="flex flex-wrap items-end gap-2" @submit.prevent="connect">
-        <UFormField label="Bot token" class="min-w-0 flex-1">
+        <UFormField label="Bot token" class="min-w-0 flex-1" data-doc="discord.token">
           <UInput
             v-model="token"
             type="password"
