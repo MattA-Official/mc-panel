@@ -11,7 +11,7 @@ import { can } from '../../shared/permissions'
 import { loadAccess } from '../auth/access'
 import { withUuids } from '../players'
 import { PlayerPositions } from '../map/players'
-import { MAP_CSP, mapAccess, mapFile, viewerPage } from '../map/serve'
+import { MAP_CSP, mapAccess, mapFile, mapShowsPlayers, viewerPage } from '../map/serve'
 import { MapService, readStderr, type MapProgress } from '../map/service'
 
 let service: MapService | undefined
@@ -121,7 +121,8 @@ export async function serveMap(event: H3Event, name: string, raw: string) {
   if (!row) throw notFound()
 
   const map = readMapSettings(row.map)
-  const open = map.enabled && map.public && readPublicPage(row.publicPage).enabled
+  const publicPage = readPublicPage(row.publicPage)
+  const open = map.enabled && map.public && publicPage.enabled
   // Only a private map looks at the session, so a public one never hands visitors a cookie.
   const session = open ? null : await getUserSession(event)
   const access = session?.user ? loadAccess(useDb(), session.user.id, session.sessionVersion) : null
@@ -130,6 +131,7 @@ export async function serveMap(event: H3Event, name: string, raw: string) {
     publicPage: open,
     canView: access ? can(access, 'server.view', name) : null,
   })
+  const showPlayers = mapShowsPlayers(map, open ? publicPage : null)
   let rel: string
   try {
     rel = decodeURIComponent(raw)
@@ -152,7 +154,7 @@ export async function serveMap(event: H3Event, name: string, raw: string) {
   }
 
   if (rel === 'players.json') {
-    const players = map.players ? await usePlayerPositions().get(name) : []
+    const players = showPlayers ? await usePlayerPositions().get(name) : []
     setResponseHeaders(event, { 'content-type': 'application/json', 'cache-control': 'no-store' })
     return { players }
   }
@@ -161,7 +163,7 @@ export async function serveMap(event: H3Event, name: string, raw: string) {
   if (head) {
     // Only for someone on the map right now, so this can't look up any player.
     const hex = uuidHex(head[1]!)
-    const players = map.players ? await usePlayerPositions().get(name) : []
+    const players = showPlayers ? await usePlayerPositions().get(name) : []
     if (!hex || !players.some((p) => p.uuid && uuidHex(p.uuid) === hex)) throw notFound()
     const png = await useSkins().skin(hex)
     if (!png) throw notFound()

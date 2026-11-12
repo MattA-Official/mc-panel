@@ -4,6 +4,7 @@
  */
 import { resolve, sep } from 'node:path'
 import type { MapSettings } from '../../shared/map-settings'
+import type { PublicPage } from '../../shared/public-page'
 
 const TYPES: Record<string, string> = {
   json: 'application/json',
@@ -57,6 +58,15 @@ export function mapAccess(input: {
   if (input.map.public && input.publicPage) return 'allow'
   if (input.canView === null) return 'sign-in'
   return input.canView ? 'allow' : 'not-found'
+}
+
+/**
+ * Whether the map shows where players are. A map opened without signing in (`publicPage` is
+ * the page it's shared through) never shows more than that page: only when it shows names.
+ */
+export function mapShowsPlayers(map: MapSettings, publicPage: PublicPage | null): boolean {
+  if (!map.players) return false
+  return !publicPage || publicPage.show.players === 'names'
 }
 
 /** Only what the viewer needs: its own script and style, and images from the panel. */

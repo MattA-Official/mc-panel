@@ -11,7 +11,8 @@ import {
   type MapStatus,
 } from '../server/map/service'
 import { DEFAULT_MAP, type MapSettings } from '../shared/map-settings'
-import { mapAccess, mapFile, viewerPage } from '../server/map/serve'
+import { mapAccess, mapFile, mapShowsPlayers, viewerPage } from '../server/map/serve'
+import { defaultPublicPage, type PlayerVisibility } from '../shared/public-page'
 import { parseDimension, parsePos, PlayerPositions } from '../server/map/players'
 
 const REPORT = JSON.stringify({
@@ -288,6 +289,21 @@ describe('parseReport', () => {
 
 describe('serving the map', () => {
   const root = '/var/lib/flytower/maps/servers/survival'
+
+  it('shows players on a public map only when the public page shows names', () => {
+    const on = { ...DEFAULT_MAP, enabled: true, public: true, players: true }
+    const page = (players: PlayerVisibility) => {
+      const p = defaultPublicPage()
+      return { ...p, enabled: true, show: { ...p.show, players } }
+    }
+    expect(mapShowsPlayers(on, page('names'))).toBe(true)
+    expect(mapShowsPlayers(on, page('count'))).toBe(false)
+    expect(mapShowsPlayers(on, page('none'))).toBe(false)
+    // Signed in, the map's own switch decides.
+    expect(mapShowsPlayers(on, null)).toBe(true)
+    expect(mapShowsPlayers({ ...on, players: false }, null)).toBe(false)
+    expect(mapShowsPlayers({ ...on, players: false }, page('names'))).toBe(false)
+  })
 
   it('serves only the manifest and tiles, never state or anything outside', () => {
     expect(mapFile(root, 'maps.json')).toEqual({

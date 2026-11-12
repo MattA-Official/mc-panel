@@ -51,7 +51,7 @@ An open map checks for newly drawn parts every minute, and player positions ever
 
 ## Who can see it
 
-- **Show players**: where each online player is. Flytower asks the server with the game's own `data` command, only while someone has the map open, and at most every three seconds however many people are looking.
+- **Show players**: where each online player is. Flytower asks the server with the game's own `data` command, only while someone has the map open, and at most every three seconds however many people are looking. Someone who opens the map without signing in only sees players when the [public page](status-page.md) shows player names; with it set to show how many are on, or nothing, the public map shows no players either.
 - **Anyone can open it**: lets people open the map without signing in, and links it from the [public page](status-page.md#web-map) and `/status` in [Discord](discord.md). This needs the public page on. Off (the default), only people who can see the server in the panel can open it.
 
 When the map is public, the card shows its address to share, with a copy button.

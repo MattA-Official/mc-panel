@@ -21,7 +21,9 @@ export const MapSettings = z
     players: z
       .boolean()
       .default(true)
-      .describe('Show where online players are, while someone has the map open.'),
+      .describe(
+        'Show where online players are, while someone has the map open. On a map opened without signing in, only when the public page shows player names.',
+      ),
   })
   .strict()
   .describe('The web map. Left out, the current settings stay.')
