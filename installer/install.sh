@@ -15,6 +15,14 @@ MCowBQYDK2VwAyEAvYI8I2s8fiJ85JYPWsQCU56IZCNqHv+jJB3CqjERe+U=
 -----END PUBLIC KEY-----
 KEY
 )"
+# Pull request test builds are signed with a separate key (installer/pr-key.pem), which only
+# --pr trusts. The updater never trusts it, so a test build can't pass for a release.
+PR_KEY="$(cat <<'PRKEY'
+-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEARens+6YMMUYUcBgRJxsKV2YNzFxu2a5ZCg5R3GeT7rA=
+-----END PUBLIC KEY-----
+PRKEY
+)"
 STATE_DIR="/var/lib/flytower"
 CONFIG_DIR="/etc/flytower"
 SERVERS_DIR="/srv/flytower/servers"
@@ -48,7 +56,8 @@ Usage: install.sh --domain <host> [options]
                         Rust and Go. For test servers only.
   --tarball <file>      Install from a release tarball already on this machine.
   --pr <number>         Install the test build of that pull request (for testing, not for
-                        real servers). It's signed like a release.
+                        real servers). It's signed with the test-build key, not the
+                        release key.
   --setup-token <text>  Use this setup token instead of generating one.
   --no-caddy            Don't install or configure Caddy (bring your own HTTPS proxy).
   --no-firewall         Don't touch ufw.
@@ -142,7 +151,11 @@ if [[ -z "$tarball" ]]; then
   command -v openssl >/dev/null || die "openssl is missing (needed to check the release's signature)"
   curl -fsSL -o "$work/SHA256SUMS.sig" "$base/SHA256SUMS.sig" ||
     die "this release isn't signed; refusing to install it"
-  printf '%s\n' "$RELEASE_KEY" >"$work/release-key.pem"
+  if [[ -n "$pr" ]]; then
+    printf '%s\n' "$PR_KEY" >"$work/release-key.pem"
+  else
+    printf '%s\n' "$RELEASE_KEY" >"$work/release-key.pem"
+  fi
   base64 -d "$work/SHA256SUMS.sig" >"$work/SHA256SUMS.sig.bin" 2>/dev/null ||
     die "this release's signature is unreadable; refusing to install it"
   openssl pkeyutl -verify -pubin -inkey "$work/release-key.pem" -rawin \

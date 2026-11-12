@@ -1,5 +1,12 @@
 name: Release
 
+# Three jobs, so the release key only ever meets code from main:
+#   build    checks, builds and packages the release with no secrets, and hands dist/ on.
+#   sign     runs in the `release` environment, the only place FLYTOWER_SIGNING_KEY lives.
+#            The environment only lets main and v* tags in, and asks Matt to approve each
+#            run. It checks out nothing but the signing script and the public key, from the
+#            branch or tag the workflow runs on, and signs dist/SHA256SUMS.
+#   publish  creates the tag and the GitHub release from the signed files.
 on:
   push:
     tags: ['v*']
@@ -17,16 +24,22 @@ permissions:
   contents: read
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-24.04
     permissions:
-      contents: write
+      contents: read
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      version: ${{ steps.tag.outputs.version }}
+      target_sha: ${{ steps.tag.outputs.target_sha }}
+      not_latest: ${{ steps.tag.outputs.not_latest }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
 
       - name: Work out the tag
+        id: tag
         env:
           INPUT_VERSION: ${{ inputs.version }}
           INPUT_REF: ${{ inputs.ref }}
@@ -60,20 +73,30 @@ jobs:
           else
             tag="$GITHUB_REF_NAME"
           fi
-          echo "TAG=$tag" >> "$GITHUB_ENV"
           version="${tag#native-}"
-          echo "VERSION=${version#v}" >> "$GITHUB_ENV"
-          echo "TARGET_SHA=$sha" >> "$GITHUB_ENV"
+          version="${version#v}"
           # A stable release older than the newest stable one mustn't become "Latest".
           newest="$(git tag -l 'v*' | grep -v -- - | sort -V | tail -n1)"
-          if [[ "$tag" != *-* && "$newest" != "$tag" ]]; then echo "NOT_LATEST=1" >> "$GITHUB_ENV"; fi
+          not_latest=""
+          if [[ "$tag" != *-* && "$newest" != "$tag" ]]; then not_latest=1; fi
+          {
+            echo "TAG=$tag"
+            echo "VERSION=$version"
+            echo "TARGET_SHA=$sha"
+          } >> "$GITHUB_ENV"
+          {
+            echo "tag=$tag"
+            echo "version=$version"
+            echo "target_sha=$sha"
+            echo "not_latest=$not_latest"
+          } >> "$GITHUB_OUTPUT"
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
       - name: Rust toolchain (pinned in crates/rust-toolchain.toml)
         run: cd crates && rustup toolchain install && rustc --version
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: crates
 
@@ -93,6 +116,45 @@ jobs:
           bun scripts/package.ts --version "$version" --arch arm64 --out dist
           cp installer/install.sh dist/install.sh
           cd dist && sha256sum flytower-*.tar.gz install.sh > SHA256SUMS && cat SHA256SUMS
+
+      - name: Release notes
+        run: |
+          mkdir -p .github/release-notes
+          cp "$RUNNER_TEMP"/release-notes/*.md .github/release-notes/
+          bun "$RUNNER_TEMP/release-notes.ts" "$TAG" > dist/NOTES.md
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: unsigned
+          path: dist/
+          retention-days: 1
+          if-no-files-found: error
+
+  sign:
+    needs: build
+    runs-on: ubuntu-24.04
+    # Holds FLYTOWER_SIGNING_KEY. Its deployment rules (main and v* tags, Matt's approval)
+    # keep pull requests and other branches away from the key.
+    environment: release
+    permissions:
+      contents: read
+    steps:
+      # Only what signing needs, from the branch or tag this workflow runs on: never the
+      # code being released, which the build job has already packaged.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          sparse-checkout: |
+            package.json
+            scripts/signing-key.ts
+            installer/release-key.pem
+          sparse-checkout-cone-mode: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: unsigned
+          path: dist
 
       - name: Sign
         env:
@@ -122,15 +184,36 @@ jobs:
             -in dist/SHA256SUMS -sigfile sig.bin
           rm sig.bin
 
-      - name: Release notes
-        run: |
-          mkdir -p .github/release-notes
-          cp "$RUNNER_TEMP"/release-notes/*.md .github/release-notes/
-          bun "$RUNNER_TEMP/release-notes.ts" "$TAG" > dist/NOTES.md
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: signature
+          path: dist/SHA256SUMS.sig
+          retention-days: 1
+          if-no-files-found: error
+
+  publish:
+    needs: [build, sign]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: unsigned
+          path: dist
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: signature
+          path: dist
 
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.build.outputs.tag }}
+          VERSION: ${{ needs.build.outputs.version }}
+          TARGET_SHA: ${{ needs.build.outputs.target_sha }}
+          NOT_LATEST: ${{ needs.build.outputs.not_latest }}
         run: |
           version="$VERSION"
           flags=()

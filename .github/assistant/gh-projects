@@ -2,9 +2,32 @@
 # Runs gh as Matt, with the PROJECTS_TOKEN secret, for the Projects board. The Claude Code
 # action sets GH_TOKEN to its own token for every command, and that token can't reach
 # Projects owned by a user account, so board commands go through this instead.
+#
+# The workflow installs this from main as /usr/local/bin/gh-projects before the assistant
+# starts, so a pull request can't swap it. It only runs `gh project ...` and
+# `gh api graphql ...`, and file arguments may only name GraphQL files under .assistant/.
 set -euo pipefail
+refuse() {
+  echo "gh-projects: $*" >&2
+  exit 2
+}
 if [[ -z "${PROJECTS_TOKEN:-}" ]]; then
   echo "PROJECTS_TOKEN isn't set, so the Projects board can't be reached." >&2
   exit 1
 fi
+case "${1:-}" in
+  project) ;;
+  api) [[ "${2:-}" == graphql ]] || refuse "only 'gh api graphql' is allowed, not 'gh api ${2:-}'" ;;
+  *) refuse "only 'gh project ...' and 'gh api graphql ...' are allowed" ;;
+esac
+for arg in "$@"; do
+  case "$arg" in
+    --input | --input=*) refuse "--input isn't allowed; pass -F query=@.assistant/<name>.graphql" ;;
+  esac
+  if [[ "$arg" =~ ^[A-Za-z_][A-Za-z0-9_]*=@(.*)$ ]]; then
+    file="${BASH_REMATCH[1]}"
+    [[ "$file" =~ ^\.assistant/[A-Za-z0-9_-]+\.graphql$ ]] ||
+      refuse "file arguments must be .assistant/<name>.graphql, not $file"
+  fi
+done
 GH_TOKEN="$PROJECTS_TOKEN" exec gh "$@"

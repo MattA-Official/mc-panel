@@ -39,13 +39,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
       - name: Rust toolchain (pinned in crates/rust-toolchain.toml)
         run: cd crates && rustup toolchain install && rustc --version
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: crates
       - run: bun install --frozen-lockfile
@@ -224,7 +224,7 @@ jobs:
           docker exec vps journalctl -u flytower-agent -u flytower-panel -u 'flytower-mc@*' -u 'flytower-update-*' --no-pager -n 300 || true
           docker exec vps sh -c 'tail -n 80 /srv/flytower/servers/*/logs/latest.log' || true
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: e2e-screenshots
@@ -264,13 +264,13 @@ jobs:
         from: ${{ fromJson(needs.releases.outputs.versions) }}
     name: upgrade from ${{ matrix.from }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
       - name: Rust toolchain (pinned in crates/rust-toolchain.toml)
         run: cd crates && rustup toolchain install && rustc --version
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: crates
       - run: bun install --frozen-lockfile
