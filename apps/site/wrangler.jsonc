@@ -1,5 +1,5 @@
 // The website runs as a Cloudflare Worker. Pages are prerendered at build time and served as
-// static assets; the Worker is there for later server routes (a mailing list, opt-in telemetry).
+// static assets; the Worker runs the server routes (the mailing list sign-up).
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "flytower-site",
@@ -14,6 +14,33 @@
   },
   // Deploying creates the DNS record and certificate for the domain on first run.
   "routes": [{ "pattern": "flytower.dev", "custom_domain": true }],
+  // The mailing list (NuxtHub's `hub:db`). EU jurisdiction, so the data stays in the EU. Migrations
+  // are generated with `bunx --bun nuxt db generate` and applied by the Website workflow.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "flytower-newsletter",
+      "database_id": "b31e3f7c-7279-4bba-bc28-58f2234f2c17",
+      "migrations_dir": "server/db/migrations/sqlite",
+      "migrations_table": "_hub_migrations",
+    },
+  ],
+  // At most 5 sign-up attempts per IP address a minute. The address is a counter key only.
+  "ratelimits": [
+    {
+      "name": "NEWSLETTER_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 5, "period": 60 },
+    },
+  ],
+  // The Turnstile secret lives in the account's Secrets Store, outside Worker versions.
+  "secrets_store_secrets": [
+    {
+      "binding": "TURNSTILE_SECRET",
+      "store_id": "f52e1e82a35c482697dc96def22ab8f3",
+      "secret_name": "TURNSTILE_SECRET_KEY",
+    },
+  ],
   "observability": { "enabled": true },
   "preview_urls": true,
   "workers_dev": true,
