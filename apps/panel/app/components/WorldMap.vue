@@ -224,7 +224,11 @@ const lastLine = computed(() => {
           :loading="saving"
           :disabled="saving || !canConfigure"
           label="Show players"
-          description="Where each online player is, while someone has the map open."
+          :description="
+            server.map.public && pageOn && server.publicPage.show.players !== 'names'
+              ? 'Only for people signed in. The public page hides player names, so the public map does too.'
+              : 'Where each online player is, while someone has the map open. Without signing in, only when the public page shows player names.'
+          "
           data-e2e="map-players"
           @update:model-value="
             (v: boolean) =>

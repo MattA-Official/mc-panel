@@ -51,7 +51,7 @@ An open map checks for newly drawn parts every minute, and player positions ever
 
 ## Who can see it
 
-- **Show players**: where each online player is. Flytower asks the server with the game's own `data` command, only while someone has the map open, and at most every three seconds however many people are looking.
+- **Show players**: where each online player is. Flytower asks the server with the game's own `data` command, only while someone has the map open, and at most every three seconds however many people are looking. Someone who opens the map without signing in only sees players when the [public page](status-page.md) shows player names; with it set to show how many are on, or nothing, the public map shows no players either.
 - **Anyone can open it**: lets people open the map without signing in, and links it from the [public page](status-page.md#web-map) and `/status` in [Discord](discord.md). This needs the public page on. Off (the default), only people who can see the server in the panel can open it.
 
 When the map is public, the card shows its address to share, with a copy button.
@@ -62,7 +62,7 @@ Player heads come from the panel's own copy of their skins, never from another s
 
 ## What it costs
 
-- **CPU:** drawing runs one server at a time, at the lowest priority, so the Minecraft servers always come first. A 512×512-block region takes well under a second; after the first drawing, only changed regions are drawn.
+- **CPU:** drawing runs at the lowest priority, so the Minecraft servers always come first. Each server's map is drawn one pass at a time, and at most two servers' maps at once, so one huge world doesn't hold up the others. A pass that makes no progress for ten minutes is stopped and shows as failed on the card; the next save tries again. A 512×512-block region takes well under a second; after the first drawing, only changed regions are drawn.
 - **Memory:** about 20 MB while drawing, and nothing in between.
 - **Disk:** one image per 512×512 blocks of explored world, plus zoomed-out copies. The server's **Disk use** card shows it on its own line, **Web map**. The files are in `/var/lib/flytower/maps`, not in the server's folder, so they're never in backups.
 - **Ports:** none. The panel serves the map itself.
