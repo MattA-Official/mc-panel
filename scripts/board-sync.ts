@@ -11,12 +11,13 @@
  * board. Each item then gets a Status:
  *
  *   closed issue, merged or closed pull request   -> Done
- *   open pull request                             -> In review
+ *   draft pull request                            -> In progress
+ *   open pull request, ready for review           -> In review
  *   open issue in the current milestone           -> Todo
  *   any other open issue                          -> Backlog
  *
- * Open items already marked In progress or In review are left alone, so moving a card by
- * hand sticks. The current milestone is the open one with the lowest version number.
+ * Open issues already marked In progress or In review are left alone, so moving a card by
+ * hand sticks. The Area field follows each item's first area: label. The current milestone is the open one with the lowest version number.
  *
  * Dates, for the Roadmap layout (in the UK calendar):
  *
@@ -40,6 +41,12 @@ export interface Item {
   state: 'OPEN' | 'CLOSED' | 'MERGED'
   milestone: string | null
   status: string | null
+  /** A pull request that is still a draft. */
+  draft?: boolean
+  /** The item's labels, for its Area. */
+  labels?: string[]
+  /** The Area field as it is on the board. */
+  area?: string | null
   createdAt?: string
   closedAt?: string | null
   milestoneDue?: string | null
@@ -68,12 +75,27 @@ export function desiredDates(item: Item): { start?: string; target?: string } {
 /** The Status an item should have, or null to leave it as it is. */
 export function desiredStatus(item: Item, currentMilestone: string | null): Status | null {
   if (item.state !== 'OPEN') return item.status === 'Done' ? null : 'Done'
+  // An open pull request follows its draft state: a draft is still being worked on.
+  if (item.kind === 'PullRequest') {
+    const want: Status = item.draft ? 'In progress' : 'In review'
+    return item.status === want ? null : want
+  }
   if (item.status === 'In progress' || item.status === 'In review') return null
   let want: Status
-  if (item.kind === 'PullRequest') want = 'In review'
-  else if (currentMilestone !== null && item.milestone === currentMilestone) want = 'Todo'
+  if (currentMilestone !== null && item.milestone === currentMilestone) want = 'Todo'
   else want = 'Backlog'
   return item.status === want ? null : want
+}
+
+/**
+ * The Area an item should have, from its first `area:` label (area:panel -> panel), or null
+ * to leave it as it is. Items without an area label keep whatever was set by hand.
+ */
+export function desiredArea(item: Item): string | null {
+  const label = item.labels?.find((l) => l.startsWith('area:'))
+  if (!label) return null
+  const area = label.slice('area:'.length)
+  return item.area === area ? null : area
 }
 
 /** The open milestone with the lowest version, e.g. "1.1.0 Alerts" before "1.2.0 People". */
@@ -91,14 +113,13 @@ export function pickCurrentMilestone(titles: string[]): string | null {
   return versioned[0]?.title ?? null
 }
 
-const [OWNER, REPO] = (process.env.GITHUB_REPOSITORY ?? 'teamflytower/flytower').split('/') as [
-  string,
-  string,
-]
-const BOARD_OWNER = process.env.BOARD_OWNER ?? 'teamflytower'
-const BOARD_OWNER_TYPE = process.env.BOARD_OWNER_TYPE === 'user' ? 'user' : 'organization'
+export const [OWNER, REPO] = (process.env.GITHUB_REPOSITORY ?? 'teamflytower/flytower').split(
+  '/',
+) as [string, string]
+export const BOARD_OWNER = process.env.BOARD_OWNER ?? 'teamflytower'
+export const BOARD_OWNER_TYPE = process.env.BOARD_OWNER_TYPE === 'user' ? 'user' : 'organization'
 
-async function graphql<T>(
+export async function graphql<T>(
   token: string,
   query: string,
   variables: Record<string, unknown> = {},
@@ -133,6 +154,8 @@ interface ContentNode {
   repository: { nameWithOwner: string }
   createdAt: string
   closedAt: string | null
+  isDraft?: boolean
+  labels?: { nodes: { name: string }[] }
 }
 
 function toItem(c: ContentNode, status: string | null = null): Item {
@@ -142,6 +165,8 @@ function toItem(c: ContentNode, status: string | null = null): Item {
     state: c.state,
     milestone: c.milestone?.title ?? null,
     status,
+    draft: c.isDraft ?? false,
+    labels: c.labels?.nodes.map((l) => l.name) ?? [],
     createdAt: c.createdAt,
     closedAt: c.closedAt,
     milestoneDue: c.milestone?.dueOn ?? null,
@@ -150,13 +175,14 @@ function toItem(c: ContentNode, status: string | null = null): Item {
 
 // Fields of an issue or pull request, for a connection that only holds one of the two.
 const FIELDS =
-  '__typename id number state createdAt closedAt milestone { title dueOn } repository { nameWithOwner }'
+  '__typename id number state createdAt closedAt milestone { title dueOn } repository { nameWithOwner } labels(first: 20) { nodes { name } }'
+const PR_FIELDS = `${FIELDS} isDraft`
 
 // The same fields for a board item, whose content could be either (or a draft).
 const CONTENT = `
   __typename
   ... on Issue { ${FIELDS.replace('__typename ', '')} }
-  ... on PullRequest { ${FIELDS.replace('__typename ', '')} }
+  ... on PullRequest { ${PR_FIELDS.replace('__typename ', '')} }
 `
 
 async function main() {
@@ -197,6 +223,7 @@ async function main() {
   let field: { id: string; options: { id: string; name: string }[] } | null | undefined
   let startFieldId: string | undefined
   let targetFieldId: string | undefined
+  let areaField: { id: string; options: { id: string; name: string }[] } | null | undefined
   const onBoard = new Map<string, { itemId: string; item: Item }>()
   for (let after: string | null = null; ;) {
     const page: BoardPage = await graphql<BoardPage>(
@@ -236,6 +263,8 @@ async function main() {
     field = status?.id && status.options ? { id: status.id, options: status.options } : null
     startFieldId = byName('Start date')?.id
     targetFieldId = byName('Target date')?.id
+    const area = byName('Area')
+    areaField = area?.id && area.options ? { id: area.id, options: area.options } : null
     for (const node of project.items.nodes) {
       const c = node.content
       if (!c || !('number' in c) || c.repository.nameWithOwner !== `${OWNER}/${REPO}`) continue
@@ -246,6 +275,7 @@ async function main() {
           ...toItem(c, value('Status')?.name ?? null),
           start: value('Start date')?.date ?? null,
           target: value('Target date')?.date ?? null,
+          area: value('Area')?.name ?? null,
         },
       })
     }
@@ -294,7 +324,7 @@ async function main() {
       repository(owner: $owner, name: $repo) {
         milestones(states: OPEN, first: 50) { nodes { title } }
         issues(states: OPEN, first: 100) { nodes { ${FIELDS} } }
-        pullRequests(states: OPEN, first: 100) { nodes { ${FIELDS} } }
+        pullRequests(states: OPEN, first: 100) { nodes { ${PR_FIELDS} } }
       }
     }`,
     { owner: OWNER, repo: REPO },
@@ -321,7 +351,7 @@ async function main() {
       `query($owner: String!, $repo: String!, $title: String!) {
         repository(owner: $owner, name: $repo) {
           milestones(query: $title, first: 5) {
-            nodes { title issues(first: 100) { nodes { ${FIELDS} } } pullRequests(first: 100) { nodes { ${FIELDS} } } }
+            nodes { title issues(first: 100) { nodes { ${FIELDS} } } pullRequests(first: 100) { nodes { ${PR_FIELDS} } } }
           }
         }
       }`,
@@ -399,9 +429,27 @@ async function main() {
     if (!dryRun) await setField(itemId, field.id, { singleSelectOptionId: option })
   }
 
+  // The Area field, made by scripts/board-setup.ts, follows each item's area: label.
+  let areasChanged = 0
+  if (areaField) {
+    const areaOption = new Map(areaField.options.map((o) => [o.name, o.id]))
+    for (const { itemId, item } of onBoard.values()) {
+      const want = desiredArea(item)
+      if (!want) continue
+      const option = areaOption.get(want)
+      if (!option) {
+        console.log(`#${item.number}: no "${want}" Area option; run the board setup again`)
+        continue
+      }
+      console.log(`#${item.number}: Area ${item.area ?? '(none)'} -> ${want}`)
+      areasChanged++
+      if (!dryRun) await setField(itemId, areaField.id, { singleSelectOptionId: option })
+    }
+  }
+
   console.log(`\n${dryRun ? 'Would change' : 'Changed'} ${changed} of ${onBoard.size} items.`)
   for (const [status, n] of [...counts].sort()) console.log(`  ${status}: ${n}`)
-  console.log(`${dryRun ? 'Would set' : 'Set'} ${datesChanged} dates.`)
+  console.log(`${dryRun ? 'Would set' : 'Set'} ${datesChanged} dates and ${areasChanged} areas.`)
 }
 
 if (import.meta.main) await main()
