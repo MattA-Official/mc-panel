@@ -59,6 +59,7 @@ export default defineEventHandler(async (event) => {
     .insert(schema.subscribers)
     .values({
       id: crypto.randomUUID(),
+      list: 'newsletter',
       email,
       status: 'pending',
       consentVersion: CONSENT_VERSION,
@@ -66,7 +67,7 @@ export default defineEventHandler(async (event) => {
       createdAt: new Date().toISOString(),
       tokenHash: hash,
     })
-    .onConflictDoNothing({ target: schema.subscribers.email })
+    .onConflictDoNothing({ target: [schema.subscribers.list, schema.subscribers.email] })
 
   return { ok: true }
 })
