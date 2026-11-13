@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs gh as Matt, with the PROJECTS_TOKEN secret, for the Projects board. The Claude Code
 # action sets GH_TOKEN to its own token for every command, and that token can't reach
-# Projects owned by a user account, so board commands go through this instead.
+# Projects boards, so board commands go through this instead.
 #
 # The workflow installs this from main as /usr/local/bin/gh-projects before the assistant
 # starts, so a pull request can't swap it. It only runs `gh project ...` and

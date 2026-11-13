@@ -12,9 +12,9 @@ name: Assistant
 #   CLAUDE_CODE_OAUTH_TOKEN  a Claude subscription token from `claude setup-token`, or
 #   ANTHROPIC_API_KEY        an Anthropic API key. One of the two is required; the
 #                            subscription token wins when both are set.
-#   PROJECTS_TOKEN           optional. A classic personal access token with only the
-#                            `project` scope (the repository is public, so it needs no
-#                            `repo` scope), for the user-owned Projects board, used through
+#   PROJECTS_TOKEN           optional. A token that can reach the organisation's Projects
+#                            board (classic with the `project` scope, or fine-grained with
+#                            organisation Projects read and write), used through
 #                            gh-projects. Plain gh uses this workflow's own token for
 #                            issues and PRs.
 on:
@@ -41,10 +41,11 @@ concurrency:
 
 jobs:
   assistant:
-    # The repository is public, so only the owner can start a run. The text must also
+    # The repository is public, so only Matt can start a run (the repository belongs to the
+    # teamflytower organisation, so repository_owner isn't a person). The text must also
     # mention @claude, except when dispatched with a prompt.
     if: >-
-      github.actor == github.repository_owner && (
+      github.actor == 'MattA-Official' && (
         github.event_name == 'workflow_dispatch' ||
         (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
         (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
@@ -89,7 +90,7 @@ jobs:
           prompt: ${{ github.event_name == 'workflow_dispatch' && inputs.prompt || '' }}
           # Other people's comments stay out of the context, which limits what a stranger
           # on a public issue can steer.
-          include_comments_by_actor: ${{ github.repository_owner }}
+          include_comments_by_actor: MattA-Official
           # Only the gh commands the job needs: gh as a whole can run code (gh extension,
           # gh alias --shell). Files can only be written under .assistant/, for GraphQL.
           claude_args: >-

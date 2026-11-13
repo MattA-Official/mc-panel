@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'bun:test'
-import { desiredDates, desiredStatus, pickCurrentMilestone, type Item } from './board-sync'
+import {
+  desiredArea,
+  desiredDates,
+  desiredStatus,
+  pickCurrentMilestone,
+  type Item,
+} from './board-sync'
 
 const M = '1.1.0 Alerts and reliability'
 const item = (over: Partial<Item>): Item => ({
@@ -20,8 +26,16 @@ describe('desiredStatus', () => {
     expect(desiredStatus(item({ state: 'CLOSED', status: 'Done' }), M)).toBeNull()
   })
 
-  test('open pull requests are In review', () => {
+  test('open pull requests are In review, drafts In progress', () => {
     expect(desiredStatus(item({ kind: 'PullRequest' }), M)).toBe('In review')
+    expect(desiredStatus(item({ kind: 'PullRequest', draft: true }), M)).toBe('In progress')
+    expect(
+      desiredStatus(item({ kind: 'PullRequest', draft: true, status: 'In progress' }), M),
+    ).toBeNull()
+  })
+
+  test('a pull request marked ready moves from In progress to In review', () => {
+    expect(desiredStatus(item({ kind: 'PullRequest', status: 'In progress' }), M)).toBe('In review')
   })
 
   test('open issues go to Todo in the current milestone, Backlog otherwise', () => {
@@ -90,5 +104,18 @@ describe('desiredDates', () => {
       ),
     ).toEqual({})
     expect(desiredDates(item({ start: '2026-11-01' }))).toEqual({})
+  })
+})
+
+describe('desiredArea', () => {
+  test('follows the first area: label', () => {
+    expect(desiredArea(item({ labels: ['type:bug', 'area:panel', 'area:agent'] }))).toBe('panel')
+    expect(desiredArea(item({ labels: ['area:panel'], area: 'panel' }))).toBeNull()
+    expect(desiredArea(item({ labels: ['area:agent'], area: 'panel' }))).toBe('agent')
+  })
+
+  test('leaves items without an area label alone', () => {
+    expect(desiredArea(item({ labels: ['type:bug'], area: 'website' }))).toBeNull()
+    expect(desiredArea(item({}))).toBeNull()
   })
 })
