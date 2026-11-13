@@ -1,7 +1,7 @@
 ---
 title: Privacy Policy
 description: What personal data the Flytower website collects, why, who it is shared with, and the rights you have over it.
-lastUpdated: '2026-11-10'
+lastUpdated: '2026-11-13'
 ---
 
 This policy explains what personal data is collected when you use the Flytower website at
@@ -87,6 +87,18 @@ If you email us, we receive your email address, your name if you give it, and wh
 this to reply and to keep a record of the conversation. The lawful basis is our legitimate interest in
 answering people who contact us. Please do not send sensitive information that we have not asked for.
 
+Our mailboxes run on a mail system that we host ourselves on Cloudflare, so your email is stored in our
+own Cloudflare account and not with a separate mailbox company.
+
+**AI-assisted drafting.** We use an AI assistant, Anthropic's Claude, to help draft replies. When it is
+used, the content of the conversation, including your name and email address, is sent to Anthropic so
+that it can suggest a reply. Matt reads and edits every reply before it is sent, and nothing is sent to
+you automatically. Anthropic processes this data on our behalf under its commercial terms. It does not
+use it to train its models, and it deletes it after a short retention period, normally within 30 days.
+We rely on our legitimate interest in answering email efficiently. If you would prefer that your email
+is not processed in this way, say so in your message or email
+[privacy@flytower.example](mailto:privacy@flytower.example), and Matt will handle it by hand.
+
 ### When you sponsor or donate
 
 Sponsorship and donations are handled by GitHub Sponsors and Ko-fi. Those platforms take the payment,
@@ -141,7 +153,8 @@ it earned. They do not normally tell us who you are. See the
 - We do not sell or rent personal data.
 - We do not use advertising trackers, tracking pixels or third-party cookies.
 - We do not build profiles of visitors or show personalised advertising.
-- We do not make decisions about you by automated means.
+- We do not make decisions about you by automated means. Where AI helps to draft an email, a person
+  always reviews it before it is sent.
 - We do not knowingly collect special category data, such as health data or political opinions.
 
 ## Who we share data with
@@ -149,21 +162,21 @@ it earned. They do not normally tell us who you are. See the
 We share personal data only with the service providers needed to run the project, and only as far as
 they need it.
 
-| Recipient                                    | What for                                                   | Role                   |
-| -------------------------------------------- | ---------------------------------------------------------- | ---------------------- |
-| Cloudflare                                   | Hosting, security and cookieless analytics for the website | Processor              |
-| Email provider **[TODO: name the provider]** | Sending and receiving email at our addresses               | Processor              |
-| GitHub                                       | Source code, issues, discussions and GitHub Sponsors       | Independent controller |
-| Ko-fi and its payment partners               | One-off donations                                          | Independent controller |
-| Discord                                      | Community chat                                             | Independent controller |
-| HMRC, an accountant or professional adviser  | Tax and legal compliance, where needed                     | Independent controller |
+| Recipient                                   | What for                                                                                                 | Role                   |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------- |
+| Cloudflare                                  | Hosting, security and cookieless analytics for the website, and hosting, sending and receiving our email | Processor              |
+| Anthropic                                   | AI-assisted drafting of email replies                                                                    | Processor              |
+| GitHub                                      | Source code, issues, discussions and GitHub Sponsors                                                     | Independent controller |
+| Ko-fi and its payment partners              | One-off donations                                                                                        | Independent controller |
+| Discord                                     | Community chat                                                                                           | Independent controller |
+| HMRC, an accountant or professional adviser | Tax and legal compliance, where needed                                                                   | Independent controller |
 
 We may also disclose data if the law requires it, for example in response to a valid court order, or
 where it is needed to establish or defend a legal claim.
 
 ## Transfers outside the UK
 
-Cloudflare, GitHub, Ko-fi and Discord operate internationally, so your data may be processed outside
+Cloudflare, Anthropic, GitHub, Ko-fi and Discord operate internationally, so your data may be processed outside
 the UK, including in the United States. Where we are responsible for the transfer, it is protected by
 a safeguard recognised in UK law. In practice this is UK adequacy regulations (including the UK
 Extension to the EU-US Data Privacy Framework, where the provider is certified) or the provider's

@@ -33,7 +33,7 @@ Flytower is not registered for VAT.
 The Flytower software is free and open source. It is licensed under the
 [GNU Affero General Public License, version 3](https://www.gnu.org/licenses/agpl-3.0.html) (AGPL-3.0).
 The full text is in the `LICENSE` file of the
-[source repository](https://github.com/MattA-Official/mc-panel).
+[source repository](https://github.com/teamflytower/flytower).
 
 That licence, and not these terms, governs your right to use, copy, modify and share the software.
 Nothing here adds to or takes away from it. In particular, the AGPL-3.0 provides the software **without

@@ -68,7 +68,7 @@ If you find something you cannot use, or you need information from this website 
 please tell us:
 
 - email [hello@flytower.example](mailto:hello@flytower.example);
-- or open an issue in the [source repository](https://github.com/MattA-Official/mc-panel/issues), if
+- or open an issue in the [source repository](https://github.com/teamflytower/flytower/issues), if
   you are comfortable posting publicly.
 
 It helps if you tell us the page address, what you were trying to do, and the browser and any assistive
