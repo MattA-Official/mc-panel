@@ -18,7 +18,7 @@ const { data: releases } = await useAsyncData('releases', async () => {
   const token = import.meta.server ? process.env.GITHUB_TOKEN : undefined
   if (token) headers.authorization = `Bearer ${token}`
   const list = await $fetch<Release[]>(
-    'https://api.github.com/repos/MattA-Official/mc-panel/releases',
+    'https://api.github.com/repos/teamflytower/flytower/releases',
     {
       query: { per_page: 50 },
       headers,

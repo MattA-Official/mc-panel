@@ -60,4 +60,4 @@ To restore them on a new machine: install Flytower, stop the panel (`systemctl s
 
 ## Reporting a problem
 
-Open an issue on [GitHub](https://github.com/MattA-Official/mc-panel/issues/new?template=feedback.yml), with what you did, what happened, and the logs above if you can.
+Open an issue on [GitHub](https://github.com/teamflytower/flytower/issues/new?template=feedback.yml), with what you did, what happened, and the logs above if you can.

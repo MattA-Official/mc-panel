@@ -36,7 +36,7 @@ Down to your last few codes? **Your account**, **Make new codes** gives you a fr
 You need to get onto the machine itself, through your VPS provider's web console (or SSH if it's open). Then re-run the installer with a new setup token:
 
 ```sh
-curl -fsSL https://github.com/MattA-Official/mc-panel/releases/latest/download/install.sh \
+curl -fsSL https://github.com/teamflytower/flytower/releases/latest/download/install.sh \
   | sudo bash -s -- --domain panel.example.com --setup-token NEW-LONG-RANDOM-TOKEN
 sudo sqlite3 /var/lib/flytower/flytower.db 'DELETE FROM credentials; DELETE FROM recovery_codes;'
 sudo systemctl restart flytower-panel

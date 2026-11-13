@@ -50,7 +50,7 @@ export class DiscordApi {
         method,
         headers: {
           authorization: `Bot ${token}`,
-          'user-agent': 'DiscordBot (https://github.com/MattA-Official/mc-panel, 1)',
+          'user-agent': 'DiscordBot (https://github.com/teamflytower/flytower, 1)',
           ...(body !== undefined && { 'content-type': 'application/json' }),
         },
         ...(body !== undefined && { body: JSON.stringify(body) }),
