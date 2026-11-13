@@ -1,9 +1,10 @@
 name: Board
 
-# Keeps the Status column of the Flytower Projects board in step with issues and pull
-# requests, as each one opens, closes, merges or changes milestone. The rules are in
-# scripts/board-sync.ts. Needs the PROJECTS_TOKEN secret (classic token, `repo` and
-# `project` scopes), since the workflow token can't reach a board owned by a user account.
+# Keeps the Status column of the teamflytower organisation's Flytower board in step with
+# issues and pull requests, as each one opens, closes, merges or changes milestone. The rules
+# are in scripts/board-sync.ts. Needs the PROJECTS_TOKEN secret (a fine-grained token for the
+# organisation with Projects read and write, or a classic token with `repo` and `project`),
+# since the workflow token can't reach a Projects board.
 on:
   issues:
     types: [opened, closed, reopened, milestoned, demilestoned]

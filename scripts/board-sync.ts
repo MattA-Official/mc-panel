@@ -1,7 +1,11 @@
 /**
  * Keeps the Status column of the Flytower Projects board in step with the repository.
  *
- *   PROJECTS_TOKEN=... bun scripts/board-sync.ts [--number 4] [--dry-run]
+ *   PROJECTS_TOKEN=... bun scripts/board-sync.ts [--number 1] [--dry-run]
+ *
+ * The board belongs to the teamflytower organisation; BOARD_OWNER and BOARD_OWNER_TYPE
+ * (organization or user) point the script at another one. The repository is the one the
+ * workflow runs in (GITHUB_REPOSITORY), so a fork or a renamed repository keeps working.
  *
  * Every open issue and pull request, and everything in the current milestone, is put on the
  * board. Each item then gets a Status:
@@ -22,8 +26,9 @@
  *
  * The Start date and Target date fields are created if the board doesn't have them.
  *
- * PROJECTS_TOKEN must be a classic token with the `repo` and `project` scopes: the workflow
- * token can't reach a Projects board owned by a user account.
+ * PROJECTS_TOKEN: the workflow token can't reach a Projects board at all, so this is either
+ * a fine-grained token for the organisation (Projects: read and write; Issues, Pull requests
+ * and Metadata: read) or a classic token with the `repo` and `project` scopes.
  */
 import { parseArgs } from 'node:util'
 
@@ -86,8 +91,12 @@ export function pickCurrentMilestone(titles: string[]): string | null {
   return versioned[0]?.title ?? null
 }
 
-const OWNER = 'MattA-Official'
-const REPO = 'mc-panel'
+const [OWNER, REPO] = (process.env.GITHUB_REPOSITORY ?? 'teamflytower/flytower').split('/') as [
+  string,
+  string,
+]
+const BOARD_OWNER = process.env.BOARD_OWNER ?? 'teamflytower'
+const BOARD_OWNER_TYPE = process.env.BOARD_OWNER_TYPE === 'user' ? 'user' : 'organization'
 
 async function graphql<T>(
   token: string,
@@ -153,7 +162,7 @@ const CONTENT = `
 async function main() {
   const { values } = parseArgs({
     options: {
-      number: { type: 'string', default: '4' },
+      number: { type: 'string', default: process.env.BOARD_NUMBER ?? '1' },
       'dry-run': { type: 'boolean', default: false },
     },
   })
@@ -162,8 +171,9 @@ async function main() {
   const dryRun = values['dry-run']
 
   // The board, its Status field and the items already on it.
-  type BoardPage = {
-    user: {
+  type BoardPage = Record<
+    'user' | 'organization',
+    {
       projectV2: {
         id: string
         // Asking for a field by a name the board doesn't have is an error, so list them all.
@@ -182,7 +192,7 @@ async function main() {
         }
       }
     }
-  }
+  >
   let projectId: string | undefined
   let field: { id: string; options: { id: string; name: string }[] } | null | undefined
   let startFieldId: string | undefined
@@ -192,7 +202,7 @@ async function main() {
     const page: BoardPage = await graphql<BoardPage>(
       token,
       `query($owner: String!, $number: Int!, $after: String) {
-        user(login: $owner) {
+        ${BOARD_OWNER_TYPE}(login: $owner) {
           projectV2(number: $number) {
             id
             fields(first: 50) {
@@ -217,9 +227,9 @@ async function main() {
           }
         }
       }`,
-      { owner: OWNER, number: Number(values.number), after },
+      { owner: BOARD_OWNER, number: Number(values.number), after },
     )
-    const project = page.user.projectV2
+    const project = page[BOARD_OWNER_TYPE].projectV2
     projectId = project.id
     const byName = (name: string) => project.fields.nodes.find((f) => f.name === name)
     const status = byName('Status')
