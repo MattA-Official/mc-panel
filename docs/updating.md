@@ -50,7 +50,7 @@ Each release's `SHA256SUMS` is signed with Flytower's Ed25519 release key. The i
 Running the installer again keeps your data, settings and app secret. On a box that already has Flytower it also keeps the installed version, so a beta, native or test box stays as it is. Use it if the panel won't start at all, or for a new setup token:
 
 ```sh
-curl -fsSL https://github.com/MattA-Official/mc-panel/releases/latest/download/install.sh \
+curl -fsSL https://github.com/teamflytower/flytower/releases/latest/download/install.sh \
   | sudo bash -s -- --domain panel.example.com
 ```
 

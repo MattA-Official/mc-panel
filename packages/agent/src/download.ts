@@ -2,7 +2,7 @@ import { rm } from 'node:fs/promises'
 import { AgentError } from '@flytower/protocol'
 import type { Fetch } from './context.ts'
 
-const USER_AGENT = 'flytower-agent (+https://github.com/MattA-Official/mc-panel)'
+const USER_AGENT = 'flytower-agent (+https://github.com/teamflytower/flytower)'
 
 export async function getJson<T>(fetchImpl: Fetch, url: string): Promise<T> {
   const res = await fetchImpl(url, {

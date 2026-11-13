@@ -1,6 +1,6 @@
 import { ProviderError, type Fetch } from './types.ts'
 
-export const USER_AGENT = 'flytower (+https://github.com/MattA-Official/mc-panel)'
+export const USER_AGENT = 'flytower (+https://github.com/teamflytower/flytower)'
 
 /** GETs JSON with a 20 s timeout and turns failures into one readable error. */
 export async function getJson<T>(fetchImpl: Fetch, url: string, source: string): Promise<T> {

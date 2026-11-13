@@ -2,12 +2,12 @@
 # Flytower installer. Safe to run again: it keeps secrets and data, and on a machine that
 # already has Flytower it keeps the installed version unless an option picks another one.
 #
-#   curl -fsSL https://github.com/MattA-Official/mc-panel/releases/download/v<version>/install.sh \
+#   curl -fsSL https://github.com/teamflytower/flytower/releases/download/v<version>/install.sh \
 #     | sudo bash -s -- --domain panel.example.com
 #
 set -euo pipefail
 
-REPO="MattA-Official/mc-panel"
+REPO="teamflytower/flytower"
 PREFIX="/opt/flytower"
 # Releases are signed with this key (installer/release-key.pem; a test keeps them equal).
 RELEASE_KEY="$(cat <<'KEY'

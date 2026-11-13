@@ -13,7 +13,7 @@ use sha2::{Digest, Sha256};
 use crate::envelope::{AgentError, ErrorCode};
 use crate::exec::Exec;
 
-pub const USER_AGENT: &str = "flytower-agent (+https://github.com/MattA-Official/mc-panel)";
+pub const USER_AGENT: &str = "flytower-agent (+https://github.com/teamflytower/flytower)";
 
 pub trait Fetch: Send + Sync {
     /// The body of a small text response, such as JSON or SHA256SUMS.

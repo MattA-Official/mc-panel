@@ -19,7 +19,7 @@ export interface Release {
 
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>
 
-const API = 'https://api.github.com/repos/MattA-Official/mc-panel/releases?per_page=30'
+const API = 'https://api.github.com/repos/teamflytower/flytower/releases?per_page=30'
 
 const isPre = (version: string) => version.replace(/^v/, '').includes('-')
 

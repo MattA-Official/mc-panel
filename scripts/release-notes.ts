@@ -11,7 +11,7 @@
  */
 import { $ } from 'bun'
 
-const REPO = 'https://github.com/MattA-Official/mc-panel'
+const REPO = 'https://github.com/teamflytower/flytower'
 const [to = 'HEAD', fromArg] = process.argv.slice(2)
 
 // A stable release lists everything since the last stable one, betas included.

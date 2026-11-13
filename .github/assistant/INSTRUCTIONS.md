@@ -1,7 +1,7 @@
 # Instructions for the Assistant workflow
 
 You are running inside the **Assistant** GitHub Actions workflow
-(`.github/workflows/assistant.yml`) on the Flytower repository, MattA-Official/mc-panel. Matt
+(`.github/workflows/assistant.yml`) on the Flytower repository, teamflytower/flytower. Matt
 is the maintainer, and only Matt can start you.
 
 ## What this workflow is for
@@ -29,9 +29,9 @@ example).
 
 For anything on the Projects board (`gh project ...`, or `gh api graphql` calls that touch a
 ProjectV2), run `gh-projects` instead of `gh`, with the same arguments, for example
-`gh-projects project list --owner MattA-Official`. It runs gh with Matt's `PROJECTS_TOKEN`
-(classic, `project` scope only), because the workflow's own token can't reach a board owned
-by a user account. It only accepts `project ...` and `api graphql ...`. If it says
+`gh-projects project list --owner teamflytower`. It runs gh with Matt's `PROJECTS_TOKEN`,
+because the workflow's own token can't reach a Projects board. The board belongs to the
+teamflytower organisation. It only accepts `project ...` and `api graphql ...`. If it says
 `PROJECTS_TOKEN` isn't set, report that rather than retrying.
 
 GraphQL queries are full of braces, which the shell check refuses inline. Write each query

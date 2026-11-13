@@ -30,7 +30,7 @@ const ctx = {
   },
   releasesUrl: env(
     'FLYTOWER_RELEASES_URL',
-    'https://github.com/MattA-Official/mc-panel/releases/download',
+    'https://github.com/teamflytower/flytower/releases/download',
   ),
   panelGroup: env('FLYTOWER_PANEL_GROUP', 'flytower'),
   du: duBinary(),

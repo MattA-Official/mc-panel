@@ -2,7 +2,7 @@
 
 A self-hosted web panel for running Minecraft servers. Install it once on a fresh VPS, then create, configure and look after any number of servers from the browser. You sign in with a passkey, and you never need SSH again.
 
-**Latest:** see [Releases](https://github.com/MattA-Official/mc-panel/releases). **Install:** [docs/install.md](docs/install.md). **Everything else:** [the documentation](docs/README.md).
+**Latest:** see [Releases](https://github.com/teamflytower/flytower/releases). **Install:** [docs/install.md](docs/install.md). **Everything else:** [the documentation](docs/README.md).
 
 ## What it is
 
@@ -23,14 +23,14 @@ A self-hosted web panel for running Minecraft servers. Install it once on a fres
 - **Your own look:** name, accent colour, font, logo and favicon across the panel, sign-in page, Discord and in-game messages. [More](docs/branding.md)
 - **Self-updates:** signed updates from the panel on a Stable, Beta or Native channel, rolled back automatically if they fail, with **Go back to** for the previous version. [More](docs/updating.md)
 
-What's new in each version is in the [release notes](https://github.com/MattA-Official/mc-panel/releases).
+What's new in each version is in the [release notes](https://github.com/teamflytower/flytower/releases).
 
 ## Install
 
 On a fresh Ubuntu 24.04+ or Debian 12+ server, with a domain pointing at it:
 
 ```sh
-curl -fsSL https://github.com/MattA-Official/mc-panel/releases/latest/download/install.sh \
+curl -fsSL https://github.com/teamflytower/flytower/releases/latest/download/install.sh \
   | sudo bash -s -- --domain panel.example.com
 ```
 
@@ -77,9 +77,9 @@ Commit and pull request titles use Conventional Commits (`feat:`, `fix:`, `docs:
 ## Documentation and roadmap
 
 - [Documentation](docs/README.md): installing, running servers, and looking after the machine.
-- [Milestones](https://github.com/MattA-Official/mc-panel/milestones): what's planned for each release.
-- [Issues](https://github.com/MattA-Official/mc-panel/issues): bugs and feature requests.
-- [Releases](https://github.com/MattA-Official/mc-panel/releases): signed builds and release notes.
+- [Milestones](https://github.com/teamflytower/flytower/milestones): what's planned for each release.
+- [Issues](https://github.com/teamflytower/flytower/issues): bugs and feature requests.
+- [Releases](https://github.com/teamflytower/flytower/releases): signed builds and release notes.
 
 ## Licence
 

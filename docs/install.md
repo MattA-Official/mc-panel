@@ -24,7 +24,7 @@ You need:
      ```yaml
      #cloud-config
      runcmd:
-       - curl -fsSL https://github.com/MattA-Official/mc-panel/releases/latest/download/install.sh | bash -s -- --domain panel.example.com --setup-token YOUR-SETUP-TOKEN
+       - curl -fsSL https://github.com/teamflytower/flytower/releases/latest/download/install.sh | bash -s -- --domain panel.example.com --setup-token YOUR-SETUP-TOKEN
      ```
 
 3. Once the server shows its IPv4 address, add a DNS **A record** for your panel domain pointing at it. If your DNS is on Cloudflare, leave it **DNS only** (grey cloud).
@@ -34,7 +34,7 @@ You need:
 ## Option B: an existing server over SSH
 
 ```sh
-curl -fsSL https://github.com/MattA-Official/mc-panel/releases/latest/download/install.sh \
+curl -fsSL https://github.com/teamflytower/flytower/releases/latest/download/install.sh \
   | sudo bash -s -- --domain panel.example.com
 ```
 

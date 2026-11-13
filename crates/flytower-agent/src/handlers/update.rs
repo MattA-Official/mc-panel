@@ -20,7 +20,7 @@ use crate::updater::write_record;
 use crate::verbs::{UpdateRecord, UpdateState};
 use crate::versions::compare;
 
-pub const RELEASES: &str = "https://github.com/MattA-Official/mc-panel/releases/download";
+pub const RELEASES: &str = "https://github.com/teamflytower/flytower/releases/download";
 
 /// Holds the one-at-a-time lock until dropped.
 pub(crate) struct Exclusive(Arc<AtomicBool>);

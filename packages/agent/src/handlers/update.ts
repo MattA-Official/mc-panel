@@ -8,7 +8,7 @@ import { currentVersion, readRecord, writeRecord, type UpdateRecord } from '../u
 import { downloadVerified } from '../download.ts'
 import { hasUpdater, setAgentExecStart, updaterCommand } from '../entry-points.ts'
 
-const RELEASES = 'https://github.com/MattA-Official/mc-panel/releases/download'
+const RELEASES = 'https://github.com/teamflytower/flytower/releases/download'
 const prefixOf = (ctx: AgentContext) => ctx.paths.prefix ?? '/opt/flytower'
 const archOf = (ctx: AgentContext) => (ctx.arch === 'arm64' ? 'arm64' : 'amd64')
 

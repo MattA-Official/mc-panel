@@ -22,9 +22,9 @@ wait_health() {
 }
 
 echo "::group::Install $old"
-curl -fsSL -o "old/install-$old.sh" "https://github.com/MattA-Official/mc-panel/releases/download/v$old/install.sh"
+curl -fsSL -o "old/install-$old.sh" "https://github.com/teamflytower/flytower/releases/download/v$old/install.sh"
 curl -fsSL -o "old/flytower-$old.tar.gz" \
-  "https://github.com/MattA-Official/mc-panel/releases/download/v$old/flytower-$old-linux-amd64.tar.gz"
+  "https://github.com/teamflytower/flytower/releases/download/v$old/flytower-$old-linux-amd64.tar.gz"
 in_vps bash "/src/old/install-$old.sh" --domain localhost --tarball "/src/old/flytower-$old.tar.gz" \
   --no-caddy --no-firewall --setup-token e2e-setup-token
 wait_health
