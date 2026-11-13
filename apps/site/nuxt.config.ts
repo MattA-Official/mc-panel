@@ -8,7 +8,10 @@ export default defineNuxtConfig({
   compatibilityDate: '2026-11-01',
   // The docs collection, link handling and section grouping are shared with the panel.
   extends: ['../../packages/docs-layer'],
-  modules: ['@nuxt/ui', '@nuxt/content'],
+  modules: ['@nuxt/ui', '@nuxt/content', '@nuxthub/core'],
+  // NuxtHub gives the server routes a database: SQLite in `nuxt dev`, the D1 binding `DB` on
+  // Cloudflare (bound in wrangler.jsonc). Only the mailing list uses it.
+  hub: { db: 'sqlite' },
   css: ['~/assets/css/main.css'],
   colorMode: { preference: 'dark', fallback: 'dark' },
   app: {
@@ -40,13 +43,22 @@ export default defineNuxtConfig({
     },
     experimental: { sqliteConnector: 'native' },
     // Pages are prerendered, so visitors never query this. Declaring it stops a build warning; the
-    // binding only needs to exist if a page is ever rendered at request time.
-    database: { type: 'd1', bindingName: 'DB' },
+    // binding only needs to exist if a page is ever rendered at request time. `DB` belongs to
+    // NuxtHub (the mailing list), so the docs never share a database with it.
+    database: { type: 'd1', bindingName: 'CONTENT_DB' },
   },
   runtimeConfig: {
     public: {
       /** Cloudflare Web Analytics token; empty means no beacon is added. */
       cfAnalyticsToken: '',
+      /**
+       * Whether the footer's mailing list sign-up takes addresses. Set at build time; the Website
+       * workflow turns it on for pull request previews. Production stays closed until the privacy
+       * policy covers the mailing list.
+       */
+      newsletterOpen: process.env.NEWSLETTER_OPEN === 'true',
+      /** Cloudflare Turnstile site key (public; covers flytower.dev and *.flytower.workers.dev). */
+      turnstileSiteKey: '0x4AAAAAAF-MpaxP4yTaxPyB',
     },
   },
   nitro: {
