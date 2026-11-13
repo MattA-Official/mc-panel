@@ -75,17 +75,12 @@
       "indexes": {
         "subscribers_token_hash_unique": {
           "name": "subscribers_token_hash_unique",
-          "columns": [
-            "token_hash"
-          ],
+          "columns": ["token_hash"],
           "isUnique": true
         },
         "subscribers_list_email_unique": {
           "name": "subscribers_list_email_unique",
-          "columns": [
-            "list",
-            "email"
-          ],
+          "columns": ["list", "email"],
           "isUnique": true
         }
       },
