@@ -85,6 +85,7 @@ impl Outbox {
             return;
         }
         inner.replies.push_back(line);
+        drop(inner);
         self.ready.notify_all();
     }
 
@@ -158,6 +159,7 @@ impl Outbox {
             id: id.to_string(),
             end: end.clone(),
         });
+        drop(inner);
         self.ready.notify_all();
         end
     }
@@ -169,6 +171,7 @@ impl Outbox {
         let mut inner = lock(&self.inner);
         inner.closing = true;
         inner.subs.clear();
+        drop(inner);
         self.ready.notify_all();
         self.stopped.notify_all();
     }
@@ -180,6 +183,7 @@ impl Outbox {
         for sub in inner.subs.values_mut() {
             sub.cancelled = true;
         }
+        drop(inner);
         self.ready.notify_all();
         self.stopped.notify_all();
     }
@@ -215,6 +219,7 @@ impl Outbox {
             id: id.to_string(),
             event,
         });
+        drop(inner);
         self.ready.notify_all();
         true
     }
@@ -452,11 +457,13 @@ mod tests {
         let sink = out.open("s", "testing.ticks");
         assert!(sink.send(json!({ "n": 1 })));
         assert!(sink.send(json!({ "n": 2 })));
-        {
-            let mut inner = lock(&out.inner);
-            let first = inner.subs.get_mut("s").unwrap().queue.pop_front();
-            assert!(matches!(first, Some(Frame::Event { .. })));
-        }
+        let first = lock(&out.inner)
+            .subs
+            .get_mut("s")
+            .unwrap()
+            .queue
+            .pop_front();
+        assert!(matches!(first, Some(Frame::Event { .. })));
         assert!(sink.send(json!({ "n": 3 })));
         assert_eq!(
             drain(&out),

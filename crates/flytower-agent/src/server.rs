@@ -57,7 +57,7 @@ pub trait Service: Send + Sync + 'static {
 pub struct Calls<F>(F);
 
 /// Wraps `f` as a [`Service`]; see [`Calls`].
-pub fn calls<F>(f: F) -> Calls<F>
+pub const fn calls<F>(f: F) -> Calls<F>
 where
     F: Fn(&str) -> Response + Send + Sync + 'static,
 {

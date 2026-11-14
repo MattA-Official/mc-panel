@@ -99,7 +99,7 @@ impl Request {
 }
 
 /// A request to open a subscription: exactly `id`, `subscribe` (the verb) and `params`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Subscribe {
     pub id: String,
     pub verb: String,
@@ -156,7 +156,7 @@ pub struct End {
 
 impl End {
     #[must_use]
-    pub fn new(reason: EndReason) -> Self {
+    pub const fn new(reason: EndReason) -> Self {
         Self {
             reason,
             message: None,
@@ -173,7 +173,7 @@ impl End {
 }
 
 /// A line the agent sends after answering a subscribe. Each is one JSON object.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Frame {
     Event { id: String, event: Value },
     Skipped { id: String, skipped: u64 },

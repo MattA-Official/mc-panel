@@ -367,7 +367,7 @@ pub enum AgentKind {
     Bun,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HelloResult {
     pub kind: AgentKind,
     pub version: String,
@@ -591,7 +591,7 @@ pub fn check_result(verb: &str, result: &Value) -> Result<(), String> {
 
 // ---------------------------------------------------------------- subscriptions (protocol 2)
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct TicksParams {
     pub count: u64,
@@ -600,7 +600,7 @@ pub struct TicksParams {
 
 /// A subscription's params, checked. Like [`Params`], the list is the whole of what the panel
 /// can follow.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SubParams {
     /// Counts to `count`, one event every `interval_ms`. Only test builds start it.
     TestingTicks(TicksParams),
@@ -634,7 +634,7 @@ impl SubParams {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TickEvent {
     pub n: u64,
 }
