@@ -1,0 +1,8 @@
+{"verb":"testing.ticks","kind":"params","valid":true,"value":{"count":3,"intervalMs":0}}
+{"verb":"testing.ticks","kind":"params","valid":false,"note":"count starts at 1","value":{"count":0,"intervalMs":0}}
+{"verb":"testing.ticks","kind":"params","valid":false,"note":"unknown key","value":{"count":3,"intervalMs":0,"x":1}}
+{"verb":"testing.ticks","kind":"params","valid":false,"note":"intervalMs is required","value":{"count":3}}
+{"verb":"testing.ticks","kind":"result","valid":true,"value":{}}
+{"verb":"testing.ticks","kind":"event","valid":true,"value":{"n":1}}
+{"verb":"testing.ticks","kind":"event","valid":false,"note":"n counts from 1","value":{"n":0}}
+{"verb":"testing.ticks","kind":"event","valid":false,"note":"n is a number","value":{"n":"one"}}

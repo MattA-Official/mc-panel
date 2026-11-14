@@ -47,6 +47,20 @@ export const verbs = {
     params: z.object({}).strict(),
     result: z.object({ agentVersion: z.string(), protocol: z.number().int() }),
   },
+  /**
+   * Which agent is running and what it can do. The panel asks once per connection to the
+   * agent; an agent that doesn't know this verb speaks protocol 1 only.
+   */
+  'agent.hello': {
+    params: z.object({}).strict(),
+    result: z.object({
+      kind: z.enum(['rust', 'bun']),
+      version: z.string(),
+      protocols: z.array(z.number().int()),
+      /** The subscription verbs this agent will start. */
+      subscriptions: z.array(z.string()),
+    }),
+  },
   'service.status': {
     params: z.object({ server: ServerName }).strict(),
     result: z.object({
@@ -239,3 +253,28 @@ export type Verb = keyof typeof verbs
 export type Params<V extends Verb> = z.infer<(typeof verbs)[V]['params']>
 export type Result<V extends Verb> = z.infer<(typeof verbs)[V]['result']>
 export const verbNames = Object.keys(verbs) as Verb[]
+
+/**
+ * Every subscription the agent offers (protocol 2): `params` opens one, `result` is the answer
+ * to the subscribe, and each `event` frame carries an `event`. Like `verbs`, this list is the
+ * whole of what the panel can follow. `agent.hello` says which ones a running agent offers.
+ */
+export const subscriptions = {
+  /** Counts from 1 to `count`. Only test builds of the Rust agent offer it. */
+  'testing.ticks': {
+    params: z
+      .object({
+        count: z.number().int().min(1).max(100_000),
+        intervalMs: z.number().int().min(0).max(60_000),
+      })
+      .strict(),
+    result: z.object({}),
+    event: z.object({ n: z.number().int().min(1) }),
+  },
+} as const
+
+export type Subscription = keyof typeof subscriptions
+export type SubParams<S extends Subscription> = z.infer<(typeof subscriptions)[S]['params']>
+export type SubResult<S extends Subscription> = z.infer<(typeof subscriptions)[S]['result']>
+export type SubEvent<S extends Subscription> = z.infer<(typeof subscriptions)[S]['event']>
+export const subscriptionNames = Object.keys(subscriptions) as Subscription[]

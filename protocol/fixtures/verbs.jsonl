@@ -2,6 +2,11 @@
 {"verb":"ping","kind":"params","valid":false,"note":"unknown key","value":{"x":1}}
 {"verb":"ping","kind":"result","valid":true,"value":{"agentVersion":"1.2.0-beta.1","protocol":1}}
 {"verb":"ping","kind":"result","valid":false,"note":"protocol must be an integer","value":{"agentVersion":"1.2.0","protocol":1.5}}
+{"verb":"agent.hello","kind":"params","valid":true,"value":{}}
+{"verb":"agent.hello","kind":"params","valid":false,"note":"unknown key","value":{"x":1}}
+{"verb":"agent.hello","kind":"result","valid":true,"value":{"kind":"rust","version":"1.5.0-beta.1","protocols":[1,2],"subscriptions":["log.follow","service.events"]}}
+{"verb":"agent.hello","kind":"result","valid":true,"note":"the Bun agent speaks protocol 1 only","value":{"kind":"bun","version":"1.5.0-beta.1","protocols":[1],"subscriptions":[]}}
+{"verb":"agent.hello","kind":"result","valid":false,"note":"unknown kind","value":{"kind":"go","version":"1.5.0","protocols":[1],"subscriptions":[]}}
 {"verb":"service.status","kind":"params","valid":true,"value":{"server":"survival"}}
 {"verb":"service.status","kind":"params","valid":true,"value":{"server":"creative-2"}}
 {"verb":"service.status","kind":"params","valid":false,"note":"server names start with a letter","value":{"server":"2fast"}}
