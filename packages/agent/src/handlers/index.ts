@@ -9,6 +9,13 @@ import * as update from './update.ts'
 
 export const handlers: Handlers = {
   ping: async (_p, ctx) => protocolInfo(ctx.version),
+  // The Bun agent speaks protocol 1 only, so the panel keeps its protocol 1 ways with it.
+  'agent.hello': async (_p, ctx) => ({
+    kind: 'bun',
+    version: ctx.version,
+    protocols: [1],
+    subscriptions: [],
+  }),
   'service.status': service.status,
   'service.usage': service.usage,
   'service.wait': service.wait,
