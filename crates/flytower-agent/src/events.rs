@@ -7,6 +7,7 @@
 use std::collections::{BTreeSet, VecDeque};
 use std::io::{BufRead, BufReader, Read};
 use std::process::{Child, Command, Stdio};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -89,7 +90,19 @@ fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
 
 const KEEP: usize = 1000;
 /// Changes come in bursts (exited, failed, restart scheduled); answer once for the burst.
-const SETTLE: Duration = Duration::from_millis(300);
+pub const SETTLE: Duration = Duration::from_millis(300);
+
+/// What a listener hears about.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Change<'a> {
+    /// The journal says this server's unit changed.
+    Server(&'a str),
+    /// The journal stopped or started being followed, so changes may have gone unseen.
+    Lost,
+}
+
+/// Called on the journal's thread for every change; it should only note it and return.
+pub type Listener = Arc<dyn Fn(Change<'_>) + Send + Sync>;
 
 fn new_run() -> String {
     let mut bytes = [0u8; 4];
@@ -143,6 +156,8 @@ impl State {
 pub struct UnitEvents {
     state: Mutex<State>,
     news: Condvar,
+    listeners: Mutex<Vec<(u64, Listener)>>,
+    next_listener: AtomicU64,
     follow: Arc<dyn Follow>,
     retry: Duration,
 }
@@ -159,6 +174,8 @@ impl UnitEvents {
                 stopped: false,
             }),
             news: Condvar::new(),
+            listeners: Mutex::default(),
+            next_listener: AtomicU64::new(0),
             follow,
             retry,
         })
@@ -173,10 +190,11 @@ impl UnitEvents {
                 me.follow.run(
                     &mut || {
                         lock(&me.state).following = true;
+                        me.tell(Change::Lost);
                     },
                     &mut |line| {
                         if let Some(server) = server_of_line(line) {
-                            me.push(server);
+                            me.push(&server);
                         }
                     },
                 );
@@ -185,6 +203,9 @@ impl UnitEvents {
                 // The panel can't know what it missed: everything has changed, as far as it can tell.
                 s.run = new_run();
                 me.news.notify_all();
+                drop(s);
+                me.tell(Change::Lost);
+                let s = lock(&me.state);
                 if s.stopped {
                     break;
                 }
@@ -204,15 +225,38 @@ impl UnitEvents {
         lock(&self.state).following
     }
 
-    pub fn push(&self, server: String) {
+    pub fn push(&self, server: &str) {
         let mut s = lock(&self.state);
         s.seq += 1;
         let seq = s.seq;
-        s.log.push_back((seq, server));
+        s.log.push_back((seq, server.to_string()));
         while s.log.len() > KEEP {
             s.log.pop_front();
         }
         self.news.notify_all();
+        drop(s);
+        self.tell(Change::Server(server));
+    }
+
+    /// Calls `listener` with every change from now on, until [`unlisten`](Self::unlisten).
+    pub fn listen(&self, listener: Listener) -> u64 {
+        let id = self.next_listener.fetch_add(1, Ordering::Relaxed);
+        lock(&self.listeners).push((id, listener));
+        id
+    }
+
+    pub fn unlisten(&self, id: u64) {
+        lock(&self.listeners).retain(|(n, _)| *n != id);
+    }
+
+    fn tell(&self, change: Change<'_>) {
+        let listeners: Vec<Listener> = lock(&self.listeners)
+            .iter()
+            .map(|(_, l)| Arc::clone(l))
+            .collect();
+        for l in listeners {
+            l(change);
+        }
     }
 
     /// Answers when any server has changed since `after`, or after `timeout` with none.
