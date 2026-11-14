@@ -1,5 +1,5 @@
 import type { Socket } from 'bun'
-import { Frame, type EndReason, type ErrorCode } from './envelope.ts'
+import { Frame, MAX_FRAME_BYTES, type EndReason, type ErrorCode } from './envelope.ts'
 import { encode, lineSplitter } from './framing.ts'
 import {
   subscriptions,
@@ -144,6 +144,7 @@ export class AgentStreams {
     const feed = lineSplitter(
       (line) => this.frame(line),
       () => this.socket?.end(),
+      MAX_FRAME_BYTES,
     )
     const lost = (socket: Socket) => {
       if (this.socket !== socket) return
