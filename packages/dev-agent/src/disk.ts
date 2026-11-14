@@ -43,7 +43,15 @@ export async function serverUsage(data: string, servers: string[]) {
   const out: Result<'disk.usage'>['servers'] = {}
   for (const server of servers) {
     const dir = join(data, 'servers', server)
-    const groups: Groups = { world: 0, logs: 0, content: 0, map: 0, backups: 0, exports: 0, other: 0 }
+    const groups: Groups = {
+      world: 0,
+      logs: 0,
+      content: 0,
+      map: 0,
+      backups: 0,
+      exports: 0,
+      other: 0,
+    }
     const level = await levelName(dir)
     for (const n of await readdir(dir).catch(() => [])) {
       groups[groupOf(n, level)] += await size(join(dir, n))
