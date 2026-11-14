@@ -12,6 +12,7 @@ pub mod exec;
 pub mod fetch;
 pub mod folders;
 pub mod handlers;
+pub mod logs;
 pub mod release;
 pub mod safe_fs;
 pub mod server;

@@ -124,8 +124,16 @@ pub fn hello(ctx: &Context) -> Value {
 ///
 /// # Errors
 /// An [`AgentError`] that becomes the error response.
-pub fn subscribe(params: &SubParams, _ctx: &Arc<Context>) -> Result<(Value, Stream), AgentError> {
+pub fn subscribe(params: &SubParams, ctx: &Arc<Context>) -> Result<(Value, Stream), AgentError> {
     match params {
+        SubParams::LogFollow(p) => Ok((
+            json!({}),
+            crate::logs::follow(
+                std::path::Path::new(&ctx.paths.servers).join(&p.server),
+                p.seed_bytes,
+                p.crashes.unwrap_or(false),
+            )?,
+        )),
         SubParams::TestingTicks(p) if offers("testing.ticks") => Ok((
             json!({}),
             streams::ticks(p.count, Duration::from_millis(p.interval_ms)),

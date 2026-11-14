@@ -9,6 +9,12 @@ export const SUBSCRIPTIONS_PROTOCOL = 2
 /** Longest single message the agent will read, in bytes. Requests are tiny; this bounds memory. */
 export const MAX_LINE_BYTES = 64 * 1024
 
+/**
+ * Longest single line the agent sends. Most are small, but a batch of log lines can be large,
+ * so the panel accepts more than the agent does.
+ */
+export const MAX_FRAME_BYTES = 1024 * 1024
+
 export const ErrorCode = z.enum([
   'bad_request', // not valid JSON or not a valid envelope
   'unknown_verb',

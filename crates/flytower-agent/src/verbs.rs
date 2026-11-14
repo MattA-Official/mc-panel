@@ -598,16 +598,27 @@ pub struct TicksParams {
     pub interval_ms: u64,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct LogFollowParams {
+    pub server: String,
+    pub seed_bytes: u64,
+    #[serde(default)]
+    pub crashes: Option<bool>,
+}
+
 /// A subscription's params, checked. Like [`Params`], the list is the whole of what the panel
 /// can follow.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SubParams {
+    /// A server's `logs/latest.log`, line by line, and new crash reports if asked.
+    LogFollow(LogFollowParams),
     /// Counts to `count`, one event every `interval_ms`. Only test builds start it.
     TestingTicks(TicksParams),
 }
 
 /// Every subscription verb, in the same order as `subscriptions` in `verbs.ts`.
-pub const SUBSCRIPTIONS: [&str; 1] = ["testing.ticks"];
+pub const SUBSCRIPTIONS: [&str; 2] = ["log.follow", "testing.ticks"];
 
 impl SubParams {
     /// Checks `params` for the subscription `verb`. `Ok(None)` means it doesn't exist.
@@ -616,6 +627,15 @@ impl SubParams {
     /// A message saying what's wrong with the params.
     pub fn parse(verb: &str, params: &Value) -> Result<Option<Self>, String> {
         let p = match verb {
+            "log.follow" => {
+                let p: LogFollowParams = de(params)?;
+                server(&p.server)?;
+                check(
+                    p.seed_bytes <= 1_048_576,
+                    "seedBytes must be from 0 to 1048576",
+                )?;
+                Self::LogFollow(p)
+            }
             "testing.ticks" => {
                 let p: TicksParams = de(params)?;
                 check(
@@ -634,6 +654,24 @@ impl SubParams {
     }
 }
 
+/// A `log.follow` event: exactly one of `seed` or `lines` (at least one line each), or
+/// `crash`, a report's path inside the server's folder.
+fn check_log_event(event: &Value) -> Result<(), String> {
+    let obj = event.as_object().ok_or("not an object")?;
+    let lines = |v: &Value| {
+        v.as_array()
+            .is_some_and(|a| !a.is_empty() && a.iter().all(Value::is_string))
+    };
+    let ok = obj.len() == 1
+        && match (obj.get("seed"), obj.get("lines"), obj.get("crash")) {
+            (Some(s), None, None) => lines(s),
+            (None, Some(l), None) => lines(l),
+            (None, None, Some(c)) => c.is_string(),
+            _ => false,
+        };
+    check(ok, "not a log.follow event")
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TickEvent {
     pub n: u64,
@@ -645,7 +683,7 @@ pub struct TickEvent {
 /// A message saying what's wrong, or that the verb doesn't exist.
 pub fn check_sub_result(verb: &str, result: &Value) -> Result<(), String> {
     match verb {
-        "testing.ticks" => de::<EmptyResult>(result).map(drop),
+        "log.follow" | "testing.ticks" => de::<EmptyResult>(result).map(drop),
         _ => Err(format!("unknown subscription {verb}")),
     }
 }
@@ -656,6 +694,7 @@ pub fn check_sub_result(verb: &str, result: &Value) -> Result<(), String> {
 /// A message saying what's wrong, or that the verb doesn't exist.
 pub fn check_event(verb: &str, event: &Value) -> Result<(), String> {
     match verb {
+        "log.follow" => check_log_event(event),
         "testing.ticks" => check(de::<TickEvent>(event)?.n >= 1, "n counts from 1"),
         _ => Err(format!("unknown subscription {verb}")),
     }

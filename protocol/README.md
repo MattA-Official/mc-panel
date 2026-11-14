@@ -25,8 +25,13 @@ For things that keep happening, such as a server's log or its state, the panel o
 - Several subscriptions can share one connection, up to 64. Requests can be sent on it too, but they're answered in order, so a long request delays reading a cancel.
 - Each subscription queues at most 1024 events. When the panel reads too slowly, the agent counts what it drops and sends `skipped` rather than using more memory.
 - A connection with live subscriptions is never closed for being idle; one without is closed after 10 minutes, as before.
+- A frame can be up to 1 MB (`MAX_FRAME_BYTES`), since a batch of log lines can be large; requests stay under 64 KB.
 - Ids belong to a connection. An id can be reused once its end frame has been sent.
 
 `AgentStreams` and `subscribeAgent` in `@flytower/protocol/client` do this for the panel: one connection shared by every subscription, and after the agent restarts (an update, say) they reconnect with backoff and subscribe again, calling `onStart(result, true)` so callers can catch up on what they missed.
+
+### Subscriptions
+
+- `log.follow {server, seedBytes, crashes?}`: a server's `logs/latest.log`. First up to `seedBytes` of what's already there as `{seed: [lines]}`, then `{lines: [...]}` as the server writes. It takes a server name, never a path. The agent follows the file with inotify (one watch per server however many follow it), keeps going when Minecraft rotates the log or it's truncated, waits for a server that hasn't written one yet, and never sends half a line. Lines over 64 KB are cut and bad UTF-8 is replaced. With `crashes: true` each new file in `crash-reports/` comes as `{crash: "crash-reports/<file>"}`. Nothing is followed through a symlink, and `latest.log` must be a regular file with a single link. If the server is deleted, the subscription ends with `finished`.
 
 `testing.ticks` exists only in test builds (`cargo build --features testing`, binary `flytower-agent-testing`), so the client can be tested against the real agent. Release builds answer it with `unknown_verb`.

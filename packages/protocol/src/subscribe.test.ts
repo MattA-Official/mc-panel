@@ -3,9 +3,9 @@
  * a `flytower-agent-testing` binary (`cargo build --features testing`), against the real Rust
  * agent too, including a restart in the middle of a subscription.
  */
-import { mkdtempSync, rmSync } from 'node:fs'
+import { appendFileSync, mkdirSync, mkdtempSync, renameSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { afterEach, describe, expect, it } from 'bun:test'
 import type { Socket, Subprocess, UnixSocketListener } from 'bun'
 import { callAgent } from './client.ts'
@@ -225,7 +225,7 @@ describe.skipIf(!binary)('against the real Rust agent', () => {
     expect(await ready(path)).toMatchObject({
       kind: 'rust',
       protocols: [1, 2],
-      subscriptions: ['testing.ticks'],
+      subscriptions: ['log.follow', 'testing.ticks'],
     })
   })
 
@@ -284,5 +284,59 @@ describe.skipIf(!binary)('against the real Rust agent', () => {
     expect(events.length).toBeLessThanOrEqual(count + 1)
     expect(ends).toEqual([])
     expect(streams.size).toBe(0)
+  })
+
+  it('follows a log through rotation until the server is deleted', async () => {
+    const path = socketPath()
+    run(path)
+    await ready(path)
+    // The test build keeps its servers beside its socket.
+    const server = join(dirname(path), 'servers', 'survival')
+    mkdirSync(join(server, 'logs'), { recursive: true })
+    const log = join(server, 'logs', 'latest.log')
+    appendFileSync(log, 'one\ntwo\n')
+    const streams = new AgentStreams({ socketPath: path })
+    cleanups.push(() => streams.close())
+    const seed: string[] = []
+    const lines: string[] = []
+    const ends: SubscriptionEnd[] = []
+    streams.subscribe(
+      'log.follow',
+      { server: 'survival', seedBytes: 1024 },
+      {
+        onEvent: (e) => {
+          if ('seed' in e) seed.push(...e.seed)
+          if ('lines' in e) lines.push(...e.lines)
+        },
+        onEnd: (e) => ends.push(e),
+      },
+    )
+    await until(() => seed.length === 2)
+    expect(seed).toEqual(['one', 'two'])
+    appendFileSync(log, 'three\n')
+    await until(() => lines.length === 1)
+    renameSync(log, join(server, 'logs', '2026-11-14-1.log'))
+    appendFileSync(log, 'four\n')
+    await until(() => lines.length === 2)
+    expect(lines).toEqual(['three', 'four'])
+    rmSync(server, { recursive: true })
+    await until(() => ends.length === 1)
+    expect(ends).toEqual([{ reason: 'finished', message: 'the server was deleted' }])
+  })
+
+  it('refuses to follow a server that does not exist', async () => {
+    const path = socketPath()
+    run(path)
+    await ready(path)
+    const streams = new AgentStreams({ socketPath: path })
+    cleanups.push(() => streams.close())
+    const ends: SubscriptionEnd[] = []
+    streams.subscribe(
+      'log.follow',
+      { server: 'ghost', seedBytes: 0 },
+      { onEvent: () => {}, onEnd: (e) => ends.push(e) },
+    )
+    await until(() => ends.length === 1)
+    expect(ends[0]).toMatchObject({ reason: 'refused', code: 'not_found' })
   })
 })
