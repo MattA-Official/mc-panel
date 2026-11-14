@@ -1,35 +1,41 @@
 package proxyproto
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"net/netip"
+	"os"
 	"testing"
 )
 
+// TestHeader replays protocol/fixtures/proxy-v2.jsonl, which the flytower-proxy mod reads too.
 func TestHeader(t *testing.T) {
-	for _, tc := range []struct{ name, src, dst, want string }{
-		{"IPv4", "203.0.113.7:51000", "192.0.2.1:25565",
-			"0d0a0d0a000d0a515549540a" + "21" + "11" + "000c" + "cb007107" + "c0000201" + "c738" + "63dd"},
-		{"IPv4 in IPv6 is sent as IPv4", "[::ffff:203.0.113.7]:51000", "[::ffff:192.0.2.1]:25565",
-			"0d0a0d0a000d0a515549540a" + "21" + "11" + "000c" + "cb007107" + "c0000201" + "c738" + "63dd"},
-		{"IPv6", "[2001:db8::1]:51000", "[2001:db8::2]:25565",
-			"0d0a0d0a000d0a515549540a" + "21" + "21" + "0024" +
-				"20010db8000000000000000000000001" + "20010db8000000000000000000000002" + "c738" + "63dd"},
-		{"mixed is sent as IPv6", "[2001:db8::1]:51000", "192.0.2.1:25565",
-			"0d0a0d0a000d0a515549540a" + "21" + "21" + "0024" +
-				"20010db8000000000000000000000001" + "00000000000000000000ffffc0000201" + "c738" + "63dd"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			got, err := Header(netip.MustParseAddrPort(tc.src), netip.MustParseAddrPort(tc.dst))
+	f, err := os.Open("../../../protocol/fixtures/proxy-v2.jsonl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	lines := 0
+	for s := bufio.NewScanner(f); s.Scan(); lines++ {
+		var tc struct{ Note, Src, Dst, Header string }
+		if err := json.Unmarshal(s.Bytes(), &tc); err != nil {
+			t.Fatal(err)
+		}
+		t.Run(tc.Note, func(t *testing.T) {
+			got, err := Header(netip.MustParseAddrPort(tc.Src), netip.MustParseAddrPort(tc.Dst))
 			if err != nil {
 				t.Fatal(err)
 			}
-			want, _ := hex.DecodeString(tc.want)
+			want, _ := hex.DecodeString(tc.Header)
 			if !bytes.Equal(got, want) {
 				t.Errorf("got  %x\nwant %x", got, want)
 			}
 		})
+	}
+	if lines == 0 {
+		t.Fatal("no fixtures")
 	}
 	if _, err := Header(netip.AddrPort{}, netip.MustParseAddrPort("192.0.2.1:1")); err == nil {
 		t.Error("accepted an invalid address")
