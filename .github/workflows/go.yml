@@ -1,0 +1,61 @@
+name: Go
+
+# Only runs when Go code or the shared protocol changes
+# (docs/decisions/0001-rust-and-go.md, rule 6).
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'go/**'
+      - 'protocol/**'
+      - '.github/workflows/go.yml'
+  pull_request:
+    paths:
+      - 'go/**'
+      - 'protocol/**'
+      - '.github/workflows/go.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: check (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: amd64
+          # Releases cross-compile arm64 from amd64; this proves those binaries run.
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Go toolchain (pinned in go/go.mod)
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go/go.mod
+          cache-dependency-path: go/go.sum
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [[ -n "$unformatted" ]]; then
+            echo "::error::not formatted with gofmt:"
+            echo "$unformatted"
+            exit 1
+          fi
+      - run: go vet ./...
+      - run: go tool staticcheck ./...
+      - run: go test -race ./...
+      - run: go tool govulncheck ./...
+      - name: Build the release binaries as packaged
+        env:
+          CGO_ENABLED: '0'
+        run: |
+          go build -trimpath -o "$RUNNER_TEMP/flytower-router" ./cmd/flytower-router
+          "$RUNNER_TEMP/flytower-router" --version
