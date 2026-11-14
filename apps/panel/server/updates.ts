@@ -9,12 +9,6 @@ export interface Release {
   publishedAt: string
   /** A beta: marked as a pre-release on GitHub, or a version like 1.1.0-beta.1. */
   prerelease: boolean
-  /**
-   * A build of the `native` branch (Rust and Go, docs/decisions/0001-rust-and-go.md), tagged
-   * `native-<version>` rather than `v<version>` so panels from before the Native channel never
-   * see it. Only the Native channel offers these.
-   */
-  native: boolean
 }
 
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>
@@ -23,15 +17,16 @@ const API = 'https://api.github.com/repos/teamflytower/flytower/releases?per_pag
 
 const isPre = (version: string) => version.replace(/^v/, '').includes('-')
 
-/**
- * A native build's version: the release it's built alongside plus a native counter, such as
- * 1.2.0-beta.2.native.1 (with 1.2.0-beta.2) or 1.2.0-native.1 (with 1.2.0).
- */
-export const isNative = (version: string) => /-(.+\.)?native\.\d+$/.test(version)
+const NATIVE = /[-.]native\.\d+$/
 
-/** The release tag for a version: native builds have their own, so older panels skip them. */
-export const releaseTag = (version: string) =>
-  isNative(version) ? `native-${version}` : `v${version}`
+/**
+ * The release a version goes with. From 1.2 to 1.4, native builds (the Rust agent, before
+ * every release had it) added a counter to the release they were built alongside:
+ * 1.2.0-beta.2.native.1 went with 1.2.0-beta.2, and 1.2.0-native.1 with 1.2.0. Since 1.5.0
+ * every release has the Rust agent, and there are no more native builds.
+ */
+export const releaseOf = (version: string) =>
+  /-(.+\.)?native\.\d+$/.test(version) ? version.replace(NATIVE, '') : version
 
 export { compareVersions }
 
@@ -53,43 +48,50 @@ export async function listReleases(fetchImpl: Fetch = fetch): Promise<Release[]>
   }[]
   return (
     body
-      .filter((r) => !r.draft && /^(v|native-)\d+\.\d+\.\d+/.test(r.tag_name))
+      // Only v tags: the native- tags of 1.2 to 1.4 are retired.
+      .filter((r) => !r.draft && /^v\d+\.\d+\.\d+/.test(r.tag_name))
       .filter((r) => r.assets.some((a) => a.name === 'SHA256SUMS.sig'))
       .map((r) => {
-        const version = r.tag_name.replace(/^(v|native-)/, '')
+        const version = r.tag_name.replace(/^v/, '')
         return {
           version,
           notes: r.body ?? '',
           url: r.html_url,
           publishedAt: r.published_at,
           prerelease: !!r.prerelease || isPre(version),
-          native: r.tag_name.startsWith('native-'),
         }
       })
-      // A native-looking version under a v tag, or the other way round, is a mistake: skip it.
-      .filter((r) => r.native === isNative(r.version))
+      // A native-looking version under a v tag is a mistake: skip it.
+      .filter((r) => releaseOf(r.version) === r.version)
       .sort((a, b) => compareVersions(b.version, a.version))
   )
 }
 
-/**
- * Releases offered on a channel. Stable skips betas. Beta offers betas too, but never native
- * builds. Native offers only native builds: 1.2.0 sorts after 1.2.0-native.1, so offering
- * stable releases there would take a native install off native without anyone asking.
- */
+/** Releases offered on a channel. Stable skips betas; Beta offers both. */
 export function onChannel(releases: Release[], channel: UpdateChannel): Release[] {
-  if (channel === 'native') return releases.filter((r) => r.native)
-  if (channel === 'beta') return releases.filter((r) => !r.native)
+  if (channel === 'beta') return releases
   return releases.filter((r) => !r.prerelease)
 }
 
 /**
  * The channel to use when nobody has chosen one: Beta if this install is already running a
- * beta (someone chose to install it), otherwise Stable.
+ * beta (someone chose to install it), otherwise Stable. A native build counts as the release
+ * it went with.
  */
 export function defaultChannel(current: string): UpdateChannel {
-  if (isNative(current)) return 'native'
-  return isPre(current) ? 'beta' : 'stable'
+  return isPre(releaseOf(current)) ? 'beta' : 'stable'
+}
+
+/**
+ * The chosen channel, or the default. `retired` is set while the choice is still the Native
+ * channel from before 1.5.0, so the System page can say it ended and what replaced it.
+ */
+export function updateChannel(
+  chosen: UpdateChannel | 'native' | undefined,
+  current: string,
+): { channel: UpdateChannel; retired: boolean } {
+  if (chosen === 'native') return { channel: defaultChannel(current), retired: true }
+  return { channel: chosen ?? defaultChannel(current), retired: false }
 }
 
 let cache: { at: number; releases: Release[] } | null = null

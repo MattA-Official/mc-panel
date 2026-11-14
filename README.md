@@ -21,7 +21,7 @@ A self-hosted web panel for running Minecraft servers. Install it once on a fres
 - **People and permissions:** invite others with roles that say what each person can do, and a log of who changed what. [More](docs/people.md)
 - **Community:** a public [status page](docs/status-page.md), [Discord](docs/discord.md) chat and roles, and a [web map](docs/map.md) of your world.
 - **Your own look:** name, accent colour, font, logo and favicon across the panel, sign-in page, Discord and in-game messages. [More](docs/branding.md)
-- **Self-updates:** signed updates from the panel on a Stable, Beta or Native channel, rolled back automatically if they fail, with **Go back to** for the previous version. [More](docs/updating.md)
+- **Self-updates:** signed updates from the panel on a Stable or Beta channel, rolled back automatically if they fail, with **Go back to** for the previous version. [More](docs/updating.md)
 
 What's new in each version is in the [release notes](https://github.com/teamflytower/flytower/releases).
 
@@ -36,7 +36,7 @@ curl -fsSL https://github.com/teamflytower/flytower/releases/latest/download/ins
 
 The installer prints a one-time setup token. Open your domain, enter it, and create your passkey. You can also install on Hetzner Cloud with no SSH at all, through cloud-config. See [Installing Flytower](docs/install.md) for both.
 
-**Stable or Beta.** The installer installs the newest stable release by default. Add `--beta` for the newest release including betas, `--native` for the newest native build, or `--version <x.y.z>` for a specific one. Once installed, choose the update channel under **System → Updates**. See [Stable or Beta](docs/updating.md#stable-or-beta). Running the installer again on a box that has Flytower keeps the version it has, unless you pass one of these.
+**Stable or Beta.** The installer installs the newest stable release by default. Add `--beta` for the newest release including betas, or `--version <x.y.z>` for a specific one. Once installed, choose the update channel under **System → Updates**. See [Stable or Beta](docs/updating.md#stable-or-beta). Running the installer again on a box that has Flytower keeps the version it has, unless you pass one of these.
 
 **Testing a pull request.** `--pr <number>` installs the signed test build of that pull request. It's for test boxes, not real servers. Each release's testing notes are in `docs/testing/testing-<version>.md`.
 

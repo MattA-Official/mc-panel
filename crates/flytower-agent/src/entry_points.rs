@@ -87,7 +87,11 @@ pub fn set_agent_exec_start(
 }
 
 #[cfg(test)]
-#[allow(clippy::must_use_candidate, clippy::missing_panics_doc)]
+#[allow(
+    clippy::must_use_candidate,
+    clippy::missing_panics_doc,
+    reason = "test helpers, shared with other modules' tests, may panic and needn't be used"
+)]
 pub mod tests {
     use super::*;
     use crate::handlers::testing::TempRoot;

@@ -12,7 +12,7 @@ import { and, desc, eq, gte, inArray, isNull, lt } from 'drizzle-orm'
 import type { Result } from '@flytower/protocol'
 import { schema, type Db } from '../db'
 import type { Notifier } from '../notify/types'
-import { findCrashReport, readLogTail, type CrashReport } from './files'
+import { clipTail, findCrashReport, readLogTail, type CrashReport } from './files'
 
 export type Status = Result<'service.status'>
 export type Condition = 'crashed' | 'crash-loop' | 'unresponsive' | null
@@ -59,6 +59,11 @@ export interface CrashDeps {
    * so the log watcher says "back up" when it's ready again.
    */
   onCrash?: (server: string) => void
+  /**
+   * The last lines of the server's log from the shared log stream, if one follows it. Without
+   * it, or when it has none yet, the file is read.
+   */
+  logTail?: (server: string) => string[]
   now?: () => Date
 }
 
@@ -317,6 +322,11 @@ export class CrashMonitor {
       .all().length
   }
 
+  private async logTail(server: string): Promise<string[]> {
+    const streamed = this.deps.logTail?.(server) ?? []
+    return streamed.length ? clipTail(streamed) : readLogTail(this.deps.serverDir(server))
+  }
+
   private async crashed(
     server: string,
     s: Status,
@@ -328,7 +338,7 @@ export class CrashMonitor {
     const dir = this.deps.serverDir(server)
     const [report, logTail] = await Promise.all([
       found !== undefined ? found : findCrashReport(dir, this.since(t)),
-      readLogTail(dir),
+      this.logTail(server),
     ])
     // When it's already back up, systemd no longer knows how the last run ended.
     const { kind, cause } = describeCrash(
@@ -436,7 +446,7 @@ export class CrashMonitor {
     this.record(server, {
       kind: 'unresponsive',
       cause,
-      logTail: await readLogTail(this.deps.serverDir(server)),
+      logTail: await this.logTail(server),
     })
     this.audit('server.unresponsive', server, { restarted: restart })
     this.deps.notify.notify({
