@@ -1306,6 +1306,83 @@
     ]
   },
   "subscriptions": {
+    "log.follow": {
+      "params": {
+        "type": "object",
+        "properties": {
+          "server": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{1,30}$"
+          },
+          "seedBytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1048576
+          },
+          "crashes": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "server",
+          "seedBytes"
+        ],
+        "additionalProperties": false
+      },
+      "result": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "event": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "seed": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "seed"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "lines": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "lines"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "crash": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "crash"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
     "testing.ticks": {
       "params": {
         "type": "object",
