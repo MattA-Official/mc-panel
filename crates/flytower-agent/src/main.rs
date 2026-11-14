@@ -25,7 +25,7 @@ fn env(name: &str, fallback: &str) -> String {
 fn clear_start_marker(socket: &Path) {
     let marker = socket
         .parent()
-        .unwrap_or(Path::new("/"))
+        .unwrap_or_else(|| Path::new("/"))
         .join("agent-rust-starting");
     match std::fs::remove_file(&marker) {
         Err(e) if e.kind() != std::io::ErrorKind::NotFound => {

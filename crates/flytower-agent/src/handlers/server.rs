@@ -309,8 +309,7 @@ pub fn remove(name: &str, ctx: &Context) -> Result<Value, AgentError> {
     ctx.exec
         .run("systemctl", &["disable", "--now", &unit_name(name)]);
 
-    let mut archived_to = None;
-    if f.dir.exists() {
+    let archived_to = if f.dir.exists() {
         // Readable by the panel's group, so a deleted server can be imported again. Only root
         // can change the folder, so the tarball's path can't be swapped for a link.
         let archive = archive_dir(ctx)?;
@@ -321,8 +320,10 @@ pub fn remove(name: &str, ctx: &Context) -> Result<Value, AgentError> {
         run(ctx, "chgrp", &[&ctx.panel_group, to])?;
         run(ctx, "chmod", &["0640", to])?;
         rm(&f.dir)?;
-        archived_to = Some(to.to_string());
-    }
+        Some(to.to_string())
+    } else {
+        None
+    };
 
     let status = ctx.exec.run("ufw", &["status", "numbered"]);
     for n in ufw_rule_numbers(&status.stdout, name) {

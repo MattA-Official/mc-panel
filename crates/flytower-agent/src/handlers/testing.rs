@@ -1,5 +1,9 @@
 //! Test helpers shared by the handler tests, like `packages/agent/test/fakes.ts`.
-#![allow(clippy::must_use_candidate, clippy::missing_panics_doc)]
+#![allow(
+    clippy::must_use_candidate,
+    clippy::missing_panics_doc,
+    reason = "test helpers may panic, and a test can ignore what they return"
+)]
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
