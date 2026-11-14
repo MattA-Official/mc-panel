@@ -2,7 +2,8 @@
 /** Updating Flytower itself, and going back. Minecraft servers keep running throughout. */
 interface Status {
   current: string
-  channel: 'stable' | 'beta' | 'native'
+  channel: 'stable' | 'beta'
+  nativeRetired?: boolean
   installed: string[]
   last: {
     state: 'running' | 'succeeded' | 'rolled-back' | 'failed'
@@ -18,7 +19,6 @@ interface Status {
     url: string
     publishedAt: string
     prerelease: boolean
-    native?: boolean
   } | null
   checkError: string | null
 }
@@ -47,17 +47,12 @@ const channels = [
     label: 'Beta',
     description: 'Also betas, to try new features early. They may have rough edges.',
   },
-  {
-    value: 'native',
-    label: 'Native',
-    description:
-      'Test builds of the Rust and Go rewrite of the system helper. For test servers only.',
-  },
 ]
 const savingChannel = ref(false)
 
 async function setChannel(channel: Status['channel']) {
-  if (!data.value || channel === data.value.channel) return
+  // While the Native notice shows, choosing the channel already picked confirms it.
+  if (!data.value || (channel === data.value.channel && !data.value.nativeRetired)) return
   savingChannel.value = true
   try {
     await $fetch('/api/system/updates/channel', { method: 'PUT', body: { channel } })
@@ -75,7 +70,10 @@ async function setChannel(channel: Status['channel']) {
 
 /** Running a beta with Stable chosen: nothing is offered until a newer stable release. */
 const onBetaStable = computed(
-  () => data.value?.channel === 'stable' && data.value.current.includes('-'),
+  () =>
+    data.value?.channel === 'stable' &&
+    // A native build from 1.4 counts as the release it went with.
+    data.value.current.replace(/[-.]native\.\d+$/, '').includes('-'),
 )
 
 const previous = computed(() =>
@@ -159,6 +157,24 @@ const when = (at: string) => formatDateTime(at)
         data-e2e="update-channel"
         @update:model-value="(v) => setChannel(v as Status['channel'])"
       />
+      <UAlert
+        v-if="data.nativeRetired"
+        color="info"
+        variant="subtle"
+        icon="i-lucide-info"
+        title="The Native channel has ended"
+        :description="`Since 1.5.0 every release has the Rust system helper that native builds were for, so there are no more native builds. You're now offered ${data.channel === 'beta' ? 'betas and stable releases' : 'stable releases'}, like the release you're running. Choose a channel above to keep it and hide this.`"
+        :actions="[
+          {
+            label: `Keep ${data.channel === 'beta' ? 'Beta' : 'Stable'}`,
+            color: 'neutral',
+            variant: 'outline',
+            disabled: savingChannel,
+            onClick: () => setChannel(data!.channel),
+          },
+        ]"
+        data-e2e="native-retired"
+      />
       <p v-if="onBetaStable" class="text-xs text-muted">
         You're running a beta. Flytower will offer the next stable release that's newer than it; to
         leave the beta sooner, go back to the version you had before.
@@ -170,12 +186,7 @@ const when = (at: string) => formatDateTime(at)
             <ULink :to="data.latest.url" target="_blank" class="font-medium text-primary">
               What's new in {{ data.latest.version }}
             </ULink>
-            <UBadge
-              v-if="data.latest.prerelease"
-              :label="data.latest.native ? 'Native' : 'Beta'"
-              color="warning"
-              variant="subtle"
-            />
+            <UBadge v-if="data.latest.prerelease" label="Beta" color="warning" variant="subtle" />
           </div>
           <UButton
             :label="`Update to ${data.latest.version}`"
@@ -186,11 +197,7 @@ const when = (at: string) => formatDateTime(at)
           />
         </div>
         <MarkdownNotes :source="data.latest.notes" class="max-h-64 overflow-auto" />
-        <p v-if="data.latest.native" class="text-xs text-warning">
-          This is a native test build, with parts of Flytower rewritten in Rust and Go. Use it on a
-          test server: going back to a beta afterwards means going back to a version you had before.
-        </p>
-        <p v-else-if="data.latest.prerelease" class="text-xs text-warning">
+        <p v-if="data.latest.prerelease" class="text-xs text-warning">
           This is a beta, for trying new features before they're released. Take a backup of anything
           you care about first; you can go back afterwards.
         </p>
