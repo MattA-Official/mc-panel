@@ -68,5 +68,10 @@ export async function readLogTail(dir: string, lines = 50): Promise<string[]> {
   if (all.at(-1) === '') all.pop()
   // The first line may be cut part-way through.
   if (text.length >= 64 * 1024) all.shift()
+  return clipTail(all, lines)
+}
+
+/** The last `lines` lines, each cut to 1000 characters, as crash records keep them. */
+export function clipTail(all: string[], lines = 50): string[] {
   return all.slice(-lines).map((l) => (l.length > 1000 ? `${l.slice(0, 1000)}…` : l))
 }

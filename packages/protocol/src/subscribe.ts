@@ -216,6 +216,17 @@ export class AgentStreams {
     if (!parsed.success) return
     const f = parsed.data
     if (!('id' in f)) return // a ping; hearing it was the point
+    if ('ok' in f && !f.ok && f.id === 'unknown') {
+      // An agent that speaks protocol 1 only can't read a subscribe at all, so it can't say
+      // which one it refused: every subscription still waiting for an answer was.
+      for (const sub of [...this.subs.values()]) {
+        if (sub.live) continue
+        this.subs.delete(sub.id)
+        sub.handlers.onEnd?.({ reason: 'refused', code: f.error.code, message: f.error.message })
+      }
+      this.idle()
+      return
+    }
     const sub = this.subs.get(f.id)
     if (!sub) return // closed already, or not ours
     const spec = subscriptions[sub.verb]
