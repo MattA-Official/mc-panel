@@ -1,6 +1,7 @@
 import type { Handlers } from '../dispatch.ts'
 import { protocolInfo } from '../dispatch.ts'
 import * as disk from './disk.ts'
+import * as router from './router.ts'
 import * as runtime from './runtime.ts'
 import * as server from './server.ts'
 import * as service from './service.ts'
@@ -36,4 +37,7 @@ export const handlers: Handlers = {
   'disk.vacuum-journal': disk.vacuumJournal,
   'disk.clean-apt': disk.cleanApt,
   'disk.prune-flytower': disk.pruneFlytower,
+  'server.expose': router.expose,
+  'router.enable': router.enable,
+  'router.disable': router.disable,
 }

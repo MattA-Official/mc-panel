@@ -451,6 +451,39 @@
         "additionalProperties": false
       }
     },
+    "router.disable": {
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "result": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    "router.enable": {
+      "params": {
+        "type": "object",
+        "properties": {
+          "port": {
+            "type": "integer",
+            "minimum": 1024,
+            "maximum": 65535
+          }
+        },
+        "required": [
+          "port"
+        ],
+        "additionalProperties": false
+      },
+      "result": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
     "runtime.install": {
       "params": {
         "type": "object",
@@ -607,6 +640,36 @@
         "required": [
           "archivedTo"
         ],
+        "additionalProperties": false
+      }
+    },
+    "server.expose": {
+      "params": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{1,30}$"
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1024,
+            "maximum": 65535
+          },
+          "public": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "port",
+          "public"
+        ],
+        "additionalProperties": false
+      },
+      "result": {
+        "type": "object",
+        "properties": {},
         "additionalProperties": false
       }
     },
