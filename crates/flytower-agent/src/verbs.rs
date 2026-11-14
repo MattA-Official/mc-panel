@@ -611,6 +611,8 @@ pub struct LogFollowParams {
 /// can follow.
 #[derive(Debug, Clone, PartialEq)]
 pub enum SubParams {
+    /// Each server's state now, then every change to it.
+    ServiceEvents(UsageParams),
     /// A server's `logs/latest.log`, line by line, and new crash reports if asked.
     LogFollow(LogFollowParams),
     /// Counts to `count`, one event every `interval_ms`. Only test builds start it.
@@ -618,7 +620,7 @@ pub enum SubParams {
 }
 
 /// Every subscription verb, in the same order as `subscriptions` in `verbs.ts`.
-pub const SUBSCRIPTIONS: [&str; 2] = ["log.follow", "testing.ticks"];
+pub const SUBSCRIPTIONS: [&str; 3] = ["log.follow", "service.events", "testing.ticks"];
 
 impl SubParams {
     /// Checks `params` for the subscription `verb`. `Ok(None)` means it doesn't exist.
@@ -636,6 +638,11 @@ impl SubParams {
                 )?;
                 Self::LogFollow(p)
             }
+            "service.events" => {
+                let p: UsageParams = de(params)?;
+                servers(&p.servers)?;
+                Self::ServiceEvents(p)
+            }
             "testing.ticks" => {
                 let p: TicksParams = de(params)?;
                 check(
@@ -652,6 +659,17 @@ impl SubParams {
         };
         Ok(Some(p))
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ServiceStates {
+    pub states: std::collections::BTreeMap<String, StatusResult>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ServiceChange {
+    pub server: String,
+    pub status: StatusResult,
 }
 
 /// A `log.follow` event: exactly one of `seed` or `lines` (at least one line each), or
@@ -683,6 +701,7 @@ pub struct TickEvent {
 /// A message saying what's wrong, or that the verb doesn't exist.
 pub fn check_sub_result(verb: &str, result: &Value) -> Result<(), String> {
     match verb {
+        "service.events" => de::<ServiceStates>(result).map(drop),
         "log.follow" | "testing.ticks" => de::<EmptyResult>(result).map(drop),
         _ => Err(format!("unknown subscription {verb}")),
     }
@@ -695,6 +714,7 @@ pub fn check_sub_result(verb: &str, result: &Value) -> Result<(), String> {
 pub fn check_event(verb: &str, event: &Value) -> Result<(), String> {
     match verb {
         "log.follow" => check_log_event(event),
+        "service.events" => de::<ServiceChange>(event).and_then(|c| server(&c.server)),
         "testing.ticks" => check(de::<TickEvent>(event)?.n >= 1, "n counts from 1"),
         _ => Err(format!("unknown subscription {verb}")),
     }
