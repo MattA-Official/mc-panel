@@ -19,6 +19,7 @@ interface RouterState {
     refused: number
     active: number
   } | null
+  addresses: { name: string; real: boolean; afterRestart: boolean }[]
 }
 interface Moved {
   name: string
@@ -63,6 +64,14 @@ const turnOn = () =>
 const turnOff = () => post({ enabled: false }, 'Every server has its own port again', true)
 const saveMessages = () => post({ messages: messages.value }, 'Messages saved', false)
 const resetMessages = () => data.value && (messages.value = { ...data.value.defaults })
+
+function realAddress(name: string) {
+  const a = data.value?.addresses.find((x) => x.name === name)
+  if (!a) return ''
+  if (a.real) return 'Yes'
+  if (a.afterRestart) return 'After a restart'
+  return 'No'
+}
 
 const FIELDS: { key: keyof Messages; label: string; motd: boolean }[] = [
   { key: 'unknownMotd', label: 'No server at this address: server list', motd: true },
@@ -130,6 +139,7 @@ const FIELDS: { key: keyof Messages; label: string; motd: boolean }[] = [
                   <th class="py-1 font-normal">Server</th>
                   <th class="py-1 font-normal">Playing now</th>
                   <th class="py-1 font-normal">Connections since start</th>
+                  <th class="py-1 font-normal">Real addresses</th>
                 </tr>
               </thead>
               <tbody>
@@ -137,12 +147,19 @@ const FIELDS: { key: keyof Messages; label: string; motd: boolean }[] = [
                   <td class="py-1">{{ r.name }}</td>
                   <td class="py-1">{{ r.active }}</td>
                   <td class="py-1">{{ r.total }}</td>
+                  <td class="py-1">{{ realAddress(r.name) }}</td>
                 </tr>
               </tbody>
             </table>
             <p class="mt-2 text-muted">
               {{ data.status.unknown }} tried an address with no server, and
               {{ data.status.refused }} were turned away (a ban, a limit or not Minecraft).
+            </p>
+            <p class="mt-2 text-muted">
+              Fabric and Paper servers see each player's real address, for bans and logs, from their
+              next restart. Fabric servers get Flytower's small proxy mod for this; Paper does it by
+              itself. Vanilla servers see every player as 127.0.0.1, so the router enforces their IP
+              bans for them.
             </p>
           </div>
           <UAlert

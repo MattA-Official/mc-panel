@@ -65,11 +65,20 @@ export function routeState(
   }
 }
 
+/** What the panel knows about a server's real addresses: see routing/files.ts. */
+export interface RouteExtras {
+  /** The server reads PROXY headers, so the router sends one. */
+  proxyProtocol: boolean
+  /** IP addresses the router turns away before they reach the server. */
+  bans: string[]
+}
+
 /** The whole table: one route per server with a hostname. */
 export function routeTable(
   servers: RoutedServer[],
   statuses: StatusMap,
   messages: RouterMessages,
+  extras: Record<string, RouteExtras> = {},
 ): RouteTable {
   return {
     routes: servers
@@ -80,9 +89,8 @@ export function routeTable(
         hostnames: [s.hostname.toLowerCase()],
         port: s.port,
         state: routeState(statuses[s.name]),
-        // Real player addresses come with #76's last part.
-        proxyProtocol: false,
-        bans: [],
+        proxyProtocol: extras[s.name]?.proxyProtocol ?? false,
+        bans: extras[s.name]?.bans ?? [],
       })),
     messages,
   }
