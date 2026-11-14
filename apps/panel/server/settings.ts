@@ -5,6 +5,7 @@ import type { DiskReport } from '../shared/disk'
 import type { BrandingSettings, ImageType } from '../shared/branding'
 import type { DiscordApp } from './discord/service'
 import type { DiscordRoleMapping } from '../shared/discord'
+import type { RouterSettings } from './routing/table'
 
 export type UpdateChannel = 'stable' | 'beta' | 'native'
 
@@ -24,6 +25,8 @@ export interface Settings {
   'discord.roles': DiscordRoleMapping[]
   /** Chat from Discord into the game: whether the panel keeps a Gateway connection open. */
   'discord.chat': { enabled: boolean }
+  /** One address for every server: the hostname router's switch, port and messages (#76). */
+  router: RouterSettings
 }
 
 export interface StoredImage {
