@@ -15,6 +15,7 @@ pub mod handlers;
 pub mod release;
 pub mod safe_fs;
 pub mod server;
+pub mod stream;
 pub mod time;
 pub mod units;
 pub mod updater;
