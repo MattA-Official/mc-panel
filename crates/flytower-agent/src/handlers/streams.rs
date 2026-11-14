@@ -83,6 +83,7 @@ pub fn service_events(
                     Change::Server(_) => return,
                     Change::Lost => w.pending.extend(wanted.iter().cloned()),
                 }
+                drop(w);
                 wake.1.notify_all();
             }))
         };
@@ -158,8 +159,8 @@ mod tests {
                 .strip_prefix("flytower-mc@")
                 .and_then(|u| u.strip_suffix(".service"))
                 .unwrap_or("");
-            let states = lock(&self.states);
-            let stdout = match states.get(server) {
+            let state = lock(&self.states).get(server).cloned();
+            let stdout = match state {
                 None => "LoadState=not-found\n".to_string(),
                 Some(_) if args.iter().any(|a| a.contains("LoadState")) => "loaded\n".into(),
                 Some(state) => {
@@ -220,8 +221,7 @@ mod tests {
 
         let out = Outbox::new();
         let sink = out.open("e", "service.events");
-        let run = sink.clone();
-        let handle = thread::spawn(move || stream(&run));
+        let handle = thread::spawn(move || stream(&sink));
         thread::sleep(Duration::from_millis(50));
 
         // A server not asked about, and a change that isn't one, send nothing.

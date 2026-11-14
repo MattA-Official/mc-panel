@@ -70,7 +70,8 @@ impl Follow for Journal {
                 Ok(_) => on_line(&String::from_utf8_lossy(&line)),
             }
         }
-        if let Some(mut child) = lock(&self.child).take() {
+        let child = lock(&self.child).take();
+        if let Some(mut child) = child {
             let _ = child.kill();
             let _ = child.wait();
         }
@@ -233,8 +234,8 @@ impl UnitEvents {
         while s.log.len() > KEEP {
             s.log.pop_front();
         }
-        self.news.notify_all();
         drop(s);
+        self.news.notify_all();
         self.tell(Change::Server(server));
     }
 

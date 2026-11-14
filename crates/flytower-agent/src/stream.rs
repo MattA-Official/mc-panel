@@ -50,7 +50,7 @@ struct Sub {
 }
 
 impl Sub {
-    fn stopped(&self) -> bool {
+    const fn stopped(&self) -> bool {
         self.cancelled || self.ended.is_some()
     }
 }
@@ -103,6 +103,7 @@ impl Outbox {
             return;
         }
         inner.replies.push_back(line);
+        drop(inner);
         self.ready.notify_all();
     }
 
@@ -182,6 +183,7 @@ impl Outbox {
             id: id.to_string(),
             end: end.clone(),
         });
+        drop(inner);
         self.ready.notify_all();
         end
     }
@@ -196,9 +198,9 @@ impl Outbox {
             .into_values()
             .flat_map(|s| s.on_stop)
             .collect();
+        drop(inner);
         self.ready.notify_all();
         self.stopped.notify_all();
-        drop(inner);
         run_all(hooks);
     }
 
@@ -211,9 +213,9 @@ impl Outbox {
             sub.cancelled = true;
             hooks.append(&mut sub.on_stop);
         }
+        drop(inner);
         self.ready.notify_all();
         self.stopped.notify_all();
-        drop(inner);
         run_all(hooks);
     }
 
@@ -248,6 +250,7 @@ impl Outbox {
             id: id.to_string(),
             event,
         });
+        drop(inner);
         self.ready.notify_all();
         true
     }
@@ -549,11 +552,13 @@ mod tests {
         let sink = out.open("s", "testing.ticks");
         assert!(sink.send(json!({ "n": 1 })));
         assert!(sink.send(json!({ "n": 2 })));
-        {
-            let mut inner = lock(&out.inner);
-            let first = inner.subs.get_mut("s").unwrap().queue.pop_front();
-            assert!(matches!(first, Some(Frame::Event { .. })));
-        }
+        let first = lock(&out.inner)
+            .subs
+            .get_mut("s")
+            .unwrap()
+            .queue
+            .pop_front();
+        assert!(matches!(first, Some(Frame::Event { .. })));
         assert!(sink.send(json!({ "n": 3 })));
         assert_eq!(
             drain(&out),

@@ -1,0 +1,58 @@
+# What `cargo deny check` allows into the Rust binaries (decision record 0001, rule 7:
+# "short dependency lists, checked with `cargo deny`"). CI runs it in the Rust workflow.
+
+[graph]
+# The only targets we ship. Dependencies for other platforms don't count.
+targets = ["x86_64-unknown-linux-musl", "aarch64-unknown-linux-musl"]
+all-features = false
+
+[advisories]
+# Any RustSec advisory (vulnerable, unmaintained, unsound or yanked) fails the check.
+# To accept one, add its ID to `ignore` with a reason.
+version = 2
+yanked = "deny"
+ignore = []
+
+[licenses]
+version = 2
+# Licences that can be combined with Flytower's AGPL-3.0-only. Add to this list only after
+# checking that; anything else fails.
+allow = [
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-3-Clause",
+  "MIT",
+  "Unicode-3.0",
+  "Zlib",
+]
+confidence-threshold = 0.93
+# Our own crates are AGPL-3.0-only and never published.
+private = { ignore = true }
+
+[bans]
+# Two versions of one crate means more to build, audit and ship. Fix it, or skip it here
+# with a reason.
+multiple-versions = "deny"
+wildcards = "deny"
+# Our own crates point at each other by path.
+allow-wildcard-paths = true
+skip = [
+  # png still uses miniz_oxide 0.8 while flate2 has moved to 0.9. Drop once png catches up.
+  { crate = "miniz_oxide@0.8", reason = "png 0.18 hasn't moved to miniz_oxide 0.9 yet" },
+  # Build-time only (proc macros), so nothing extra ships. curve25519-dalek-derive is on syn 2.
+  { crate = "syn@2", reason = "curve25519-dalek-derive hasn't moved to syn 3 yet; build-time only" },
+]
+skip-tree = []
+# Kept out on purpose: the agent has no TLS stack or async runtime (decision record 0001).
+deny = [
+  { crate = "openssl-sys", reason = "downloads go through curl; no TLS stack in our binaries" },
+  { crate = "rustls", reason = "downloads go through curl; no TLS stack in our binaries" },
+  { crate = "tokio", reason = "the agent uses threads, not an async runtime" },
+]
+
+[sources]
+# crates.io only: no git dependencies, no other registries.
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

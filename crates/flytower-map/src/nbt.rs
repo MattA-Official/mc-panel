@@ -20,8 +20,8 @@ pub enum Tag {
     Double(f64),
     ByteArray(Vec<u8>),
     String(String),
-    List(Vec<Tag>),
-    Compound(Vec<(String, Tag)>),
+    List(Vec<Self>),
+    Compound(Vec<(String, Self)>),
     IntArray(Vec<i32>),
     LongArray(Vec<i64>),
 }
@@ -29,9 +29,9 @@ pub enum Tag {
 impl Tag {
     /// A field of a compound.
     #[must_use]
-    pub fn get(&self, key: &str) -> Option<&Tag> {
+    pub fn get(&self, key: &str) -> Option<&Self> {
         match self {
-            Tag::Compound(fields) => fields.iter().find(|(k, _)| k == key).map(|(_, v)| v),
+            Self::Compound(fields) => fields.iter().find(|(k, _)| k == key).map(|(_, v)| v),
             _ => None,
         }
     }
@@ -40,10 +40,10 @@ impl Tag {
     #[must_use]
     pub fn as_i32(&self) -> Option<i32> {
         match *self {
-            Tag::Byte(n) => Some(n.into()),
-            Tag::Short(n) => Some(n.into()),
-            Tag::Int(n) => Some(n),
-            Tag::Long(n) => i32::try_from(n).ok(),
+            Self::Byte(n) => Some(n.into()),
+            Self::Short(n) => Some(n.into()),
+            Self::Int(n) => Some(n),
+            Self::Long(n) => i32::try_from(n).ok(),
             _ => None,
         }
     }
@@ -51,15 +51,15 @@ impl Tag {
     #[must_use]
     pub fn as_str(&self) -> Option<&str> {
         match self {
-            Tag::String(s) => Some(s),
+            Self::String(s) => Some(s),
             _ => None,
         }
     }
 
     #[must_use]
-    pub fn as_list(&self) -> Option<&[Tag]> {
+    pub fn as_list(&self) -> Option<&[Self]> {
         match self {
-            Tag::List(items) => Some(items),
+            Self::List(items) => Some(items),
             _ => None,
         }
     }
@@ -67,7 +67,7 @@ impl Tag {
     #[must_use]
     pub fn as_longs(&self) -> Option<&[i64]> {
         match self {
-            Tag::LongArray(longs) => Some(longs),
+            Self::LongArray(longs) => Some(longs),
             _ => None,
         }
     }
@@ -105,7 +105,7 @@ struct Reader<'a> {
 }
 
 impl Reader<'_> {
-    fn left(&self) -> usize {
+    const fn left(&self) -> usize {
         self.bytes.len() - self.pos
     }
 
@@ -215,7 +215,7 @@ impl Reader<'_> {
 }
 
 /// The fewest bytes one payload of this type takes.
-fn min_size(kind: u8) -> usize {
+const fn min_size(kind: u8) -> usize {
     match kind {
         2 | 8 => 2,
         3 | 5 | 7 | 9 | 11 | 12 => 4,

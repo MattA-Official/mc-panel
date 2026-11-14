@@ -43,7 +43,7 @@ pub struct Block {
 impl Block {
     /// See-through blocks (air, glass, torches) are skipped when looking for the surface.
     #[must_use]
-    pub fn invisible(self) -> bool {
+    pub const fn invisible(self) -> bool {
         self.rgba[3] == 0
     }
 }
@@ -106,8 +106,8 @@ impl Palette {
     /// # Errors
     ///
     /// On the first line that isn't a comment, a block or a biome.
-    pub fn parse(text: &str) -> Result<Palette, Error> {
-        let mut p = Palette {
+    pub fn parse(text: &str) -> Result<Self, Error> {
+        let mut p = Self {
             blocks: vec![
                 Block {
                     rgba: [0x7f, 0x7f, 0x7f, 0xff],
@@ -135,7 +135,8 @@ impl Palette {
             let words: Vec<&str> = line.split_ascii_whitespace().collect();
             match words.as_slice() {
                 ["block", name, colour, rest @ ..] => {
-                    let rgba = rgba(colour).ok_or(err("a block colour is rrggbb or rrggbbaa"))?;
+                    let rgba =
+                        rgba(colour).ok_or_else(|| err("a block colour is rrggbb or rrggbbaa"))?;
                     let tint = match rest {
                         [] => Tint::None,
                         ["grass"] => Tint::Grass,
@@ -152,10 +153,12 @@ impl Palette {
                     let colour =
                         |s: &str| rgba(s).filter(|c| c[3] == 0xff).map(|c| [c[0], c[1], c[2]]);
                     let biome = Biome {
-                        grass: colour(grass).ok_or(err("a biome's grass colour is rrggbb"))?,
+                        grass: colour(grass)
+                            .ok_or_else(|| err("a biome's grass colour is rrggbb"))?,
                         foliage: colour(foliage)
-                            .ok_or(err("a biome's foliage colour is rrggbb"))?,
-                        water: colour(water).ok_or(err("a biome's water colour is rrggbb"))?,
+                            .ok_or_else(|| err("a biome's foliage colour is rrggbb"))?,
+                        water: colour(water)
+                            .ok_or_else(|| err("a biome's water colour is rrggbb"))?,
                     };
                     let id =
                         BiomeId::try_from(p.biomes.len()).map_err(|_| err("too many biomes"))?;
@@ -178,8 +181,8 @@ impl Palette {
     ///
     /// Never: the built-in palette is checked by the tests.
     #[must_use]
-    pub fn builtin() -> Palette {
-        Palette::parse(BUILTIN).expect("the built-in palette parses")
+    pub fn builtin() -> Self {
+        Self::parse(BUILTIN).expect("the built-in palette parses")
     }
 
     #[must_use]
