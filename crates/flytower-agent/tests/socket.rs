@@ -318,9 +318,9 @@ fn says_hello() {
     )
     .unwrap();
     let subscriptions: Vec<Value> = if cfg!(feature = "testing") {
-        vec![json!("testing.ticks")]
+        vec![json!("log.follow"), json!("testing.ticks")]
     } else {
-        vec![]
+        vec![json!("log.follow")]
     };
     assert_eq!(
         res["result"],
