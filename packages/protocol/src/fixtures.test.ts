@@ -5,16 +5,17 @@
 import { describe, expect, it } from 'bun:test'
 import { join } from 'node:path'
 import { z } from 'zod'
-import { Request, Response } from './envelope.ts'
+import { Cancel, Frame, Request, Response, Subscribe } from './envelope.ts'
 import { protocolJsonSchema, protocolJsonSchemaText } from './json-schema.ts'
 import { routerVerbNames, routerVerbs, type RouterVerb } from './router.ts'
-import { verbNames, verbs, type Verb } from './verbs.ts'
+import { subscriptionNames, subscriptions, verbNames, verbs, type Verb } from './verbs.ts'
 
 const root = join(import.meta.dir, '../../../protocol')
 
+type EnvelopeKind = 'request' | 'response' | 'subscribe' | 'cancel' | 'frame'
 interface Line {
-  verb?: Verb
-  kind: 'request' | 'response' | 'params' | 'result'
+  verb?: string
+  kind: EnvelopeKind | 'params' | 'result' | 'event'
   valid: boolean
   note?: string
   value: unknown
@@ -29,24 +30,37 @@ const read = async (name: string) =>
 const envelope = await read('envelope.jsonl')
 const verbLines = await read('verbs.jsonl')
 const routerLines = (await read('router.jsonl')) as (Line & { verb: RouterVerb })[]
+const subLines = await read('subscriptions.jsonl')
+const envelopes: Record<EnvelopeKind, z.ZodType> = {
+  request: Request,
+  response: Response,
+  subscribe: Subscribe,
+  cancel: Cancel,
+  frame: Frame,
+}
+const isEnvelope = (l: Line): l is Line & { kind: EnvelopeKind } => Object.hasOwn(envelopes, l.kind)
 const label = (l: Line) =>
   `${l.verb ? l.verb + ' ' : ''}${l.kind} ${l.valid ? 'accepts' : 'refuses'} ${l.note ?? JSON.stringify(l.value)}`
 const zodFor = (l: Line): z.ZodType =>
-  l.kind === 'request'
-    ? Request
-    : l.kind === 'response'
-      ? Response
-      : verbs[l.verb!][l.kind as 'params' | 'result']
+  isEnvelope(l)
+    ? envelopes[l.kind]
+    : subLines.includes(l)
+      ? subscriptions[l.verb as keyof typeof subscriptions][l.kind as 'params' | 'result' | 'event']
+      : verbs[l.verb as Verb][l.kind as 'params' | 'result']
 /** Lines whose rule JSON Schema can't express. */
 const isRefinement = (l: Line) => l.note?.endsWith('(a refinement, not in schema.json)') ?? false
 
 describe('fixtures against the Zod schemas', () => {
-  it.each([...envelope, ...verbLines].map((l) => [label(l), l] as const))('%s', (_, l) => {
-    expect(zodFor(l).safeParse(l.value).success).toBe(l.valid)
-  })
+  it.each([...envelope, ...verbLines, ...subLines].map((l) => [label(l), l] as const))(
+    '%s',
+    (_, l) => {
+      expect(zodFor(l).safeParse(l.value).success).toBe(l.valid)
+    },
+  )
 
-  it('only name known verbs', () => {
-    for (const l of verbLines) expect(verbNames).toContain(l.verb!)
+  it('only name known verbs and subscriptions', () => {
+    for (const l of verbLines) expect(verbNames).toContain(l.verb as Verb)
+    for (const l of subLines) expect(subscriptionNames as string[]).toContain(l.verb!)
   })
 
   it.each(verbNames.map((v) => [v]))('cover %s with a valid params and result line', (v) => {
@@ -54,6 +68,15 @@ describe('fixtures against the Zod schemas', () => {
     expect(mine.some((l) => l.kind === 'params')).toBe(true)
     expect(mine.some((l) => l.kind === 'result')).toBe(true)
   })
+
+  it.each(subscriptionNames.map((s) => [s]))(
+    'cover %s with a valid params, result and event line',
+    (s) => {
+      const mine = subLines.filter((l) => l.verb === s && l.valid)
+      for (const kind of ['params', 'result', 'event'])
+        expect(mine.some((l) => l.kind === kind)).toBe(true)
+    },
+  )
 })
 
 describe('protocol/schema.json', () => {
@@ -65,14 +88,18 @@ describe('protocol/schema.json', () => {
   const schema = protocolJsonSchema()
   const fromJson = (l: Line) =>
     z.fromJSONSchema(
-      (l.kind === 'request' || l.kind === 'response'
+      (isEnvelope(l)
         ? schema[l.kind]
-        : schema.verbs[l.verb!]![l.kind as 'params' | 'result']) as Parameters<
+        : subLines.includes(l)
+          ? schema.subscriptions[l.verb!]![l.kind as 'params' | 'result' | 'event']
+          : schema.verbs[l.verb!]![l.kind as 'params' | 'result']) as Parameters<
         typeof z.fromJSONSchema
       >[0],
     )
   it.each(
-    [...envelope, ...verbLines].filter((l) => !isRefinement(l)).map((l) => [label(l), l] as const),
+    [...envelope, ...verbLines, ...subLines]
+      .filter((l) => !isRefinement(l))
+      .map((l) => [label(l), l] as const),
   )('%s', (_, l) => {
     expect(fromJson(l).safeParse(l.value).success).toBe(l.valid)
   })

@@ -197,30 +197,10 @@ fn start_updater(ctx: &Context, version: &str, manual: bool) -> Result<(), Agent
     Ok(())
 }
 
-/// Native builds have their own tags, which panels from before the Native channel never see.
-fn tag(version: &str) -> String {
-    let native = version.rsplit_once("native.").is_some_and(|(head, n)| {
-        !n.is_empty()
-            && n.bytes().all(|b| b.is_ascii_digit())
-            && (head.ends_with('-')
-                || head
-                    .strip_suffix('.')
-                    .is_some_and(|h| h.find('-').is_some_and(|i| i + 1 < h.len())))
-    });
-    if native {
-        format!("native-{version}")
-    } else {
-        format!("v{version}")
-    }
-}
-
 /// Downloads, checks and unpacks `version` into `work`, then moves it into `releases`.
 fn fetch_release(ctx: &Context, version: &str, work: &Path) -> Result<(), AgentError> {
-    let base = format!(
-        "{}/{}",
-        ctx.releases_url.trim_end_matches('/'),
-        tag(version)
-    );
+    // Every release is tagged v<version>. (The native- tags of 1.2 to 1.4 are retired.)
+    let base = format!("{}/v{version}", ctx.releases_url.trim_end_matches('/'));
     let name = format!(
         "flytower-{version}-linux-{}.tar.gz",
         release_arch(&ctx.arch)
@@ -527,21 +507,12 @@ mod tests {
     }
 
     #[test]
-    fn downloads_native_builds_from_their_own_tag() {
-        assert_eq!(tag("1.2.0-beta.2.native.1"), "native-1.2.0-beta.2.native.1");
-        assert_eq!(tag("1.2.1-native.1"), "native-1.2.1-native.1");
-        assert_eq!(tag("1.2.1"), "v1.2.1");
-        assert_eq!(tag("1.2.1-beta.native"), "v1.2.1-beta.native");
-        assert_eq!(tag("1.2.1.native.1"), "v1.2.1.native.1");
-        assert_eq!(tag("1.2.1-.native.1"), "v1.2.1-.native.1");
+    fn downloads_from_the_v_tag() {
         let (root, _fake, mut ctx) = layout();
         let web = release(&root, &mut ctx, false);
-        assert!(install("1.2.0-beta.2.native.1", &ctx).is_err());
+        assert!(install("1.2.1", &ctx).is_err());
         let seen = web.seen.lock().unwrap().clone();
-        assert_eq!(
-            seen[0],
-            "https://releases.test/native-1.2.0-beta.2.native.1/SHA256SUMS"
-        );
+        assert_eq!(seen[0], "https://releases.test/v1.2.1/SHA256SUMS");
     }
 
     #[test]

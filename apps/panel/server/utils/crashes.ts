@@ -11,6 +11,7 @@ export function useCrashes(): CrashMonitor {
     serverDir: (name) => join(useRuntimeConfig().serversDir, name),
     notify: useNotify(),
     start: async (server) => void (await agent('service.start', { server })),
+    logTail: (server) => useLogStreams().recent(server),
     onCrash: (server) => {
       useConsole().forget(server)
       useLogWatcher().crashed(server)

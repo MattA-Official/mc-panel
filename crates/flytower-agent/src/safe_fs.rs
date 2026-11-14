@@ -144,7 +144,7 @@ pub fn copy_file(src: &Path, dest: &Path, owner: Option<Owner>) -> io::Result<Ow
         std::os::unix::fs::fchown(&to, Some(o.uid), Some(o.gid))?;
     }
     to.set_permissions(fs::Permissions::from_mode(o.mode & 0o7777))?;
-    to.set_modified(meta.modified().unwrap_or(SystemTime::now()))?;
+    to.set_modified(meta.modified().unwrap_or_else(|_| SystemTime::now()))?;
     to.sync_all()?;
     Ok(was)
 }

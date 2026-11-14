@@ -10,6 +10,7 @@ let hub: ConsoleHub | undefined
 export function useConsole(): ConsoleHub {
   hub ??= new ConsoleHub({
     serversDir: useRuntimeConfig().serversDir,
+    logs: useLogStreams(),
     rconTarget: (name) => {
       const row = useDb()
         .select({ port: schema.servers.rconPort, password: schema.servers.rconPassword })

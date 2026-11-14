@@ -42,29 +42,46 @@ const ServerDiskGroups = z.object({
 
 const Bytes = z.number().int().min(0)
 
+/** A server's state, as `service.status` gives it and `service.events` sends it. */
+const ServiceStatus = z.object({
+  active: z.enum(['active', 'inactive', 'activating', 'deactivating', 'failed', 'unknown']),
+  since: z.string().nullable(),
+  /**
+   * How the last run ended, as systemd's `Result`: `success`, `exit-code`, `signal`,
+   * `core-dump`, `oom-kill`, `timeout`, `watchdog` or `start-limit-hit`. Optional because
+   * agents before 1.1 don't send it, nor the fields below.
+   */
+  result: z.string().nullable().optional(),
+  /** Automatic restarts since the last explicit start (`NRestarts`). */
+  restarts: z.number().int().nullable().optional(),
+  /** How the main process last ended: by exiting, by a signal, or by a signal with a core dump. */
+  exitKind: z.enum(['exited', 'killed', 'dumped']).nullable().optional(),
+  /** The exit code, or the signal number when it was killed. */
+  exitStatus: z.number().int().nullable().optional(),
+})
+
 export const verbs = {
   ping: {
     params: z.object({}).strict(),
     result: z.object({ agentVersion: z.string(), protocol: z.number().int() }),
   },
+  /**
+   * Which agent is running and what it can do. The panel asks once per connection to the
+   * agent; an agent that doesn't know this verb speaks protocol 1 only.
+   */
+  'agent.hello': {
+    params: z.object({}).strict(),
+    result: z.object({
+      kind: z.enum(['rust', 'bun']),
+      version: z.string(),
+      protocols: z.array(z.number().int()),
+      /** The subscription verbs this agent will start. */
+      subscriptions: z.array(z.string()),
+    }),
+  },
   'service.status': {
     params: z.object({ server: ServerName }).strict(),
-    result: z.object({
-      active: z.enum(['active', 'inactive', 'activating', 'deactivating', 'failed', 'unknown']),
-      since: z.string().nullable(),
-      /**
-       * How the last run ended, as systemd's `Result`: `success`, `exit-code`, `signal`,
-       * `core-dump`, `oom-kill`, `timeout`, `watchdog` or `start-limit-hit`. Optional because
-       * agents before 1.1 don't send it, nor the fields below.
-       */
-      result: z.string().nullable().optional(),
-      /** Automatic restarts since the last explicit start (`NRestarts`). */
-      restarts: z.number().int().nullable().optional(),
-      /** How the main process last ended: by exiting, by a signal, or by a signal with a core dump. */
-      exitKind: z.enum(['exited', 'killed', 'dumped']).nullable().optional(),
-      /** The exit code, or the signal number when it was killed. */
-      exitStatus: z.number().int().nullable().optional(),
-    }),
+    result: ServiceStatus,
   },
   /** CPU time and memory systemd has counted for each server, for the metrics history. */
   'service.usage': {
@@ -260,3 +277,63 @@ export type Verb = keyof typeof verbs
 export type Params<V extends Verb> = z.infer<(typeof verbs)[V]['params']>
 export type Result<V extends Verb> = z.infer<(typeof verbs)[V]['result']>
 export const verbNames = Object.keys(verbs) as Verb[]
+
+/**
+ * Every subscription the agent offers (protocol 2): `params` opens one, `result` is the answer
+ * to the subscribe, and each `event` frame carries an `event`. Like `verbs`, this list is the
+ * whole of what the panel can follow. `agent.hello` says which ones a running agent offers.
+ */
+const LogLines = z.array(z.string()).min(1)
+
+export const subscriptions = {
+  /**
+   * A server's `logs/latest.log`, line by line, through inotify. First the last `seedBytes`
+   * of it as `seed` events (whole lines only), then each new batch of lines as a `lines`
+   * event. Follows Minecraft rotating the log and a server that hasn't made one yet. A line
+   * over 64 KB is cut. With `crashes`, each new file in `crash-reports/` comes as a `crash`
+   * event with its path in the server's folder. Ends (`finished`) if the server is deleted.
+   */
+  'log.follow': {
+    params: z
+      .object({
+        server: ServerName,
+        seedBytes: z.number().int().min(0).max(1_048_576),
+        crashes: z.boolean().optional(),
+      })
+      .strict(),
+    result: z.object({}),
+    event: z.union([
+      z.object({ seed: LogLines }).strict(),
+      z.object({ lines: LogLines }).strict(),
+      z.object({ crash: z.string() }).strict(),
+    ]),
+  },
+  /**
+   * Each server's state, then `{server, status}` whenever one changes, from systemd's
+   * journal (no polling). A burst of changes settles for a moment and each server is sent
+   * once, only if its state really changed. To change which servers, cancel and subscribe
+   * again. Offered only when the agent can follow the journal; otherwise use `service.wait`.
+   */
+  'service.events': {
+    params: z.object({ servers: z.array(ServerName).max(100) }).strict(),
+    result: z.object({ states: z.record(z.string(), ServiceStatus) }),
+    event: z.object({ server: ServerName, status: ServiceStatus }),
+  },
+  /** Counts from 1 to `count`. Only test builds of the Rust agent offer it. */
+  'testing.ticks': {
+    params: z
+      .object({
+        count: z.number().int().min(1).max(100_000),
+        intervalMs: z.number().int().min(0).max(60_000),
+      })
+      .strict(),
+    result: z.object({}),
+    event: z.object({ n: z.number().int().min(1) }),
+  },
+} as const
+
+export type Subscription = keyof typeof subscriptions
+export type SubParams<S extends Subscription> = z.infer<(typeof subscriptions)[S]['params']>
+export type SubResult<S extends Subscription> = z.infer<(typeof subscriptions)[S]['result']>
+export type SubEvent<S extends Subscription> = z.infer<(typeof subscriptions)[S]['event']>
+export const subscriptionNames = Object.keys(subscriptions) as Subscription[]

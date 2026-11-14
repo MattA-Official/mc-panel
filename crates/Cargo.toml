@@ -11,9 +11,20 @@ publish = false
 [workspace.lints.rust]
 unsafe_code = "forbid"
 
+# CI runs clippy with `-D warnings`, so every warning here fails the build.
 [workspace.lints.clippy]
 all = { level = "deny", priority = -1 }
 pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+# Every `#[allow]` or `#[expect]` in the code says why, next to it.
+allow_attributes_without_reason = "warn"
+# Nursery lints left off, and why:
+# - Long first doc paragraphs are how this code explains itself; splitting them hurts.
+too_long_first_doc_paragraph = "allow"
+# - `map_or_else` with two closures reads worse than the `if let` or `match` it replaces.
+option_if_let_else = "allow"
+# - `mul_add` can change the last bit of a float, and the map's pixels must not change.
+suboptimal_flops = "allow"
 
 # Small static binaries: the release tarball carries one per architecture.
 [profile.release]

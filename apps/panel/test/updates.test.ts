@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'bun:test'
 import { openDb } from '../server/db'
 import { getSetting, setSetting } from '../server/settings'
-import { compareVersions, defaultChannel, listReleases, onChannel } from '../server/updates'
+import {
+  compareVersions,
+  defaultChannel,
+  listReleases,
+  onChannel,
+  releaseOf,
+  updateChannel,
+} from '../server/updates'
 
 const rel = (tag: string, signed = true, prerelease = false) => ({
   tag_name: tag,
@@ -68,53 +75,45 @@ describe('updates', () => {
   it('defaults to beta only when a beta is running', () => {
     expect(defaultChannel('1.0.1')).toBe('stable')
     expect(defaultChannel('1.1.0-beta.1')).toBe('beta')
-    expect(defaultChannel('1.2.0-beta.2.native.1')).toBe('native')
-    expect(defaultChannel('1.2.0-native.1')).toBe('native')
+    // A native build from 1.2 to 1.4 counts as the release it went with.
+    expect(defaultChannel('1.2.0-beta.2.native.1')).toBe('beta')
+    expect(defaultChannel('1.4.3-native.1')).toBe('stable')
   })
 
-  describe('native builds', () => {
-    const list = () =>
-      listReleases(async () =>
-        Response.json([
-          rel('v1.2.0'),
-          rel('native-1.2.0-native.1', true, true),
-          rel('v1.2.0-beta.3', true, true),
-          rel('native-1.2.0-beta.2.native.2', true, true),
-          rel('native-1.2.0-beta.2.native.1', true, true),
-          // Mislabelled: a native version under a v tag, or the other way round.
-          rel('v1.3.0-beta.1.native.1', true, true),
-          rel('native-1.3.0', true, true),
-        ]),
-      )
-
-    it('are read from native- tags only', async () => {
-      const natives = (await list()).filter((r) => r.native).map((r) => r.version)
-      expect(natives).toEqual(['1.2.0-native.1', '1.2.0-beta.2.native.2', '1.2.0-beta.2.native.1'])
-      const all = (await list()).map((r) => r.version)
-      expect(all).not.toContain('1.3.0')
-      expect(all).not.toContain('1.3.0-beta.1.native.1')
+  it('reads a box left on the retired Native channel as its default, with a notice', () => {
+    expect(updateChannel('native', '1.4.3-native.1')).toEqual({ channel: 'stable', retired: true })
+    expect(updateChannel('native', '1.4.0-beta.2.native.1')).toEqual({
+      channel: 'beta',
+      retired: true,
     })
+    expect(updateChannel('beta', '1.4.3')).toEqual({ channel: 'beta', retired: false })
+    expect(updateChannel(undefined, '1.5.0')).toEqual({ channel: 'stable', retired: false })
+  })
 
-    it('sort with the release they were built alongside', () => {
-      expect(compareVersions('1.2.0-beta.2.native.2', '1.2.0-beta.2.native.1')).toBeGreaterThan(0)
-      expect(compareVersions('1.2.0-beta.3.native.1', '1.2.0-beta.2.native.9')).toBeGreaterThan(0)
-      expect(compareVersions('1.2.0-native.1', '1.2.0-beta.3.native.1')).toBeGreaterThan(0)
-      expect(compareVersions('1.3.0-beta.1.native.1', '1.2.0-native.4')).toBeGreaterThan(0)
-    })
+  it('knows which release a native build went with', () => {
+    expect(releaseOf('1.2.0-beta.2.native.1')).toBe('1.2.0-beta.2')
+    expect(releaseOf('1.4.3-native.1')).toBe('1.4.3')
+    expect(releaseOf('1.4.3')).toBe('1.4.3')
+    expect(releaseOf('1.5.0-beta.1')).toBe('1.5.0-beta.1')
+  })
 
-    it('are never offered on Beta or Stable', async () => {
-      expect(onChannel(await list(), 'beta')[0]?.version).toBe('1.2.0')
-      expect(onChannel(await list(), 'beta').some((r) => r.native)).toBe(false)
-      expect(onChannel(await list(), 'stable')[0]?.version).toBe('1.2.0')
-    })
+  it('reads v tags only, now native- tags are retired', async () => {
+    const list = await listReleases(async () =>
+      Response.json([
+        rel('v1.5.0'),
+        rel('native-1.4.3-native.1', true, true),
+        // Mislabelled: a native version under a v tag.
+        rel('v1.4.3-native.2', true, true),
+        rel('v1.4.3'),
+      ]),
+    )
+    expect(list.map((r) => r.version)).toEqual(['1.5.0', '1.4.3'])
+  })
 
-    it('are the only thing offered on Native, so a stable never takes a box off it', async () => {
-      expect(onChannel(await list(), 'native').map((r) => r.version)).toEqual([
-        '1.2.0-native.1',
-        '1.2.0-beta.2.native.2',
-        '1.2.0-beta.2.native.1',
-      ])
-    })
+  it('offers a box on a native build the next release', async () => {
+    const list = await listReleases(async () => Response.json([rel('v1.5.0'), rel('v1.4.3')]))
+    const newest = onChannel(list, defaultChannel('1.4.3-native.1'))[0]!
+    expect(compareVersions(newest.version, '1.4.3-native.1')).toBeGreaterThan(0)
   })
 
   it('remembers the chosen channel', () => {

@@ -7,11 +7,15 @@ import type { DiscordApp } from './discord/service'
 import type { DiscordRoleMapping } from '../shared/discord'
 import type { RouterSettings } from './routing/table'
 
-export type UpdateChannel = 'stable' | 'beta' | 'native'
+export type UpdateChannel = 'stable' | 'beta'
 
 export interface Settings {
-  /** Which releases are offered: stable only, or betas too. Unset until someone chooses. */
-  'update.channel': UpdateChannel
+  /**
+   * Which releases are offered: stable only, or betas too. Unset until someone chooses.
+   * `native` is from 1.2 to 1.4, when there was a Native channel: it reads as unset, with a
+   * notice, until someone chooses again (see `updateChannel`).
+   */
+  'update.channel': UpdateChannel | 'native'
   /** The last disk use measurement, so the System page has figures straight after a restart. */
   'disk.usage': DiskReport
   /** The install's own name, colour and font. Missing fields mean Flytower's own. */

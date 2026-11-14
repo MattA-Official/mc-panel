@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { getSetting } from '../../../settings'
-import { compareVersions, defaultChannel, newestRelease } from '../../../updates'
+import { compareVersions, newestRelease, updateChannel } from '../../../updates'
 
 const Query = z.object({ check: z.stringbool().default(false) })
 
@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
   const { check } = await getValidatedQuery(event, Query.parse)
   const status = await agent('update.status', {}).catch(() => null)
   const current = status?.current ?? useRuntimeConfig().version
-  const channel = getSetting(useDb(), 'update.channel') ?? defaultChannel(current)
+  const { channel, retired } = updateChannel(getSetting(useDb(), 'update.channel'), current)
   let latest = null
   let checkError: string | null = null
   try {
@@ -31,6 +31,8 @@ export default defineEventHandler(async (event) => {
   return {
     current,
     channel,
+    /** Still on the Native channel, which ended in 1.5.0: say so until someone chooses again. */
+    nativeRetired: retired,
     installed: status?.releases ?? [],
     last: status?.last ?? null,
     latest,
