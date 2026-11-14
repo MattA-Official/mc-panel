@@ -12,6 +12,14 @@
 {"verb":"log.follow","kind":"event","valid":false,"note":"one kind per event","value":{"lines":["a"],"crash":"crash-reports/x.txt"}}
 {"verb":"log.follow","kind":"event","valid":false,"note":"lines are strings","value":{"lines":[1]}}
 {"verb":"log.follow","kind":"event","valid":false,"note":"unknown key","value":{"seed":["a"],"more":true}}
+{"verb":"service.events","kind":"params","valid":true,"value":{"servers":["survival","lobby"]}}
+{"verb":"service.events","kind":"params","valid":false,"note":"a server name with a slash","value":{"servers":["../etc"]}}
+{"verb":"service.events","kind":"params","valid":false,"note":"unknown key","value":{"servers":[],"all":true}}
+{"verb":"service.events","kind":"result","valid":true,"value":{"states":{"survival":{"active":"active","since":"Fri 2026-11-14 01:00:00 UTC","result":"success","restarts":0,"exitKind":null,"exitStatus":null},"ghost":{"active":"unknown","since":null}}}}
+{"verb":"service.events","kind":"result","valid":false,"note":"unknown state","value":{"states":{"survival":{"active":"sleeping","since":null}}}}
+{"verb":"service.events","kind":"event","valid":true,"value":{"server":"survival","status":{"active":"failed","since":null,"result":"exit-code","restarts":2,"exitKind":"exited","exitStatus":1}}}
+{"verb":"service.events","kind":"event","valid":false,"note":"status is required","value":{"server":"survival"}}
+{"verb":"service.events","kind":"event","valid":false,"note":"not a server name","value":{"server":"Survival","status":{"active":"active","since":null}}}
 {"verb":"testing.ticks","kind":"params","valid":true,"value":{"count":3,"intervalMs":0}}
 {"verb":"testing.ticks","kind":"params","valid":false,"note":"count starts at 1","value":{"count":0,"intervalMs":0}}
 {"verb":"testing.ticks","kind":"params","valid":false,"note":"unknown key","value":{"count":3,"intervalMs":0,"x":1}}
