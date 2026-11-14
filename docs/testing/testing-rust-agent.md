@@ -25,4 +25,12 @@ It says `flytower-agent <version> (rust) listening`. `readlink -f /proc/$(system
 - [ ] Delete a test server. Its folder is archived under `/var/lib/flytower-archive`.
 - [ ] **System**, **Updates**: update to a newer build, then use **Go back to** a 1.4 release and forward again. Each works, and `journalctl -u 'flytower-update-*'` shows the updater's result as one JSON line.
 
+From 1.5.0 the Rust agent also speaks protocol 2 (subscriptions, see `protocol/README.md`), and answers `agent.hello`. To ask, as root:
+
+```sh
+printf '{"id":"1","verb":"agent.hello","params":{}}\n' | nc -U -q1 /run/flytower/agent.sock
+```
+
+- [ ] The answer has `"kind":"rust"` and `"protocols":[1,2]`.
+
 If anything goes wrong, send `journalctl -u flytower-agent -n 100`.

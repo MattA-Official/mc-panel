@@ -10,6 +10,7 @@ on:
       - 'protocol/**'
       - 'apps/panel/server/disk.ts'
       - 'apps/panel/test/disk.test.ts'
+      - 'packages/protocol/src/subscribe*.ts'
       - '.github/workflows/rust.yml'
   pull_request:
     paths:
@@ -17,6 +18,7 @@ on:
       - 'protocol/**'
       - 'apps/panel/server/disk.ts'
       - 'apps/panel/test/disk.test.ts'
+      - 'packages/protocol/src/subscribe*.ts'
       - '.github/workflows/rust.yml'
 
 permissions:
@@ -71,9 +73,11 @@ jobs:
         with:
           workspaces: crates
       - run: cargo fmt --check
-      - run: cargo clippy --locked --all-targets --target ${{ matrix.target }} -- -D warnings
+      - run: cargo clippy --locked --all-targets --all-features --target ${{ matrix.target }} -- -D warnings
       - run: cargo test --locked --target ${{ matrix.target }}
       - run: cargo build --locked --release --target ${{ matrix.target }}
+      # The test build, with the testing.* subscriptions, for the client's tests below.
+      - run: cargo build --locked --features testing --bin flytower-agent-testing --target ${{ matrix.target }}
 
       # The panel's tests check flytower-du gives exactly the numbers of the TypeScript walk.
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -85,3 +89,9 @@ jobs:
         working-directory: .
         env:
           FLYTOWER_DU: ${{ github.workspace }}/crates/target/${{ matrix.target }}/release/flytower-du
+
+      # The subscription client against the real agent, across a restart (protocol 2).
+      - run: bun test packages/protocol/src/subscribe.test.ts
+        working-directory: .
+        env:
+          FLYTOWER_AGENT_TESTING: ${{ github.workspace }}/crates/target/${{ matrix.target }}/debug/flytower-agent-testing

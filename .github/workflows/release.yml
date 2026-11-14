@@ -57,17 +57,12 @@ jobs:
           if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
             version="${INPUT_VERSION#v}"
             [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "bad version $version"; exit 1; }
-            # Native builds (the native branch, docs/decisions/0001-rust-and-go.md) get their own
-            # tag, which panels on the Stable and Beta channels never look at. Beta panels offer
-            # every v-tagged pre-release, so the native branch must never publish a v tag.
-            # Native versions add a counter to the release they go with: 1.2.0-beta.2.native.1.
+            # Native builds (native-<version> tags, 1.2 to 1.4) ended in 1.5.0, when every
+            # release got the Rust agent. Panels no longer look for them.
             if [[ "$version" =~ -(.+\.)?native\.[0-9]+$ ]]; then
-              tag="native-$version"
-            elif [[ "$GITHUB_REF_NAME" == native ]]; then
-              echo "::error::the native branch only releases native builds, like 1.2.0-beta.2.native.1"; exit 1
-            else
-              tag="v$version"
+              echo "::error::native builds are retired; release $version without the native counter"; exit 1
             fi
+            tag="v$version"
             if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then echo "$tag already exists"; exit 1; fi
             if [[ -n "$INPUT_REF" ]]; then
               sha="$(git rev-parse -q --verify "$INPUT_REF^{commit}" || git rev-parse -q --verify "origin/$INPUT_REF^{commit}")" ||
@@ -78,8 +73,7 @@ jobs:
           else
             tag="$GITHUB_REF_NAME"
           fi
-          version="${tag#native-}"
-          version="${version#v}"
+          version="${tag#v}"
           # A stable release older than the newest stable one mustn't become "Latest".
           newest="$(git tag -l 'v*' | grep -v -- - | sort -V | tail -n1)"
           not_latest=""
@@ -101,10 +95,8 @@ jobs:
           bun-version-file: package.json
       # Releases only ship commits the E2E workflow (install, self-update, upgrades from every
       # minor version) passed on. It reuses main's run instead of running it again; for a
-      # commit without one, run E2E on it from the Actions tab first. Native builds come from
-      # their own branch, which E2E doesn't run on.
+      # commit without one, run E2E on it from the Actions tab first.
       - name: E2E passed on this commit
-        if: ${{ !startsWith(steps.tag.outputs.tag, 'native-') }}
         env:
           GH_TOKEN: ${{ github.token }}
           E2E_WORKFLOW: ${{ runner.temp }}/e2e.yml

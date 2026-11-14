@@ -6,11 +6,10 @@ use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Duration;
 
-use flytower_agent::dispatch::dispatch;
 use flytower_agent::events::{Journal, UnitEvents};
 use flytower_agent::exec::{Exec, RealExec};
 use flytower_agent::fetch::Curl;
-use flytower_agent::handlers::{Context, handle, server, ssh, system_clock, update};
+use flytower_agent::handlers::{Agent, Context, server, ssh, system_clock, update};
 use flytower_agent::release::RELEASE_KEY;
 use flytower_agent::server::{ListenOptions, bind, group_id, serve, user_id};
 use flytower_agent::units::Paths;
@@ -97,9 +96,11 @@ fn main() -> ExitCode {
         Ok(false) => {}
         Err(e) => eprintln!("updating the Caddyfile failed: {e}"),
     }
-    serve(&listener, Some(uid), move |line| {
-        // stdout goes to the journal; one JSON line per request.
-        dispatch(line, |p| handle(&p, &ctx), |audit| println!("{audit}"))
-    });
+    // stdout goes to the journal; one JSON line per request and per subscription's end.
+    let agent = Agent {
+        ctx: Arc::new(ctx),
+        log: Arc::new(|audit| println!("{audit}")),
+    };
+    serve(&listener, Some(uid), agent);
     ExitCode::SUCCESS
 }

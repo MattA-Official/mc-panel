@@ -10,3 +10,26 @@
 {"kind":"response","valid":false,"note":"unknown error code","value":{"id":"1","ok":false,"error":{"code":"oops","message":"no"}}}
 {"kind":"response","valid":false,"note":"error without a message","value":{"id":"1","ok":false,"error":{"code":"failed"}}}
 {"kind":"response","valid":false,"note":"ok is not a boolean","value":{"id":"1","ok":"yes","result":{}}}
+{"kind":"request","valid":false,"note":"a subscribe is not a request","value":{"id":"1","subscribe":"testing.ticks","params":{}}}
+{"kind":"subscribe","valid":true,"value":{"id":"s1","subscribe":"testing.ticks","params":{"count":3,"intervalMs":0}}}
+{"kind":"subscribe","valid":true,"note":"params are checked per subscription, not by the envelope","value":{"id":"s2","subscribe":"log.follow","params":null}}
+{"kind":"subscribe","valid":false,"note":"missing params","value":{"id":"s1","subscribe":"testing.ticks"}}
+{"kind":"subscribe","valid":false,"note":"empty subscription name","value":{"id":"s1","subscribe":"","params":{}}}
+{"kind":"subscribe","valid":false,"note":"a request is not a subscribe","value":{"id":"1","verb":"ping","params":{}}}
+{"kind":"subscribe","valid":false,"note":"unknown top-level key","value":{"id":"s1","subscribe":"testing.ticks","params":{},"verb":"ping"}}
+{"kind":"cancel","valid":true,"value":{"id":"s1","cancel":true}}
+{"kind":"cancel","valid":false,"note":"cancel must be true","value":{"id":"s1","cancel":false}}
+{"kind":"cancel","valid":false,"note":"missing id","value":{"cancel":true}}
+{"kind":"cancel","valid":false,"note":"unknown top-level key","value":{"id":"s1","cancel":true,"now":true}}
+{"kind":"frame","valid":true,"note":"a response is a frame","value":{"id":"s1","ok":true,"result":{}}}
+{"kind":"frame","valid":true,"value":{"id":"s1","event":{"n":1}}}
+{"kind":"frame","valid":true,"value":{"id":"s1","skipped":250}}
+{"kind":"frame","valid":true,"value":{"id":"s1","end":true,"reason":"finished"}}
+{"kind":"frame","valid":true,"value":{"id":"s1","end":true,"reason":"failed","message":"the log folder went away"}}
+{"kind":"frame","valid":true,"value":{"ping":true}}
+{"kind":"frame","valid":false,"note":"skipped counts at least one","value":{"id":"s1","skipped":0}}
+{"kind":"frame","valid":false,"note":"unknown end reason","value":{"id":"s1","end":true,"reason":"bored"}}
+{"kind":"frame","valid":false,"note":"end must be true","value":{"id":"s1","end":false,"reason":"finished"}}
+{"kind":"frame","valid":false,"note":"event frame with an unknown key","value":{"id":"s1","event":{},"extra":1}}
+{"kind":"frame","valid":false,"note":"event without an id","value":{"event":{"n":1}}}
+{"kind":"frame","valid":false,"note":"ping must be true","value":{"ping":false}}

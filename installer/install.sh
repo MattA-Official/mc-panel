@@ -35,7 +35,6 @@ version="latest"
 version_given=0
 pr=""
 beta=0
-native=0
 tarball=""
 setup_token=""
 with_caddy=1
@@ -129,8 +128,6 @@ Usage: install.sh --domain <host> [options]
   --version <x.y.z>     Install this release instead of the latest stable one.
                         --version latest installs the latest stable one.
   --beta                Install the newest release, betas included.
-  --native              Install the newest native build: Flytower with parts rewritten in
-                        Rust and Go. For test servers only.
   --tarball <file>      Install from a release tarball already on this machine.
   --pr <number>         Install the test build of that pull request (for testing, not for
                         real servers). It's signed with the test-build key, not the
@@ -141,7 +138,7 @@ Usage: install.sh --domain <host> [options]
 
 On a machine that already has Flytower, running this again keeps the installed version: it
 rewrites the settings and services and gives you a new setup token. Pass --version, --beta,
---native, --pr or --tarball to change version (--version latest for the newest stable).
+--pr or --tarball to change version (--version latest for the newest stable).
 Going back to an older version saves a copy of the panel's database first.
 EOF
 }
@@ -155,7 +152,8 @@ while [[ $# -gt 0 ]]; do
     --tarball) tarball="${2:-}"; shift 2 ;;
     --pr) pr="${2:-}"; shift 2 ;;
     --beta) beta=1; shift ;;
-    --native) native=1; shift ;;
+    # Native builds ended in 1.5.0, when every release got the Rust agent.
+    --native) die "--native has gone: every release has the Rust agent now. Use --beta or --version instead." ;;
     --setup-token) setup_token="${2:-}"; shift 2 ;;
     --no-caddy) with_caddy=0; shift ;;
     --no-firewall) with_firewall=0; shift ;;
@@ -198,15 +196,15 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
 # What's installed now, if anything. With no option choosing a version, keep it: a plain
-# re-run (say, for a new setup token) mustn't move a beta, native or test box to stable.
+# re-run (say, for a new setup token) mustn't move a beta or test box to stable.
 installed=""
 if [[ -f "$PREFIX/current/VERSION" ]]; then installed="$(cat "$PREFIX/current/VERSION")"; fi
 keep=0
 if [[ -n "$installed" && -z "$tarball" && -z "$pr" && $version_given -eq 0 &&
-  $beta -eq 0 && $native -eq 0 ]]; then
+  $beta -eq 0 ]]; then
   keep=1
   say "Flytower $installed is already installed; keeping that version"
-  echo "To change version, run this again with --version <x.y.z> (or latest), --beta, --native or --pr."
+  echo "To change version, run this again with --version <x.y.z> (or latest), --beta or --pr."
 fi
 
 # The version the signed file name promises; the tarball's own VERSION must agree.
@@ -224,11 +222,7 @@ elif [[ -z "$tarball" ]]; then
     say "Downloading the test build of pull request $pr ($arch)"
   else
     if [[ "$version" == latest ]]; then
-      if [[ "$native" == 1 ]]; then
-        # Native builds have their own native-<version> tags (docs/decisions/0001-rust-and-go.md).
-        version="$(curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=30" |
-          sed -n 's/.*"tag_name": *"native-\([^"]*\)".*/\1/p' | head -n1)"
-      elif [[ "$beta" == 1 ]]; then
+      if [[ "$beta" == 1 ]]; then
         # The newest v-tagged release, betas included; test builds (pr-*) are skipped.
         version="$(curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=30" |
           sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p' | head -n1)"
@@ -239,11 +233,7 @@ elif [[ -z "$tarball" ]]; then
       fi
       [[ -n "$version" ]] || die "couldn't find the latest release"
     fi
-    if [[ "$version" =~ -(.+\.)?native\.[0-9]+$ ]]; then
-      base="https://github.com/$REPO/releases/download/native-$version"
-    else
-      base="https://github.com/$REPO/releases/download/v$version"
-    fi
+    base="https://github.com/$REPO/releases/download/v$version"
     name="flytower-$version-linux-$arch.tar.gz"
     say "Downloading Flytower $version ($arch)"
     curl -fsSL -o "$work/SHA256SUMS" "$base/SHA256SUMS"
