@@ -72,16 +72,19 @@ impl Region {
     /// # Errors
     ///
     /// When the file can't be read.
-    pub fn open(path: &Path, x: i32, z: i32) -> io::Result<Region> {
+    pub fn open(path: &Path, x: i32, z: i32) -> io::Result<Self> {
         let data = std::fs::read(path)?;
-        let dir = path.parent().unwrap_or(Path::new(".")).to_path_buf();
-        Ok(Region { data, dir, x, z })
+        let dir = path
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .to_path_buf();
+        Ok(Self { data, dir, x, z })
     }
 
     /// A region made from bytes, for tests and tools.
     #[must_use]
-    pub fn from_bytes(data: Vec<u8>, dir: PathBuf, x: i32, z: i32) -> Region {
-        Region { data, dir, x, z }
+    pub const fn from_bytes(data: Vec<u8>, dir: PathBuf, x: i32, z: i32) -> Self {
+        Self { data, dir, x, z }
     }
 
     /// The uncompressed NBT of chunk `i` (`x + z * 32` within the region), or `None` when

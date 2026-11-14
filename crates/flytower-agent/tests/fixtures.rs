@@ -4,8 +4,12 @@
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 
-use flytower_agent::envelope::{Request, is_valid_response};
-use flytower_agent::verbs::{Params, VERBS, check_result};
+use flytower_agent::envelope::{
+    Request, Subscribe, is_valid_frame, is_valid_response, parse_cancel,
+};
+use flytower_agent::verbs::{
+    Params, SUBSCRIPTIONS, SubParams, VERBS, check_event, check_result, check_sub_result,
+};
 use serde_json::Value;
 
 fn fixtures(name: &str) -> Vec<Value> {
@@ -38,6 +42,9 @@ fn envelope() {
         let got = match f["kind"].as_str().unwrap() {
             "request" => Request::parse(&f["value"]).is_some(),
             "response" => is_valid_response(&f["value"]),
+            "subscribe" => Subscribe::parse(&f["value"]).is_some(),
+            "cancel" => parse_cancel(&f["value"]).is_some(),
+            "frame" => is_valid_frame(&f["value"]),
             other => panic!("unknown kind {other}"),
         };
         assert_eq!(got, valid, "{}", label(&f));
@@ -67,6 +74,38 @@ fn verbs() {
     }
     for verb in VERBS {
         for kind in ["params", "result"] {
+            assert!(
+                seen.contains(&(verb.to_string(), kind.to_string())),
+                "no valid {kind} line for {verb}"
+            );
+        }
+    }
+}
+
+#[test]
+fn subscriptions() {
+    let mut seen = BTreeSet::new();
+    for f in fixtures("subscriptions.jsonl") {
+        let verb = f["verb"].as_str().unwrap();
+        let valid = f["valid"].as_bool().unwrap();
+        let kind = f["kind"].as_str().unwrap();
+        let got = match kind {
+            "params" => match SubParams::parse(verb, &f["value"]) {
+                Ok(Some(_)) => true,
+                Ok(None) => panic!("unknown subscription {verb}"),
+                Err(_) => false,
+            },
+            "result" => check_sub_result(verb, &f["value"]).is_ok(),
+            "event" => check_event(verb, &f["value"]).is_ok(),
+            other => panic!("unknown kind {other}"),
+        };
+        assert_eq!(got, valid, "{}", label(&f));
+        if valid {
+            seen.insert((verb.to_string(), kind.to_string()));
+        }
+    }
+    for verb in SUBSCRIPTIONS {
+        for kind in ["params", "result", "event"] {
             assert!(
                 seen.contains(&(verb.to_string(), kind.to_string())),
                 "no valid {kind} line for {verb}"

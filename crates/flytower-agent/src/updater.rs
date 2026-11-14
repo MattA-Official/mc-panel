@@ -466,11 +466,14 @@ mod tests {
             let db = db.clone();
             Arc::new(move |_| {
                 // The new panel "migrates" the database, then reports the wrong version.
-                let mut n = checks.lock().unwrap();
-                if *n == 0 {
+                let n = {
+                    let mut n = checks.lock().unwrap();
+                    *n += 1;
+                    *n
+                };
+                if n == 1 {
                     fs::write(&db, "migrated").unwrap();
                 }
-                *n += 1;
                 Ok(Health {
                     version: "0.4.0".into(),
                     agent_ok: true,

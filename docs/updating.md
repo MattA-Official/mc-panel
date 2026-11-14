@@ -33,11 +33,11 @@ Choosing Stable again while you're running a beta doesn't take you backwards: yo
 
 If you install a beta with the installer and never choose a channel, Flytower assumes Beta.
 
-## Native builds
+## Native builds (ended)
 
-The **Native** channel is for trying Flytower with parts rewritten in Rust and Go, such as the system helper. These builds are made from the same code as the release they go with. Each one is numbered after the release it goes with, plus a counter: `1.2.0-beta.2.native.1` goes with 1.2.0-beta.2, and `1.2.0-native.1` goes with 1.2.0. Beta and Stable never offer them, and Native offers only them, so a native install stays native until you choose another channel.
+From 1.2 to 1.4 there was a **Native** channel, with test builds of Flytower's Rust system helper numbered after the release they went with (`1.4.3-native.1` went with 1.4.3). Since 1.5.0 every release has the Rust helper, so there are no more native builds, and the channel and the installer's `--native` are gone.
 
-Use native builds on a test server. Leaving them means using **Go back to** for a version you had before, or reinstalling. To start on one, install with `--native`, or choose **Native** under **System, Updates**.
+A box that was on the Native channel is offered the releases of the channel its version belongs to: Stable for `1.4.3-native.1`, Beta for `1.4.0-beta.2.native.1`. **System, Updates** says so until you choose a channel.
 
 From 1.4.0, the system helper and the updater are the Rust versions on every channel (1.3 carried them switched off). The Bun versions are still in each release: if the Rust helper fails to start, Flytower starts the Bun one by itself and says so in `journalctl -u flytower-agent`. To use Bun on purpose, run `echo bun > /etc/flytower/agent` as root and restart `flytower-agent`. Delete that file and restart again to go back. After a fallback, the box stays on Bun until it reboots or updates; to try Rust again sooner, delete `/run/flytower/agent-rust-starting` and restart `flytower-agent`.
 
@@ -47,14 +47,14 @@ Each release's `SHA256SUMS` is signed with Flytower's Ed25519 release key. The i
 
 ## Re-running the installer
 
-Running the installer again keeps your data, settings and app secret. On a box that already has Flytower it also keeps the installed version, so a beta, native or test box stays as it is. Use it if the panel won't start at all, or for a new setup token:
+Running the installer again keeps your data, settings and app secret. On a box that already has Flytower it also keeps the installed version, so a beta or test box stays as it is. Use it if the panel won't start at all, or for a new setup token:
 
 ```sh
 curl -fsSL https://github.com/teamflytower/flytower/releases/latest/download/install.sh \
   | sudo bash -s -- --domain panel.example.com
 ```
 
-To change version with it, add `--version <x.y.z>`, `--version latest` (the newest stable release), `--beta` or `--native`. Installs from before 0.5.0, which had no updater, upgrade this way with `--version latest`. If the version you pick is older than the one installed, the installer saves a copy of the panel's database in `/var/lib/flytower-agent/db-backups/` before switching, since older code may not understand newer data.
+To change version with it, add `--version <x.y.z>`, `--version latest` (the newest stable release), or `--beta`. Installs from before 0.5.0, which had no updater, upgrade this way with `--version latest`. If the version you pick is older than the one installed, the installer saves a copy of the panel's database in `/var/lib/flytower-agent/db-backups/` before switching, since older code may not understand newer data.
 
 Every release is tested upgrading from each earlier one, including the database, before it's published.
 
@@ -86,7 +86,3 @@ Flytower looks for updates in the background, so you don't have to remember to p
 ## Publishing a beta
 
 For maintainers: run the **Release** workflow with a version like `1.1.0-beta.1`. Any version with a `-suffix` is published as a GitHub pre-release, which only Beta installs are offered. Number betas `beta.1`, `beta.2` and so on; `beta.10` correctly comes after `beta.9`.
-
-## Publishing a native build
-
-For maintainers: run the **Release** workflow on `main` (or the `ref` of the release it goes with) with that release's version plus `.native.N`, such as `1.3.0-beta.1.native.1`. For a stable release, use `-native.N`, such as `1.3.0-native.1`. Native builds are published alongside each release, and in between when native work is worth trying. They're tagged `native-<version>` rather than `v…`, because Beta panels offer every `v`-tagged pre-release and older panels never look at other tags. Write the summary in `.github/release-notes/<version>.md` as usual.

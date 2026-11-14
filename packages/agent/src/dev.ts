@@ -146,6 +146,12 @@ const fakeFree = { journal: 520 * MB, aptCache: 70 * MB, oldReleases: 110 * MB }
 
 const handlers: Handlers = {
   ping: async (_p, ctx) => protocolInfo(ctx.version),
+  'agent.hello': async (_p, ctx) => ({
+    kind: 'bun',
+    version: ctx.version,
+    protocols: [1],
+    subscriptions: [],
+  }),
   'update.status': async () => ({
     current: '0.0.0-dev',
     releases: ['0.0.0-dev'],

@@ -82,29 +82,29 @@ fn version(v: &str) -> Result<(), String> {
     check(is_version(v), "not a release version")
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Empty {}
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ServerParam {
     pub server: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NameParam {
     pub name: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct UsageParams {
     pub servers: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct WaitParams {
     pub servers: Vec<String>,
@@ -113,14 +113,14 @@ pub struct WaitParams {
     pub timeout_ms: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RuntimeParams {
     pub vendor: String,
     pub major: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct CreateParams {
     pub name: String,
@@ -129,7 +129,7 @@ pub struct CreateParams {
     pub java_major: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct ConfigureParams {
     pub name: String,
@@ -141,7 +141,7 @@ pub struct ConfigureParams {
     pub java_major: Option<i64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SshSetParams {
     pub open: bool,
@@ -149,26 +149,26 @@ pub struct SshSetParams {
     pub minutes: Option<i64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DiskUsageParams {
     pub servers: Vec<String>,
     pub system: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct VacuumParams {
     pub max_mb: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct VersionParam {
     pub version: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ExposeParams {
     pub name: String,
@@ -176,16 +176,17 @@ pub struct ExposeParams {
     pub public: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PortParam {
     pub port: i64,
 }
 
 /// A request's params, checked.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Params {
     Ping,
+    AgentHello,
     ServiceStatus(ServerParam),
     ServiceUsage(UsageParams),
     ServiceWait(WaitParams),
@@ -212,8 +213,9 @@ pub enum Params {
 }
 
 /// Every verb, in the same order as `verbs.ts`.
-pub const VERBS: [&str; 24] = [
+pub const VERBS: [&str; 25] = [
     "ping",
+    "agent.hello",
     "service.status",
     "service.usage",
     "service.wait",
@@ -251,6 +253,7 @@ impl Params {
     pub fn parse(verb: &str, params: &Value) -> Result<Option<Self>, String> {
         let p = match verb {
             "ping" => de::<Empty>(params).map(|_| Self::Ping)?,
+            "agent.hello" => de::<Empty>(params).map(|_| Self::AgentHello)?,
             "service.status" | "service.start" | "service.stop" | "service.restart" => {
                 let p: ServerParam = de(params)?;
                 server(&p.server)?;
@@ -379,14 +382,29 @@ impl Params {
 
 // ---------------------------------------------------------------- results
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EmptyResult {}
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PingResult {
     pub agent_version: String,
     pub protocol: i64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AgentKind {
+    Rust,
+    Bun,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HelloResult {
+    pub kind: AgentKind,
+    pub version: String,
+    pub protocols: Vec<u32>,
+    pub subscriptions: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -408,7 +426,7 @@ pub enum ExitKind {
     Dumped,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StatusResult {
     pub active: ActiveState,
@@ -439,14 +457,14 @@ pub struct UsageResult {
     pub usage: std::collections::BTreeMap<String, Usage>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WaitResult {
     pub cursor: String,
     pub changed: Vec<String>,
     pub following: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RuntimeResult {
     pub java_home: String,
@@ -454,14 +472,14 @@ pub struct RuntimeResult {
     pub already_installed: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CreateResult {
     pub directory: String,
     pub user: String,
     pub unit: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SshState {
     /// True if any firewall rule lets SSH in.
@@ -483,7 +501,7 @@ pub enum UpdateState {
     Failed,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UpdateRecord {
     pub state: UpdateState,
     pub from: String,
@@ -494,7 +512,7 @@ pub struct UpdateRecord {
     pub manual: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UpdateStatusResult {
     pub current: String,
     pub releases: Vec<String>,
@@ -502,19 +520,19 @@ pub struct UpdateStatusResult {
     pub last: Option<UpdateRecord>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StartedResult {
     pub started: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeleteResult {
     #[serde(deserialize_with = "nullable")]
     pub archived_to: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ServerDiskGroups {
     pub world: u64,
@@ -526,20 +544,20 @@ pub struct ServerDiskGroups {
     pub other: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ServerDisk {
     pub groups: ServerDiskGroups,
     pub unreadable: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SharedDisk {
     pub imports: u64,
     pub archive: u64,
     pub unreadable: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SystemDisk {
     pub java: u64,
@@ -552,7 +570,7 @@ pub struct SystemDisk {
     pub old_releases: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DiskUsageResult {
     pub servers: std::collections::BTreeMap<String, ServerDisk>,
     #[serde(deserialize_with = "nullable")]
@@ -561,13 +579,13 @@ pub struct DiskUsageResult {
     pub system: Option<SystemDisk>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FreedResult {
     pub freed_bytes: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PruneResult {
     pub freed_bytes: u64,
@@ -581,6 +599,7 @@ pub struct PruneResult {
 pub fn check_result(verb: &str, result: &Value) -> Result<(), String> {
     match verb {
         "ping" => de::<PingResult>(result).map(drop),
+        "agent.hello" => de::<HelloResult>(result).map(drop),
         "service.status" => de::<StatusResult>(result).map(drop),
         "service.usage" => de::<UsageResult>(result).map(drop),
         "service.wait" => de::<WaitResult>(result).map(drop),
@@ -601,6 +620,137 @@ pub fn check_result(verb: &str, result: &Value) -> Result<(), String> {
         "disk.vacuum-journal" | "disk.clean-apt" => de::<FreedResult>(result).map(drop),
         "disk.prune-flytower" => de::<PruneResult>(result).map(drop),
         _ => Err(format!("unknown verb {verb}")),
+    }
+}
+
+// ---------------------------------------------------------------- subscriptions (protocol 2)
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct TicksParams {
+    pub count: u64,
+    pub interval_ms: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct LogFollowParams {
+    pub server: String,
+    pub seed_bytes: u64,
+    #[serde(default)]
+    pub crashes: Option<bool>,
+}
+
+/// A subscription's params, checked. Like [`Params`], the list is the whole of what the panel
+/// can follow.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SubParams {
+    /// Each server's state now, then every change to it.
+    ServiceEvents(UsageParams),
+    /// A server's `logs/latest.log`, line by line, and new crash reports if asked.
+    LogFollow(LogFollowParams),
+    /// Counts to `count`, one event every `interval_ms`. Only test builds start it.
+    TestingTicks(TicksParams),
+}
+
+/// Every subscription verb, in the same order as `subscriptions` in `verbs.ts`.
+pub const SUBSCRIPTIONS: [&str; 3] = ["log.follow", "service.events", "testing.ticks"];
+
+impl SubParams {
+    /// Checks `params` for the subscription `verb`. `Ok(None)` means it doesn't exist.
+    ///
+    /// # Errors
+    /// A message saying what's wrong with the params.
+    pub fn parse(verb: &str, params: &Value) -> Result<Option<Self>, String> {
+        let p = match verb {
+            "log.follow" => {
+                let p: LogFollowParams = de(params)?;
+                server(&p.server)?;
+                check(
+                    p.seed_bytes <= 1_048_576,
+                    "seedBytes must be from 0 to 1048576",
+                )?;
+                Self::LogFollow(p)
+            }
+            "service.events" => {
+                let p: UsageParams = de(params)?;
+                servers(&p.servers)?;
+                Self::ServiceEvents(p)
+            }
+            "testing.ticks" => {
+                let p: TicksParams = de(params)?;
+                check(
+                    (1..=100_000).contains(&p.count),
+                    "count must be from 1 to 100000",
+                )?;
+                check(
+                    p.interval_ms <= 60_000,
+                    "intervalMs must be from 0 to 60000",
+                )?;
+                Self::TestingTicks(p)
+            }
+            _ => return Ok(None),
+        };
+        Ok(Some(p))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ServiceStates {
+    pub states: std::collections::BTreeMap<String, StatusResult>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ServiceChange {
+    pub server: String,
+    pub status: StatusResult,
+}
+
+/// A `log.follow` event: exactly one of `seed` or `lines` (at least one line each), or
+/// `crash`, a report's path inside the server's folder.
+fn check_log_event(event: &Value) -> Result<(), String> {
+    let obj = event.as_object().ok_or("not an object")?;
+    let lines = |v: &Value| {
+        v.as_array()
+            .is_some_and(|a| !a.is_empty() && a.iter().all(Value::is_string))
+    };
+    let ok = obj.len() == 1
+        && match (obj.get("seed"), obj.get("lines"), obj.get("crash")) {
+            (Some(s), None, None) => lines(s),
+            (None, Some(l), None) => lines(l),
+            (None, None, Some(c)) => c.is_string(),
+            _ => false,
+        };
+    check(ok, "not a log.follow event")
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TickEvent {
+    pub n: u64,
+}
+
+/// Checks the answer to a subscribe, before it's sent.
+///
+/// # Errors
+/// A message saying what's wrong, or that the verb doesn't exist.
+pub fn check_sub_result(verb: &str, result: &Value) -> Result<(), String> {
+    match verb {
+        "service.events" => de::<ServiceStates>(result).map(drop),
+        "log.follow" | "testing.ticks" => de::<EmptyResult>(result).map(drop),
+        _ => Err(format!("unknown subscription {verb}")),
+    }
+}
+
+/// Checks one event of a subscription.
+///
+/// # Errors
+/// A message saying what's wrong, or that the verb doesn't exist.
+pub fn check_event(verb: &str, event: &Value) -> Result<(), String> {
+    match verb {
+        "log.follow" => check_log_event(event),
+        "service.events" => de::<ServiceChange>(event).and_then(|c| server(&c.server)),
+        "testing.ticks" => check(de::<TickEvent>(event)?.n >= 1, "n counts from 1"),
+        _ => Err(format!("unknown subscription {verb}")),
     }
 }
 

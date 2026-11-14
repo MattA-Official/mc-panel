@@ -103,6 +103,49 @@
     ]
   },
   "verbs": {
+    "agent.hello": {
+      "params": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "rust",
+              "bun"
+            ]
+          },
+          "version": {
+            "type": "string"
+          },
+          "protocols": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "subscriptions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "version",
+          "protocols",
+          "subscriptions"
+        ],
+        "additionalProperties": false
+      }
+    },
     "disk.clean-apt": {
       "params": {
         "type": "object",
@@ -1372,6 +1415,504 @@
           "unknown",
           "refused",
           "active"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "subscribe": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      },
+      "subscribe": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      },
+      "params": {}
+    },
+    "required": [
+      "id",
+      "subscribe",
+      "params"
+    ],
+    "additionalProperties": false
+  },
+  "cancel": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      },
+      "cancel": {
+        "type": "boolean",
+        "const": true
+      }
+    },
+    "required": [
+      "id",
+      "cancel"
+    ],
+    "additionalProperties": false
+  },
+  "frame": {
+    "anyOf": [
+      {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "ok": {
+                "type": "boolean",
+                "const": true
+              },
+              "result": {}
+            },
+            "required": [
+              "id",
+              "ok",
+              "result"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "ok": {
+                "type": "boolean",
+                "const": false
+              },
+              "error": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "enum": [
+                      "bad_request",
+                      "unknown_verb",
+                      "invalid_params",
+                      "forbidden",
+                      "conflict",
+                      "not_found",
+                      "failed",
+                      "internal"
+                    ]
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "code",
+                  "message"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "id",
+              "ok",
+              "error"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "event": {}
+        },
+        "required": [
+          "id",
+          "event"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "skipped": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "id",
+          "skipped"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "end": {
+            "type": "boolean",
+            "const": true
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "finished",
+              "cancelled",
+              "failed"
+            ]
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "end",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "ping": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "ping"
+        ],
+        "additionalProperties": false
+      }
+    ]
+  },
+  "subscriptions": {
+    "log.follow": {
+      "params": {
+        "type": "object",
+        "properties": {
+          "server": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{1,30}$"
+          },
+          "seedBytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1048576
+          },
+          "crashes": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "server",
+          "seedBytes"
+        ],
+        "additionalProperties": false
+      },
+      "result": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "event": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "seed": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "seed"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "lines": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "lines"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "crash": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "crash"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "service.events": {
+      "params": {
+        "type": "object",
+        "properties": {
+          "servers": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{1,30}$"
+            }
+          }
+        },
+        "required": [
+          "servers"
+        ],
+        "additionalProperties": false
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "states": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "active": {
+                  "type": "string",
+                  "enum": [
+                    "active",
+                    "inactive",
+                    "activating",
+                    "deactivating",
+                    "failed",
+                    "unknown"
+                  ]
+                },
+                "since": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "result": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "restarts": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "exitKind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "exited",
+                        "killed",
+                        "dumped"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "exitStatus": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "active",
+                "since"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "states"
+        ],
+        "additionalProperties": false
+      },
+      "event": {
+        "type": "object",
+        "properties": {
+          "server": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{1,30}$"
+          },
+          "status": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "string",
+                "enum": [
+                  "active",
+                  "inactive",
+                  "activating",
+                  "deactivating",
+                  "failed",
+                  "unknown"
+                ]
+              },
+              "since": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "result": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "restarts": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "exitKind": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "exited",
+                      "killed",
+                      "dumped"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "exitStatus": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "active",
+              "since"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "server",
+          "status"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "testing.ticks": {
+      "params": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "intervalMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 60000
+          }
+        },
+        "required": [
+          "count",
+          "intervalMs"
+        ],
+        "additionalProperties": false
+      },
+      "result": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "event": {
+        "type": "object",
+        "properties": {
+          "n": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "n"
         ],
         "additionalProperties": false
       }

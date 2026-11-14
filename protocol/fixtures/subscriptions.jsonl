@@ -1,0 +1,30 @@
+{"verb":"log.follow","kind":"params","valid":true,"value":{"server":"survival","seedBytes":65536}}
+{"verb":"log.follow","kind":"params","valid":true,"note":"with crash reports","value":{"server":"survival","seedBytes":0,"crashes":true}}
+{"verb":"log.follow","kind":"params","valid":false,"note":"a path, not a server name","value":{"server":"../../etc","seedBytes":0}}
+{"verb":"log.follow","kind":"params","valid":false,"note":"never takes a path","value":{"server":"survival","seedBytes":0,"path":"/etc/shadow"}}
+{"verb":"log.follow","kind":"params","valid":false,"note":"seed over 1 MB","value":{"server":"survival","seedBytes":1048577}}
+{"verb":"log.follow","kind":"params","valid":false,"note":"seedBytes is required","value":{"server":"survival"}}
+{"verb":"log.follow","kind":"result","valid":true,"value":{}}
+{"verb":"log.follow","kind":"event","valid":true,"value":{"seed":["[01:00:00] [Server thread/INFO]: Done (3.2s)! For help, type \"help\""]}}
+{"verb":"log.follow","kind":"event","valid":true,"value":{"lines":["[01:00:01] [Server thread/INFO]: Steve joined the game","[01:00:02] [Server thread/INFO]: <Steve> hi"]}}
+{"verb":"log.follow","kind":"event","valid":true,"value":{"crash":"crash-reports/crash-2026-11-14_01.00.00-server.txt"}}
+{"verb":"log.follow","kind":"event","valid":false,"note":"an empty batch is never sent","value":{"lines":[]}}
+{"verb":"log.follow","kind":"event","valid":false,"note":"one kind per event","value":{"lines":["a"],"crash":"crash-reports/x.txt"}}
+{"verb":"log.follow","kind":"event","valid":false,"note":"lines are strings","value":{"lines":[1]}}
+{"verb":"log.follow","kind":"event","valid":false,"note":"unknown key","value":{"seed":["a"],"more":true}}
+{"verb":"service.events","kind":"params","valid":true,"value":{"servers":["survival","lobby"]}}
+{"verb":"service.events","kind":"params","valid":false,"note":"a server name with a slash","value":{"servers":["../etc"]}}
+{"verb":"service.events","kind":"params","valid":false,"note":"unknown key","value":{"servers":[],"all":true}}
+{"verb":"service.events","kind":"result","valid":true,"value":{"states":{"survival":{"active":"active","since":"Fri 2026-11-14 01:00:00 UTC","result":"success","restarts":0,"exitKind":null,"exitStatus":null},"ghost":{"active":"unknown","since":null}}}}
+{"verb":"service.events","kind":"result","valid":false,"note":"unknown state","value":{"states":{"survival":{"active":"sleeping","since":null}}}}
+{"verb":"service.events","kind":"event","valid":true,"value":{"server":"survival","status":{"active":"failed","since":null,"result":"exit-code","restarts":2,"exitKind":"exited","exitStatus":1}}}
+{"verb":"service.events","kind":"event","valid":false,"note":"status is required","value":{"server":"survival"}}
+{"verb":"service.events","kind":"event","valid":false,"note":"not a server name","value":{"server":"Survival","status":{"active":"active","since":null}}}
+{"verb":"testing.ticks","kind":"params","valid":true,"value":{"count":3,"intervalMs":0}}
+{"verb":"testing.ticks","kind":"params","valid":false,"note":"count starts at 1","value":{"count":0,"intervalMs":0}}
+{"verb":"testing.ticks","kind":"params","valid":false,"note":"unknown key","value":{"count":3,"intervalMs":0,"x":1}}
+{"verb":"testing.ticks","kind":"params","valid":false,"note":"intervalMs is required","value":{"count":3}}
+{"verb":"testing.ticks","kind":"result","valid":true,"value":{}}
+{"verb":"testing.ticks","kind":"event","valid":true,"value":{"n":1}}
+{"verb":"testing.ticks","kind":"event","valid":false,"note":"n counts from 1","value":{"n":0}}
+{"verb":"testing.ticks","kind":"event","valid":false,"note":"n is a number","value":{"n":"one"}}

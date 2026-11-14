@@ -1,4 +1,5 @@
-import { StatusWatcher } from '../jobs/status'
+import { subscribeAgent } from '@flytower/protocol/client'
+import { StatusWatcher, type StatusEvents } from '../jobs/status'
 import { schema } from '../db'
 
 let watcher: StatusWatcher | undefined
@@ -17,4 +18,23 @@ export function useStatus(): StatusWatcher {
     (statuses) => useCrashes().observe(statuses),
   )
   return watcher
+}
+
+/** `service.events` through the agent, when `agent.hello` offers it. */
+export const agentStatusEvents: StatusEvents = async (servers, h) => {
+  const hello = await agentHello()
+  if (!hello?.subscriptions.includes('service.events')) return null
+  return subscribeAgent(
+    'service.events',
+    { servers },
+    {
+      onStart: (r, again) => h.start(r.states, again),
+      onEvent: (e) => h.change(e.server, e.status),
+      onEnd: (end) => {
+        if (end.reason === 'refused') forgetAgentHello()
+        h.end()
+      },
+    },
+    { socketPath: useRuntimeConfig().agentSocket },
+  )
 }

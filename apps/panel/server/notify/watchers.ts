@@ -7,9 +7,7 @@
  * A restart pressed in the panel is announced straight away ("Server restarting"), its
  * shutdown is not reported as a stop, and the next "Done" says "Server restarted".
  */
-import { join } from 'node:path'
-import { watchServerLog } from '../console/follow'
-import { LogTailer } from '../console/tailer'
+import { LogStreams, localSource } from '../logs/streams'
 import type { EventKind } from '../../shared/notify'
 import type { NotifyEvent } from './types'
 
@@ -48,26 +46,26 @@ export { SETTLE_MS } from '../console/follow'
 /** A restart that hasn't come back within this long is forgotten. */
 export const RESTART_WINDOW_MS = 15 * 60_000
 
-interface Followed {
-  tailer: LogTailer
-  unwatch: () => void
-  ready: boolean
-}
-
-/** Follows every server's log through inotify and reports what happens in it. */
+/** Follows every server's log (through the shared log streams) and reports what happens in it. */
 export class LogWatcher {
-  private followed = new Map<string, Followed>()
+  private followed = new Map<string, () => void>()
   private restarting = new Map<string, number>()
   /** Servers that crashed and that systemd is bringing back. */
   private recovering = new Map<string, number>()
   private listeners = new Set<(server: string, e: LogEvent) => void>()
   private lineListeners = new Set<(server: string, line: string) => void>()
 
+  private logs: LogStreams
+
   constructor(
     private n: Notify,
-    private serversDir: string,
+    serversDir: string,
     private now: () => number = Date.now,
-  ) {}
+    logs?: LogStreams,
+  ) {
+    const local = localSource(serversDir)
+    this.logs = logs ?? new LogStreams(async () => local, local)
+  }
 
   /** Starts following new servers and stops following deleted ones. */
   sync(servers: string[]) {
@@ -129,31 +127,22 @@ export class LogWatcher {
   }
 
   private follow(server: string) {
-    const dir = join(this.serversDir, server)
-    const f: Followed = {
-      tailer: new LogTailer(join(dir, 'logs', 'latest.log'), (lines) => this.lines(server, lines), {
-        pollMs: 0,
-        seedBytes: 0,
+    // Seed lines were already in the log before we started following (or before the agent
+    // reconnected): they aren't news, so only new lines are read for events.
+    this.followed.set(
+      server,
+      this.logs.listen(server, {
+        lines: (lines, seed) => {
+          if (!seed) this.lines(server, lines)
+        },
       }),
-      unwatch: () => {},
-      ready: false,
-    }
-    this.followed.set(server, f)
-    f.unwatch = watchServerLog(dir, () => {
-      if (f.ready) void f.tailer.tick()
-    })
-    // Start at the end of the log: what happened before the panel started isn't news.
-    void f.tailer.start().then(() => {
-      f.ready = true
-      return f.tailer.tick()
-    })
+    )
   }
 
   private unfollow(server: string) {
-    const f = this.followed.get(server)
-    if (!f) return
-    f.unwatch()
-    f.tailer.stop()
+    const stop = this.followed.get(server)
+    if (!stop) return
+    stop()
     this.followed.delete(server)
     this.restarting.delete(server)
     this.recovering.delete(server)
