@@ -204,6 +204,13 @@ jobs:
           call ssh.set '{"open":true}'
           docker exec vps ufw --force disable
 
+      - name: Hostname router starts, takes routes and answers
+        run: |
+          docker exec vps /opt/flytower/current/bin/bun /src/tests/e2e/router.ts || {
+            docker exec vps journalctl -u flytower-router --no-pager -n 50 || true
+            exit 1
+          }
+
       - name: Rust agent by default, falling back to Bun if it won't start
         run: |
           kind() { bash tests/e2e/agent-kind.sh; }
