@@ -187,6 +187,6 @@ fn scale(c: u8, by: f64) -> u8 {
     clippy::cast_sign_loss,
     reason = "clamped to 0..=255 first"
 )]
-fn scale_f(v: f64) -> u8 {
+const fn scale_f(v: f64) -> u8 {
     v.round().clamp(0.0, 255.0) as u8
 }

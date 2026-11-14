@@ -82,29 +82,29 @@ fn version(v: &str) -> Result<(), String> {
     check(is_version(v), "not a release version")
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Empty {}
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ServerParam {
     pub server: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NameParam {
     pub name: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct UsageParams {
     pub servers: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct WaitParams {
     pub servers: Vec<String>,
@@ -113,14 +113,14 @@ pub struct WaitParams {
     pub timeout_ms: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RuntimeParams {
     pub vendor: String,
     pub major: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct CreateParams {
     pub name: String,
@@ -129,7 +129,7 @@ pub struct CreateParams {
     pub java_major: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct ConfigureParams {
     pub name: String,
@@ -141,7 +141,7 @@ pub struct ConfigureParams {
     pub java_major: Option<i64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SshSetParams {
     pub open: bool,
@@ -149,27 +149,27 @@ pub struct SshSetParams {
     pub minutes: Option<i64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DiskUsageParams {
     pub servers: Vec<String>,
     pub system: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct VacuumParams {
     pub max_mb: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct VersionParam {
     pub version: String,
 }
 
 /// A request's params, checked.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Params {
     Ping,
     AgentHello,
@@ -350,10 +350,10 @@ impl Params {
 
 // ---------------------------------------------------------------- results
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EmptyResult {}
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PingResult {
     pub agent_version: String,
@@ -394,7 +394,7 @@ pub enum ExitKind {
     Dumped,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StatusResult {
     pub active: ActiveState,
@@ -425,14 +425,14 @@ pub struct UsageResult {
     pub usage: std::collections::BTreeMap<String, Usage>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WaitResult {
     pub cursor: String,
     pub changed: Vec<String>,
     pub following: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RuntimeResult {
     pub java_home: String,
@@ -440,14 +440,14 @@ pub struct RuntimeResult {
     pub already_installed: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CreateResult {
     pub directory: String,
     pub user: String,
     pub unit: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SshState {
     /// True if any firewall rule lets SSH in.
@@ -469,7 +469,7 @@ pub enum UpdateState {
     Failed,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UpdateRecord {
     pub state: UpdateState,
     pub from: String,
@@ -480,7 +480,7 @@ pub struct UpdateRecord {
     pub manual: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UpdateStatusResult {
     pub current: String,
     pub releases: Vec<String>,
@@ -488,19 +488,19 @@ pub struct UpdateStatusResult {
     pub last: Option<UpdateRecord>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StartedResult {
     pub started: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeleteResult {
     #[serde(deserialize_with = "nullable")]
     pub archived_to: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ServerDiskGroups {
     pub world: u64,
@@ -512,20 +512,20 @@ pub struct ServerDiskGroups {
     pub other: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ServerDisk {
     pub groups: ServerDiskGroups,
     pub unreadable: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SharedDisk {
     pub imports: u64,
     pub archive: u64,
     pub unreadable: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SystemDisk {
     pub java: u64,
@@ -538,7 +538,7 @@ pub struct SystemDisk {
     pub old_releases: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DiskUsageResult {
     pub servers: std::collections::BTreeMap<String, ServerDisk>,
     #[serde(deserialize_with = "nullable")]
@@ -547,13 +547,13 @@ pub struct DiskUsageResult {
     pub system: Option<SystemDisk>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FreedResult {
     pub freed_bytes: u64,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PruneResult {
     pub freed_bytes: u64,

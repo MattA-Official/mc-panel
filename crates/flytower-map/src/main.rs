@@ -46,7 +46,7 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, String> {
     };
     while let Some(arg) = args.next() {
         let flag = arg.to_str().unwrap_or("");
-        let mut value = || args.next().ok_or(format!("{flag} needs a value"));
+        let mut value = || args.next().ok_or_else(|| format!("{flag} needs a value"));
         match flag {
             "--world" => parsed.world = Some(value()?.into()),
             "--out" => parsed.out = Some(value()?.into()),
@@ -119,7 +119,10 @@ fn run(args: &Args) -> Result<String, String> {
     if args.command == "palette" {
         return make_palette(args);
     }
-    let world_dir = args.world.as_deref().unwrap_or(std::path::Path::new("."));
+    let world_dir = args
+        .world
+        .as_deref()
+        .unwrap_or_else(|| std::path::Path::new("."));
     if !world_dir.is_dir() {
         return Err(format!("{} isn't a folder", world_dir.display()));
     }
@@ -153,7 +156,10 @@ fn run(args: &Args) -> Result<String, String> {
         }
         None => Palette::builtin(),
     };
-    let out = args.out.as_deref().unwrap_or(std::path::Path::new("."));
+    let out = args
+        .out
+        .as_deref()
+        .unwrap_or_else(|| std::path::Path::new("."));
     let started = Instant::now();
     json.push_str("\"dimensions\":[");
     let chosen: Vec<_> = dims
@@ -176,7 +182,10 @@ fn run(args: &Args) -> Result<String, String> {
         let r = render::render_with(dim, out, &palette, args.opts, &report_progress)
             .map_err(|e| format!("{}: {e}", dim.id))?;
         let comma = if i == 0 { "" } else { "," };
-        let first_error = r.first_error.as_deref().map_or("null".into(), quote);
+        let first_error = r
+            .first_error
+            .as_deref()
+            .map_or_else(|| "null".into(), quote);
         let _ = write!(
             json,
             "{comma}{{\"id\":{},\"regions\":{},\"drawn\":{},\"unchanged\":{},\"removed\":{},\"chunks\":{},\"errors\":{},\"firstError\":{first_error}}}",

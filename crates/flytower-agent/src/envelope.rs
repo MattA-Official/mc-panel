@@ -67,7 +67,7 @@ impl AgentError {
 }
 
 /// A request that passed the envelope checks. `params` is checked per verb later.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Request {
     pub id: String,
     pub verb: String,
@@ -232,7 +232,7 @@ pub fn is_valid_frame(value: &Value) -> bool {
 }
 
 /// One response line.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(untagged)]
 pub enum Response {
     Ok {
@@ -247,7 +247,7 @@ pub enum Response {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ErrorBody {
     pub code: ErrorCode,
     pub message: String,
@@ -292,7 +292,7 @@ impl Response {
     }
 
     #[must_use]
-    pub fn is_ok(&self) -> bool {
+    pub const fn is_ok(&self) -> bool {
         matches!(self, Self::Ok { .. })
     }
 

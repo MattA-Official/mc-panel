@@ -135,7 +135,7 @@ fn id_in(name: &str, file: &Path, kind: &str) -> io::Result<u32> {
 
 /// True if a peer with this uid may use the agent: root or the panel's user.
 #[must_use]
-pub fn allowed(uid: u32, panel_uid: u32) -> bool {
+pub const fn allowed(uid: u32, panel_uid: u32) -> bool {
     uid == 0 || uid == panel_uid
 }
 
@@ -144,7 +144,7 @@ pub fn allowed(uid: u32, panel_uid: u32) -> bool {
 /// # Errors
 /// If the directory or socket can't be made or given the right owner and mode.
 pub fn bind(opts: &ListenOptions) -> io::Result<UnixListener> {
-    let dir = opts.socket_path.parent().unwrap_or(Path::new("/"));
+    let dir = opts.socket_path.parent().unwrap_or_else(|| Path::new("/"));
     fs::create_dir_all(dir)?;
     match fs::remove_file(&opts.socket_path) {
         Err(e) if e.kind() != io::ErrorKind::NotFound => return Err(e),
