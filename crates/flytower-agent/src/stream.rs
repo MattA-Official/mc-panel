@@ -33,8 +33,16 @@ struct Sub {
     queue: VecDeque<Frame>,
     skipped: u64,
     cancelled: bool,
+    /// Set by [`Sink::end`]: something other than the stream has ended it.
+    ended: Option<End>,
     /// Its end frame is queued; the id is free again once that's written.
     ending: bool,
+}
+
+impl Sub {
+    fn stopped(&self) -> bool {
+        self.cancelled || self.ended.is_some()
+    }
 }
 
 #[derive(Default)]
@@ -112,6 +120,7 @@ impl Outbox {
                 queue: VecDeque::new(),
                 skipped: 0,
                 cancelled: false,
+                ended: None,
                 ending: false,
             },
         );
@@ -197,7 +206,7 @@ impl Outbox {
         let Some(sub) = inner.subs.get_mut(id) else {
             return false;
         };
-        if sub.cancelled || sub.ending {
+        if sub.cancelled || sub.ending || sub.ended.is_some() {
             return false;
         }
         if sub.queue.len() >= self.queue {
@@ -221,14 +230,26 @@ impl Outbox {
 
     fn stopped(&self, id: &str) -> bool {
         let inner = lock(&self.inner);
-        inner.closed || inner.subs.get(id).is_none_or(|s| s.cancelled)
+        inner.closed || inner.subs.get(id).is_none_or(Sub::stopped)
+    }
+
+    fn end(&self, id: &str, end: End) {
+        let mut inner = lock(&self.inner);
+        if let Some(sub) = inner.subs.get_mut(id).filter(|s| !s.stopped()) {
+            sub.ended = Some(end);
+            self.stopped.notify_all();
+        }
+    }
+
+    fn ended(&self, id: &str) -> Option<End> {
+        lock(&self.inner).subs.get(id).and_then(|s| s.ended.clone())
     }
 
     fn wait_stopped(&self, id: &str, timeout: Duration) -> bool {
         let deadline = Instant::now() + timeout;
         let mut inner = lock(&self.inner);
         loop {
-            if inner.closed || inner.subs.get(id).is_none_or(|s| s.cancelled) {
+            if inner.closed || inner.subs.get(id).is_none_or(Sub::stopped) {
                 return true;
             }
             let left = deadline.saturating_duration_since(Instant::now());
@@ -320,6 +341,12 @@ impl Outbox {
         out
     }
 
+    /// What's ready to write now, without waiting: for tests elsewhere in the crate.
+    #[cfg(test)]
+    pub(crate) fn ready_now(&self) -> String {
+        Self::batch(&mut lock(&self.inner))
+    }
+
     /// Writes what's queued to `w` until the connection closes or a write fails.
     ///
     /// # Errors
@@ -379,9 +406,32 @@ impl Sink {
         self.out.wait_stopped(&self.id, timeout)
     }
 
+    /// Waits until the subscription stops, however long that takes.
+    pub fn wait_until_stopped(&self) {
+        while !self.wait(Duration::from_hours(1)) {}
+    }
+
+    /// Ends the subscription from outside its stream, such as a shared follower whose source
+    /// went away. The stream sees [`stopped`](Self::stopped) and returns [`ended`](Self::ended).
+    pub fn end(&self, end: End) {
+        self.out.end(&self.id, end);
+    }
+
+    /// How [`end`](Self::end) ended it, if it did.
+    #[must_use]
+    pub fn ended(&self) -> Option<End> {
+        self.out.ended(&self.id)
+    }
+
     #[must_use]
     pub fn id(&self) -> &str {
         &self.id
+    }
+
+    /// True if both are the same subscription. Ids are only unique on one connection.
+    #[must_use]
+    pub fn same(&self, other: &Self) -> bool {
+        self.id == other.id && Arc::ptr_eq(&self.out, &other.out)
     }
 
     #[must_use]
@@ -530,6 +580,28 @@ mod tests {
             [json!({ "id": "1", "ok": true, "result": {} })]
         );
         assert!(out.is_closed());
+    }
+
+    #[test]
+    fn can_be_ended_from_outside_its_stream() {
+        let out = Outbox::new();
+        let sink = out.open("s", "testing.ticks");
+        let waiter = {
+            let sink = sink.clone();
+            std::thread::spawn(move || {
+                sink.wait_until_stopped();
+                sink.ended()
+            })
+        };
+        sink.end(End::failed("gone"));
+        let end = waiter.join().unwrap().unwrap();
+        assert_eq!(end, End::failed("gone"));
+        assert!(!sink.send(json!({ "n": 1 })));
+        let _ = out.finish("s", end);
+        assert_eq!(
+            drain(&out),
+            [json!({ "id": "s", "end": true, "reason": "failed", "message": "gone" })]
+        );
     }
 
     #[test]
