@@ -265,7 +265,6 @@ mod tests {
     use super::*;
     use crate::exec::ExecResult;
     use crate::handlers::testing::TempRoot;
-    use crate::units::Paths;
 
     /// A stateful fake ufw: rules come and go as the agent adds and deletes them.
     #[derive(Clone)]
@@ -291,6 +290,10 @@ mod tests {
     }
 
     impl Exec for Ufw {
+        #[expect(
+            clippy::significant_drop_tightening,
+            reason = "the fake firewall holds its rules for the whole command, like ufw's lock"
+        )]
         fn run(&self, file: &str, args: &[&str]) -> ExecResult {
             let cmd = std::iter::once(file)
                 .chain(args.iter().copied())
@@ -354,9 +357,7 @@ mod tests {
             }),
             arch: std::env::consts::ARCH.into(),
             events: None,
-            paths: Paths {
-                ..root.paths.clone()
-            },
+            paths: root.paths.clone(),
             panel_group: "flytower".into(),
             releases_url: String::new(),
             release_key: String::new(),

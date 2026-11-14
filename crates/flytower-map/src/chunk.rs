@@ -72,12 +72,12 @@ impl Packed {
         data: &[i64],
         entries: usize,
         min_bits: u32,
-    ) -> Result<Packed, &'static str> {
+    ) -> Result<Self, &'static str> {
         if palette.is_empty() {
             return Err("a section has an empty palette");
         }
         if palette.len() == 1 {
-            return Ok(Packed {
+            return Ok(Self {
                 palette,
                 bits: 0,
                 data: Vec::new(),
@@ -93,7 +93,7 @@ impl Packed {
                 .find(|&b| words(b) == data.len())
                 .ok_or("a section's data is the wrong length")?
         };
-        Ok(Packed {
+        Ok(Self {
             palette,
             bits,
             data: data

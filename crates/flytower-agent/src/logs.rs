@@ -90,7 +90,7 @@ impl Splitter {
 
     /// Bytes held back as an unfinished line.
     #[must_use]
-    pub fn pending(&self) -> usize {
+    pub const fn pending(&self) -> usize {
         self.partial.len()
     }
 
@@ -258,6 +258,10 @@ pub fn follow(dir: PathBuf, seed_bytes: u64, crashes: bool) -> Result<Stream, Ag
 
 /// Adds `sink` to the server's follower, starting one if there isn't one, and sends it the
 /// seed. Done under the registry's lock, so a follower that's just ending is never joined.
+#[expect(
+    clippy::significant_drop_tightening,
+    reason = "the registry and the follower are locked together, in that order, so a follower is never joined while it ends"
+)]
 fn join(
     dir: &Path,
     sink: &Sink,
@@ -314,6 +318,10 @@ fn seed(st: &State, seed_bytes: u64) -> Vec<String> {
 }
 
 impl Follower {
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "the state stays locked while it's first read"
+    )]
     fn start(dir: &Path) -> Result<Arc<Self>, AgentError> {
         let failed = |e: rustix::io::Errno| {
             AgentError::new(ErrorCode::Failed, format!("can't follow the log: {e}"))
@@ -362,6 +370,10 @@ impl Follower {
 
     /// Takes a subscriber off. The last one to go stops the follower: removing the folder's
     /// watch wakes its thread, which then sees there's nobody left.
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "the registry and the follower are locked together, in that order, so a follower is never joined while it ends"
+    )]
     fn leave(self: &Arc<Self>, sink: &Sink) {
         let mut followers = lock(registry());
         let mut st = lock(&self.state);
@@ -378,6 +390,10 @@ impl Follower {
         }
     }
 
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "the state stays locked while it's brought up to date"
+    )]
     fn run(self: &Arc<Self>) {
         let mut buf = [MaybeUninit::<u8>::uninit(); 16 * 1024];
         let mut reader = inotify::Reader::new(&self.inotify, &mut buf);
@@ -435,8 +451,8 @@ impl Follower {
                     st.crashes_wd = None;
                 }
             }
-            let reports: Vec<String> = crashes
-                .drain(..)
+            let reports: Vec<String> = std::mem::take(&mut crashes)
+                .into_iter()
                 .filter(|(wd, _)| st.crashes_wd == Some(*wd))
                 .map(|(_, name)| name)
                 .collect();
@@ -445,6 +461,10 @@ impl Follower {
     }
 
     /// Ends every subscriber and takes the follower out of the registry.
+    #[expect(
+        clippy::significant_drop_tightening,
+        reason = "the registry and the follower are locked together, in that order, so a follower is never joined while it ends"
+    )]
     fn finish(self: &Arc<Self>, end: &End) {
         let mut followers = lock(registry());
         let mut st = lock(&self.state);
@@ -583,8 +603,7 @@ mod tests {
         fn start_on(out: Arc<Outbox>, server: &Server, seed: u64, crashes: bool) -> Self {
             let sink = out.open("s", "log.follow");
             let stream = follow(server.dir.clone(), seed, crashes).unwrap();
-            let run = sink.clone();
-            let stream = Some(thread::spawn(move || stream(&run)));
+            let stream = Some(thread::spawn(move || stream(&sink)));
             Self {
                 out,
                 stream,

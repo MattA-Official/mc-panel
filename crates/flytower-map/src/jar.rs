@@ -56,7 +56,7 @@ impl Jar {
     /// # Errors
     ///
     /// When it isn't a zip file we can read.
-    pub fn new(data: Vec<u8>) -> Result<Jar, Error> {
+    pub fn new(data: Vec<u8>) -> Result<Self, Error> {
         let bad = |why: &str| Error(format!("not a jar we can read: {why}"));
         // The end record sits in the last 22 bytes plus up to 64 KiB of comment.
         let from = data.len().saturating_sub(22 + 0xffff);
@@ -97,7 +97,7 @@ impl Jar {
             );
             at += 46 + name_len + extra + comment;
         }
-        Ok(Jar { data, entries })
+        Ok(Self { data, entries })
     }
 
     /// Names of every file, in no order.
@@ -142,7 +142,7 @@ pub(crate) mod tests {
     use std::io::Write;
 
     /// Builds a zip with deflated entries, for tests here and in the palette builder.
-    pub(crate) fn zip(files: &[(&str, &[u8])]) -> Vec<u8> {
+    pub fn zip(files: &[(&str, &[u8])]) -> Vec<u8> {
         let mut out = Vec::new();
         let mut dir = Vec::new();
         for (name, body) in files {

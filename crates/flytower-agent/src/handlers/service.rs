@@ -114,7 +114,7 @@ pub fn status(server: &str, ctx: &Context) -> Result<Value, AgentError> {
         "result": non_empty(props.get("Result")),
         "restarts": int(props.get("NRestarts")),
         "exitKind": exit_kind,
-        "exitStatus": exit_kind.and(int(props.get("ExecMainStatus"))),
+        "exitStatus": exit_kind.and_then(|_| int(props.get("ExecMainStatus"))),
     }))
 }
 
