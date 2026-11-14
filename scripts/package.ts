@@ -113,6 +113,12 @@ for (const bin of ['flytower-router']) {
     .env({ ...process.env, CGO_ENABLED: '0', GOOS: 'linux', GOARCH: arch })
   await chmod(target, 0o755)
 }
+// Their systemd units, which the agent installs when a feature that needs one is turned on.
+await mkdir(join(stage, 'systemd'), { recursive: true })
+await cp(
+  join(goModule, 'cmd/flytower-router/flytower-router.service'),
+  join(stage, 'systemd/flytower-router.service'),
+)
 
 // Stable entry points: systemd and the agent start these, never Bun directly, so a later
 // release can swap what's behind them (docs/decisions/0001-rust-and-go.md).
