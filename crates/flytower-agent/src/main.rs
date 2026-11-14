@@ -10,7 +10,7 @@ use flytower_agent::dispatch::dispatch;
 use flytower_agent::events::{Journal, UnitEvents};
 use flytower_agent::exec::{Exec, RealExec};
 use flytower_agent::fetch::Curl;
-use flytower_agent::handlers::{Context, handle, server, ssh, system_clock, update};
+use flytower_agent::handlers::{Context, handle, router, server, ssh, system_clock, update};
 use flytower_agent::release::RELEASE_KEY;
 use flytower_agent::server::{ListenOptions, bind, group_id, serve, user_id};
 use flytower_agent::units::Paths;
@@ -106,6 +106,11 @@ fn main() -> ExitCode {
         Ok(true) => println!("pointed the agent unit at bin/flytower-agent"),
         Ok(false) => {}
         Err(e) => eprintln!("updating the agent unit failed: {}", e.message),
+    }
+    match router::refresh(&ctx) {
+        Ok(Some(what)) => println!("{what}"),
+        Ok(None) => {}
+        Err(e) => eprintln!("updating the hostname router failed: {}", e.message),
     }
     match caddy::refresh_caddyfile(&ctx) {
         Ok(true) => println!("added server hostnames to the Caddyfile"),
