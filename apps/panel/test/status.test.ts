@@ -128,3 +128,81 @@ describe('StatusWatcher', () => {
     expect(calls).toBeGreaterThan(3)
   })
 })
+
+describe('StatusWatcher with service.events', () => {
+  type Handlers = Parameters<import('../server/jobs/status').StatusEvents>[1]
+  function setup(names: string[], opts: { offered?: boolean } = {}) {
+    const calls: string[] = []
+    const agent = (async (verb: string) => {
+      calls.push(verb)
+      if (verb === 'service.wait') return new Promise(() => {})
+      return { active: 'inactive', since: null }
+    }) as unknown as AgentCall
+    const subs: { servers: string[]; h: Handlers; closed: boolean }[] = []
+    const polls: Record<string, unknown>[] = []
+    const w = new StatusWatcher(
+      agent,
+      () => names,
+      60_000,
+      (s) => void polls.push(s),
+    )
+    w.follow({
+      events: async (servers, h) => {
+        if (opts.offered === false) return null
+        const sub = { servers, h, closed: false }
+        subs.push(sub)
+        return { close: () => void (sub.closed = true) }
+      },
+    })
+    return { w, calls, subs, polls }
+  }
+  const status = (active: string) => ({ active, since: null }) as never
+
+  it('takes changes from events, with no waiting or polling', async () => {
+    const { w, calls, subs, polls } = setup(['a', 'b'])
+    await until(() => subs.length === 1)
+    expect(subs[0]!.servers).toEqual(['a', 'b'])
+    const seen: StatusMap[] = []
+    subs[0]!.h.start({ a: status('active') }, false)
+    w.watch((m) => seen.push({ ...m }))
+    await until(() => seen.length > 0)
+    expect(seen.at(-1)).toEqual({ a: 'active', b: 'unknown' })
+    expect(w.streaming).toBe(true)
+
+    subs[0]!.h.change('b', status('activating'))
+    expect(seen.at(-1)).toEqual({ a: 'active', b: 'activating' })
+    // Crash detection hears each change on its own.
+    expect(polls.at(-1)).toEqual({ b: status('activating') })
+    expect(calls).not.toContain('service.wait')
+    w.unfollow()
+    expect(subs[0]!.closed).toBe(true)
+  })
+
+  it('subscribes again when the servers change', async () => {
+    const names = ['a']
+    const { w, subs } = setup(names)
+    await until(() => subs.length === 1)
+    names.push('b')
+    await w.poke()
+    await until(() => subs.length === 2)
+    expect(subs[1]!.servers).toEqual(['a', 'b'])
+    expect(subs[0]!.closed).toBe(true)
+    w.unfollow()
+  })
+
+  it('waits with service.wait when events are not offered', async () => {
+    const { w, calls } = setup(['a'], { offered: false })
+    await until(() => calls.includes('service.wait'))
+    expect(w.streaming).toBe(false)
+    w.unfollow()
+  })
+
+  it('goes back to waiting when the stream ends', async () => {
+    const { w, calls, subs } = setup(['a'])
+    await until(() => subs.length === 1)
+    subs[0]!.h.end()
+    await until(() => calls.includes('service.wait'))
+    expect(w.streaming).toBe(false)
+    w.unfollow()
+  })
+})
