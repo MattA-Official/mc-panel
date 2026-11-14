@@ -6,8 +6,9 @@ use std::time::{Instant, SystemTime};
 
 use serde_json::{Value, json};
 
-use crate::envelope::{AgentError, ErrorCode, Request, Response};
-use crate::verbs::{Params, check_result};
+use crate::envelope::{AgentError, End, ErrorCode, Request, Response, Subscribe};
+use crate::stream::Stream;
+use crate::verbs::{Params, SubParams, check_result, check_sub_result};
 
 /// One audit log entry, as the JSON line the TypeScript agent writes.
 #[must_use]
@@ -95,6 +96,81 @@ fn run(
         }
         Err(err) => Response::err(id.as_str(), &err),
     }
+}
+
+/// Checks a subscribe and starts it with `starter`, auditing it like a request (with
+/// `"subscribe": true`). The stream itself runs later; [`end_line`] audits how it ended.
+///
+/// # Errors
+/// The error response to send instead.
+pub fn dispatch_subscribe(
+    sub: &Subscribe,
+    starter: impl FnOnce(SubParams) -> Result<(Value, Stream), AgentError>,
+    log: impl FnOnce(String),
+) -> Result<(Value, Stream), AgentError> {
+    let at = SystemTime::now();
+    let clock = Instant::now();
+    let res = start(sub, starter);
+    let mut entry = json!({
+        "at": crate::time::iso(at),
+        "id": sub.id,
+        "verb": sub.verb,
+        "subscribe": true,
+        "outcome": if res.is_ok() { "ok" } else { "error" },
+    });
+    if let Err(e) = &res {
+        entry["code"] = json!(e.code);
+    }
+    entry["ms"] = json!(clock.elapsed().as_millis());
+    log(json!({ "audit": entry }).to_string());
+    res
+}
+
+fn start(
+    sub: &Subscribe,
+    starter: impl FnOnce(SubParams) -> Result<(Value, Stream), AgentError>,
+) -> Result<(Value, Stream), AgentError> {
+    let params = if sub.params.is_null() {
+        json!({})
+    } else {
+        sub.params.clone()
+    };
+    let params = match SubParams::parse(&sub.verb, &params) {
+        Ok(Some(p)) => p,
+        Ok(None) => {
+            let quoted = Value::String(sub.verb.clone()).to_string();
+            return Err(AgentError::new(
+                ErrorCode::UnknownVerb,
+                format!("unknown subscription {quoted}"),
+            ));
+        }
+        Err(message) => return Err(AgentError::new(ErrorCode::InvalidParams, message)),
+    };
+    let (result, stream) = starter(params)?;
+    if check_sub_result(&sub.verb, &result).is_err() {
+        return Err(AgentError::new(
+            ErrorCode::Internal,
+            "handler returned an invalid result",
+        ));
+    }
+    Ok((result, stream))
+}
+
+/// The audit line for a subscription that has ended.
+#[must_use]
+pub fn end_line(at: SystemTime, sub: &Subscribe, end: &End, lasted_ms: u128) -> String {
+    let mut entry = json!({
+        "at": crate::time::iso(at),
+        "id": sub.id,
+        "verb": sub.verb,
+        "outcome": "end",
+        "reason": end.reason,
+    });
+    if let Some(m) = &end.message {
+        entry["message"] = json!(m);
+    }
+    entry["ms"] = json!(lasted_ms);
+    json!({ "audit": entry }).to_string()
 }
 
 #[cfg(test)]

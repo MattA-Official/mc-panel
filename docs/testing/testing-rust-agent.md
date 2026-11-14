@@ -53,4 +53,12 @@ With the Rust agent (the default):
 - [ ] Fallback: `cp /opt/flytower/current/bin/flytower-agent-rust /root/` then `echo 'exit 1' > /opt/flytower/current/bin/flytower-agent-rust` and restart `flytower-agent`. Within a few seconds the journal shows the fallback message and the Bun agent listening, and the panel still works. Put the binary back (`cp /root/flytower-agent-rust /opt/flytower/current/bin/`), delete the marker, restart, and it's Rust again.
 - [ ] Choose Bun as above, and check everything still works with nothing left over.
 
+From 1.5.0 the Rust agent also speaks protocol 2 (subscriptions, see `protocol/README.md`), and both agents answer `agent.hello`. To ask, as root:
+
+```sh
+printf '{"id":"1","verb":"agent.hello","params":{}}\n' | nc -U -q1 /run/flytower/agent.sock
+```
+
+- [ ] With Rust, the answer has `"kind":"rust"` and `"protocols":[1,2]`. With Bun chosen, `"kind":"bun"` and `"protocols":[1]`.
+
 If anything goes wrong, choose Bun and send `journalctl -u flytower-agent -n 100`.

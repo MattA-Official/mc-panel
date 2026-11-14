@@ -24,10 +24,9 @@ const describe = async (match: string) =>
       .quiet()
       .text()
   ).trim()
-// A native build (native-x.y.z-native.n) lists what's new since the last native build, or
-// since the release the native branch last took in for the first one.
+// A pre-release lists what's new since the last release of any kind. (The native-* tags of
+// 1.2 to 1.4 aren't matched, so they never count as the previous release.)
 let previous = fromArg ?? ''
-if (!previous && to.startsWith('native-')) previous = await describe('native-*')
 if (!previous) previous = await describe('v*')
 const range = previous ? `${previous}..${to}` : to
 const raw = await $`git log ${range} --format=%H%x1f%s%x1f%b%x1e`.text()

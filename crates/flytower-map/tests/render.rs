@@ -192,7 +192,7 @@ fn pixel(tile: &[u8], x: usize, z: usize) -> [u8; 4] {
     [tile[i], tile[i + 1], tile[i + 2], tile[i + 3]]
 }
 
-fn opts() -> Options {
+const fn opts() -> Options {
     Options {
         threads: 2,
         full: false,

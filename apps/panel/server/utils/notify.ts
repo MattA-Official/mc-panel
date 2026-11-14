@@ -63,7 +63,7 @@ function serverNames() {
 
 /** Follows every server's log for starts, stops, restarts, joins and leaves. */
 export function useLogWatcher(): LogWatcher {
-  logs ??= new LogWatcher(useNotify(), useRuntimeConfig().serversDir)
+  logs ??= new LogWatcher(useNotify(), useRuntimeConfig().serversDir, Date.now, useLogStreams())
   return logs
 }
 

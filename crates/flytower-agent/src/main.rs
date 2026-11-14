@@ -6,11 +6,10 @@ use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Duration;
 
-use flytower_agent::dispatch::dispatch;
 use flytower_agent::events::{Journal, UnitEvents};
 use flytower_agent::exec::{Exec, RealExec};
 use flytower_agent::fetch::Curl;
-use flytower_agent::handlers::{Context, handle, server, ssh, system_clock, update};
+use flytower_agent::handlers::{Agent, Context, server, ssh, system_clock, update};
 use flytower_agent::release::RELEASE_KEY;
 use flytower_agent::server::{ListenOptions, bind, group_id, serve, user_id};
 use flytower_agent::units::Paths;
@@ -25,7 +24,7 @@ fn env(name: &str, fallback: &str) -> String {
 fn clear_start_marker(socket: &Path) {
     let marker = socket
         .parent()
-        .unwrap_or(Path::new("/"))
+        .unwrap_or_else(|| Path::new("/"))
         .join("agent-rust-starting");
     match std::fs::remove_file(&marker) {
         Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
@@ -117,9 +116,11 @@ fn main() -> ExitCode {
     // marker stays and the next start uses Bun. (The steps log their own errors and carry on,
     // so only a crash keeps the marker.)
     clear_start_marker(&opts.socket_path);
-    serve(&listener, Some(uid), move |line| {
-        // stdout goes to the journal; one JSON line per request.
-        dispatch(line, |p| handle(&p, &ctx), |audit| println!("{audit}"))
-    });
+    // stdout goes to the journal; one JSON line per request and per subscription's end.
+    let agent = Agent {
+        ctx: Arc::new(ctx),
+        log: Arc::new(|audit| println!("{audit}")),
+    };
+    serve(&listener, Some(uid), agent);
     ExitCode::SUCCESS
 }

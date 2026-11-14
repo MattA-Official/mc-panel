@@ -8,9 +8,18 @@
  * covered by the shared fixtures in protocol/fixtures instead.
  */
 import { z } from 'zod'
-import { ErrorCode, MAX_LINE_BYTES, PROTOCOL_VERSION, Request, Response } from './envelope.ts'
+import {
+  Cancel,
+  ErrorCode,
+  Frame,
+  MAX_LINE_BYTES,
+  PROTOCOL_VERSION,
+  Request,
+  Response,
+  Subscribe,
+} from './envelope.ts'
 import { routerVerbNames, routerVerbs } from './router.ts'
-import { verbNames, verbs } from './verbs.ts'
+import { subscriptionNames, subscriptions, verbNames, verbs } from './verbs.ts'
 
 const toSchema = (schema: z.ZodType) => {
   const json = z.toJSONSchema(schema, { unrepresentable: 'any' }) as Record<string, unknown>
@@ -41,6 +50,22 @@ export function protocolJsonSchema() {
           v,
           { params: toSchema(routerVerbs[v].params), result: toSchema(routerVerbs[v].result) },
         ]),
+    ),
+    subscribe: toSchema(Subscribe),
+    cancel: toSchema(Cancel),
+    frame: toSchema(Frame),
+    subscriptions: Object.fromEntries(
+      [...subscriptionNames].sort().map((s) => {
+        const spec = subscriptions[s]
+        return [
+          s,
+          {
+            params: toSchema(spec.params),
+            result: toSchema(spec.result),
+            event: toSchema(spec.event),
+          },
+        ]
+      }),
     ),
   }
 }

@@ -1,7 +1,5 @@
-import { join } from 'node:path'
 import { Rcon, RconError, stripFormatting } from '@flytower/rcon'
-import { watchServerLog } from './follow'
-import { LogTailer } from './tailer'
+import { LogStreams, localSource } from '../logs/streams'
 
 export type ConsoleMessage =
   { type: 'snapshot'; lines: string[] } | { type: 'lines'; lines: string[] }
@@ -13,6 +11,8 @@ export interface RconTarget {
 
 export interface HubDeps {
   serversDir: string
+  /** The shared log streams; by default the hub follows the files itself. */
+  logs?: LogStreams
   /** Looks up a server's RCON details; null if the server doesn't exist. */
   rconTarget: (name: string) => RconTarget | null
   connect?: (target: RconTarget) => Promise<RconClient>
@@ -23,48 +23,54 @@ type RconClient = Pick<Rcon, 'command' | 'close' | 'isOpen'>
 const BUFFER_LINES = 500
 
 interface Stream {
-  tailer: LogTailer
-  unwatch: () => void
+  unlisten: () => void
   buffer: string[]
   listeners: Set<(m: ConsoleMessage) => void>
+  /** The log stream is starting again; its seed replaces the buffer. */
+  resetting: boolean
 }
 
 /**
- * One log tailer per watched server, fanned out to every open console, plus a cached RCON
- * connection per server for commands. The log is read when inotify says it changed, so an
- * open console doesn't poll. Tailers stop when the last console closes.
+ * The server's log stream, fanned out to every open console, plus a cached RCON connection
+ * per server for commands. The log comes from the shared `LogStreams` (the agent's
+ * `log.follow`, or inotify on the file), so an open console doesn't poll.
  */
 export class ConsoleHub {
   private streams = new Map<string, Stream>()
   private rcons = new Map<string, Promise<RconClient>>()
+  private logs: LogStreams
 
-  constructor(private deps: HubDeps) {}
+  constructor(private deps: HubDeps) {
+    const local = localSource(deps.serversDir)
+    this.logs = deps.logs ?? new LogStreams(async () => local, local)
+  }
 
   watch(name: string, listener: (m: ConsoleMessage) => void): () => void {
     let stream = this.streams.get(name)
     if (!stream) {
-      const dir = join(this.deps.serversDir, name)
-      const tailer = new LogTailer(
-        join(dir, 'logs', 'latest.log'),
-        (lines) => this.push(name, lines),
-        { pollMs: 0 },
-      )
-      let ready = false
-      stream = {
-        buffer: [],
+      // Something else (notifications) may already follow this log: start from what it has.
+      const s: Stream = {
+        buffer: this.logs.recent(name).map(stripFormatting).slice(-BUFFER_LINES),
         listeners: new Set(),
-        tailer,
-        unwatch: watchServerLog(dir, () => {
-          if (ready) void tailer.tick()
-        }),
+        unlisten: () => {},
+        resetting: false,
       }
-      this.streams.set(name, stream)
-      // The tail's seed lines follow as ordinary `lines` messages. Anything written while it
-      // was seeding is picked up by the read straight after.
-      void tailer.start().then(() => {
-        ready = true
-        return tailer.tick()
+      this.streams.set(name, s)
+      s.unlisten = this.logs.listen(name, {
+        reset: () => (s.resetting = true),
+        lines: (lines, seed) => {
+          if (seed && s.resetting) {
+            // After the agent reconnects: show the fresh seed in place of what was there, so
+            // no line appears twice.
+            s.resetting = false
+            s.buffer = lines.map(stripFormatting).slice(-BUFFER_LINES)
+            for (const l of s.listeners) l({ type: 'snapshot', lines: [...s.buffer] })
+            return
+          }
+          this.push(name, lines)
+        },
       })
+      stream = s
     }
     listener({ type: 'snapshot', lines: [...stream.buffer] })
     stream.listeners.add(listener)
@@ -72,8 +78,7 @@ export class ConsoleHub {
     return () => {
       s.listeners.delete(listener)
       if (s.listeners.size === 0) {
-        s.unwatch()
-        s.tailer.stop()
+        s.unlisten()
         if (this.streams.get(name) === s) this.streams.delete(name)
       }
     }

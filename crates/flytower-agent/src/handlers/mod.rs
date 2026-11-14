@@ -7,6 +7,7 @@ pub mod runtime;
 pub mod server;
 pub mod service;
 pub mod ssh;
+pub mod streams;
 #[cfg(test)]
 pub mod testing;
 pub mod update;
@@ -17,12 +18,17 @@ use std::time::{Duration, SystemTime};
 
 use serde_json::{Value, json};
 
-use crate::envelope::{AgentError, PROTOCOL_VERSION};
+use crate::dispatch::{dispatch, dispatch_subscribe, end_line};
+use crate::envelope::{
+    AgentError, End, ErrorCode, PROTOCOL_VERSION, PROTOCOL_VERSIONS, Response, Subscribe,
+};
 use crate::events::UnitEvents;
 use crate::exec::Exec;
 use crate::fetch::Fetch;
+use crate::server::Service;
+use crate::stream::Stream;
 use crate::units::Paths;
-use crate::verbs::Params;
+use crate::verbs::{Params, SUBSCRIPTIONS, SubParams};
 
 /// What time it is. Tests set their own.
 pub type Clock = Arc<dyn Fn() -> SystemTime + Send + Sync>;
@@ -62,6 +68,7 @@ pub struct Context {
 pub fn handle(params: &Params, ctx: &Context) -> Result<Value, AgentError> {
     match params {
         Params::Ping => Ok(json!({ "agentVersion": ctx.version, "protocol": PROTOCOL_VERSION })),
+        Params::AgentHello => Ok(hello(ctx)),
         Params::ServiceStatus(p) => service::status(&p.server, ctx),
         Params::ServiceUsage(p) => Ok(service::usage(&p.servers, ctx)),
         Params::ServiceWait(p) => Ok(match &ctx.events {
@@ -90,5 +97,78 @@ pub fn handle(params: &Params, ctx: &Context) -> Result<Value, AgentError> {
         Params::DiskVacuumJournal(p) => disk::vacuum_journal(p.max_mb, ctx),
         Params::DiskCleanApt => disk::clean_apt(ctx),
         Params::DiskPruneFlytower => disk::prune_flytower(ctx),
+    }
+}
+
+/// True if this build starts `verb`. The `testing.*` subscriptions exist only in test builds
+/// (the `testing` feature).
+#[must_use]
+pub fn offers(verb: &str) -> bool {
+    cfg!(feature = "testing") || !verb.starts_with("testing.")
+}
+
+/// What `agent.hello` says: which agent this is and what it can do, so the panel can choose
+/// between subscriptions and the protocol 1 ways.
+#[must_use]
+pub fn hello(ctx: &Context) -> Value {
+    let subscriptions: Vec<&str> = SUBSCRIPTIONS
+        .into_iter()
+        .filter(|v| offers(v) && (*v != "service.events" || ctx.events.is_some()))
+        .collect();
+    json!({
+        "kind": "rust",
+        "version": ctx.version,
+        "protocols": PROTOCOL_VERSIONS,
+        "subscriptions": subscriptions,
+    })
+}
+
+/// Starts one checked subscription.
+///
+/// # Errors
+/// An [`AgentError`] that becomes the error response.
+pub fn subscribe(params: &SubParams, ctx: &Arc<Context>) -> Result<(Value, Stream), AgentError> {
+    match params {
+        SubParams::LogFollow(p) => Ok((
+            json!({}),
+            crate::logs::follow(
+                std::path::Path::new(&ctx.paths.servers).join(&p.server),
+                p.seed_bytes,
+                p.crashes.unwrap_or(false),
+            )?,
+        )),
+        SubParams::ServiceEvents(p) => streams::service_events(p.servers.clone(), ctx),
+        SubParams::TestingTicks(p) if offers("testing.ticks") => Ok((
+            json!({}),
+            streams::ticks(p.count, Duration::from_millis(p.interval_ms)),
+        )),
+        SubParams::TestingTicks(_) => Err(AgentError::new(
+            ErrorCode::UnknownVerb,
+            "unknown subscription \"testing.ticks\"",
+        )),
+    }
+}
+
+/// Where audit lines go.
+pub type AuditLog = Arc<dyn Fn(String) + Send + Sync>;
+
+/// The agent as the socket server sees it: requests through [`handle`] and subscriptions
+/// through [`subscribe`], each written to the audit log.
+pub struct Agent {
+    pub ctx: Arc<Context>,
+    pub log: AuditLog,
+}
+
+impl Service for Agent {
+    fn call(&self, line: &str) -> Response {
+        dispatch(line, |p| handle(&p, &self.ctx), |a| (self.log)(a))
+    }
+
+    fn subscribe(&self, sub: &Subscribe) -> Result<(Value, Stream), AgentError> {
+        dispatch_subscribe(sub, |p| subscribe(&p, &self.ctx), |a| (self.log)(a))
+    }
+
+    fn ended(&self, sub: &Subscribe, end: &End, lasted: Duration) {
+        (self.log)(end_line(SystemTime::now(), sub, end, lasted.as_millis()));
     }
 }

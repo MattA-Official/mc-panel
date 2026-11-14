@@ -3,7 +3,7 @@ import { schema } from '../db'
 import { installedRuntimes, latestTemurin } from '../java-updates'
 import { getSetting } from '../settings'
 import { findMinecraftUpdate, UpdateChecker, type Summaries } from '../update-checks'
-import { compareVersions, defaultChannel, newestRelease } from '../updates'
+import { compareVersions, newestRelease, updateChannel } from '../updates'
 import type { ContentUpdates, FlytowerUpdate } from '../../shared/updates'
 
 let checker: UpdateChecker | undefined
@@ -20,7 +20,7 @@ export async function checkFlytower(force = true): Promise<FlytowerUpdate> {
   const status = await agent('update.status', {}).catch(() => null)
   const current = status?.current ?? useRuntimeConfig().version
   // Only what the System page would offer: betas only on the Beta channel.
-  const channel = getSetting(useDb(), 'update.channel') ?? defaultChannel(current)
+  const { channel } = updateChannel(getSetting(useDb(), 'update.channel'), current)
   const newest = await newestRelease(channel, force)
   const newer = newest && compareVersions(newest.version, current) > 0 ? newest : null
   return {

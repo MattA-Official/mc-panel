@@ -5,9 +5,13 @@ export const encode = (message: unknown) => JSON.stringify(message) + '\n'
 
 /**
  * Splits a byte stream into JSON lines. Calls `onLine` per complete line and `onOverflow`
- * if a line grows past MAX_LINE_BYTES (the caller should drop the connection).
+ * if a line grows past `maxBytes` (the caller should drop the connection).
  */
-export function lineSplitter(onLine: (line: string) => void, onOverflow: () => void) {
+export function lineSplitter(
+  onLine: (line: string) => void,
+  onOverflow: () => void,
+  maxBytes = MAX_LINE_BYTES,
+) {
   let buffer = ''
   // Streaming decode, so a multi-byte character split across chunks survives.
   const decoder = new TextDecoder()
@@ -19,7 +23,7 @@ export function lineSplitter(onLine: (line: string) => void, onOverflow: () => v
       buffer = buffer.slice(nl + 1)
       if (line.trim()) onLine(line)
     }
-    if (Buffer.byteLength(buffer) > MAX_LINE_BYTES) {
+    if (Buffer.byteLength(buffer) > maxBytes) {
       buffer = ''
       onOverflow()
     }
