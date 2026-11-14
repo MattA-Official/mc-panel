@@ -35,7 +35,7 @@ type Hello struct {
 	Hostname string
 	// RawHostname is the hostname exactly as sent.
 	RawHostname string
-	Port         uint16
+	Port        uint16
 	// Version is the game's protocol version number.
 	Version int32
 	Intent  Intent
