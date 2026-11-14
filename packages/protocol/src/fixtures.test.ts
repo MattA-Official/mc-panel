@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { z } from 'zod'
 import { Request, Response } from './envelope.ts'
 import { protocolJsonSchema, protocolJsonSchemaText } from './json-schema.ts'
+import { routerVerbNames, routerVerbs, type RouterVerb } from './router.ts'
 import { verbNames, verbs, type Verb } from './verbs.ts'
 
 const root = join(import.meta.dir, '../../../protocol')
@@ -27,6 +28,7 @@ const read = async (name: string) =>
 
 const envelope = await read('envelope.jsonl')
 const verbLines = await read('verbs.jsonl')
+const routerLines = (await read('router.jsonl')) as (Line & { verb: RouterVerb })[]
 const label = (l: Line) =>
   `${l.verb ? l.verb + ' ' : ''}${l.kind} ${l.valid ? 'accepts' : 'refuses'} ${l.note ?? JSON.stringify(l.value)}`
 const zodFor = (l: Line): z.ZodType =>
@@ -73,5 +75,28 @@ describe('protocol/schema.json', () => {
     [...envelope, ...verbLines].filter((l) => !isRefinement(l)).map((l) => [label(l), l] as const),
   )('%s', (_, l) => {
     expect(fromJson(l).safeParse(l.value).success).toBe(l.valid)
+  })
+})
+
+describe('router fixtures', () => {
+  const schema = protocolJsonSchema()
+  const kindOf = (l: Line) => l.kind as 'params' | 'result'
+
+  it.each(routerLines.map((l) => [label(l), l] as const))('Zod: %s', (_, l) => {
+    expect(routerVerbs[l.verb][kindOf(l)].safeParse(l.value).success).toBe(l.valid)
+  })
+
+  it.each(routerLines.filter((l) => !isRefinement(l)).map((l) => [label(l), l] as const))(
+    'schema.json: %s',
+    (_, l) => {
+      const json = schema.routerVerbs[l.verb]![kindOf(l)] as Parameters<typeof z.fromJSONSchema>[0]
+      expect(z.fromJSONSchema(json).safeParse(l.value).success).toBe(l.valid)
+    },
+  )
+
+  it.each(routerVerbNames.map((v) => [v]))('cover %s with a valid params and result line', (v) => {
+    const mine = routerLines.filter((l) => l.verb === v && l.valid)
+    expect(mine.some((l) => l.kind === 'params')).toBe(true)
+    expect(mine.some((l) => l.kind === 'result')).toBe(true)
   })
 })
