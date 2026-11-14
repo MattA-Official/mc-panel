@@ -41,6 +41,25 @@ Each language does what it's best at:
 
 Rust builds static musl binaries for amd64 and arm64 on native runners. Go cross-compiles with cgo off. `scripts/package.ts` (still Bun) puts both in each release tarball's `bin/`, and the existing signature covers them.
 
+## Building
+
+**Rust.** The toolchain is pinned in `crates/rust-toolchain.toml`, so `rustup` picks it up by itself. From `crates/`: `cargo test`, `cargo clippy --all-targets -- -D warnings` and `cargo build --release`.
+
+**Go.** `go/go.mod` pins the toolchain with its `toolchain` line, so any Go 1.21 or later downloads the right version on first use. `staticcheck` and `govulncheck` are pinned there as tools too, so everyone runs the same versions. From `go/`:
+
+```sh
+gofmt -l .                 # lists files that need formatting
+go vet ./...
+go tool staticcheck ./...
+go test -race ./...
+go tool govulncheck ./...
+CGO_ENABLED=0 go build -o flytower-router ./cmd/flytower-router
+```
+
+Packages that something else might import, such as the protocol envelope in `go/protocol`, live outside `go/internal/`. Each command in `go/cmd/` stays a thin wrapper around them. The Go tests replay `protocol/fixtures/` like the TypeScript and Rust ones do.
+
+The `Go` and `Rust` workflows run only when their folder or `protocol/` changes. Release and test builds need both toolchains: `scripts/package.ts` builds the Rust binaries with cargo and cross-compiles the Go ones with `GOARCH` set, stamping the release version in with `-ldflags "-X main.version=…"`.
+
 ## Stages
 
 0. Groundwork: this record, the schema export and fixtures, and stable entry points (#135)

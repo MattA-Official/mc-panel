@@ -172,6 +172,29 @@ describe('AgentStreams', () => {
     expect(agent.received).toHaveLength(1)
   })
 
+  it('gives up when the agent speaks protocol 1 only', async () => {
+    const path = socketPath()
+    // What the Bun agent answers to a line it can't read as a request.
+    fakeAgent(path, (_m, reply) =>
+      reply({
+        id: 'unknown',
+        ok: false,
+        error: { code: 'bad_request', message: 'not a valid request envelope' },
+      }),
+    )
+    const streams = new AgentStreams({ socketPath: path, minBackoffMs: 10 })
+    cleanups.push(() => streams.close())
+    const ends: SubscriptionEnd[] = []
+    streams.subscribe(
+      'testing.ticks',
+      { count: 1, intervalMs: 0 },
+      { onEvent: () => {}, onEnd: (e) => ends.push(e) },
+    )
+    await until(() => ends.length === 1)
+    expect(ends[0]).toMatchObject({ reason: 'refused', code: 'bad_request' })
+    expect(streams.size).toBe(0)
+  })
+
   it('reconnects when the agent goes quiet', async () => {
     const path = socketPath()
     const agent = fakeAgent(path, (m, reply) => {

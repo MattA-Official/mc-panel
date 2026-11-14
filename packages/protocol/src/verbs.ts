@@ -42,6 +42,24 @@ const ServerDiskGroups = z.object({
 
 const Bytes = z.number().int().min(0)
 
+/** A server's state, as `service.status` gives it and `service.events` sends it. */
+const ServiceStatus = z.object({
+  active: z.enum(['active', 'inactive', 'activating', 'deactivating', 'failed', 'unknown']),
+  since: z.string().nullable(),
+  /**
+   * How the last run ended, as systemd's `Result`: `success`, `exit-code`, `signal`,
+   * `core-dump`, `oom-kill`, `timeout`, `watchdog` or `start-limit-hit`. Optional because
+   * agents before 1.1 don't send it, nor the fields below.
+   */
+  result: z.string().nullable().optional(),
+  /** Automatic restarts since the last explicit start (`NRestarts`). */
+  restarts: z.number().int().nullable().optional(),
+  /** How the main process last ended: by exiting, by a signal, or by a signal with a core dump. */
+  exitKind: z.enum(['exited', 'killed', 'dumped']).nullable().optional(),
+  /** The exit code, or the signal number when it was killed. */
+  exitStatus: z.number().int().nullable().optional(),
+})
+
 export const verbs = {
   ping: {
     params: z.object({}).strict(),
@@ -63,22 +81,7 @@ export const verbs = {
   },
   'service.status': {
     params: z.object({ server: ServerName }).strict(),
-    result: z.object({
-      active: z.enum(['active', 'inactive', 'activating', 'deactivating', 'failed', 'unknown']),
-      since: z.string().nullable(),
-      /**
-       * How the last run ended, as systemd's `Result`: `success`, `exit-code`, `signal`,
-       * `core-dump`, `oom-kill`, `timeout`, `watchdog` or `start-limit-hit`. Optional because
-       * agents before 1.1 don't send it, nor the fields below.
-       */
-      result: z.string().nullable().optional(),
-      /** Automatic restarts since the last explicit start (`NRestarts`). */
-      restarts: z.number().int().nullable().optional(),
-      /** How the main process last ended: by exiting, by a signal, or by a signal with a core dump. */
-      exitKind: z.enum(['exited', 'killed', 'dumped']).nullable().optional(),
-      /** The exit code, or the signal number when it was killed. */
-      exitStatus: z.number().int().nullable().optional(),
-    }),
+    result: ServiceStatus,
   },
   /** CPU time and memory systemd has counted for each server, for the metrics history. */
   'service.usage': {
@@ -283,6 +286,17 @@ export const subscriptions = {
       z.object({ lines: LogLines }).strict(),
       z.object({ crash: z.string() }).strict(),
     ]),
+  },
+  /**
+   * Each server's state, then `{server, status}` whenever one changes, from systemd's
+   * journal (no polling). A burst of changes settles for a moment and each server is sent
+   * once, only if its state really changed. To change which servers, cancel and subscribe
+   * again. Offered only when the agent can follow the journal; otherwise use `service.wait`.
+   */
+  'service.events': {
+    params: z.object({ servers: z.array(ServerName).max(100) }).strict(),
+    result: z.object({ states: z.record(z.string(), ServiceStatus) }),
+    event: z.object({ server: ServerName, status: ServiceStatus }),
   },
   /** Counts from 1 to `count`. Only test builds of the Rust agent offer it. */
   'testing.ticks': {

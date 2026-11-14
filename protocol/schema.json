@@ -1383,6 +1383,198 @@
         ]
       }
     },
+    "service.events": {
+      "params": {
+        "type": "object",
+        "properties": {
+          "servers": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{1,30}$"
+            }
+          }
+        },
+        "required": [
+          "servers"
+        ],
+        "additionalProperties": false
+      },
+      "result": {
+        "type": "object",
+        "properties": {
+          "states": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "active": {
+                  "type": "string",
+                  "enum": [
+                    "active",
+                    "inactive",
+                    "activating",
+                    "deactivating",
+                    "failed",
+                    "unknown"
+                  ]
+                },
+                "since": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "result": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "restarts": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "exitKind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "exited",
+                        "killed",
+                        "dumped"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "exitStatus": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "active",
+                "since"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "states"
+        ],
+        "additionalProperties": false
+      },
+      "event": {
+        "type": "object",
+        "properties": {
+          "server": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{1,30}$"
+          },
+          "status": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "string",
+                "enum": [
+                  "active",
+                  "inactive",
+                  "activating",
+                  "deactivating",
+                  "failed",
+                  "unknown"
+                ]
+              },
+              "since": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "result": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "restarts": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "exitKind": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "exited",
+                      "killed",
+                      "dumped"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "exitStatus": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "active",
+              "since"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "server",
+          "status"
+        ],
+        "additionalProperties": false
+      }
+    },
     "testing.ticks": {
       "params": {
         "type": "object",

@@ -29,12 +29,22 @@ pub const KEEPALIVE: Duration = Duration::from_secs(30);
 /// Most frames taken from one subscription per turn, so a busy one can't starve the rest.
 const TURN: usize = 64;
 
+type Hook = Box<dyn FnOnce() + Send>;
+
+fn run_all(hooks: Vec<Hook>) {
+    for hook in hooks {
+        hook();
+    }
+}
+
 struct Sub {
     queue: VecDeque<Frame>,
     skipped: u64,
     cancelled: bool,
     /// Set by [`Sink::end`]: something other than the stream has ended it.
     ended: Option<End>,
+    /// Run once when it stops, to wake a stream waiting on something of its own.
+    on_stop: Vec<Hook>,
     /// Its end frame is queued; the id is free again once that's written.
     ending: bool,
 }
@@ -122,6 +132,7 @@ impl Outbox {
                 skipped: 0,
                 cancelled: false,
                 ended: None,
+                on_stop: Vec::new(),
                 ending: false,
             },
         );
@@ -136,12 +147,16 @@ impl Outbox {
     /// that aren't live are ignored, since a cancel can cross an end on the wire.
     pub fn cancel(&self, id: &str) {
         let mut inner = lock(&self.inner);
+        let mut hooks = Vec::new();
         if let Some(sub) = inner.subs.get_mut(id).filter(|s| !s.ending) {
             sub.cancelled = true;
             sub.queue.clear();
             sub.skipped = 0;
+            hooks = std::mem::take(&mut sub.on_stop);
             self.stopped.notify_all();
         }
+        drop(inner);
+        run_all(hooks);
     }
 
     /// Queues a subscription's end after whatever it sent, and returns it. A cancelled one
@@ -179,22 +194,29 @@ impl Outbox {
     pub fn close_gracefully(&self) {
         let mut inner = lock(&self.inner);
         inner.closing = true;
-        inner.subs.clear();
+        let hooks: Vec<Hook> = std::mem::take(&mut inner.subs)
+            .into_values()
+            .flat_map(|s| s.on_stop)
+            .collect();
         drop(inner);
         self.ready.notify_all();
         self.stopped.notify_all();
+        run_all(hooks);
     }
 
     /// The connection is gone: every stream stops and the writer ends.
     pub fn close(&self) {
         let mut inner = lock(&self.inner);
         inner.closed = true;
+        let mut hooks = Vec::new();
         for sub in inner.subs.values_mut() {
             sub.cancelled = true;
+            hooks.append(&mut sub.on_stop);
         }
         drop(inner);
         self.ready.notify_all();
         self.stopped.notify_all();
+        run_all(hooks);
     }
 
     #[must_use]
@@ -240,9 +262,26 @@ impl Outbox {
 
     fn end(&self, id: &str, end: End) {
         let mut inner = lock(&self.inner);
+        let mut hooks = Vec::new();
         if let Some(sub) = inner.subs.get_mut(id).filter(|s| !s.stopped()) {
             sub.ended = Some(end);
+            hooks = std::mem::take(&mut sub.on_stop);
             self.stopped.notify_all();
+        }
+        drop(inner);
+        run_all(hooks);
+    }
+
+    fn on_stop(&self, id: &str, hook: Hook) {
+        let mut inner = lock(&self.inner);
+        let closed = inner.closed;
+        match inner.subs.get_mut(id) {
+            Some(sub) if !sub.stopped() && !closed => sub.on_stop.push(hook),
+            // Already stopped: run it now.
+            _ => {
+                drop(inner);
+                hook();
+            }
         }
     }
 
@@ -420,6 +459,12 @@ impl Sink {
     /// went away. The stream sees [`stopped`](Self::stopped) and returns [`ended`](Self::ended).
     pub fn end(&self, end: End) {
         self.out.end(&self.id, end);
+    }
+
+    /// Runs `hook` once when the subscription stops (cancelled, ended or its connection
+    /// closed), or now if it already has. For a stream that waits on something of its own.
+    pub fn on_stop(&self, hook: impl FnOnce() + Send + 'static) {
+        self.out.on_stop(&self.id, Box::new(hook));
     }
 
     /// How [`end`](Self::end) ended it, if it did.
@@ -609,6 +654,34 @@ mod tests {
             drain(&out),
             [json!({ "id": "s", "end": true, "reason": "failed", "message": "gone" })]
         );
+    }
+
+    #[test]
+    fn runs_stop_hooks_once() {
+        use std::sync::atomic::{AtomicU32, Ordering};
+        let out = Outbox::new();
+        let sink = out.open("s", "testing.ticks");
+        let ran = Arc::new(AtomicU32::new(0));
+        let r = Arc::clone(&ran);
+        sink.on_stop(move || {
+            r.fetch_add(1, Ordering::SeqCst);
+        });
+        assert_eq!(ran.load(Ordering::SeqCst), 0);
+        out.cancel("s");
+        out.close();
+        assert_eq!(ran.load(Ordering::SeqCst), 1);
+        // Added after it stopped: runs straight away.
+        let r = Arc::clone(&ran);
+        sink.on_stop(move || {
+            r.fetch_add(1, Ordering::SeqCst);
+        });
+        assert_eq!(ran.load(Ordering::SeqCst), 2);
+        let other = out.open("t", "testing.ticks");
+        let r = Arc::clone(&ran);
+        other.on_stop(move || {
+            r.fetch_add(1, Ordering::SeqCst);
+        });
+        assert_eq!(ran.load(Ordering::SeqCst), 3);
     }
 
     #[test]

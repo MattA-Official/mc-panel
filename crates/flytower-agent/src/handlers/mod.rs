@@ -110,7 +110,10 @@ pub fn offers(verb: &str) -> bool {
 /// between subscriptions and the protocol 1 ways.
 #[must_use]
 pub fn hello(ctx: &Context) -> Value {
-    let subscriptions: Vec<&str> = SUBSCRIPTIONS.into_iter().filter(|v| offers(v)).collect();
+    let subscriptions: Vec<&str> = SUBSCRIPTIONS
+        .into_iter()
+        .filter(|v| offers(v) && (*v != "service.events" || ctx.events.is_some()))
+        .collect();
     json!({
         "kind": "rust",
         "version": ctx.version,
@@ -133,6 +136,7 @@ pub fn subscribe(params: &SubParams, ctx: &Arc<Context>) -> Result<(Value, Strea
                 p.crashes.unwrap_or(false),
             )?,
         )),
+        SubParams::ServiceEvents(p) => streams::service_events(p.servers.clone(), ctx),
         SubParams::TestingTicks(p) if offers("testing.ticks") => Ok((
             json!({}),
             streams::ticks(p.count, Duration::from_millis(p.interval_ms)),

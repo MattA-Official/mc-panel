@@ -3,9 +3,10 @@
  *
  *   bun scripts/package.ts --version 0.1.0 --arch amd64 [--bun /path/to/bun] [--out dist]
  *
- * Expects `bun run build` to have produced apps/panel/.output, and cargo (with the toolchain
- * in crates/rust-toolchain.toml) for the Rust helpers. Without --bun it downloads
- * the official Bun release matching packageManager in package.json and checks its hash.
+ * Expects `bun run build` to have produced apps/panel/.output, cargo (with the toolchain in
+ * crates/rust-toolchain.toml) for the Rust helpers, and go (the version in go/go.mod) for the
+ * Go ones. Without --bun it downloads the official Bun release matching packageManager in
+ * package.json and checks its hash.
  */
 import { chmod, cp, mkdir, rm } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -78,6 +79,16 @@ await $`cargo build --release --locked --target ${rustTarget}`.cwd(crates)
 for (const bin of ['flytower-du', 'flytower-agent', 'flytower-updater', 'flytower-map']) {
   await cp(join(crates, 'target', rustTarget, 'release', bin), join(stage, 'bin', bin))
   await chmod(join(stage, 'bin', bin), 0o755)
+}
+
+// Go helpers (go/), cross-compiled with cgo off, so they're static for either architecture.
+const goModule = join(repo, 'go')
+for (const bin of ['flytower-router']) {
+  const target = join(stage, 'bin', bin)
+  await $`go build -trimpath -ldflags=${`-s -w -X main.version=${version}`} -o ${target} ./cmd/${bin}`
+    .cwd(goModule)
+    .env({ ...process.env, CGO_ENABLED: '0', GOOS: 'linux', GOARCH: arch })
+  await chmod(target, 0o755)
 }
 
 await cp(join(repo, 'installer/install.sh'), join(stage, 'install.sh'))
